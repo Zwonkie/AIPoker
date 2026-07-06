@@ -1,0 +1,298 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
+:root {
+  --bg-color: #0f1115;
+  --panel-bg: #1a1d24;
+  --panel-border: #2d3139;
+  
+  --text-primary: #f0f1f3;
+  --text-secondary: #9ba1ad;
+  
+  --accent-blue: #3b82f6;
+  --accent-blue-hover: #2563eb;
+  --accent-green: #10b981;
+  --accent-red: #ef4444;
+  --accent-purple: #8b5cf6;
+  --accent-orange: #f59e0b;
+
+  --node-bg: #222630;
+  --node-border: #353a45;
+  --node-border-selected: #3b82f6;
+  --node-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.5), 0 2px 4px -1px rgba(0, 0, 0, 0.3);
+
+  --font-family: 'Inter', system-ui, sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: var(--font-family);
+  background-color: var(--bg-color);
+  color: var(--text-primary);
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* React Flow customizations for dark theme */
+.react-flow__pane {
+  background-color: var(--bg-color);
+}
+
+.react-flow__controls {
+  box-shadow: var(--node-shadow) !important;
+  border-radius: 8px !important;
+  overflow: hidden;
+  background-color: var(--panel-bg) !important;
+  border: 1px solid var(--panel-border) !important;
+}
+
+.react-flow__controls-button {
+  background-color: var(--panel-bg) !important;
+  border-bottom: 1px solid var(--panel-border) !important;
+  color: var(--text-primary) !important;
+}
+
+.react-flow__controls-button:hover {
+  background-color: #2a2e39 !important;
+}
+
+.react-flow__controls-button svg {
+  fill: var(--text-primary) !important;
+}
+
+.react-flow__background {
+  background-color: var(--bg-color);
+}
+
+.react-flow__edge-path {
+  stroke: var(--text-secondary);
+  stroke-width: 2;
+}
+
+.react-flow__edge.selected .react-flow__edge-path {
+  stroke: var(--accent-blue);
+  stroke-width: 3;
+}
+
+.react-flow__handle {
+  width: 8px;
+  height: 8px;
+  background-color: var(--text-secondary);
+  border: 2px solid var(--node-bg);
+}
+
+.react-flow__handle:hover {
+  background-color: var(--accent-blue);
+  transform: scale(1.2);
+  transition: all 0.2s;
+}
+
+.app-container {
+  display: flex;
+  height: 100vh;
+  width: 100vw;
+  overflow: hidden;
+}
+
+/* Sidebar Styling */
+.sidebar {
+  width: 280px;
+  background-color: var(--panel-bg);
+  border-right: 1px solid var(--panel-border);
+  display: flex;
+  flex-direction: column;
+  z-index: 10;
+}
+
+.sidebar-header {
+  padding: 20px;
+  border-bottom: 1px solid var(--panel-border);
+}
+
+.sidebar-title {
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.sidebar-content {
+  flex: 1;
+  overflow-y: auto;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.node-group {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.node-group-title {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-secondary);
+  font-weight: 600;
+}
+
+.dnd-node {
+  padding: 12px 16px;
+  border-radius: 6px;
+  background-color: var(--node-bg);
+  border: 1px solid var(--node-border);
+  cursor: grab;
+  font-size: 0.875rem;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  transition: all 0.2s ease;
+}
+
+.dnd-node:hover {
+  border-color: var(--text-secondary);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+}
+
+.dnd-node:active {
+  cursor: grabbing;
+}
+
+.icon-wrapper {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 4px;
+}
+
+.icon-wrapper.context { color: var(--accent-purple); background: rgba(139, 92, 246, 0.1); }
+.icon-wrapper.condition { color: var(--accent-blue); background: rgba(59, 130, 246, 0.1); }
+.icon-wrapper.action { color: var(--accent-green); background: rgba(16, 185, 129, 0.1); }
+.icon-wrapper.profile { color: var(--accent-orange); background: rgba(245, 158, 11, 0.1); }
+
+.workspace {
+  flex: 1;
+  position: relative;
+}
+
+/* Custom Node Styles */
+.custom-node {
+  background-color: var(--node-bg);
+  border: 1px solid var(--node-border);
+  border-radius: 8px;
+  padding: 0;
+  min-width: 180px;
+  box-shadow: var(--node-shadow);
+  overflow: hidden;
+  font-size: 14px;
+}
+
+.custom-node.selected {
+  border-color: var(--node-border-selected);
+  box-shadow: 0 0 0 1px var(--node-border-selected), var(--node-shadow);
+}
+
+.node-header {
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--panel-border);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 600;
+}
+
+.node-header.context { border-top: 3px solid var(--accent-purple); }
+.node-header.condition { border-top: 3px solid var(--accent-blue); }
+.node-header.action { border-top: 3px solid var(--accent-green); }
+.node-header.profile { border-top: 3px solid var(--accent-orange); }
+
+.node-body {
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.node-input-group {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.node-input-group label {
+  font-size: 11px;
+  color: var(--text-secondary);
+}
+
+.node-select, .node-input {
+  background-color: #1a1d24;
+  border: 1px solid var(--panel-border);
+  color: var(--text-primary);
+  border-radius: 4px;
+  padding: 6px 8px;
+  font-size: 12px;
+  font-family: inherit;
+  width: 100%;
+  outline: none;
+}
+
+.node-select:focus, .node-input:focus {
+  border-color: var(--accent-blue);
+}
+
+.topbar {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  z-index: 10;
+  display: flex;
+  gap: 12px;
+}
+
+.btn {
+  background-color: var(--panel-bg);
+  border: 1px solid var(--panel-border);
+  color: var(--text-primary);
+  padding: 8px 16px;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  transition: all 0.2s;
+}
+
+.btn:hover {
+  background-color: #2a2e39;
+}
+
+.btn-primary {
+  background-color: var(--accent-blue);
+  border-color: var(--accent-blue);
+}
+
+.btn-primary:hover {
+  background-color: var(--accent-blue-hover);
+}
+
+.btn-danger {
+  background-color: var(--accent-red);
+  border-color: var(--accent-red);
+  color: white;
+}

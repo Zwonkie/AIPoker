@@ -2,12 +2,13 @@ import os
 
 class PokerDecisionEngine:
     def __init__(self):
-        from core.models import HeuristicEngine, XGBoostModel, PyTorchMLPModel, MixedXGBoostModel
+        from core.models import HeuristicEngine, XGBoostModel, PyTorchMLPModel, MixedXGBoostModel, DecisionTreeEngine
         self.models = {
             'Heuristic (Rules)': HeuristicEngine(),
             'XGBoost Classifier': XGBoostModel(),
             'XGBoost Mixed (Pro + Human)': MixedXGBoostModel(self),
-            'PyTorch Neural Net': PyTorchMLPModel()
+            'PyTorch Neural Net': PyTorchMLPModel(),
+            'Decision Tree Model': DecisionTreeEngine()
         }
         self.active_model_name = 'Heuristic (Rules)'
         self.mixed_ratio = 0.5  # 0.0 = 100% Pro, 1.0 = 100% Human
@@ -25,6 +26,9 @@ class PokerDecisionEngine:
             elif model_name == 'PyTorch Neural Net':
                 from core.models import PyTorchMLPModel
                 self.models[model_name] = PyTorchMLPModel()
+            elif model_name == 'Decision Tree Model':
+                from core.models import DecisionTreeEngine
+                self.models[model_name] = DecisionTreeEngine()
 
     def make_decision(self, board: list, hand: list, equity: float, pot_size: float, 
                       call_amount: float, hero_stack: float, num_opponents: int = 1,
