@@ -1,10 +1,11 @@
 import React from 'react';
 import { Handle, Position } from '@xyflow/react';
-import { Target } from 'lucide-react';
+import { Target, X } from 'lucide-react';
 import useStore from '../../store';
 
 const ActionNode = ({ id, data }) => {
   const updateNodeData = useStore((state) => state.updateNodeData);
+  const deleteNode = useStore((state) => state.deleteNode);
 
   const onActionChange = (evt) => updateNodeData(id, { action: evt.target.value });
   const onAmountChange = (evt) => updateNodeData(id, { amount: evt.target.value });
@@ -12,8 +13,13 @@ const ActionNode = ({ id, data }) => {
   return (
     <div className="custom-node">
       <div className="node-header action">
-        <Target size={14} />
-        {data.label}
+        <div className="node-header-title">
+          <Target size={14} />
+          {data.label}
+        </div>
+        <button className="node-delete-btn" title="Delete node" onClick={() => deleteNode(id)}>
+          <X size={14} />
+        </button>
       </div>
       <div className="node-body">
         <div className="node-input-group">

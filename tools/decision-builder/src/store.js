@@ -39,6 +39,14 @@ const useStore = create((set, get) => ({
       }),
     });
   },
+  deleteNode: (nodeId) => {
+    set({
+      nodes: get().nodes.filter((node) => node.id !== nodeId),
+      edges: get().edges.filter(
+        (edge) => edge.source !== nodeId && edge.target !== nodeId
+      ),
+    });
+  },
 }));
 
 export default useStore;

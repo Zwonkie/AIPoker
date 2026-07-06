@@ -1,10 +1,11 @@
 import React from 'react';
 import { Handle, Position } from '@xyflow/react';
-import { GitMerge } from 'lucide-react';
+import { GitMerge, X } from 'lucide-react';
 import useStore from '../../store';
 
 const ConditionNode = ({ id, data }) => {
   const updateNodeData = useStore((state) => state.updateNodeData);
+  const deleteNode = useStore((state) => state.deleteNode);
 
   const onMetricChange = (evt) => updateNodeData(id, { metric: evt.target.value });
   const onOperatorChange = (evt) => updateNodeData(id, { operator: evt.target.value });
@@ -13,8 +14,13 @@ const ConditionNode = ({ id, data }) => {
   return (
     <div className="custom-node">
       <div className="node-header condition">
-        <GitMerge size={14} />
-        {data.label}
+        <div className="node-header-title">
+          <GitMerge size={14} />
+          {data.label}
+        </div>
+        <button className="node-delete-btn" title="Delete node" onClick={() => deleteNode(id)}>
+          <X size={14} />
+        </button>
       </div>
       <div className="node-body">
         <div className="node-input-group">
