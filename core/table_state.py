@@ -192,6 +192,11 @@ class TableState:
                     tracked_opp['state'] = 'Active'
                     tracked_opp['is_active'] = True
                 else:
-                    tracked_opp['state'] = 'Folded'
-                    tracked_opp['is_active'] = False
+                    # If stack is 0 in baseline, they might be All-In. Keep OCR state if it was All-In.
+                    if tracked_opp.get('state') == 'All-In':
+                        tracked_opp['state'] = 'All-In'
+                        tracked_opp['is_active'] = True
+                    else:
+                        tracked_opp['state'] = 'Folded'
+                        tracked_opp['is_active'] = False
 
