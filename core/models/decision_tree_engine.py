@@ -25,33 +25,26 @@ class DecisionTreeEngine(PokerModelInterface):
             print("[DecisionTree] No rules loaded. Defaulting to Check/Fold.")
             return self._fallback_action(valid_actions)
 
-        # 1. Determine Context (e.g. preflop, flop, turn, river)
-        # 2. Find matching context node
-        context_str = 'preflop' if is_preflop else ('flop' if len(board) == 3 else ('turn' if len(board) == 4 else 'river'))
-        
-        # Override with bet context if more specific root exists
-        if call_amount > hero_stack:
-            context_str = 'facing_allin'
-        elif call_amount > 0:
-            context_str = 'facing_bet'
-            
+        # 1. Determine active contexts
+        street_ctx = 'preflop' if is_preflop else ('flop' if len(board) == 3 else ('turn' if len(board) == 4 else 'river'))
+        actual_ctxs = self._get_matching_contexts(board, call_amount, hero_stack, is_preflop)
+
         start_node = None
-        # Try specific first, then street
+        # Prioritize starting at the current Street root (e.g., River)
         for root in self.parser.find_context_roots():
-            if root['data'].get('contextType') == context_str:
+            if root['data'].get('contextType') == street_ctx:
                 start_node = root
                 break
-                
-        # Fallback to street if facing_bet etc not found
-        if not start_node and context_str in ['facing_bet', 'facing_allin']:
-            street_ctx = 'preflop' if is_preflop else ('flop' if len(board) == 3 else ('turn' if len(board) == 4 else 'river'))
+
+        # Fallback to other active contexts if street root doesn't exist
+        if not start_node:
             for root in self.parser.find_context_roots():
-                if root['data'].get('contextType') == street_ctx:
+                if root['data'].get('contextType', 'preflop') in actual_ctxs:
                     start_node = root
                     break
 
         if not start_node:
-            print(f"[DecisionTree] No matching root for context.")
+            print(f"[DecisionTree] No matching root context found for {actual_ctxs}.")
             return self._fallback_action(valid_actions)
 
         # 3. Traverse the tree
@@ -75,16 +68,39 @@ class DecisionTreeEngine(PokerModelInterface):
                 next_node_id = self.parser.get_next_node_id(current_node['id'], handle)
                 
             elif node_type == 'profileNode':
-                # Simplified for now: just checks first active opponent stats
                 opp_stats = active_opponents[0] if active_opponents else {}
                 result = self._evaluate_profile(data, opp_stats)
                 handle = 'true' if result else 'false'
                 next_node_id = self.parser.get_next_node_id(current_node['id'], handle)
+
+            elif node_type == 'contextNode':
+                # Chained context check (e.g., Preflop -> Facing Bet)
+                expected_ctx = data.get('contextType', 'preflop')
+                if expected_ctx in actual_ctxs:
+                    next_node_id = self.parser.get_next_node_id(current_node['id'], 'a')
+                else:
+                    break
             else:
                 break
 
         print("[DecisionTree] Tree traversal ended without an action.")
         return self._fallback_action(valid_actions)
+
+    def _get_matching_contexts(self, board, call_amount, hero_stack, is_preflop):
+        contexts = []
+        # Add street context
+        street = 'preflop' if is_preflop else ('flop' if len(board) == 3 else ('turn' if len(board) == 4 else 'river'))
+        contexts.append(street)
+        
+        # Add betting context
+        if call_amount > hero_stack:
+            contexts.append('facing_allin')
+        elif call_amount > 0:
+            contexts.append('facing_bet')
+        else:
+            contexts.append('no_bet')
+            
+        return contexts
 
     def _evaluate_condition(self, data, equity, hero_stack, pot_size):
         metric = data.get('metric', 'equity')
