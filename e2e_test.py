@@ -25,10 +25,10 @@ def run_e2e_validation():
     
     # Test cases: (Image File, Expected Cards, Expected Pot, Expected Opponents Count, Call Amount, check_call_available, bet_raise_available)
     test_cases = [
-        ("board_samples/1_postflop_first_fold_check_raise.png", ['Kd', 'Ac', '3s'], 80, 4, 0.0, True, True),
-        ("board_samples/2_postflop_river_fold_call_raise.png", ['Kd', 'Ac', '3s', '3h', 'Tc'], 160, 4, 40.0, True, True),
-        ("board_samples/3_preflop_fold_allin.png", [], 2.021, 3, 100.0, False, True),
-        ("board_samples/4_postflop_river_fold_call_raise_facing_bet.png", ['6c', '8d', '7c', 'Kh', '9d'], 372, 3, 186.0, True, True)
+        ("board_samples/1_postflop_first_fold_check_raise.png", ['Kd', 'Ac', '3s'], 80, 3, 0.0, True, True),
+        ("board_samples/2_postflop_river_fold_call_raise.png", ['Kd', 'Ac', '3s', '3h', 'Tc'], 160, 1, 40.0, True, True),
+        ("board_samples/3_preflop_fold_allin.png", [], 2021, 2, 100.0, False, True),
+        ("board_samples/4_postflop_river_fold_call_raise_facing_bet.png", ['6c', '8d', '7c', 'Kh', '9d'], 372, 1, 186.0, True, True)
     ]
     
     for model_name in ["Heuristic (Rules)", "XGBoost Classifier", "XGBoost Mixed (Pro + Human)"]:

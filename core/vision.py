@@ -301,7 +301,7 @@ class PokerVision:
         return best_char, best_score
 
     def clean_pot_string(self, text):
-        """Cleans and extracts integer/float value from pot OCR text with translation mapping."""
+        """Cleans and extracts integer value from pot OCR text with translation mapping."""
         # Isolate value from label if colon is present
         if ":" in text:
             text = text.split(":")[-1].strip()
@@ -315,13 +315,9 @@ class PokerVision:
             'G': '6', 'g': '9', 'A': '4'
         })
         cleaned = text.translate(trans)
-        digits = ""
-        for c in cleaned:
-            if c.isdigit() or c in ['.', ',']:
-                digits += c
-        digits = digits.replace(',', '.')
+        digits = "".join([c for c in cleaned if c.isdigit()])
         try:
-            return float(digits) if '.' in digits else int(digits)
+            return int(digits)
         except ValueError:
             return 0
 
@@ -456,8 +452,10 @@ class PokerVision:
         
         # Match all seats and Hero
         resolved_centers = {}
+        found_anchors = {}
         for key, (rx, ry, rw, rh) in search_regions.items():
             cx, cy = default_centers[key] # fallback
+            found_anchor = False
             if self.hexagon_template is not None:
                 search_area = img[ry:ry+rh, rx:rx+rw]
                 if search_area.shape[0] >= self.hexagon_template.shape[0] and search_area.shape[1] >= self.hexagon_template.shape[1]:
@@ -466,10 +464,14 @@ class PokerVision:
                     if max_val >= 0.70:
                         cx = rx + max_loc[0] + self.hexagon_template.shape[1] // 2
                         cy = ry + max_loc[1] + self.hexagon_template.shape[0] // 2 # Rolled back to template center
+                        found_anchor = True
             resolved_centers[key] = (cx, cy)
+            found_anchors[key] = found_anchor
 
         # Parse Opponents
         for seat_key in ['seat_1', 'seat_2', 'seat_3', 'seat_4', 'seat_5']:
+            if not found_anchors.get(seat_key, False):
+                continue
             cx, cy = resolved_centers[seat_key]
             
             # VPIP and AGG Crops
@@ -495,36 +497,47 @@ class PokerVision:
             if not name:
                 continue
                 
-            # Run OCR on Stack
-            stack_gray = self.preprocess_image(stack_crop)
-            stack_resized = cv2.resize(stack_gray, (0, 0), fx=3, fy=3, interpolation=cv2.INTER_CUBIC)
-            stack_text = pytesseract.image_to_string(stack_resized, config='--psm 6')
+            # Determine if player is active (5% brightest pixels in name_gray > 160.0)
+            flat = name_gray.flatten()
+            flat_sorted = np.sort(flat)
+            top_5_percent_idx = int(len(flat_sorted) * 0.95)
+            top_5_percent_pixels = flat_sorted[top_5_percent_idx:]
+            mean_top_5 = np.mean(top_5_percent_pixels) if len(top_5_percent_pixels) > 0 else 0.0
             
-            stack_line = stack_text.strip()
+            is_active = mean_top_5 > 160.0
             stack_val = 0
-            is_active = True
             state_label = "Active"
             
-            if stack_line:
-                stack_upper = stack_line.upper()
-                if 'ALL' in stack_upper or 'IN' in stack_upper:
-                    state_label = "All-In"
-                    stack_val = 0
-                elif stack_upper == '-' or '-' in stack_upper:
-                    state_label = "Folded"
-                    stack_val = 0
-                    is_active = False
+            if is_active:
+                # Run OCR on Stack
+                stack_gray = self.preprocess_image(stack_crop)
+                stack_resized = cv2.resize(stack_gray, (0, 0), fx=3, fy=3, interpolation=cv2.INTER_CUBIC)
+                stack_text = pytesseract.image_to_string(stack_resized, config='--psm 6')
+                
+                stack_line = stack_text.strip()
+                if stack_line:
+                    stack_upper = stack_line.upper()
+                    if 'ALL' in stack_upper or 'IN' in stack_upper:
+                        state_label = "All-In"
+                        stack_val = 0
+                    elif stack_upper == '-' or '-' in stack_upper:
+                        state_label = "Folded"
+                        stack_val = 0
+                        is_active = False
+                    else:
+                        stack_val = self.clean_stack_string(stack_line)
+                        if stack_val == 0:
+                            if '0' in stack_line:
+                                state_label = "All-In"
+                            else:
+                                state_label = "Folded"
+                                is_active = False
                 else:
-                    stack_val = self.clean_stack_string(stack_line)
-                    if stack_val == 0:
-                        if '0' in stack_line:
-                            state_label = "All-In"
-                        else:
-                            state_label = "Folded"
-                            is_active = False
+                    state_label = "Active"
+                    stack_val = 0
             else:
                 state_label = "Folded"
-                is_active = False
+                stack_val = 0
                 
             # Classify VPIP and AGG Colors
             vpip_color = self.classify_color(vpip_crop) if is_active else None
