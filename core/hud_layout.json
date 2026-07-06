@@ -1,0 +1,37 @@
+{
+  "__COMMENT__": "LOCKED CONFIGURATION. DO NOT MODIFY THE BOUNDING BOX POSITIONS OR SEAT CENTERS WITHOUT STRICT PERMISSION.",
+  "relative_offsets": {
+    "vpip": {
+      "x1": -100,
+      "x2": -80,
+      "y1": -12,
+      "y2": 12
+    },
+    "agg": {
+      "x1": 80,
+      "x2": 100,
+      "y1": -12,
+      "y2": 12
+    },
+    "name": {
+      "x1": -75,
+      "x2": 75,
+      "y1": 22,
+      "y2": 48
+    },
+    "stack": {
+      "x1": -65,
+      "x2": 65,
+      "y1": 50,
+      "y2": 84
+    }
+  },
+  "default_centers": {
+    "seat_1": [320, 757],
+    "seat_2": [196, 306],
+    "seat_3": [767, 180],
+    "seat_4": [1340, 306],
+    "seat_5": [1213, 757],
+    "hero": [767, 837]
+  }
+}
