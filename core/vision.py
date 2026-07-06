@@ -517,8 +517,11 @@ class PokerVision:
                 else:
                     stack_val = self.clean_stack_string(stack_line)
                     if stack_val == 0:
-                        state_label = "Folded"
-                        is_active = False
+                        if '0' in stack_line:
+                            state_label = "All-In"
+                        else:
+                            state_label = "Folded"
+                            is_active = False
             else:
                 state_label = "Folded"
                 is_active = False
