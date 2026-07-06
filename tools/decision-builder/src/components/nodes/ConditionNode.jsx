@@ -52,6 +52,13 @@ const ConditionNode = ({ id, data }) => {
             />
           </div>
         </div>
+
+        <div className="node-highlight-box">
+          {data.metric === 'ev' && "EV: Expected Value. Evaluates average chips won/lost by making this move."}
+          {(data.metric === 'equity' || !data.metric) && "Equity: Probability of winning the pot at showdown (0-100%)."}
+          {data.metric === 'spr' && "SPR: Stack-to-Pot Ratio (stack / pot). Low SPR (< 2.5) means committed to pot."}
+          {data.metric === 'pot_odds' && "Pot Odds: Cost to call / total pot. Call is mathematically profitable if Equity > Pot Odds."}
+        </div>
       </div>
       <Handle type="target" position={Position.Left} id="in" />
       <Handle type="source" position={Position.Right} id="true" style={{ top: 30, background: '#10b981' }} />

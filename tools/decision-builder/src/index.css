@@ -321,3 +321,15 @@ body {
   border-color: var(--accent-red);
   color: white;
 }
+
+.node-highlight-box {
+  background-color: rgba(59, 130, 246, 0.1);
+  border-left: 3px solid var(--accent-blue);
+  padding: 8px 10px;
+  border-radius: 4px;
+  font-size: 11px;
+  color: var(--text-secondary);
+  margin-top: 6px;
+  line-height: 1.4;
+}
+

@@ -109,17 +109,11 @@ class DecisionTreeEngine(PokerModelInterface):
         if not opponent_stats:
             return False
             
-        stat = data.get('stat', 'vpip')
-        if stat == 'agg_color':
+        stat = data.get('stat', 'vpip_color')
+        if stat in ['vpip_color', 'agg_color']:
             color = data.get('value', 'grey')
-            return opponent_stats.get('agg_color', 'grey') == color
+            return opponent_stats.get(stat, 'grey') == color
             
-        operator = data.get('operator', '>')
-        val_threshold = float(data.get('value', 0))
-        val_actual = opponent_stats.get(stat, 0)
-        
-        if operator == '>': return val_actual > val_threshold
-        if operator == '<': return val_actual < val_threshold
         return False
 
     def _execute_action(self, data, valid_actions, pot_size):

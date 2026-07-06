@@ -25,43 +25,42 @@ const ProfileNode = ({ id, data }) => {
       <div className="node-body">
         <div className="node-input-group">
           <label>Opponent Stat</label>
-          <select className="node-select" value={data.stat || 'vpip'} onChange={onStatChange}>
-            <option value="vpip">VPIP %</option>
-            <option value="agg_factor">AGG Factor</option>
+          <select className="node-select" value={data.stat || 'vpip_color'} onChange={onStatChange}>
+            <option value="vpip_color">VPIP Color</option>
             <option value="agg_color">AGG Color</option>
           </select>
         </div>
         
-        {data.stat === 'agg_color' ? (
-          <div className="node-input-group">
-            <label>Is Color</label>
-            <select className="node-select" value={data.value || 'red'} onChange={onValueChange}>
-              <option value="red">Red (Aggressive)</option>
-              <option value="green">Green (Passive)</option>
-              <option value="blue">Blue (Calling Station)</option>
-              <option value="grey">Grey (Unknown)</option>
-            </select>
-          </div>
-        ) : (
-          <div style={{ display: 'flex', gap: '8px' }}>
-            <div className="node-input-group" style={{ flex: 1 }}>
-              <label>Operator</label>
-              <select className="node-select" value={data.operator || '>'} onChange={onOperatorChange}>
-                <option value=">">&gt;</option>
-                <option value="<">&lt;</option>
-              </select>
-            </div>
-            <div className="node-input-group" style={{ flex: 1 }}>
-              <label>Value</label>
-              <input 
-                type="number" 
-                className="node-input" 
-                value={data.value || 0} 
-                onChange={onValueChange} 
-              />
-            </div>
-          </div>
-        )}
+        <div className="node-input-group">
+          <label>Is Color</label>
+          <select className="node-select" value={data.value || 'red'} onChange={onValueChange}>
+            <option value="red">Red</option>
+            <option value="green">Green</option>
+            <option value="blue">Blue</option>
+            <option value="grey">Grey (Unknown)</option>
+          </select>
+        </div>
+
+        <div className="node-highlight-box">
+          {(data.stat === 'vpip_color' || !data.stat) && (
+            <>
+              <strong>VPIP Colors:</strong><br />
+              • Red: Loose (High VPIP)<br />
+              • Green: Tight (Low VPIP)<br />
+              • Blue: Calling Station<br />
+              • Grey: Unknown
+            </>
+          )}
+          {data.stat === 'agg_color' && (
+            <>
+              <strong>AGG Colors:</strong><br />
+              • Red: Aggressive (High AGG)<br />
+              • Green: Passive (Low AGG)<br />
+              • Blue: Calling Station<br />
+              • Grey: Unknown
+            </>
+          )}
+        </div>
       </div>
       <Handle type="target" position={Position.Left} id="in" />
       <Handle type="source" position={Position.Right} id="true" style={{ top: 30, background: '#10b981' }} />
