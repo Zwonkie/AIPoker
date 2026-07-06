@@ -1,0 +1,42 @@
+{
+    "timestamp": "20260705_173108",
+    "table_state": {
+        "community_cards": [
+            "8s",
+            "7s",
+            "Td",
+            "8h",
+            "7h"
+        ],
+        "hero_cards": [
+            "5c",
+            "Kh"
+        ],
+        "pot_size": 504,
+        "hero_stack": 0,
+        "opponents": {
+            "left": {
+                "name": "\u2014\u2014 \u2014 lO ee | ogaboga",
+                "stack": 660
+            },
+            "right": {
+                "name": "Jamie3674",
+                "stack": 800
+            },
+            "top": {
+                "name": "kulivok ,",
+                "stack": 692
+            }
+        },
+        "active_buttons": [
+            "button_fold"
+        ],
+        "num_active_players": 4
+    },
+    "equity": 0.08025,
+    "decision": [
+        "CHECK",
+        "Post-flop (EV): Low equity (8.0%). Checking.",
+        0.0
+    ]
+}

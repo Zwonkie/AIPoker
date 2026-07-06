@@ -1,0 +1,106 @@
+[SYSTEM] Parsing loop complete. Monitoring stream...
+
+--- NEW EVENT DETECTED ---
+[Vision] Token Values: ['Qs', '4h', '8d']
+[Vision] Primary Key:  ['6h', 'Th']
+[Vision] Accumulator:  400
+[Vision] Local Stack:  2003
+[Vision] Sub-threads:  2 active
+   -> Thread left: ' clownsmart681 (Alloc: 340)
+   -> Thread top: rusfisherman | (Alloc: 30652)
+[Decision] Parsing thread execution path...
+[Decision] Simulated 2000 hands: Wins=377, Ties=45, Losses=1578
+[Vision] No bet detected on Check/Call button. Text: 'TJEK'
+[Decision] DECIDED BRANCH: **CHECK**
+[Decision] Reason: Mixed XGBoost Prediction (Ratio 100% Human, Class 1)
+[Automation] Invoking native call for CHECK...
+[Automation] Thread interrupt completed successfully.
+[SYSTEM] Parsing loop complete. Monitoring stream...
+
+--- NEW EVENT DETECTED ---
+[Vision] Token Values: ['Qs', '4h', '8d', '5d']
+[Vision] Primary Key:  ['6h', 'Th']
+[Vision] Accumulator:  400
+[Vision] Local Stack:  2003
+[Vision] Sub-threads:  2 active
+   -> Thread left: ' clownsmart681 (Alloc: 340)
+   -> Thread top: rusfisherman | (Alloc: 30652)
+[Decision] Parsing thread execution path...
+[Decision] Simulated 2000 hands: Wins=256, Ties=43, Losses=1701
+[Vision] No bet detected on Check/Call button. Text: 'TJEK'
+[Decision] DECIDED BRANCH: **CHECK**
+[Decision] Reason: Mixed XGBoost Prediction (Ratio 100% Human, Class 1)
+[Automation] Invoking native call for CHECK...
+[Automation] Thread interrupt completed successfully.
+[SYSTEM] Parsing loop complete. Monitoring stream...
+
+--- NEW EVENT DETECTED ---
+[Vision] Token Values: ['Qs', '4h', '8d', '5d']
+[Vision] Primary Key:  ['6h', 'Th']
+[Vision] Accumulator:  640
+[Vision] Local Stack:  2003
+[Vision] Sub-threads:  2 active
+   -> Thread left: ' clownsmart681 (Alloc: 340)
+   -> Thread top: rusfisherman | (Alloc: 8252)
+[Decision] Parsing thread execution path...
+[Decision] Simulated 2000 hands: Wins=269, Ties=34, Losses=1697
+[Vision] Facing bet! Parsed Call Amount: 240.0
+[Decision] DECIDED BRANCH: **RAISE_SLIDER_0.24**
+[Decision] Reason: Mixed XGBoost Prediction (Ratio 100% Human, Class 4) (Post-flop slider sizing, wetness=0.0)
+[Decision] Size Allocation: 480.0 units
+[Automation] Invoking native call for RAISE_SLIDER_0.24...
+[Automation] Thread interrupt completed successfully.
+[SYSTEM] Parsing loop complete. Monitoring stream...
+
+--- NEW EVENT DETECTED ---
+[Vision] Token Values: ['Qs', '4h', '8d', '5d']
+[Vision] Primary Key:  ['6h', 'Th']
+[Vision] Accumulator:  2.025
+[Vision] Local Stack:  3523
+[Vision] Sub-threads:  2 active
+   -> Thread left: ' clownsmart681 (Alloc: 340)
+   -> Thread top: rusfisherman (Alloc: 5)
+[Decision] Parsing thread execution path...
+[Decision] Simulated 2000 hands: Wins=278, Ties=34, Losses=1688
+[Vision] Bet/Raise button is unavailable (greyed out/hidden).
+[Vision] Facing bet! Parsed Call Amount: 505.0
+[Decision] DECIDED BRANCH: **FOLD**
+[Decision] Reason: Mixed predicted BET/RAISE but Bet/Raise button is unavailable. Folding.
+[Automation] Invoking native call for FOLD...
+[Automation] Thread interrupt completed successfully.
+[SYSTEM] Parsing loop complete. Monitoring stream...
+
+--- NEW EVENT DETECTED ---
+[Vision] Token Values: []
+[Vision] Primary Key:  ['2s', 'Qc']
+[Vision] Accumulator:  160
+[Vision] Local Stack:  3423
+[Vision] Sub-threads:  2 active
+   -> Thread left: clownsmart681 (Alloc: 250)
+   -> Thread top: rusfisherman (Alloc: 2015)
+[Decision] Parsing thread execution path...
+[Decision] Simulated 2000 hands: Wins=519, Ties=77, Losses=1404
+[Vision] Facing bet! Parsed Call Amount: 40.0
+[Decision] DECIDED BRANCH: **CALL**
+[Decision] Reason: Mixed XGBoost Prediction (Ratio 100% Human, Class 2)
+[Automation] Invoking native call for CALL...
+[Automation] Thread interrupt completed successfully.
+[SYSTEM] Parsing loop complete. Monitoring stream...
+
+--- NEW EVENT DETECTED ---
+[Vision] Token Values: []
+[Vision] Primary Key:  ['2s', 'Qc']
+[Vision] Accumulator:  450
+[Vision] Local Stack:  3443
+[Vision] Sub-threads:  2 active
+   -> Thread left: i, — . — ' clownsmart681 (Alloc: 100)
+   -> Thread top: rusfisherman (Alloc: 2015)
+[Decision] Parsing thread execution path...
+[Decision] Simulated 2000 hands: Wins=543, Ties=84, Losses=1373
+[Vision] Bet/Raise button is unavailable (greyed out/hidden).
+[Vision] Facing bet! Parsed Call Amount: 250.0
+[Decision] DECIDED BRANCH: **FOLD**
+[Decision] Reason: Mixed predicted BET/RAISE but Bet/Raise button is unavailable. Folding.
+[Automation] Invoking native call for FOLD...
+[Automation] Thread interrupt completed successfully.
+[SYSTEM] Parsing loop complete. Monitoring stream...

@@ -1,0 +1,32 @@
+{
+    "timestamp": "20260705_225852",
+    "table_state": {
+        "community_cards": [],
+        "hero_cards": [
+            "Kc",
+            "6d"
+        ],
+        "pot_size": 2475,
+        "hero_stack": 3130,
+        "opponents": {
+            "left": {
+                "name": "clownsmart681",
+                "stack": 66685
+            },
+            "top": {
+                "name": "rusfisherman }",
+                "stack": 2
+            }
+        },
+        "active_buttons": [
+            "button_fold"
+        ],
+        "num_active_players": 3
+    },
+    "equity": 0.3428333333333333,
+    "decision": [
+        "FOLD",
+        "Safeguard: Blocked accidental call on CHECK decision. (OCR: 'KALD\n1,400', Avail: True)",
+        0.0
+    ]
+}

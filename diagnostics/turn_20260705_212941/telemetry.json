@@ -1,0 +1,36 @@
+{
+    "timestamp": "20260705_212941",
+    "table_state": {
+        "community_cards": [],
+        "hero_cards": [
+            "Ad",
+            "4h"
+        ],
+        "pot_size": 10,
+        "hero_stack": 1965,
+        "opponents": {
+            "left": {
+                "name": "Hut1965",
+                "stack": 199
+            },
+            "right": {
+                "name": "sonologik",
+                "stack": 129
+            },
+            "top": {
+                "name": "mlundby",
+                "stack": 122
+            }
+        },
+        "active_buttons": [
+            "button_fold"
+        ],
+        "num_active_players": 4
+    },
+    "equity": 0.265125,
+    "decision": [
+        "FOLD",
+        "Pre-flop (Chart): Weak starting hand (A4o). Folding.",
+        0.0
+    ]
+}

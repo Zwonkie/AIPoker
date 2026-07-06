@@ -1,0 +1,106 @@
+[Automation] Invoking native call for CHECK...
+[Automation] Thread interrupt completed successfully.
+[SYSTEM] Parsing loop complete. Monitoring stream...
+
+--- NEW EVENT DETECTED ---
+[Vision] Token Values: ['9d', '2c', 'Jd', 'Ks']
+[Vision] Primary Key:  ['Js', '6s']
+[Vision] Accumulator:  80
+[Vision] Local Stack:  0
+[Vision] Sub-threads:  3 active
+   -> Thread left: ; ogaboga (Alloc: 660)
+   -> Thread right: Jamie3674 (Alloc: 800)
+   -> Thread top:  (Alloc: 1040)
+[Decision] Parsing thread execution path...
+[Decision] Simulated 2000 hands: Wins=694, Ties=101, Losses=1205
+[Decision] DECIDED BRANCH: **CHECK**
+[Decision] Reason: Post-flop (EV): Low equity (36.0%). Checking.
+[Automation] Invoking native call for CHECK...
+[Automation] Thread interrupt completed successfully.
+[SYSTEM] Parsing loop complete. Monitoring stream...
+
+--- NEW EVENT DETECTED ---
+[Vision] Token Values: ['9d', '2c', 'Jd', 'Ks', 'Ad']
+[Vision] Primary Key:  ['Js', '6s']
+[Vision] Accumulator:  80
+[Vision] Local Stack:  0
+[Vision] Sub-threads:  3 active
+   -> Thread left: ; ogaboga (Alloc: 660)
+   -> Thread right: Jamie3674 (Alloc: 800)
+   -> Thread top:  (Alloc: 1040)
+[Decision] Parsing thread execution path...
+[Decision] Simulated 2000 hands: Wins=408, Ties=123, Losses=1469
+[Decision] DECIDED BRANCH: **CHECK**
+[Decision] Reason: Post-flop (EV): Low equity (21.9%). Checking.
+[Automation] Invoking native call for CHECK...
+[Automation] Thread interrupt completed successfully.
+[SYSTEM] Parsing loop complete. Monitoring stream...
+
+--- NEW EVENT DETECTED ---
+[Vision] Token Values: []
+[Vision] Primary Key:  ['5c', 'Kh']
+[Vision] Accumulator:  45
+[Vision] Local Stack:  740
+[Vision] Sub-threads:  3 active
+   -> Thread left: ; ogaboga (Alloc: 660)
+   -> Thread right: Jamie3674 (Alloc: 800)
+   -> Thread top: kulivok (Alloc: 1010)
+[Decision] Parsing thread execution path...
+[Decision] Simulated 2000 hands: Wins=443, Ties=79, Losses=1478
+[Decision] DECIDED BRANCH: **CHECK**
+[Decision] Reason: Pre-flop (Chart): Weak starting hand (K5o). Checking.
+[Automation] Invoking native call for CHECK...
+[Automation] Thread interrupt completed successfully.
+[SYSTEM] Parsing loop complete. Monitoring stream...
+[SYSTEM] Turn flagged! Saved diagnostics to: diagnostics/turn_20260705_173045/
+
+--- NEW EVENT DETECTED ---
+[Vision] Token Values: ['8s', '7s', 'Td']
+[Vision] Primary Key:  ['5c', 'Kh']
+[Vision] Accumulator:  112
+[Vision] Local Stack:  710
+[Vision] Sub-threads:  3 active
+   -> Thread left: —— — lO ee | ogaboga (Alloc: 660)
+   -> Thread right: Jamie3674 (Alloc: 800)
+   -> Thread top: kulivok | (Alloc: 973)
+[Decision] Parsing thread execution path...
+[Decision] Simulated 2000 hands: Wins=143, Ties=57, Losses=1800
+[Decision] DECIDED BRANCH: **CHECK**
+[Decision] Reason: Post-flop (EV): Low equity (7.9%). Checking.
+[Automation] Invoking native call for CHECK...
+[Automation] Thread interrupt completed successfully.
+[SYSTEM] Parsing loop complete. Monitoring stream...
+
+--- NEW EVENT DETECTED ---
+[Vision] Token Values: ['8s', '7s', 'Td', '8h']
+[Vision] Primary Key:  ['5c', 'Kh']
+[Vision] Accumulator:  223
+[Vision] Local Stack:  72
+[Vision] Sub-threads:  3 active
+   -> Thread left: —— — lO ee | ogaboga (Alloc: 660)
+   -> Thread right: Jamie3674 (Alloc: 800)
+   -> Thread top: kulivok , (Alloc: 99)
+[Decision] Parsing thread execution path...
+[Decision] Simulated 2000 hands: Wins=137, Ties=52, Losses=1811
+[Decision] DECIDED BRANCH: **CHECK**
+[Decision] Reason: Post-flop (EV): Low equity (7.5%). Checking.
+[Automation] Invoking native call for CHECK...
+[Automation] Thread interrupt completed successfully.
+[SYSTEM] Parsing loop complete. Monitoring stream...
+
+--- NEW EVENT DETECTED ---
+[Vision] Token Values: ['8s', '7s', 'Td', '8h', '7h']
+[Vision] Primary Key:  ['5c', 'Kh']
+[Vision] Accumulator:  504
+[Vision] Local Stack:  0
+[Vision] Sub-threads:  3 active
+   -> Thread left: —— — lO ee | ogaboga (Alloc: 660)
+   -> Thread right: Jamie3674 (Alloc: 800)
+   -> Thread top: kulivok , (Alloc: 692)
+[Decision] Parsing thread execution path...
+[Decision] Simulated 2000 hands: Wins=132, Ties=114, Losses=1754
+[Decision] DECIDED BRANCH: **CHECK**
+[Decision] Reason: Post-flop (EV): Low equity (8.0%). Checking.
+[Automation] Invoking native call for CHECK...
+[Automation] Thread interrupt completed successfully.
+[SYSTEM] Parsing loop complete. Monitoring stream...

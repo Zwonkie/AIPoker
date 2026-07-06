@@ -1,0 +1,36 @@
+{
+    "timestamp": "20260705_212957",
+    "table_state": {
+        "community_cards": [],
+        "hero_cards": [
+            "Jh",
+            "7h"
+        ],
+        "pot_size": 10,
+        "hero_stack": 1960,
+        "opponents": {
+            "left": {
+                "name": "Hut1965",
+                "stack": 129
+            },
+            "right": {
+                "name": "sonologik",
+                "stack": 11
+            },
+            "top": {
+                "name": "mlundby",
+                "stack": 11
+            }
+        },
+        "active_buttons": [
+            "button_fold"
+        ],
+        "num_active_players": 4
+    },
+    "equity": 0.28075,
+    "decision": [
+        "FOLD",
+        "Pre-flop (Chart): Weak starting hand (J7s). Folding.",
+        0.0
+    ]
+}

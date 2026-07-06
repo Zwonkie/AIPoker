@@ -1,0 +1,106 @@
+[SYSTEM] Turn flagged! Saved diagnostics to: diagnostics/turn_20260705_172910/
+[Automation] Thread interrupt completed successfully.
+[SYSTEM] Parsing loop complete. Monitoring stream...
+
+--- NEW EVENT DETECTED ---
+[Vision] Token Values: ['Jc', '4c', '6h']
+[Vision] Primary Key:  ['8s', 'Qh']
+[Vision] Accumulator:  1.04
+[Vision] Local Stack:  0
+[Vision] Sub-threads:  3 active
+   -> Thread left: ; ogaboga (Alloc: 680)
+   -> Thread right: Jamie3674 (Alloc: 800)
+   -> Thread top: kulivok , (Alloc: 5)
+[Decision] Parsing thread execution path...
+[Decision] Simulated 2000 hands: Wins=259, Ties=16, Losses=1725
+[Vision] Check/Call button is unavailable (all-in situation).
+[Decision] DECIDED BRANCH: **CHECK**
+[Decision] Reason: Post-flop (EV): Low equity (13.2%). Checking.
+[Automation] Invoking native call for CHECK...
+[Automation] Thread interrupt completed successfully.
+[SYSTEM] Parsing loop complete. Monitoring stream...
+
+--- NEW EVENT DETECTED ---
+[Vision] Token Values: []
+[Vision] Primary Key:  ['Js', '6s']
+[Vision] Accumulator:  50
+[Vision] Local Stack:  0
+[Vision] Sub-threads:  3 active
+   -> Thread left: ; ogaboga (Alloc: 670)
+   -> Thread right: Jamie3674 (Alloc: 800)
+   -> Thread top:  (Alloc: 1040)
+[Decision] Parsing thread execution path...
+[Decision] Simulated 2000 hands: Wins=465, Ties=76, Losses=1459
+[Decision] DECIDED BRANCH: **CHECK**
+[Decision] Reason: Pre-flop (Chart): Weak starting hand (J6s). Checking.
+[Automation] Invoking native call for CHECK...
+[Automation] Thread interrupt completed successfully.
+[SYSTEM] Parsing loop complete. Monitoring stream...
+
+--- NEW EVENT DETECTED ---
+[Vision] Token Values: ['9d', '2c', 'Jd']
+[Vision] Primary Key:  ['Js', '6s']
+[Vision] Accumulator:  80
+[Vision] Local Stack:  0
+[Vision] Sub-threads:  3 active
+   -> Thread left: ; ogaboga (Alloc: 660)
+   -> Thread right: Jamie3674 (Alloc: 800)
+   -> Thread top:  (Alloc: 1040)
+[Decision] Parsing thread execution path...
+[Decision] Simulated 2000 hands: Wins=845, Ties=61, Losses=1094
+[Decision] DECIDED BRANCH: **CHECK**
+[Decision] Reason: Post-flop (EV): Low equity (43.0%). Checking.
+[Automation] Invoking native call for CHECK...
+[Automation] Thread interrupt completed successfully.
+[SYSTEM] Parsing loop complete. Monitoring stream...
+
+--- NEW EVENT DETECTED ---
+[Vision] Token Values: ['9d', '2c', 'Jd', 'Ks']
+[Vision] Primary Key:  ['Js', '6s']
+[Vision] Accumulator:  80
+[Vision] Local Stack:  0
+[Vision] Sub-threads:  3 active
+   -> Thread left: ; ogaboga (Alloc: 660)
+   -> Thread right: Jamie3674 (Alloc: 800)
+   -> Thread top:  (Alloc: 1040)
+[Decision] Parsing thread execution path...
+[Decision] Simulated 2000 hands: Wins=694, Ties=101, Losses=1205
+[Decision] DECIDED BRANCH: **CHECK**
+[Decision] Reason: Post-flop (EV): Low equity (36.0%). Checking.
+[Automation] Invoking native call for CHECK...
+[Automation] Thread interrupt completed successfully.
+[SYSTEM] Parsing loop complete. Monitoring stream...
+
+--- NEW EVENT DETECTED ---
+[Vision] Token Values: ['9d', '2c', 'Jd', 'Ks', 'Ad']
+[Vision] Primary Key:  ['Js', '6s']
+[Vision] Accumulator:  80
+[Vision] Local Stack:  0
+[Vision] Sub-threads:  3 active
+   -> Thread left: ; ogaboga (Alloc: 660)
+   -> Thread right: Jamie3674 (Alloc: 800)
+   -> Thread top:  (Alloc: 1040)
+[Decision] Parsing thread execution path...
+[Decision] Simulated 2000 hands: Wins=408, Ties=123, Losses=1469
+[Decision] DECIDED BRANCH: **CHECK**
+[Decision] Reason: Post-flop (EV): Low equity (21.9%). Checking.
+[Automation] Invoking native call for CHECK...
+[Automation] Thread interrupt completed successfully.
+[SYSTEM] Parsing loop complete. Monitoring stream...
+
+--- NEW EVENT DETECTED ---
+[Vision] Token Values: []
+[Vision] Primary Key:  ['5c', 'Kh']
+[Vision] Accumulator:  45
+[Vision] Local Stack:  740
+[Vision] Sub-threads:  3 active
+   -> Thread left: ; ogaboga (Alloc: 660)
+   -> Thread right: Jamie3674 (Alloc: 800)
+   -> Thread top: kulivok (Alloc: 1010)
+[Decision] Parsing thread execution path...
+[Decision] Simulated 2000 hands: Wins=443, Ties=79, Losses=1478
+[Decision] DECIDED BRANCH: **CHECK**
+[Decision] Reason: Pre-flop (Chart): Weak starting hand (K5o). Checking.
+[Automation] Invoking native call for CHECK...
+[Automation] Thread interrupt completed successfully.
+[SYSTEM] Parsing loop complete. Monitoring stream...

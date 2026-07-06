@@ -1,0 +1,105 @@
+   -> Thread left: a ~ al, a Pippy18 (Alloc: 1040)
+   -> Thread right: bye $———~*> = (Alloc: 1470)
+   -> Thread top: kepfgb (Alloc: 1470)
+[Decision] Parsing thread execution path...
+[Decision] Simulated 2000 hands: Wins=545, Ties=76, Losses=1379
+[Vision] No bet detected on Check/Call button. Text: 'TJEK'
+[Decision] DECIDED BRANCH: **CHECK**
+[Decision] Reason: XGBoost Classifier Prediction (Class 1)
+[Automation] Invoking native call for CHECK...
+[Automation] Thread interrupt completed successfully.
+[SYSTEM] Parsing loop complete. Monitoring stream...
+
+--- NEW EVENT DETECTED ---
+[Vision] Token Values: ['Kh', '8c', 'Th']
+[Vision] Primary Key:  ['8s', 'Ah']
+[Vision] Accumulator:  1.34
+[Vision] Local Stack:  44
+[Vision] Sub-threads:  3 active
+   -> Thread left: i / ee f Pippy18 (Alloc: 100)
+   -> Thread right: bye $———~*> = (Alloc: 1470)
+   -> Thread top: kepfgb (Alloc: 1470)
+[Decision] Parsing thread execution path...
+[Decision] Simulated 2000 hands: Wins=726, Ties=39, Losses=1235
+[Vision] Check/Call button is unavailable (all-in situation).
+[Decision] DECIDED BRANCH: **RAISE_POT_70**
+[Decision] Reason: XGBoost Classifier Prediction (Class 4)
+[Decision] Size Allocation: 0.938 units
+[Automation] Invoking native call for RAISE_POT_70...
+[Automation] Thread interrupt completed successfully.
+[SYSTEM] Parsing loop complete. Monitoring stream...
+
+--- NEW EVENT DETECTED ---
+[Vision] Token Values: []
+[Vision] Primary Key:  ['Kd', 'Td']
+[Vision] Accumulator:  45
+[Vision] Local Stack:  1162
+[Vision] Sub-threads:  3 active
+   -> Thread left: Pippy18 (Alloc: 591)
+   -> Thread right: bye $———~*> = (Alloc: 1470)
+   -> Thread top: kepfgb (Alloc: 1470)
+[Decision] Parsing thread execution path...
+[Decision] Simulated 2000 hands: Wins=659, Ties=68, Losses=1273
+[Vision] Facing bet! Parsed Call Amount: 30.0
+[Decision] DECIDED BRANCH: **RAISE_POT_70**
+[Decision] Reason: XGBoost Classifier Prediction (Class 4)
+[Decision] Size Allocation: 31.499999999999996 units
+[Automation] Invoking native call for RAISE_POT_70...
+[Automation] Thread interrupt completed successfully.
+[SYSTEM] Parsing loop complete. Monitoring stream...
+
+--- NEW EVENT DETECTED ---
+[Vision] Token Values: []
+[Vision] Primary Key:  ['Kd', 'Td']
+[Vision] Accumulator:  726
+[Vision] Local Stack:  1072
+[Vision] Sub-threads:  3 active
+   -> Thread left: | Pippy18 (Alloc: 100)
+   -> Thread right: bye $———~*> = (Alloc: 1470)
+   -> Thread top: kepfgb (Alloc: 1470)
+[Decision] Parsing thread execution path...
+[Decision] Simulated 2000 hands: Wins=699, Ties=54, Losses=1247
+[Vision] Bet/Raise button is unavailable (greyed out/hidden).
+[Vision] Facing bet! Parsed Call Amount: 516.0
+[Decision] DECIDED BRANCH: **FOLD**
+[Decision] Reason: XGBoost predicted BET/RAISE but Bet/Raise button is unavailable. Folding.
+[Automation] Invoking native call for FOLD...
+[Automation] Thread interrupt completed successfully.
+[SYSTEM] Parsing loop complete. Monitoring stream...
+
+--- NEW EVENT DETECTED ---
+[Vision] Token Values: []
+[Vision] Primary Key:  ['7c', '6s']
+[Vision] Accumulator:  45
+[Vision] Local Stack:  1072
+[Vision] Sub-threads:  3 active
+   -> Thread left: Pippy18 (Alloc: 726)
+   -> Thread right: bye $———~*> = (Alloc: 1470)
+   -> Thread top: kcpfgb (Alloc: 1440)
+[Decision] Parsing thread execution path...
+[Decision] Simulated 2000 hands: Wins=394, Ties=57, Losses=1549
+[Vision] Facing bet! Parsed Call Amount: 30.0
+[Decision] DECIDED BRANCH: **RAISE_POT_70**
+[Decision] Reason: XGBoost Classifier Prediction (Class 4)
+[Decision] Size Allocation: 31.499999999999996 units
+[Automation] Invoking native call for RAISE_POT_70...
+[Automation] Thread interrupt completed successfully.
+[SYSTEM] Parsing loop complete. Monitoring stream...
+
+--- NEW EVENT DETECTED ---
+[Vision] Token Values: ['4d', 'Kh', '4h']
+[Vision] Primary Key:  ['7c', '6s']
+[Vision] Accumulator:  285
+[Vision] Local Stack:  22
+[Vision] Sub-threads:  3 active
+   -> Thread left: Pippy18 (Alloc: 636)
+   -> Thread right: bye $———~*> = (Alloc: 1470)
+   -> Thread top: kcpfgb (Alloc: 1380)
+[Decision] Parsing thread execution path...
+[Decision] Simulated 2000 hands: Wins=177, Ties=75, Losses=1748
+[Vision] No bet detected on Check/Call button. Text: 'TJEK'
+[Decision] DECIDED BRANCH: **CHECK**
+[Decision] Reason: XGBoost Classifier Prediction (Class 1)
+[Automation] Invoking native call for CHECK...
+[Automation] Thread interrupt completed successfully.
+[SYSTEM] Parsing loop complete. Monitoring stream...

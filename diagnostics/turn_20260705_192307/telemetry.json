@@ -1,0 +1,40 @@
+{
+    "timestamp": "20260705_192307",
+    "table_state": {
+        "community_cards": [
+            "4d",
+            "Kh",
+            "4h"
+        ],
+        "hero_cards": [
+            "7c",
+            "6s"
+        ],
+        "pot_size": 285,
+        "hero_stack": 22,
+        "opponents": {
+            "left": {
+                "name": "Pippy18",
+                "stack": 636
+            },
+            "right": {
+                "name": "bye $\u2014\u2014\u2014~*> =",
+                "stack": 1470
+            },
+            "top": {
+                "name": "kcpfgb",
+                "stack": 1380
+            }
+        },
+        "active_buttons": [
+            "button_fold"
+        ],
+        "num_active_players": 4
+    },
+    "equity": 0.09787499999999999,
+    "decision": [
+        "CHECK",
+        "XGBoost Classifier Prediction (Class 1)",
+        0.0
+    ]
+}

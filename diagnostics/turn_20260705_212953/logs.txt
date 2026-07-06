@@ -1,0 +1,106 @@
+   -> Thread left: c(i | Hut1965 (Alloc: 1170)
+   -> Thread right: sonologik (Alloc: 129)
+   -> Thread top: mlundby (Alloc: 1)
+[Decision] Parsing thread execution path...
+[Decision] Simulated 2000 hands: Wins=453, Ties=56, Losses=1491
+[Vision] Facing bet! Parsed Call Amount: 30.0
+[Decision] DECIDED BRANCH: **CALL**
+[Decision] Reason: XGBoost Classifier Prediction (Class 2)
+[Automation] Invoking native call for CALL...
+[Automation] Thread interrupt completed successfully.
+[SYSTEM] Parsing loop complete. Monitoring stream...
+
+--- NEW EVENT DETECTED ---
+[Vision] Token Values: ['Th', 'Jc', '4s']
+[Vision] Primary Key:  ['8c', '9d']
+[Vision] Accumulator:  20
+[Vision] Local Stack:  1575
+[Vision] Sub-threads:  3 active
+   -> Thread left: c(i | Hut1965 (Alloc: 1170)
+   -> Thread right: sonologik (Alloc: 129)
+   -> Thread top: mlundby (Alloc: 1)
+[Decision] Parsing thread execution path...
+[Decision] Simulated 2000 hands: Wins=565, Ties=64, Losses=1371
+[Vision] No bet detected on Check/Call button. Text: 'TJEK'
+[Decision] DECIDED BRANCH: **CHECK**
+[Decision] Reason: XGBoost Classifier Prediction (Class 1)
+[Automation] Invoking native call for CHECK...
+[Automation] Thread interrupt completed successfully.
+[SYSTEM] Parsing loop complete. Monitoring stream...
+
+--- NEW EVENT DETECTED ---
+[Vision] Token Values: ['Th', 'Jc', '4s']
+[Vision] Primary Key:  ['8c', '9d']
+[Vision] Accumulator:  10
+[Vision] Local Stack:  1575
+[Vision] Sub-threads:  3 active
+   -> Thread left: c(i | Hut1965 (Alloc: 1170)
+   -> Thread right: sonologik (Alloc: 120)
+   -> Thread top: mlundby (Alloc: 129)
+[Decision] Parsing thread execution path...
+[Decision] Simulated 2000 hands: Wins=592, Ties=63, Losses=1345
+[Vision] Facing bet! Parsed Call Amount: 85.0
+[Decision] DECIDED BRANCH: **RAISE_POT_70**
+[Decision] Reason: XGBoost Classifier Prediction (Class 4)
+[Decision] Size Allocation: 7.0 units
+[Automation] Invoking native call for RAISE_POT_70...
+[Automation] Thread interrupt completed successfully.
+[SYSTEM] Parsing loop complete. Monitoring stream...
+[Decision] Switched active decision engine to: Heuristic (Rules)
+
+--- NEW EVENT DETECTED ---
+[Vision] Token Values: []
+[Vision] Primary Key:  ['6c', 'Tc']
+[Vision] Accumulator:  13
+[Vision] Local Stack:  1970
+[Vision] Sub-threads:  3 active
+   -> Thread left: Hut1965 (Alloc: 119)
+   -> Thread right: | sonologik (Alloc: 1239)
+   -> Thread top: mlundby” (Alloc: 1289)
+[Decision] Parsing thread execution path...
+[Decision] Simulated 2000 hands: Wins=472, Ties=58, Losses=1470
+[Vision] Facing bet! Parsed Call Amount: 45.0
+[Decision] DECIDED BRANCH: **FOLD**
+[Decision] Reason: Pre-flop (Chart): Weak starting hand (T6s). Folding.
+[Automation] Invoking native call for FOLD...
+[Automation] Thread interrupt completed successfully.
+[SYSTEM] Parsing loop complete. Monitoring stream...
+
+--- NEW EVENT DETECTED ---
+[Vision] Token Values: []
+[Vision] Primary Key:  ['3h', 'Qc']
+[Vision] Accumulator:  7
+[Vision] Local Stack:  1970
+[Vision] Sub-threads:  3 active
+   -> Thread left: Hut1965 (Alloc: 19)
+   -> Thread right: sonologik (Alloc: 12)
+   -> Thread top: mlundby” (Alloc: 1289)
+[Decision] Parsing thread execution path...
+[Decision] Simulated 2000 hands: Wins=360, Ties=74, Losses=1566
+[Vision] Facing bet! Parsed Call Amount: 30.0
+[Decision] DECIDED BRANCH: **FOLD**
+[Decision] Reason: Pre-flop (Chart): Weak starting hand (Q3o). Folding.
+[Automation] Invoking native call for FOLD...
+[Automation] Thread interrupt completed successfully.
+[SYSTEM] Parsing loop complete. Monitoring stream...
+
+--- NEW EVENT DETECTED ---
+[Vision] Token Values: []
+[Vision] Primary Key:  ['Ad', '4h']
+[Vision] Accumulator:  10
+[Vision] Local Stack:  1965
+[Vision] Sub-threads:  3 active
+   -> Thread left: Hut1965 (Alloc: 199)
+   -> Thread right: sonologik (Alloc: 129)
+   -> Thread top: mlundby (Alloc: 122)
+[Decision] Parsing thread execution path...
+[Decision] Simulated 2000 hands: Wins=512, Ties=73, Losses=1415
+[Vision] Facing bet! Parsed Call Amount: 50.0
+[Decision] DECIDED BRANCH: **FOLD**
+[Decision] Reason: Pre-flop (Chart): Weak starting hand (A4o). Folding.
+[Automation] Invoking native call for FOLD...
+[Automation] Thread interrupt completed successfully.
+[SYSTEM] Parsing loop complete. Monitoring stream...
+[SYSTEM] Turn flagged! Saved diagnostics to: diagnostics/turn_20260705_212941/
+
+--- NEW EVENT DETECTED ---

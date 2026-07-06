@@ -1,0 +1,106 @@
+[Automation] Invoking native call for FOLD...
+[Automation] Thread interrupt completed successfully.
+[SYSTEM] Parsing loop complete. Monitoring stream...
+
+--- NEW EVENT DETECTED ---
+[Vision] Token Values: []
+[Vision] Primary Key:  ['9s', '6s']
+[Vision] Accumulator:  30
+[Vision] Local Stack:  1200
+[Vision] Sub-threads:  3 active
+   -> Thread left: ——= ~ ad, —— Pippy18 (Alloc: 1470)
+   -> Thread right:  (Alloc: 1500)
+   -> Thread top: kcpfgb (Alloc: 1470)
+[Decision] Parsing thread execution path...
+[Decision] Simulated 2000 hands: Wins=467, Ties=58, Losses=1475
+[Vision] Facing bet! Parsed Call Amount: 20.0
+[Decision] DECIDED BRANCH: **RAISE_POT_70**
+[Decision] Reason: XGBoost Classifier Prediction (Class 4)
+[Decision] Size Allocation: 21.0 units
+[Automation] Invoking native call for RAISE_POT_70...
+[Automation] Thread interrupt completed successfully.
+[SYSTEM] Parsing loop complete. Monitoring stream...
+
+--- NEW EVENT DETECTED ---
+[Vision] Token Values: ['2c', 'Tc', '6h']
+[Vision] Primary Key:  ['9s', '6s']
+[Vision] Accumulator:  130
+[Vision] Local Stack:  17040
+[Vision] Sub-threads:  3 active
+   -> Thread left: a AS j Pippy18 (Alloc: 1470)
+   -> Thread right:  (Alloc: 1500)
+   -> Thread top: — SS ee A sy (Alloc: 1470)
+[Decision] Parsing thread execution path...
+[Decision] Simulated 2000 hands: Wins=616, Ties=51, Losses=1333
+[Vision] No bet detected on Check/Call button. Text: 'TJEK'
+[Decision] DECIDED BRANCH: **CHECK**
+[Decision] Reason: XGBoost Classifier Prediction (Class 1)
+[Automation] Invoking native call for CHECK...
+[Automation] Thread interrupt completed successfully.
+[SYSTEM] Parsing loop complete. Monitoring stream...
+
+--- NEW EVENT DETECTED ---
+[Vision] Token Values: ['2c', 'Tc', '6h', '9c']
+[Vision] Primary Key:  ['9s', '6s']
+[Vision] Accumulator:  150
+[Vision] Local Stack:  1740
+[Vision] Sub-threads:  3 active
+   -> Thread left: a AS j Pippy18 (Alloc: 1470)
+   -> Thread right:  (Alloc: 1500)
+   -> Thread top: — SS ee A sy (Alloc: 1470)
+[Decision] Parsing thread execution path...
+[Decision] Simulated 2000 hands: Wins=996, Ties=22, Losses=982
+[Vision] Facing bet! Parsed Call Amount: 20.0
+[Decision] DECIDED BRANCH: **CALL**
+[Decision] Reason: XGBoost Classifier Prediction (Class 2)
+[Automation] Invoking native call for CALL...
+[Automation] Thread interrupt completed successfully.
+[SYSTEM] Parsing loop complete. Monitoring stream...
+
+--- NEW EVENT DETECTED ---
+[Vision] Token Values: ['2c', 'Tc', '6h', '9c', 'Th']
+[Vision] Primary Key:  ['9s', '6s']
+[Vision] Accumulator:  170
+[Vision] Local Stack:  100
+[Vision] Sub-threads:  3 active
+   -> Thread left: a AS j Pippy18 (Alloc: 1470)
+   -> Thread right:  (Alloc: 1500)
+   -> Thread top: — SS ee A sy (Alloc: 1470)
+[Decision] Parsing thread execution path...
+[Decision] Simulated 2000 hands: Wins=789, Ties=120, Losses=1091
+[Vision] No bet detected on Check/Call button. Text: 'TJEK'
+[Decision] DECIDED BRANCH: **CHECK**
+[Decision] Reason: XGBoost Classifier Prediction (Class 1)
+[Automation] Invoking native call for CHECK...
+[Automation] Thread interrupt completed successfully.
+[SYSTEM] Parsing loop complete. Monitoring stream...
+
+--- NEW EVENT DETECTED ---
+[Vision] Token Values: []
+[Vision] Primary Key:  []
+[Vision] Accumulator:  30
+[Vision] Local Stack:  120
+[Vision] Sub-threads:  3 active
+   -> Thread left: ee A eee | Pippy18 (Alloc: 1470)
+   -> Thread right: bye $———~*> = (Alloc: 1480)
+   -> Thread top: kepfgb (Alloc: 1470)
+[Decision] Error: Local registers empty. Parse failed.
+
+--- NEW EVENT DETECTED ---
+[Vision] Token Values: []
+[Vision] Primary Key:  ['5d', 'Jd']
+[Vision] Accumulator:  30
+[Vision] Local Stack:  1200
+[Vision] Sub-threads:  3 active
+   -> Thread left: Pippy18 (Alloc: 1470)
+   -> Thread right: kizmerrs2 (Alloc: 1480)
+   -> Thread top: kcpfgb (Alloc: 1470)
+[Decision] Parsing thread execution path...
+[Decision] Simulated 2000 hands: Wins=453, Ties=79, Losses=1468
+[Vision] Facing bet! Parsed Call Amount: 20.0
+[Decision] DECIDED BRANCH: **RAISE_POT_70**
+[Decision] Reason: XGBoost Classifier Prediction (Class 4)
+[Decision] Size Allocation: 21.0 units
+[Automation] Invoking native call for RAISE_POT_70...
+[Automation] Thread interrupt completed successfully.
+[SYSTEM] Parsing loop complete. Monitoring stream...

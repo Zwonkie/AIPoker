@@ -1,0 +1,107 @@
+[SYSTEM] Parsing loop complete. Monitoring stream...
+
+--- NEW EVENT DETECTED ---
+[Vision] Token Values: ['8h']
+[Vision] Primary Key:  ['5s', 'Jh']
+[Vision] Accumulator:  660
+[Vision] Local Stack:  1504
+[Vision] Sub-threads:  2 active
+   -> Thread left: ' clownsmart681 (Alloc: 210)
+   -> Thread top: rusfisherman (Alloc: 1775)
+[Decision] Parsing thread execution path...
+[Decision] Simulated 2000 hands: Wins=496, Ties=79, Losses=1425
+[Vision] No bet detected on Check/Call button. Text: 'TJEK'
+[Decision] DECIDED BRANCH: **CHECK**
+[Decision] Reason: Mixed XGBoost Prediction (Ratio 100% Human, Class 1)
+[Automation] Invoking native call for CHECK...
+[Automation] Thread interrupt completed successfully.
+[SYSTEM] Parsing loop complete. Monitoring stream...
+
+--- NEW EVENT DETECTED ---
+[Vision] Token Values: ['Ad', 'Js', '8h']
+[Vision] Primary Key:  ['5s', 'Jh']
+[Vision] Accumulator:  901
+[Vision] Local Stack:  1504
+[Vision] Sub-threads:  2 active
+   -> Thread left: ' clownsmart681 (Alloc: 210)
+   -> Thread top: rusfisherman (Alloc: 1775)
+[Decision] Parsing thread execution path...
+[Decision] Simulated 2000 hands: Wins=1054, Ties=127, Losses=819
+[Vision] Facing bet! Parsed Call Amount: 241.0
+[Decision] DECIDED BRANCH: **CALL**
+[Decision] Reason: Mixed XGBoost Prediction (Ratio 100% Human, Class 2)
+[Automation] Invoking native call for CALL...
+[Automation] Thread interrupt completed successfully.
+[SYSTEM] Parsing loop complete. Monitoring stream...
+
+--- NEW EVENT DETECTED ---
+[Vision] Token Values: ['Ad', 'Js', '8h', 'Qs']
+[Vision] Primary Key:  ['5s', 'Jh']
+[Vision] Accumulator:  1.142
+[Vision] Local Stack:  1212
+[Vision] Sub-threads:  2 active
+   -> Thread left: ' clownsmart681 (Alloc: 210)
+   -> Thread top: rusfisherman (Alloc: 1775)
+[Decision] Parsing thread execution path...
+[Decision] Simulated 2000 hands: Wins=775, Ties=104, Losses=1121
+[Vision] No bet detected on Check/Call button. Text: 'TJEK'
+[Decision] DECIDED BRANCH: **CHECK**
+[Decision] Reason: Mixed XGBoost Prediction (Ratio 100% Human, Class 1)
+[Automation] Invoking native call for CHECK...
+[Automation] Thread interrupt completed successfully.
+[SYSTEM] Parsing loop complete. Monitoring stream...
+
+--- NEW EVENT DETECTED ---
+[Vision] Token Values: ['Ad', 'Js', '8h', 'Qs', '7c']
+[Vision] Primary Key:  ['5s', 'Jh']
+[Vision] Accumulator:  1.142
+[Vision] Local Stack:  1252
+[Vision] Sub-threads:  2 active
+   -> Thread left: ' clownsmart681 (Alloc: 210)
+   -> Thread top: rusfisherman (Alloc: 1775)
+[Decision] Parsing thread execution path...
+[Decision] Simulated 2000 hands: Wins=744, Ties=100, Losses=1156
+[Vision] No bet detected on Check/Call button. Text: 'TJEK'
+[Decision] DECIDED BRANCH: **CHECK**
+[Decision] Reason: Mixed XGBoost Prediction (Ratio 100% Human, Class 1)
+[Automation] Invoking native call for CHECK...
+[Automation] Thread interrupt completed successfully.
+[SYSTEM] Parsing loop complete. Monitoring stream...
+
+--- NEW EVENT DETECTED ---
+[Vision] Token Values: []
+[Vision] Primary Key:  ['Kc', '6d']
+[Vision] Accumulator:  240
+[Vision] Local Stack:  3420
+[Vision] Sub-threads:  2 active
+   -> Thread left: clownsmart681 (Alloc: 135)
+   -> Thread top: rusfisherman (Alloc: 3640)
+[Decision] Parsing thread execution path...
+[Decision] Simulated 2000 hands: Wins=665, Ties=64, Losses=1271
+[Vision] Facing bet! Parsed Call Amount: 120.0
+[Decision] DECIDED BRANCH: **RAISE_SLIDER_0.10**
+[Decision] Reason: Mixed XGBoost Prediction (Ratio 100% Human, Class 4) (Pre-flop open/3-bet sizing)
+[Decision] Size Allocation: 360.0 units
+[Automation] Invoking native call for RAISE_SLIDER_0.10...
+[Automation] Thread interrupt completed successfully.
+[SYSTEM] Parsing loop complete. Monitoring stream...
+
+--- NEW EVENT DETECTED ---
+[Vision] Token Values: []
+[Vision] Primary Key:  ['Kc', '6d']
+[Vision] Accumulator:  2475
+[Vision] Local Stack:  3130
+[Vision] Sub-threads:  2 active
+   -> Thread left: clownsmart681 (Alloc: 66685)
+   -> Thread top: rusfisherman } (Alloc: 2)
+[Decision] Parsing thread execution path...
+[Decision] Simulated 2000 hands: Wins=659, Ties=80, Losses=1261
+[Vision] Bet/Raise button is unavailable (greyed out/hidden).
+[Vision] Facing bet! Parsed Call Amount: 1.4
+[Safeguard] WARNING: Decided CHECK but Check/Call button is KALD or unavailable! Overriding to FOLD.
+[Decision] DECIDED BRANCH: **FOLD**
+[Decision] Reason: Safeguard: Blocked accidental call on CHECK decision. (OCR: 'KALD
+1,400', Avail: True)
+[Automation] Invoking native call for FOLD...
+[Automation] Thread interrupt completed successfully.
+[SYSTEM] Parsing loop complete. Monitoring stream...

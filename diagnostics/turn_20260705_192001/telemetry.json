@@ -1,0 +1,36 @@
+{
+    "timestamp": "20260705_192001",
+    "table_state": {
+        "community_cards": [],
+        "hero_cards": [
+            "5d",
+            "Jd"
+        ],
+        "pot_size": 30,
+        "hero_stack": 1200,
+        "opponents": {
+            "left": {
+                "name": "Pippy18",
+                "stack": 1470
+            },
+            "right": {
+                "name": "kizmerrs2",
+                "stack": 1480
+            },
+            "top": {
+                "name": "kcpfgb",
+                "stack": 1470
+            }
+        },
+        "active_buttons": [
+            "button_fold"
+        ],
+        "num_active_players": 4
+    },
+    "equity": 0.236375,
+    "decision": [
+        "RAISE_POT_70",
+        "XGBoost Classifier Prediction (Class 4)",
+        21.0
+    ]
+}

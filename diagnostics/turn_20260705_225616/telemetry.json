@@ -1,0 +1,32 @@
+{
+    "timestamp": "20260705_225616",
+    "table_state": {
+        "community_cards": [],
+        "hero_cards": [
+            "2s",
+            "Qc"
+        ],
+        "pot_size": 450,
+        "hero_stack": 3443,
+        "opponents": {
+            "left": {
+                "name": "i, \u2014 . \u2014 ' clownsmart681",
+                "stack": 100
+            },
+            "top": {
+                "name": "rusfisherman",
+                "stack": 2015
+            }
+        },
+        "active_buttons": [
+            "button_fold"
+        ],
+        "num_active_players": 3
+    },
+    "equity": 0.28550000000000003,
+    "decision": [
+        "FOLD",
+        "Mixed predicted BET/RAISE but Bet/Raise button is unavailable. Folding.",
+        0.0
+    ]
+}

@@ -1,0 +1,71 @@
+[SYSTEM] Starting PHPHelp engine...
+
+--- NEW EVENT DETECTED ---
+[Vision] Token Values: []
+[Vision] Primary Key:  ['8s', 'Qh']
+[Vision] Accumulator:  150
+[Vision] Local Stack:  740
+[Vision] Sub-threads:  3 active
+   -> Thread left: ; ogaboga (Alloc: 780)
+   -> Thread right: Jamie3674 (Alloc: 800)
+   -> Thread top: kulivok , (Alloc: 680)
+[Decision] Parsing thread execution path...
+[Decision] Simulated 2000 hands: Wins=511, Ties=60, Losses=1429
+[Decision] DECIDED BRANCH: **CHECK**
+[Decision] Reason: Pre-flop (Chart): Weak starting hand (Q8o). Checking.
+[Automation] Invoking native call for CHECK...
+[Automation] Thread interrupt completed successfully.
+[SYSTEM] Parsing loop complete. Monitoring stream...
+
+--- NEW EVENT DETECTED ---
+[Vision] Token Values: ['Jc', '6h']
+[Vision] Primary Key:  ['8s', 'Qh']
+[Vision] Accumulator:  360
+[Vision] Local Stack:  0
+[Vision] Sub-threads:  3 active
+   -> Thread left: ; ogaboga (Alloc: 680)
+   -> Thread right: Jamie3674 (Alloc: 800)
+   -> Thread top: kulivok , (Alloc: 680)
+[Decision] Parsing thread execution path...
+[Decision] Simulated 2000 hands: Wins=384, Ties=59, Losses=1557
+[Decision] DECIDED BRANCH: **CHECK**
+[Decision] Reason: Post-flop (EV): Low equity (19.9%). Checking.
+[Automation] Invoking native call for CHECK...
+[Automation] Thread interrupt completed successfully.
+[SYSTEM] Parsing loop complete. Monitoring stream...
+
+--- NEW EVENT DETECTED ---
+[Vision] Token Values: ['Jc', '4c', '6h']
+[Vision] Primary Key:  ['8s', 'Qh']
+[Vision] Accumulator:  1.04
+[Vision] Local Stack:  0
+[Vision] Sub-threads:  3 active
+   -> Thread left: ; ogaboga (Alloc: 680)
+   -> Thread right: Jamie3674 (Alloc: 800)
+   -> Thread top: kulivok , (Alloc: 5)
+[Decision] Parsing thread execution path...
+[Decision] Simulated 2000 hands: Wins=251, Ties=29, Losses=1720
+[Vision] Check/Call button is unavailable (all-in situation).
+[Decision] DECIDED BRANCH: **CHECK**
+[Decision] Reason: Post-flop (EV): Low equity (12.9%). Checking.
+[Automation] Invoking native call for CHECK...
+[Automation] Thread interrupt completed successfully.
+[SYSTEM] Parsing loop complete. Monitoring stream...
+
+--- NEW EVENT DETECTED ---
+[Vision] Token Values: ['Jc', '4c', '6h']
+[Vision] Primary Key:  ['8s', 'Qh']
+[Vision] Accumulator:  1.04
+[Vision] Local Stack:  0
+[Vision] Sub-threads:  3 active
+   -> Thread left: ; ogaboga (Alloc: 680)
+   -> Thread right: Jamie3674 (Alloc: 800)
+   -> Thread top: kulivok , (Alloc: 5)
+[Decision] Parsing thread execution path...
+[Decision] Simulated 2000 hands: Wins=257, Ties=23, Losses=1720
+[Vision] Check/Call button is unavailable (all-in situation).
+[Decision] DECIDED BRANCH: **CHECK**
+[Decision] Reason: Post-flop (EV): Low equity (13.1%). Checking.
+[Automation] Invoking native call for CHECK...
+[Automation] Thread interrupt completed successfully.
+[SYSTEM] Parsing loop complete. Monitoring stream...

@@ -1,0 +1,40 @@
+{
+    "timestamp": "20260705_192123",
+    "table_state": {
+        "community_cards": [
+            "5c",
+            "Tc",
+            "Js"
+        ],
+        "hero_cards": [
+            "5d",
+            "Jd"
+        ],
+        "pot_size": 2.466,
+        "hero_stack": 74,
+        "opponents": {
+            "left": {
+                "name": "a = =\u2014s; (le Oe | Pippy18",
+                "stack": 1190
+            },
+            "right": {
+                "name": "bye $\u2014\u2014\u2014~*> =",
+                "stack": 1480
+            },
+            "top": {
+                "name": "kepfgb",
+                "stack": 1470
+            }
+        },
+        "active_buttons": [
+            "button_fold"
+        ],
+        "num_active_players": 4
+    },
+    "equity": 0.64525,
+    "decision": [
+        "FOLD",
+        "XGBoost predicted BET/RAISE but Bet/Raise button is unavailable. Folding.",
+        0.0
+    ]
+}

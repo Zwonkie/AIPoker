@@ -1,0 +1,36 @@
+{
+    "timestamp": "20260705_173045",
+    "table_state": {
+        "community_cards": [],
+        "hero_cards": [
+            "5c",
+            "Kh"
+        ],
+        "pot_size": 45,
+        "hero_stack": 740,
+        "opponents": {
+            "left": {
+                "name": "; ogaboga",
+                "stack": 660
+            },
+            "right": {
+                "name": "Jamie3674",
+                "stack": 800
+            },
+            "top": {
+                "name": "kulivok",
+                "stack": 1010
+            }
+        },
+        "active_buttons": [
+            "button_fold"
+        ],
+        "num_active_players": 4
+    },
+    "equity": 0.231375,
+    "decision": [
+        "CHECK",
+        "Pre-flop (Chart): Weak starting hand (K5o). Checking.",
+        0.0
+    ]
+}
