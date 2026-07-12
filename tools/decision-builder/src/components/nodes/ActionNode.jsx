@@ -3,50 +3,67 @@ import { Handle, Position } from '@xyflow/react';
 import { Target, X } from 'lucide-react';
 import useStore from '../../store';
 
-const ActionNode = ({ id, data }) => {
+const ActionNode = ({ id, data, isConnectable }) => {
   const updateNodeData = useStore((state) => state.updateNodeData);
   const deleteNode = useStore((state) => state.deleteNode);
 
-  const onActionChange = (evt) => updateNodeData(id, { action: evt.target.value });
-  const onAmountChange = (evt) => updateNodeData(id, { amount: evt.target.value });
+  const handleActionChange = (evt) => {
+    updateNodeData(id, { action: evt.target.value });
+  };
+  
+  const handleSizeChange = (evt) => {
+    updateNodeData(id, { size: evt.target.value });
+  };
+
+  const handleDelete = (e) => {
+    e.stopPropagation();
+    deleteNode(id);
+  };
+
+  const showSizeInput = data.action === 'bet' || data.action === 'raise';
 
   return (
-    <div className="custom-node">
-      <div className="node-header action">
-        <div className="node-header-title">
-          <Target size={14} />
-          {data.label}
+    <div className="custom-node" style={{ padding: 0, minWidth: '180px' }}>
+      <Handle type="target" position={Position.Top} isConnectable={isConnectable} />
+      
+      <div className="node-header action-node">
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <Target size={16} />
+          <span>Game Action</span>
         </div>
-        <button className="node-delete-btn" title="Delete node" onClick={() => deleteNode(id)}>
+        <button className="node-delete-btn" onClick={handleDelete} title="Delete Node">
           <X size={14} />
         </button>
       </div>
-      <div className="node-body">
-        <div className="node-input-group">
-          <label>Execute Action</label>
-          <select className="node-select" value={data.action || 'FOLD'} onChange={onActionChange}>
-            <option value="FOLD">Fold</option>
-            <option value="CHECK">Check</option>
-            <option value="CALL">Call</option>
-            <option value="BET">Bet</option>
-            <option value="RAISE">Raise</option>
-            <option value="ALLIN">All-In</option>
-          </select>
-        </div>
-        
-        {(data.action === 'BET' || data.action === 'RAISE') && (
-          <div className="node-input-group">
-            <label>Amount (% of Pot)</label>
-            <input 
-              type="number" 
-              className="node-input" 
-              value={data.amount || 50} 
-              onChange={onAmountChange} 
-            />
+      
+      <div className="node-content">
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+          <div>
+            <label>Action:</label>
+            <select value={data.action || 'fold'} onChange={handleActionChange} className="nodrag">
+              <option value="fold">Fold</option>
+              <option value="check">Check</option>
+              <option value="call">Call</option>
+              <option value="bet">Bet</option>
+              <option value="raise">Raise</option>
+              <option value="allin">All-In</option>
+            </select>
           </div>
-        )}
+          
+          {showSizeInput && (
+            <div>
+              <label>Size (% of Pot):</label>
+              <input 
+                type="number" 
+                value={data.size || 50} 
+                onChange={handleSizeChange}
+                className="nodrag"
+                min="1"
+              />
+            </div>
+          )}
+        </div>
       </div>
-      <Handle type="target" position={Position.Left} id="in" />
     </div>
   );
 };

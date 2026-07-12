@@ -44,9 +44,10 @@ class XMLTracker:
         Parses the given XML file and returns:
         - dictionary: {player_name: ending_stack}
         - string: hero_name (from the session general section)
+        - string: dealer_name (name of player on dealer button)
         """
         if not file_path or not os.path.exists(file_path):
-            return {}, ""
+            return {}, "", ""
 
         try:
             tree = ET.parse(file_path)
@@ -67,13 +68,24 @@ class XMLTracker:
             # 2. Get Last Game block
             games = root.findall("game")
             if not games:
-                return {}, hero_name
+                return {}, hero_name, ""
 
             last_game = games[-1]
             players_elem = last_game.find("general/players")
             if players_elem is None:
-                return {}, hero_name
+                return {}, hero_name, ""
 
+            # Extract dealer seat and map it to player name
+            dealer_name = ""
+            dealer_seat_num = None
+            if general_section is not None:
+                dealer_elem = general_section.find("dealer")
+                if dealer_elem is not None and dealer_elem.text:
+                    try:
+                        dealer_seat_num = int(self.clean_number(dealer_elem.text.strip()))
+                    except ValueError:
+                        pass
+            
             ending_stacks = {}
             for player in players_elem.findall("player"):
                 name = player.get("name")
@@ -83,20 +95,24 @@ class XMLTracker:
                 starting_chips = self.clean_number(player.get("chips", "0"))
                 bet = self.clean_number(player.get("bet", "0"))
                 win = self.clean_number(player.get("win", "0"))
+                seat = self.clean_number(player.get("seat", "0"))
 
                 # End stack calculation: starting chips - total bet + total won
                 ending_stack = max(0.0, starting_chips - bet + win)
                 ending_stacks[name] = ending_stack
 
-            return ending_stacks, hero_name
+                if dealer_seat_num is not None and int(seat) == dealer_seat_num:
+                    dealer_name = name.strip()
+
+            return ending_stacks, hero_name, dealer_name
 
         except Exception as e:
             logger.error(f"Error parsing XML file {file_path}: {e}")
-            return {}, ""
+            return {}, "", ""
 
     def get_baseline_stacks(self) -> tuple:
-        """Scans the directory, parses the latest XML, and returns (ending_stacks, hero_name)."""
+        """Scans the directory, parses the latest XML, and returns (ending_stacks, hero_name, dealer_name)."""
         latest_file = self.get_latest_xml_file()
         if not latest_file:
-            return {}, ""
+            return {}, "", ""
         return self.parse_latest_hand_stacks(latest_file)

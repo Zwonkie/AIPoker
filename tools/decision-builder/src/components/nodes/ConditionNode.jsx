@@ -1,68 +1,102 @@
 import React from 'react';
 import { Handle, Position } from '@xyflow/react';
-import { GitMerge, X } from 'lucide-react';
+import { GitMerge, X, Info } from 'lucide-react';
 import useStore from '../../store';
 
-const ConditionNode = ({ id, data }) => {
+const ConditionNode = ({ id, data, isConnectable }) => {
   const updateNodeData = useStore((state) => state.updateNodeData);
   const deleteNode = useStore((state) => state.deleteNode);
 
-  const onMetricChange = (evt) => updateNodeData(id, { metric: evt.target.value });
-  const onOperatorChange = (evt) => updateNodeData(id, { operator: evt.target.value });
-  const onValueChange = (evt) => updateNodeData(id, { value: evt.target.value });
+  const handleMetricChange = (evt) => {
+    updateNodeData(id, { metric: evt.target.value });
+  };
+  
+  const handleOperatorChange = (evt) => {
+    updateNodeData(id, { operator: evt.target.value });
+  };
+  
+  const handleValueChange = (evt) => {
+    updateNodeData(id, { value: evt.target.value });
+  };
+
+  const handleDelete = (e) => {
+    e.stopPropagation();
+    deleteNode(id);
+  };
+
+  const getMetricInfo = (metric) => {
+    switch (metric) {
+      case 'ev': return 'Expected Value (EV): Average expected outcome in chips.';
+      case 'equity': return 'Equity (%): Probability of winning the pot.';
+      case 'pot_odds': return 'Pot Odds (%): Ratio of current pot to call size.';
+      case 'spr': return 'SPR: Stack-to-Pot Ratio.';
+      default: return '';
+    }
+  };
 
   return (
-    <div className="custom-node">
-      <div className="node-header condition">
-        <div className="node-header-title">
-          <GitMerge size={14} />
-          {data.label}
+    <div className="custom-node" style={{ padding: 0, minWidth: '220px' }}>
+      <Handle type="target" position={Position.Top} isConnectable={isConnectable} />
+      
+      <div className="node-header condition-node">
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <GitMerge size={16} />
+          <span>Logic Condition</span>
         </div>
-        <button className="node-delete-btn" title="Delete node" onClick={() => deleteNode(id)}>
+        <button className="node-delete-btn" onClick={handleDelete} title="Delete Node">
           <X size={14} />
         </button>
       </div>
-      <div className="node-body">
-        <div className="node-input-group">
-          <label>Metric</label>
-          <select className="node-select" value={data.metric || 'equity'} onChange={onMetricChange}>
-            <option value="equity">Equity %</option>
-            <option value="ev">Expected Value (EV)</option>
-            <option value="spr">Stack to Pot Ratio (SPR)</option>
-            <option value="pot_odds">Pot Odds %</option>
-          </select>
-        </div>
-        <div style={{ display: 'flex', gap: '8px' }}>
-          <div className="node-input-group" style={{ flex: 1 }}>
-            <label>Operator</label>
-            <select className="node-select" value={data.operator || '>'} onChange={onOperatorChange}>
-              <option value=">">&gt;</option>
-              <option value="<">&lt;</option>
-              <option value=">=">&gt;=</option>
-              <option value="<=">&lt;=</option>
+      
+      <div className="node-content">
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+          {getMetricInfo(data.metric || 'equity') && (
+            <div className="info-box highlight">
+              <Info size={12} style={{ flexShrink: 0 }} />
+              <small>{getMetricInfo(data.metric || 'equity')}</small>
+            </div>
+          )}
+          <div>
+            <label>Metric:</label>
+            <select value={data.metric || 'equity'} onChange={handleMetricChange} className="nodrag">
+              <option value="equity">Equity (%)</option>
+              <option value="ev">Expected Value (EV)</option>
+              <option value="pot_odds">Pot Odds (%)</option>
+              <option value="spr">Stack-to-Pot Ratio (SPR)</option>
             </select>
           </div>
-          <div className="node-input-group" style={{ flex: 1 }}>
-            <label>Value</label>
-            <input 
-              type="number" 
-              className="node-input" 
-              value={data.value || 0} 
-              onChange={onValueChange} 
-            />
+          
+          <div style={{ display: 'flex', gap: '8px' }}>
+            <div style={{ flex: 1 }}>
+              <label>Operator:</label>
+              <select value={data.operator || '>'} onChange={handleOperatorChange} className="nodrag">
+                <option value=">">&gt;</option>
+                <option value=">=">&gt;=</option>
+                <option value="<">&lt;</option>
+                <option value="<=">&lt;=</option>
+                <option value="==">==</option>
+              </select>
+            </div>
+            
+            <div style={{ flex: 1 }}>
+              <label>Value:</label>
+              <input 
+                type="number" 
+                value={data.value || 0} 
+                onChange={handleValueChange}
+                className="nodrag" 
+                step="any"
+              />
+            </div>
           </div>
         </div>
-
-        <div className="node-highlight-box">
-          {data.metric === 'ev' && "EV: Expected Value. Evaluates average chips won/lost by making this move."}
-          {(data.metric === 'equity' || !data.metric) && "Equity: Probability of winning the pot at showdown (0-100%)."}
-          {data.metric === 'spr' && "SPR: Stack-to-Pot Ratio (stack / pot). Low SPR (< 2.5) means committed to pot."}
-          {data.metric === 'pot_odds' && "Pot Odds: Cost to call / total pot. Call is mathematically profitable if Equity > Pot Odds."}
-        </div>
       </div>
-      <Handle type="target" position={Position.Left} id="in" />
-      <Handle type="source" position={Position.Right} id="true" style={{ top: 30, background: '#10b981' }} />
-      <Handle type="source" position={Position.Right} id="false" style={{ top: 70, background: '#ef4444' }} />
+
+      <Handle type="source" position={Position.Bottom} id="true" style={{ left: '30%', background: '#10b981' }} isConnectable={isConnectable} />
+      <div style={{ position: 'absolute', bottom: '-20px', left: '30%', transform: 'translateX(-50%)', fontSize: '10px', color: '#10b981' }}>True</div>
+      
+      <Handle type="source" position={Position.Bottom} id="false" style={{ left: '70%', background: '#ef4444' }} isConnectable={isConnectable} />
+      <div style={{ position: 'absolute', bottom: '-20px', left: '70%', transform: 'translateX(-50%)', fontSize: '10px', color: '#ef4444' }}>False</div>
     </div>
   );
 };

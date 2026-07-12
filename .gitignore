@@ -1,0 +1,26 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+env/
+venv/
+
+# Large Datasets and Extracted Files
+tools/data/
+
+# Model Weights
+core/weights/
+
+# Large pre-computed tensors
+core/cuda_evaluator/*.pt
+
+# Diagnostic Logs
+diagnostics/
+
+# Node.js dependencies
+node_modules/
+
+# OS generated files
+.DS_Store
+Thumbs.db

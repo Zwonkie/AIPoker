@@ -160,12 +160,49 @@ class ActionExecutor:
             # Human latency between shortcut click and action click
             self.sleep_random(0.15, 0.3)
         elif slider_fraction is not None:
-            # Click the slider track at the specified fraction (between 0.0 and 1.0)
+            # Drag the slider from 0.0 to slider_fraction
             slider_fraction = max(0.0, min(1.0, slider_fraction))
-            sc_off_x = int(165 + slider_fraction * 355)
-            sc_off_y = -13
-            print(f"Executing slider sizing: Clicking slider at fraction {slider_fraction:.2f}...")
-            perform_click_at_offset(sc_off_x, sc_off_y, use_jitter=False)
+            
+            # 1. Move to start of the slider (0.0 fraction)
+            start_off_x = 165
+            start_off_y = -13
+            
+            rel_start_x = fold_x + start_off_x
+            rel_start_y = fold_y + start_off_y
+            if window_size and window_size[0] > 0 and window_size[1] > 0:
+                act_w, act_h = window_size
+                rel_start_x = rel_start_x * (act_w / 1536.0)
+                rel_start_y = rel_start_y * (act_h / 1090.0)
+            start_x = int(win_x + rel_start_x)
+            start_y = int(win_y + rel_start_y)
+            
+            print(f"Executing slider sizing: Moving to slider start...")
+            self.move_mouse_smooth(start_x, start_y, duration=random.uniform(0.3, 0.7))
+            self.sleep_random(0.1, 0.2)
+            
+            # 2. Press Mouse Down
+            pydirectinput.mouseDown()
+            self.sleep_random(0.05, 0.15)
+            
+            # 3. Move to target fraction
+            target_off_x = int(165 + slider_fraction * 355)
+            target_off_y = -13
+            
+            rel_target_x = fold_x + target_off_x
+            rel_target_y = fold_y + target_off_y
+            if window_size and window_size[0] > 0 and window_size[1] > 0:
+                act_w, act_h = window_size
+                rel_target_x = rel_target_x * (act_w / 1536.0)
+                rel_target_y = rel_target_y * (act_h / 1090.0)
+            target_x = int(win_x + rel_target_x)
+            target_y = int(win_y + rel_target_y)
+            
+            print(f"Executing slider sizing: Dragging slider to fraction {slider_fraction:.2f}...")
+            self.move_mouse_smooth(target_x, target_y, duration=random.uniform(0.5, 1.0))
+            self.sleep_random(0.1, 0.2)
+            
+            # 4. Press Mouse Up
+            pydirectinput.mouseUp()
             self.sleep_random(0.2, 0.4)
 
         # 2. Click the main action button

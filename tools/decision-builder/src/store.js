@@ -23,6 +23,11 @@ const useStore = create((set, get) => ({
       edges: addEdge(connection, get().edges),
     });
   },
+  addNode: (node) => {
+    set({
+      nodes: [...get().nodes, node],
+    });
+  },
   setNodes: (nodes) => {
     set({ nodes });
   },

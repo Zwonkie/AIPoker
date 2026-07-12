@@ -70,7 +70,8 @@ class HeuristicEngine(PokerModelInterface):
                        is_preflop: bool, use_preflop_chart: bool, use_math_engine: bool,
                        use_bluff_engine: bool, use_dynamic_sizing: bool,
                        bet_raise_available: bool, check_call_available: bool,
-                       active_opponents: list = None) -> tuple:
+                       active_opponents: list = None, table_state_dict: dict = None,
+                       preflop_looseness: float = 0.0) -> tuple:
         if active_opponents is None:
             active_opponents = []
         if is_preflop:
@@ -78,103 +79,145 @@ class HeuristicEngine(PokerModelInterface):
             reason = ""
             bet_size = 0.0
             
-            if use_preflop_chart:
-                hand_str = self.get_preflop_hand_string(hand)
-                
-                # Dynamic preflop range scaling based on number of active players
-                if num_opponents == 1:
-                    # Heads-up: play top 55% of hands (expand playable and top tier)
-                    playable_set = self.preflop_playable.union({
-                        'A9o', 'A8o', 'A7o', 'A6o', 'A5o', 'A4o', 'A3o', 'A2o',
-                        'K9o', 'K8o', 'K7o', 'K6o', 'K5o', 'K4o', 'K3o', 'K2o',
-                        'Q9o', 'Q8o', 'Q7o', 'Q6o', 'Q5o',
-                        'J9o', 'J8o', 'J7o',
-                        'T9o', 'T8o',
-                        'K8s', 'K7s', 'K6s', 'K5s', 'K4s', 'K3s', 'K2s',
-                        'Q8s', 'Q7s', 'Q6s', 'Q5s', 'Q4s', 'Q3s', 'Q2s',
-                        'J8s', 'J7s', 'J6s', 'J5s', 'J4s', 'J3s', 'J2s',
-                        'T8s', 'T7s', '97s', '86s', '75s', '64s', '53s',
-                        '22', '33', '44', '55', '66'
-                    })
-                    top_tier_set = self.preflop_top_tier.union({'AJo', 'ATs', 'ATo', 'KQo', 'KJs', 'KTs'})
-                elif num_opponents == 2:
-                    # 3-handed: play top 30% of hands
-                    playable_set = self.preflop_playable.union({
-                        'A5o', 'A4o', 'A3o', 'A2o', 'K9o', 'K8o', 'Q9o', 'J9o',
-                        'K8s', 'K7s', 'Q8s', 'J8s', 'T8s', '22', '33', '44', '55', '66'
-                    })
-                    top_tier_set = self.preflop_top_tier
-                else:
-                    # 4+ handed: standard tight charts
-                    playable_set = self.preflop_playable
-                    top_tier_set = self.preflop_top_tier
+    def get_preflop_probabilities(self, equity: float, call_amount: float, num_opponents: int, preflop_looseness: float = 0.0) -> tuple:
+        # Positional / Opponents baseline thresholds (+5% higher for premium)
+        if num_opponents <= 1:
+            premium_thresh = 0.59
+            playable_thresh = 0.45
+            marginal_thresh = 0.40
+        elif num_opponents == 2:
+            premium_thresh = 0.62
+            playable_thresh = 0.47
+            marginal_thresh = 0.42
+        else:
+            premium_thresh = 0.65
+            playable_thresh = 0.49
+            marginal_thresh = 0.44
+            
+        import math
+        adj_eq = equity + preflop_looseness
+        
+        # Means (peaks) for each category
+        mu_prem = premium_thresh
+        mu_play = playable_thresh
+        mu_marg = marginal_thresh
+        mu_weak = marginal_thresh - 0.15
+        
+        sigma = 0.05
+        
+        # Calculate raw Gaussian weights
+        if adj_eq >= mu_prem:
+            w_prem = 1.0
+            w_play = 0.0
+            w_marg = 0.0
+            w_weak = 0.0
+        elif adj_eq <= mu_weak:
+            w_prem = 0.0
+            w_play = 0.0
+            w_marg = 0.0
+            w_weak = 1.0
+        else:
+            w_prem = math.exp(-((adj_eq - mu_prem) ** 2) / (2 * (sigma ** 2)))
+            w_play = math.exp(-((adj_eq - mu_play) ** 2) / (2 * (sigma ** 2)))
+            w_marg = math.exp(-((adj_eq - mu_marg) ** 2) / (2 * (sigma ** 2)))
+            w_weak = math.exp(-((adj_eq - mu_weak) ** 2) / (2 * (sigma ** 2)))
+            
+        # Normalize to probabilities
+        sum_w = w_prem + w_play + w_marg + w_weak
+        if sum_w > 0:
+            p_prem = w_prem / sum_w
+            p_play = w_play / sum_w
+            p_marg = w_marg / sum_w
+            p_weak = w_weak / sum_w
+        else:
+            p_prem, p_play, p_marg, p_weak = 0.0, 0.0, 0.0, 1.0
+            
+        # Compute action mix based on call_amount
+        if call_amount == 0:
+            # Unopened pot base distributions (Playable open-raise tuned down to 8% to prevent loose raises)
+            p_raise = p_prem * 0.90 + p_play * 0.08 + p_marg * 0.00 + p_weak * 0.00
+            p_call  = p_prem * 0.10 + p_play * 0.92 + p_marg * 0.15 + p_weak * 1.00
+            p_fold  = p_prem * 0.00 + p_play * 0.00 + p_marg * 0.85 + p_weak * 0.00
+        else:
+            # Facing bet base distributions
+            p_raise = p_prem * 0.80 + p_play * 0.15 + p_marg * 0.00 + p_weak * 0.00
+            p_call  = p_prem * 0.20 + p_play * 0.80 + p_marg * 0.10 + p_weak * 0.00
+            p_fold  = p_prem * 0.00 + p_play * 0.05 + p_marg * 0.90 + p_weak * 1.00
+            
+        return p_raise, p_call, p_fold
 
-                if hand_str in top_tier_set:
-                    if call_amount == 0:
-                        action = 'BET_POT_70' if use_dynamic_sizing else 'BET'
-                        bet_size = min(3.0 * pot_size if pot_size > 0 else 3.0, hero_stack)
-                        reason = f"Pre-flop (Chart): Premium start ({hand_str}). Betting."
-                    else:
-                        action = 'RAISE_POT_100' if use_dynamic_sizing else 'RAISE'
-                        bet_size = min(call_amount * 3.0, hero_stack)
-                        reason = f"Pre-flop (Chart): Premium start ({hand_str}). Raising."
-                elif hand_str in playable_set:
-                    if call_amount == 0:
-                        action = 'CHECK'
-                        reason = f"Pre-flop (Chart): Playable hand ({hand_str}). Checking."
-                        bet_size = 0.0
-                    else:
-                        if call_amount < 0.15 * hero_stack:
-                            action = 'CALL'
-                            reason = f"Pre-flop (Chart): Playable hand ({hand_str}). Calling reasonable bet."
-                            bet_size = call_amount
-                        else:
-                            action = 'FOLD'
-                            reason = f"Pre-flop (Chart): Playable hand ({hand_str}) but bet is too large."
-                            bet_size = 0.0
+    def predict_action(self, board: list, hand: list, equity: float, pot_size: float, 
+                       call_amount: float, hero_stack: float, num_opponents: int,
+                       is_preflop: bool, use_preflop_chart: bool, use_math_engine: bool,
+                       use_bluff_engine: bool, use_dynamic_sizing: bool,
+                       bet_raise_available: bool, check_call_available: bool,
+                       active_opponents: list = None, table_state_dict: dict = None,
+                       preflop_looseness: float = 0.0) -> tuple:
+        if active_opponents is None:
+            active_opponents = []
+        if is_preflop:
+            action = 'CHECK'
+            reason = ""
+            bet_size = 0.0
+            
+            adj_eq = equity + preflop_looseness
+            p_raise, p_call, p_fold = self.get_preflop_probabilities(equity, call_amount, num_opponents, preflop_looseness)
+
+            # Add random +- 0.15 modifier to call percentage (GTO variance increased)
+            if p_call > 0.0 and p_call < 1.0:
+                delta = random.uniform(-0.15, 0.15)
+                p_call_new = max(0.0, min(1.0, p_call + delta))
+                
+                # Distribute difference proportionally to raise and fold
+                diff = p_call - p_call_new
+                p_call = p_call_new
+                other_sum = p_raise + p_fold
+                if other_sum > 0:
+                    p_raise += diff * (p_raise / other_sum)
+                    p_fold += diff * (p_fold / other_sum)
                 else:
-                    if call_amount == 0:
-                        action = 'CHECK'
-                        reason = f"Pre-flop (Chart): Weak starting hand ({hand_str}). Checking."
-                        bet_size = 0.0
+                    p_fold += diff
+                
+                # Ensure all are normalized and clamp
+                p_raise = max(0.0, min(1.0, p_raise))
+                p_fold = max(0.0, min(1.0, p_fold))
+                s = p_raise + p_call + p_fold
+                if s > 0:
+                    p_raise /= s
+                    p_call /= s
+                    p_fold /= s
+
+            # Draw action from probability distribution
+            rnd = random.random()
+            if rnd < p_raise:
+                if call_amount == 0:
+                    action = 'BET_POT_70' if use_dynamic_sizing else 'BET'
+                    bet_size = min(3.0 * pot_size if pot_size > 0 else 3.0, hero_stack)
+                else:
+                    action = 'RAISE_POT_100' if use_dynamic_sizing else 'RAISE'
+                    bet_size = min(call_amount * 3.0, hero_stack)
+                reason = f"Pre-flop (MC/Gaussian): Raising (Prob: {p_raise:.1%}, Eq: {equity:.1%}, Adj: {adj_eq:.1%}) (F: {p_fold:.1%}, C: {p_call:.1%}, R: {p_raise:.1%})"
+            elif rnd < p_raise + p_call:
+                if call_amount == 0:
+                    action = 'CHECK'
+                    bet_size = 0.0
+                else:
+                    pot_odds = call_amount / (pot_size + call_amount) if (pot_size + call_amount) > 0 else 0.0
+                    if call_amount < 0.25 * hero_stack or equity >= pot_odds - 0.05:
+                        action = 'CALL'
+                        bet_size = call_amount
                     else:
                         action = 'FOLD'
-                        reason = f"Pre-flop (Chart): Weak starting hand ({hand_str}). Folding."
                         bet_size = 0.0
+                reason = f"Pre-flop (MC/Gaussian): Calling/Checking (Prob: {p_call:.1%}, Eq: {equity:.1%}, Adj: {adj_eq:.1%}) (F: {p_fold:.1%}, C: {p_call:.1%}, R: {p_raise:.1%})"
             else:
-                # Raw Monte Carlo pre-flop logic
-                if equity > 0.60:
-                    if call_amount == 0:
-                        action = 'BET_POT_70' if use_dynamic_sizing else 'BET'
-                        bet_size = min(3.0 * pot_size if pot_size > 0 else 3.0, hero_stack)
-                        reason = f"Pre-flop (Raw Equity): Equity is {equity:.1%}. Aggressive bet."
-                    else:
-                        action = 'RAISE_POT_100' if use_dynamic_sizing else 'RAISE'
-                        bet_size = min(call_amount * 3.0, hero_stack)
-                        reason = f"Pre-flop (Raw Equity): Equity is {equity:.1%}. Aggressive raise."
-                elif equity > 0.42:
-                    if call_amount == 0:
-                        action = 'CHECK'
-                        reason = f"Pre-flop (Raw Equity): Equity is {equity:.1%}. Checking."
-                        bet_size = 0.0
-                    else:
-                        if call_amount < 0.15 * hero_stack:
-                            action = 'CALL'
-                            reason = f"Pre-flop (Raw Equity): Equity is {equity:.1%}. Calling reasonable bet."
-                            bet_size = call_amount
-                        else:
-                            action = 'FOLD'
-                            reason = f"Pre-flop (Raw Equity): Equity is {equity:.1%}. Folding to large bet."
-                            bet_size = 0.0
+                if call_amount == 0:
+                    action = 'CHECK'
+                    bet_size = 0.0
                 else:
-                    if call_amount == 0:
-                        action = 'CHECK'
-                        reason = f"Pre-flop (Raw Equity): Low equity ({equity:.1%}). Checking."
-                        bet_size = 0.0
-                    else:
-                        action = 'FOLD'
-                        reason = f"Pre-flop (Raw Equity): Low equity ({equity:.1%}). Folding."
-                        bet_size = 0.0
+                    action = 'FOLD'
+                    bet_size = 0.0
+                reason = f"Pre-flop (MC/Gaussian): Folding (Prob: {p_fold:.1%}, Eq: {equity:.1%}, Adj: {adj_eq:.1%}) (F: {p_fold:.1%}, C: {p_call:.1%}, R: {p_raise:.1%})"
 
             # Apply final pre-flop check/call availability redirections
             if not check_call_available and action == 'CALL':

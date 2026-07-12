@@ -18,9 +18,7 @@ class PokerVision:
         # format: (x, y, width, height)
         self.rois = {
             'community_cards': (500, 395, 500, 95),
-            'hero_cards': (640, 725, 230, 95),
             'pot': (700, 365, 160, 45),
-            'hero_stack': (650, 850, 200, 60),
             
             # Opponent Seats (1 to 5)
             'seat_1_name': (200, 770, 200, 40),
@@ -65,21 +63,12 @@ class PokerVision:
                     self.card_templates[name] = img
         print(f"Loaded {len(self.card_templates)} cards and {len(self.button_templates)} button templates.")
 
-        # Load digit classifier ML model
-        self.digit_classifier = None
-        model_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'models', 'binaries', 'digit_classifier.pkl')
-        if not os.path.exists(model_path):
-            model_path = os.path.join('core', 'models', 'binaries', 'digit_classifier.pkl')
-        if os.path.exists(model_path):
-            try:
-                import pickle
-                with open(model_path, 'rb') as f:
-                    self.digit_classifier = pickle.load(f)
-                print("Loaded ML digit classifier model successfully.")
-            except Exception as e:
-                print(f"Error loading ML digit classifier: {e}")
+        # Extract dealer button template specifically
+        self.dealer_button_template = self.card_templates.pop('dealer_button', None)
+        if self.dealer_button_template is not None:
+            print("Loaded dealer button template successfully.")
         else:
-            print("Warning: digit_classifier.pkl model not found.")
+            print("Warning: dealer_button.png template not found in card_templates.")
 
         # Load Hexagon Template and Mask for seat anchoring
         self.hexagon_template = None
@@ -97,6 +86,24 @@ class PokerVision:
                 print(f"Error loading hexagon anchor template: {e}")
         else:
             print("Warning: hexagon_anchor.png not found.")
+
+        # Load Hero Hexagon Template for seat anchoring
+        self.hero_hexagon_template = None
+        self.hero_hexagon_mask = None
+        hero_tpl_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'models', 'binaries', 'hero_hexagon_anchor.png')
+        if os.path.exists(hero_tpl_path):
+            try:
+                self.hero_hexagon_template = cv2.imread(hero_tpl_path)
+                if self.hero_hexagon_template is not None:
+                    b, g, r_channel = cv2.split(self.hero_hexagon_template)
+                    self.hero_hexagon_mask = np.ones(self.hero_hexagon_template.shape[:2], dtype=np.uint8) * 255
+                    # Mask out light blue/grey inside
+                    blue_mask = (b > 100) & (g > 100) & (r_channel < 100)
+                    self.hero_hexagon_mask[blue_mask] = 0
+            except Exception as e:
+                print(f"Error loading hero hexagon anchor template: {e}")
+        else:
+            print("Warning: hero_hexagon_anchor.png not found.")
 
     def preprocess_image(self, img):
         """Preprocesses the image (e.g. resize, grayscale) if needed."""
@@ -146,6 +153,26 @@ class PokerVision:
                     
         return sorted(filtered, key=lambda val: val[1][0]) # sort by X coordinate
 
+    def find_dealer_button(self, img):
+        """
+        Scans the entire image for the dealer button template.
+        Returns the (x, y) center coordinates of the button if found above threshold, else None.
+        """
+        if self.dealer_button_template is None:
+            return None
+            
+        gray = self.preprocess_image(img)
+        res = cv2.matchTemplate(gray, self.dealer_button_template, cv2.TM_CCOEFF_NORMED)
+        min_val, max_val, min_loc, max_loc = cv2.minMaxLoc(res)
+        
+        threshold = 0.85 # Highly robust for normalized cross-correlation
+        if max_val >= threshold:
+            h, w = self.dealer_button_template.shape
+            center_x = max_loc[0] + w // 2
+            center_y = max_loc[1] + h // 2
+            return (center_x, center_y)
+        return None
+
     def ocr_roi(self, img, roi, whitelist=None, single_line=True):
         """Extracts an ROI and runs Tesseract OCR using a dual-pass grayscale/Otsu strategy."""
         x, y, w, h = roi
@@ -179,126 +206,7 @@ class PokerVision:
             
         return text
 
-    def parse_digits_template_matching(self, img, roi, is_pot=False):
-        """
-        Parses numerical digits from an ROI using scale-invariant ML classification.
-        Falls back to empty string if classification fails or model is not loaded.
-        """
-        if not hasattr(self, 'digit_classifier') or self.digit_classifier is None:
-            return ""
-            
-        x, y, w, h = roi
-        crop = img[y:y+h, x:x+w]
-        
-        # Preprocess
-        if len(crop.shape) == 3:
-            gray = cv2.cvtColor(crop, cv2.COLOR_BGR2GRAY)
-        else:
-            gray = crop.copy()
-            
-        # Vertical slice to focus on digits and discard lines/names
-        if not is_pot:
-            if h == 60:
-                slice_img = gray[38:59, :]
-            elif h == 40:
-                slice_img = gray[10:35, :]
-            else:
-                slice_img = gray
-        else:
-            slice_img = gray[10:35, :]
-            
-        # Binarize: use Otsu for Pot, fixed threshold of 100 for Stacks
-        if is_pot:
-            _, thresh = cv2.threshold(slice_img, 0, 255, cv2.THRESH_BINARY | cv2.THRESH_OTSU)
-        else:
-            _, thresh = cv2.threshold(slice_img, 100, 255, cv2.THRESH_BINARY)
-        
-        # Find contours
-        contours, _ = cv2.findContours(thresh, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-        
-        # Find colon if it's a pot ROI to skip label prefix (e.g. "Pulje: ")
-        colon_x = -1
-        if is_pot:
-            dots = []
-            for c in contours:
-                bx, by, bw, bh = cv2.boundingRect(c)
-                if bw <= 5 and bh <= 6:
-                    dots.append((bx, by))
-            for i in range(len(dots)):
-                for j in range(i + 1, len(dots)):
-                    x1, y1 = dots[i]
-                    x2, y2 = dots[j]
-                    if abs(x1 - x2) <= 3 and 5 <= abs(y1 - y2) <= 15:
-                        colon_x = max(x1, x2)
-                        break
-                if colon_x != -1:
-                    break
-                    
-        detected = []
-        for c in contours:
-            bx, by, bw, bh = cv2.boundingRect(c)
-            if bw < 2 or bh < 2:
-                continue
-                
-            # Filter out table border noise at the left side of stack crops (x < 50)
-            if not is_pot and bx < 50:
-                continue
-                
-            # Filter out underlines / horizontal line noise
-            if bw / bh > 1.8 or bh < 6:
-                continue
-                
-            # Filter out prefix label
-            if is_pot and colon_x != -1 and bx <= colon_x:
-                continue
-            elif is_pot and colon_x == -1 and bx < 68:
-                continue
-                
-            if bh >= 8:
-                # Handle merged/touching digits if width is too large (typically >= 18 pixels)
-                if bw >= 18:
-                    w_half = bw // 2
-                    
-                    # Left digit
-                    char_crop_l = thresh[by:by+bh, bx:bx+w_half]
-                    char_l, score_l = self.match_digit_crop(char_crop_l)
-                    if score_l >= 0.50:
-                        detected.append((char_l, bx))
-                        
-                    # Right digit
-                    char_crop_r = thresh[by:by+bh, bx+w_half:bx+bw]
-                    char_r, score_r = self.match_digit_crop(char_crop_r)
-                    if score_r >= 0.50:
-                        detected.append((char_r, bx + w_half))
-                else:
-                    # Single digit
-                    char_crop = thresh[by:by+bh, bx:bx+bw]
-                    char, score = self.match_digit_crop(char_crop)
-                    if score >= 0.50:
-                        detected.append((char, bx))
-            elif bh <= 7 and bw <= 7:
-                detected.append(('.', bx))
-                
-        detected = sorted(detected, key=lambda d: d[1])
-        return "".join([d[0] for d in detected])
 
-    def match_digit_crop(self, char_crop):
-        """Classifies a cropped character contour using the trained ML model."""
-        if not hasattr(self, 'digit_classifier') or self.digit_classifier is None:
-            return '?', -1.0
-            
-        # Resize to exactly 16x16 and binarize using Otsu
-        resized = cv2.resize(char_crop, (16, 16), interpolation=cv2.INTER_AREA)
-        _, binary = cv2.threshold(resized, 0, 255, cv2.THRESH_BINARY | cv2.THRESH_OTSU)
-        flat = (binary.flatten() / 255.0).reshape(1, -1)
-        
-        # Predict digit class and probability
-        probs = self.digit_classifier.predict_proba(flat)[0]
-        best_class_idx = np.argmax(probs)
-        best_score = probs[best_class_idx]
-        best_char = str(best_class_idx)
-        
-        return best_char, best_score
 
     def clean_pot_string(self, text):
         """Cleans and extracts integer value from pot OCR text with translation mapping."""
@@ -384,7 +292,7 @@ class PokerVision:
             
         return best_color
 
-    def read_board_state(self, img):
+    def read_board_state(self, img, board_size="6-Max"):
         """
         Parses the full board image and returns a dict with:
         - community_cards: list of strings
@@ -402,30 +310,11 @@ class PokerVision:
         )
         state['community_cards'] = [m[0] for m in comm_matches]
         
-        hero_matches = self.match_templates_in_roi(
-            img, self.rois['hero_cards'], self.card_templates, threshold=0.90, max_matches=2
-        )
-        state['hero_cards'] = [m[0] for m in hero_matches]
-        
         # 2. OCR Pot
-        pot_val = 0
-        pot_parsed = self.parse_digits_template_matching(img, self.rois['pot'], is_pot=True)
-        if pot_parsed:
-            pot_val = self.clean_pot_string(pot_parsed)
-        if pot_val == 0:
-            pot_text = self.ocr_roi(img, self.rois['pot'], whitelist='0123456789.Pulje: ')
-            pot_val = self.clean_pot_string(pot_text)
-        state['pot_size'] = pot_val
+        pot_text = self.ocr_roi(img, self.rois['pot'], whitelist='0123456789.Pulje: ')
+        state['pot_size'] = self.clean_pot_string(pot_text)
         
-        # 3. OCR Hero Stack
-        hero_val = 0
-        hero_parsed = self.parse_digits_template_matching(img, self.rois['hero_stack'], is_pot=False)
-        if hero_parsed:
-            hero_val = self.clean_stack_string(hero_parsed)
-        if hero_val == 0:
-            hero_text = self.ocr_roi(img, self.rois['hero_stack'])
-            hero_val = self.clean_stack_string(hero_text)
-        state['hero_stack'] = hero_val
+        
         
         # 4. OCR Opponents & Hero using Dynamic Hexagon Anchor System
         opponents = {}
@@ -447,26 +336,35 @@ class PokerVision:
             'seat_3': (640, 130, 250, 150),
             'seat_4': (1180, 260, 250, 150),
             'seat_5': (1030, 700, 250, 150),
-            'hero': (600, 750, 300, 150)
+            'hero': (600, 770, 300, 130)
         }
         
-        # Match all seats and Hero
-        resolved_centers = {}
-        found_anchors = {}
-        for key, (rx, ry, rw, rh) in search_regions.items():
-            cx, cy = default_centers[key] # fallback
-            found_anchor = False
-            if self.hexagon_template is not None:
-                search_area = img[ry:ry+rh, rx:rx+rw]
-                if search_area.shape[0] >= self.hexagon_template.shape[0] and search_area.shape[1] >= self.hexagon_template.shape[1]:
-                    res = cv2.matchTemplate(search_area, self.hexagon_template, cv2.TM_CCORR_NORMED, mask=self.hexagon_mask)
-                    min_val, max_val, min_loc, max_loc = cv2.minMaxLoc(res)
-                    if max_val >= 0.70:
-                        cx = rx + max_loc[0] + self.hexagon_template.shape[1] // 2
-                        cy = ry + max_loc[1] + self.hexagon_template.shape[0] // 2 # Rolled back to template center
-                        found_anchor = True
-            resolved_centers[key] = (cx, cy)
-            found_anchors[key] = found_anchor
+        if board_size == "6-Max":
+            # Use static coordinate layout directly to avoid false template matching
+            resolved_centers = default_centers.copy()
+            found_anchors = {k: True for k in default_centers.keys()}
+        else:
+            # Fallback to template matching scan for other sizes (like 10-Max)
+            resolved_centers = {}
+            found_anchors = {}
+            for key, (rx, ry, rw, rh) in search_regions.items():
+                cx, cy = default_centers[key]
+                found_anchor = False
+                
+                active_template = self.hero_hexagon_template if key == 'hero' else self.hexagon_template
+                active_mask = self.hero_hexagon_mask if key == 'hero' else self.hexagon_mask
+                
+                if active_template is not None:
+                    search_area = img[ry:ry+rh, rx:rx+rw]
+                    if search_area.shape[0] >= active_template.shape[0] and search_area.shape[1] >= active_template.shape[1]:
+                        res = cv2.matchTemplate(search_area, active_template, cv2.TM_CCORR_NORMED, mask=active_mask)
+                        min_val, max_val, min_loc, max_loc = cv2.minMaxLoc(res)
+                        if max_val >= 0.70:
+                            cx = rx + max_loc[0] + active_template.shape[1] // 2
+                            cy = ry + max_loc[1] + active_template.shape[0] // 2
+                            found_anchor = True
+                resolved_centers[key] = (cx, cy)
+                found_anchors[key] = found_anchor
 
         # Parse Opponents
         for seat_key in ['seat_1', 'seat_2', 'seat_3', 'seat_4', 'seat_5']:
@@ -482,10 +380,8 @@ class PokerVision:
             name_crop = img[max(0, cy+22):min(img.shape[0], cy+48), max(0, cx-75):min(img.shape[1], cx+75)]
             stack_crop = img[max(0, cy+50):min(img.shape[0], cy+84), max(0, cx-65):min(img.shape[1], cx+65)]
             
-            # Run OCR on Name
-            name_gray = self.preprocess_image(name_crop)
-            name_resized = cv2.resize(name_gray, (0, 0), fx=3, fy=3, interpolation=cv2.INTER_CUBIC)
-            name_text = pytesseract.image_to_string(name_resized, config='--psm 6')
+            # Run OCR on Name using robust ocr_roi
+            name_text = self.ocr_roi(img, (cx-75, cy+22, 150, 26))
             
             import re
             name = name_text.strip()
@@ -498,6 +394,7 @@ class PokerVision:
                 continue
                 
             # Determine if player is active (5% brightest pixels in name_gray > 160.0)
+            name_gray = self.preprocess_image(name_crop)
             flat = name_gray.flatten()
             flat_sorted = np.sort(flat)
             top_5_percent_idx = int(len(flat_sorted) * 0.95)
@@ -509,10 +406,8 @@ class PokerVision:
             state_label = "Active"
             
             if is_active:
-                # Run OCR on Stack
-                stack_gray = self.preprocess_image(stack_crop)
-                stack_resized = cv2.resize(stack_gray, (0, 0), fx=3, fy=3, interpolation=cv2.INTER_CUBIC)
-                stack_text = pytesseract.image_to_string(stack_resized, config='--psm 6')
+                # Run OCR on Stack using robust ocr_roi
+                stack_text = self.ocr_roi(img, (cx-65, cy+50, 130, 34), whitelist='0123456789.ALLIN-')
                 
                 stack_line = stack_text.strip()
                 if stack_line:
@@ -546,7 +441,7 @@ class PokerVision:
             opponents[seat_key] = {
                 'name': name,
                 'stack': stack_val,
-                'is_active': is_active,
+                'is_active': bool(is_active),
                 'state': state_label,
                 'vpip_color': vpip_color,
                 'agg_color': agg_color
@@ -554,20 +449,41 @@ class PokerVision:
             
         state['opponents'] = opponents
         
-        # Parse Hero VPIP/AGG/Stack
+        # Parse Hero VPIP/AGG/Stack/Name/Cards
         hcx, hcy = resolved_centers['hero']
+        
+        # Hero Name using robust ocr_roi
+        hero_name_text = self.ocr_roi(img, (hcx-75, hcy+22, 150, 26))
+        import re
+        hname = hero_name_text.strip()
+        hname = re.sub(r'^[^a-zA-Z0-9]+', '', hname)
+        hname = re.sub(r'[^a-zA-Z0-9_\'\s]+$', '', hname)
+        if len(hname) <= 2 and not hname.isalnum():
+            hname = ""
+        state['hero_name'] = hname
+
         hero_vpip_crop = img[max(0, hcy-12):min(img.shape[0], hcy+12), max(0, hcx-100):min(img.shape[1], hcx-80)]
         hero_agg_crop = img[max(0, hcy-12):min(img.shape[0], hcy+12), max(0, hcx+80):min(img.shape[1], hcx+100)]
         
         state['hero_vpip_color'] = self.classify_color(hero_vpip_crop)
         state['hero_agg_color'] = self.classify_color(hero_agg_crop)
         
-        # Update hero stack if dynamic matching found a better value
-        hero_stack_parsed = self.parse_digits_template_matching(img, (hcx-65, hcy+50, 130, 34), is_pot=False)
-        if hero_stack_parsed:
-            hero_stack_val = self.clean_stack_string(hero_stack_parsed)
-            if hero_stack_val > 0:
-                state['hero_stack'] = hero_stack_val
+        # Hero Stack using robust ocr_roi (matching opponent seats approach)
+        hero_stack_text = self.ocr_roi(img, (hcx-65, hcy+50, 130, 34), whitelist='0123456789.ALLIN-')
+        
+        hero_stack_val = 0
+        h_stack_line = hero_stack_text.strip()
+        if h_stack_line:
+            hero_stack_val = self.clean_stack_string(h_stack_line)
+            
+        state['hero_stack'] = hero_stack_val
+                
+        # Parse Hero Cards dynamically based on anchor
+        dynamic_hero_cards_roi = (max(0, hcx - 127), max(0, hcy - 112), 230, 95)
+        hero_matches = self.match_templates_in_roi(
+            img, dynamic_hero_cards_roi, self.card_templates, threshold=0.90, max_matches=2
+        )
+        state['hero_cards'] = [m[0] for m in hero_matches]
         
         # 5. Detect Active Buttons
         button_matches = self.match_templates_in_roi(
@@ -575,6 +491,39 @@ class PokerVision:
         )
         state['active_buttons'] = [m[0] for m in button_matches]
         
+        # 6. Detect Dealer Button
+        state['dealer_idx'] = -1
+        state['dealer_name'] = ""
+        
+        dealer_coords = self.find_dealer_button(img)
+        if dealer_coords is not None:
+            dx, dy = dealer_coords
+            
+            # Find the closest seat center (anchor)
+            closest_seat = None
+            min_dist = float('inf')
+            
+            for seat_key, (cx, cy) in resolved_centers.items():
+                dist = np.sqrt((dx - cx) ** 2 + (dy - cy) ** 2)
+                if dist < min_dist:
+                    min_dist = dist
+                    closest_seat = seat_key
+                    
+            if closest_seat is not None:
+                # Map seat key to integer index: hero -> 0, seat_i -> i
+                if closest_seat == 'hero':
+                    state['dealer_idx'] = 0
+                    state['dealer_name'] = "Hero"
+                else:
+                    try:
+                        idx = int(closest_seat.split('_')[1])
+                        state['dealer_idx'] = idx
+                        # Find player name at this seat
+                        opp = opponents.get(closest_seat, {})
+                        state['dealer_name'] = opp.get('name', f"Player {idx}")
+                    except (IndexError, ValueError):
+                        pass
+
         # Calculate active players count
         # In this 6-max game:
         active_opponents = [opp for opp in opponents.values() if opp.get('is_active', True)]

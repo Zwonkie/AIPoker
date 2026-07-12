@@ -1,0 +1,75 @@
+{
+  "nodes": [
+    {
+      "id": "dndnode_0",
+      "type": "contextNode",
+      "position": { "x": 100, "y": 100 },
+      "data": { "context": "preflop" }
+    },
+    {
+      "id": "dndnode_1",
+      "type": "conditionNode",
+      "position": { "x": 100, "y": 300 },
+      "data": { "metric": "equity", "operator": ">", "value": "0.6" }
+    },
+    {
+      "id": "dndnode_2",
+      "type": "actionNode",
+      "position": { "x": -100, "y": 500 },
+      "data": { "action": "bet", "size": "70" }
+    },
+    {
+      "id": "dndnode_3",
+      "type": "conditionNode",
+      "position": { "x": 400, "y": 500 },
+      "data": { "metric": "equity", "operator": ">", "value": "0.42" }
+    },
+    {
+      "id": "dndnode_4",
+      "type": "actionNode",
+      "position": { "x": 200, "y": 700 },
+      "data": { "action": "call", "size": "0" }
+    },
+    {
+      "id": "dndnode_5",
+      "type": "actionNode",
+      "position": { "x": 600, "y": 700 },
+      "data": { "action": "fold", "size": "0" }
+    },
+    {
+      "id": "dndnode_6",
+      "type": "contextNode",
+      "position": { "x": 800, "y": 100 },
+      "data": { "context": "flop" }
+    },
+    {
+      "id": "dndnode_7",
+      "type": "conditionNode",
+      "position": { "x": 800, "y": 300 },
+      "data": { "metric": "ev", "operator": ">", "value": "0.15" }
+    },
+    {
+      "id": "dndnode_8",
+      "type": "actionNode",
+      "position": { "x": 600, "y": 500 },
+      "data": { "action": "raise", "size": "100" }
+    },
+    {
+      "id": "dndnode_9",
+      "type": "actionNode",
+      "position": { "x": 1000, "y": 500 },
+      "data": { "action": "check", "size": "0" }
+    }
+  ],
+  "edges": [
+    { "id": "e0-1", "source": "dndnode_0", "target": "dndnode_1", "sourceHandle": "out" },
+    { "id": "e1-2", "source": "dndnode_1", "target": "dndnode_2", "sourceHandle": "true" },
+    { "id": "e1-3", "source": "dndnode_1", "target": "dndnode_3", "sourceHandle": "false" },
+    { "id": "e3-4", "source": "dndnode_3", "target": "dndnode_4", "sourceHandle": "true" },
+    { "id": "e3-5", "source": "dndnode_3", "target": "dndnode_5", "sourceHandle": "false" },
+    
+    { "id": "e6-7", "source": "dndnode_6", "target": "dndnode_7", "sourceHandle": "out" },
+    { "id": "e7-8", "source": "dndnode_7", "target": "dndnode_8", "sourceHandle": "true" },
+    { "id": "e7-9", "source": "dndnode_7", "target": "dndnode_9", "sourceHandle": "false" }
+  ]
+}

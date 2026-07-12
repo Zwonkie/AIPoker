@@ -103,13 +103,13 @@ class PHPHelpApp(ctk.CTk):
         
         # Configure Window
         self.title("PHPHelp")
-        self.geometry("1024x720")
+        self.geometry("1240x820")
         self.resizable(False, False)
         
         # Internal components
         self.vision = PokerVision()
         self.evaluator = PokerEvaluator()
-        self.decision_engine = PokerDecisionEngine()
+        self.decision_engine = PokerDecisionEngine(game_type="nlh")
         self.action_executor = ActionExecutor()
         self.state_machine = PokerStateMachine(self)
         
@@ -121,15 +121,18 @@ class PHPHelpApp(ctk.CTk):
         # Configuration variables
         self.mode_var = ctk.StringVar(value="Recommendation Only") # vs "Automatic Play"
         self.source_var = ctk.StringVar(value="Mock: 1_postflop_first_fold_check_raise.png") # vs board4.png, Live Game
+        self.board_size_var = ctk.StringVar(value="6-Max")
+        self.looseness_var = ctk.DoubleVar(value=0.0)
         self.opponents_var = ctk.IntVar(value=1)
         self.simulations_var = ctk.IntVar(value=2000)
         self.target_window_var = ctk.StringVar(value="Bet365")
+        self.big_blind_var = ctk.DoubleVar(value=25.0)
         
-        # Toggleable decision layers
-        self.layer_preflop_var = ctk.BooleanVar(value=True)
-        self.layer_math_var = ctk.BooleanVar(value=True)
-        self.layer_bluff_var = ctk.BooleanVar(value=True)
-        self.layer_sizing_var = ctk.BooleanVar(value=True)
+        # Toggleable decision layers (default to False to see true model actions)
+        self.layer_preflop_var = ctk.BooleanVar(value=False)
+        self.layer_math_var = ctk.BooleanVar(value=False)
+        self.layer_bluff_var = ctk.BooleanVar(value=False)
+        self.layer_sizing_var = ctk.BooleanVar(value=False)
         
         # Turn Diagnostics variables
         self.last_raw_img = None
@@ -168,9 +171,17 @@ class PHPHelpApp(ctk.CTk):
         self.sub_label = ctk.CTkLabel(self.sidebar, text="PHP Syntax Parser v1.0", font=ctk.CTkFont(size=12, slant="italic"))
         self.sub_label.grid(row=1, column=0, padx=20, pady=(0, 20))
         
-        # Bot Toggle Button
-        self.start_btn = ctk.CTkButton(self.sidebar, text="START BOT", fg_color="#2eb85c", hover_color="#229647", font=ctk.CTkFont(weight="bold"), command=self.toggle_bot)
-        self.start_btn.grid(row=2, column=0, padx=20, pady=10, sticky="ew")
+        # Bot Toggle Button & Auto-Live Shortcut Frame
+        self.btn_frame = ctk.CTkFrame(self.sidebar, fg_color="transparent")
+        self.btn_frame.grid(row=2, column=0, padx=20, pady=10, sticky="ew")
+        self.btn_frame.grid_columnconfigure(0, weight=3) # Start Bot (larger)
+        self.btn_frame.grid_columnconfigure(1, weight=2) # Auto-Live (smaller)
+        
+        self.start_btn = ctk.CTkButton(self.btn_frame, text="START BOT", fg_color="#2eb85c", hover_color="#229647", font=ctk.CTkFont(weight="bold"), command=self.toggle_bot)
+        self.start_btn.grid(row=0, column=0, padx=(0, 5), sticky="ew")
+        
+        self.auto_live_btn = ctk.CTkButton(self.btn_frame, text="⚡ LIVE", fg_color="#3399ff", hover_color="#2277cc", font=ctk.CTkFont(weight="bold"), command=self.quick_start_live)
+        self.auto_live_btn.grid(row=0, column=1, padx=(5, 0), sticky="ew")
         
         # Mode Selection
         self.mode_label = ctk.CTkLabel(self.sidebar, text="Execution Mode:", anchor="w")
@@ -178,9 +189,34 @@ class PHPHelpApp(ctk.CTk):
         self.mode_dropdown = ctk.CTkOptionMenu(self.sidebar, values=["Recommendation Only", "Automatic Play"], variable=self.mode_var)
         self.mode_dropdown.grid(row=4, column=0, padx=20, pady=5, sticky="ew")
         
+        # Model Selection
+        self.model_var = ctk.StringVar(value="Pluribus (v8 Self-Play 200k)")
+        self.model_label = ctk.CTkLabel(self.sidebar, text="Decision Model:", anchor="w")
+        self.model_label.grid(row=5, column=0, padx=20, pady=(10, 0), sticky="w")
+        self.model_dropdown = ctk.CTkOptionMenu(
+            self.sidebar, 
+            values=[
+                "Pluribus (Standalone)", 
+                "Pluribus (Policy Classifier)", 
+                "Pluribus (EV v2 7-Feature)", 
+                "Pluribus (v3 Self-Play)", 
+                "Pluribus (v4 Self-Play)",
+                "Pluribus (v5 Self-Play)",
+                "Pluribus (v8 Self-Play)",
+                "Pluribus (v8 Self-Play 50k)",
+                "Pluribus (v8 Self-Play 200k)",
+                "Pluribus (v8 Nit)",
+                "Pluribus (v8 Maniac)",
+                "Pluribus (v8 Sticky)"
+            ], 
+            variable=self.model_var,
+            command=self.on_model_changed
+        )
+        self.model_dropdown.grid(row=6, column=0, padx=20, pady=5, sticky="ew")
+        
         # Source Selection
         self.source_label = ctk.CTkLabel(self.sidebar, text="Input Source:", anchor="w")
-        self.source_label.grid(row=5, column=0, padx=20, pady=(10, 0), sticky="w")
+        self.source_label.grid(row=7, column=0, padx=20, pady=(10, 0), sticky="w")
         self.source_dropdown = ctk.CTkOptionMenu(self.sidebar, values=[
             "Mock: 1_postflop_first_fold_check_raise.png", 
             "Mock: 2_postflop_river_fold_call_raise.png", 
@@ -200,63 +236,43 @@ class PHPHelpApp(ctk.CTk):
             "Mock: 16_preflop_Kc6d_fold.png",
             "Live Capture"
         ], variable=self.source_var, command=self.on_source_changed)
-        self.source_dropdown.grid(row=6, column=0, padx=20, pady=5, sticky="ew")
+        self.source_dropdown.grid(row=8, column=0, padx=20, pady=5, sticky="ew")
         
         # Target Window (Only visible when Live Capture selected)
         self.window_label = ctk.CTkLabel(self.sidebar, text="Target Window Name:", anchor="w")
         self.window_combo = ctk.CTkComboBox(self.sidebar, values=["Bet365"], variable=self.target_window_var)
         
-        # Simulation Settings
-        self.opponents_label = ctk.CTkLabel(self.sidebar, text="Opponents Range (1-5):", anchor="w")
-        self.opponents_label.grid(row=7, column=0, padx=20, pady=(10, 0), sticky="w")
-        self.opponents_slider = ctk.CTkSlider(self.sidebar, from_=1, to=5, number_of_steps=4, variable=self.opponents_var, command=self.update_slider_labels)
-        self.opponents_slider.grid(row=8, column=0, padx=20, pady=5, sticky="ew")
-        self.opp_val_label = ctk.CTkLabel(self.sidebar, text="1 Active Opponent", font=ctk.CTkFont(size=11))
-        self.opp_val_label.grid(row=9, column=0, padx=20, pady=(0, 10))
+        # Big Blind Amount
+        self.bb_label = ctk.CTkLabel(self.sidebar, text="Big Blind (in Cents):", anchor="w")
+        self.bb_label.grid(row=9, column=0, padx=20, pady=(10, 0), sticky="w")
+        self.bb_entry = ctk.CTkEntry(self.sidebar, textvariable=self.big_blind_var)
+        self.bb_entry.grid(row=10, column=0, padx=20, pady=5, sticky="ew")
         
-        # Compiler Modules (Decision Layers)
-        self.layers_frame = ctk.CTkFrame(self.sidebar, fg_color="transparent")
-        self.layers_frame.grid(row=10, column=0, padx=20, pady=(5, 5), sticky="ew")
+        # Board Size Selection
+        self.board_size_label = ctk.CTkLabel(self.sidebar, text="Board Size:", anchor="w")
+        self.board_size_label.grid(row=11, column=0, padx=20, pady=(10, 0), sticky="w")
+        self.board_size_dropdown = ctk.CTkOptionMenu(self.sidebar, values=["6-Max", "10-Max"], variable=self.board_size_var)
+        self.board_size_dropdown.grid(row=12, column=0, padx=20, pady=5, sticky="ew")
         
-        self.layers_title = ctk.CTkLabel(self.layers_frame, text="Active Modules:", font=ctk.CTkFont(weight="bold", size=12), anchor="w")
-        self.layers_title.pack(anchor="w", pady=(0, 3))
+        # Looseness Slider Selection
+        self.looseness_label = ctk.CTkLabel(self.sidebar, text="Pre-flop Looseness: +0%", anchor="w")
+        self.looseness_label.grid(row=13, column=0, padx=20, pady=(10, 0), sticky="w")
+        self.looseness_slider = ctk.CTkSlider(self.sidebar, from_=-0.20, to=0.20, number_of_steps=40, variable=self.looseness_var, command=self.update_looseness_label)
+        self.looseness_slider.grid(row=14, column=0, padx=20, pady=5, sticky="ew")
         
-        self.cb_preflop = ctk.CTkCheckBox(self.layers_frame, text="Preflop Range Engine", variable=self.layer_preflop_var, font=ctk.CTkFont(size=11))
-        self.cb_preflop.pack(anchor="w", pady=1)
+        # Checkboxes to toggle heuristics (defaults to False)
+        self.preflop_chk = ctk.CTkCheckBox(self.sidebar, text="Use Pre-flop Chart", variable=self.layer_preflop_var)
+        self.preflop_chk.grid(row=15, column=0, padx=20, pady=5, sticky="w")
         
-        self.cb_math = ctk.CTkCheckBox(self.layers_frame, text="Postflop EV Engine", variable=self.layer_math_var, font=ctk.CTkFont(size=11))
-        self.cb_math.pack(anchor="w", pady=1)
+        self.math_chk = ctk.CTkCheckBox(self.sidebar, text="Use Math Engine", variable=self.layer_math_var)
+        self.math_chk.grid(row=16, column=0, padx=20, pady=5, sticky="w")
         
-        self.cb_bluff = ctk.CTkCheckBox(self.layers_frame, text="Bluffing Engine", variable=self.layer_bluff_var, font=ctk.CTkFont(size=11))
-        self.cb_bluff.pack(anchor="w", pady=1)
-        
-        self.cb_sizing = ctk.CTkCheckBox(self.layers_frame, text="Pot-Sizing Shortcuts", variable=self.layer_sizing_var, font=ctk.CTkFont(size=11))
-        self.cb_sizing.pack(anchor="w", pady=1)
-        
-        # Model Selection Dropdown packed inside layers_frame
-        self.model_label = ctk.CTkLabel(self.layers_frame, text="Decision Model:", font=ctk.CTkFont(weight="bold", size=12), anchor="w")
-        self.model_label.pack(anchor="w", pady=(15, 3))
-        
-        self.model_dropdown = ctk.CTkOptionMenu(
-            self.layers_frame, 
-            values=["Heuristic (Rules)", "XGBoost Classifier", "XGBoost Mixed (Pro + Human)", "PyTorch Neural Net"],
-            command=self.on_model_changed
-        )
-        self.model_dropdown.pack(fill="x", pady=2)
-        
-        # Mixed Strategy Ratio Slider (packed dynamically only when Mixed is selected)
-        self.ratio_label = ctk.CTkLabel(self.layers_frame, text="Mix: 50% Pro / 50% Human", font=ctk.CTkFont(size=11), anchor="w")
-        self.ratio_slider = ctk.CTkSlider(
-            self.layers_frame,
-            from_=0.0,
-            to=1.0,
-            command=self.on_ratio_slider_changed
-        )
-        self.ratio_slider.set(0.5)
+        self.bluff_chk = ctk.CTkCheckBox(self.sidebar, text="Use Bluff Engine", variable=self.layer_bluff_var)
+        self.bluff_chk.grid(row=17, column=0, padx=20, pady=5, sticky="w")
         
         # State Machine indicator at bottom of sidebar
         self.state_frame = ctk.CTkFrame(self.sidebar, height=45, fg_color="#1e2129", corner_radius=8)
-        self.state_frame.grid(row=12, column=0, padx=20, pady=20, sticky="ew")
+        self.state_frame.grid(row=18, column=0, padx=20, pady=20, sticky="ew")
         self.state_frame.grid_propagate(False)
         self.state_frame.grid_columnconfigure(0, weight=1)
         self.state_frame.grid_rowconfigure(0, weight=1)
@@ -284,34 +300,17 @@ class PHPHelpApp(ctk.CTk):
         self.setup_logs()
 
     def setup_visuals(self):
-        # Dividers inside visual frame
-        self.visual_frame.grid_columnconfigure((0, 1, 2), weight=1)
+        # Dividers inside visual frame (extending columns from 3 to 4)
+        self.visual_frame.grid_columnconfigure((0, 1, 2, 3), weight=1)
         self.visual_frame.grid_rowconfigure((0, 1), weight=1)
         
         # Title of telemetry
         self.telemetry_title = ctk.CTkLabel(self.visual_frame, text="Live Table Telemetry", font=ctk.CTkFont(size=15, weight="bold"))
-        self.telemetry_title.grid(row=0, column=0, columnspan=3, pady=(10, 5))
+        self.telemetry_title.grid(row=0, column=0, columnspan=4, pady=(10, 5))
         
-        # Left Panel: Cards detected
-        self.cards_panel = ctk.CTkFrame(self.visual_frame, fg_color="#1f222a", corner_radius=8)
-        self.cards_panel.grid(row=1, column=0, padx=15, pady=15, sticky="nsew")
-        self.cards_panel.grid_columnconfigure(0, weight=1)
-        
-        self.card_lbl_title = ctk.CTkLabel(self.cards_panel, text="CARDS DETECTED", font=ctk.CTkFont(weight="bold", size=12))
-        self.card_lbl_title.pack(pady=5)
-        
-        self.hero_cards_val = ctk.CTkLabel(self.cards_panel, text="Hero Hand: [--, --]", font=ctk.CTkFont(size=14, weight="bold"))
-        self.hero_cards_val.pack(pady=5)
-        
-        self.comm_cards_val = ctk.CTkLabel(self.cards_panel, text="Board Cards: [--, --, --, --, --]", font=ctk.CTkFont(size=13))
-        self.comm_cards_val.pack(pady=5)
-        
-        self.opps_stack_val = ctk.CTkLabel(self.cards_panel, text="Active Opponents: 0", font=ctk.CTkFont(size=12))
-        self.opps_stack_val.pack(pady=5)
-        
-        # Center Panel: Seating Table Layout (Visual Grid)
+        # Center Panel: Seating Table Layout (Visual Grid) spanning columns 0 and 1
         self.table_panel = ctk.CTkFrame(self.visual_frame, fg_color="#14161d", corner_radius=10)
-        self.table_panel.grid(row=1, column=1, padx=10, pady=10, sticky="nsew")
+        self.table_panel.grid(row=1, column=0, columnspan=2, padx=10, pady=10, sticky="nsew")
         self.table_panel.grid_rowconfigure((0, 1, 2), weight=1)
         self.table_panel.grid_columnconfigure((0, 1, 2), weight=1)
         
@@ -339,6 +338,9 @@ class PHPHelpApp(ctk.CTk):
                 
                 self.pot_val = ctk.CTkLabel(pot_frame, text="0", text_color="#ffd700", font=ctk.CTkFont(size=13, weight="bold"))
                 self.pot_val.pack(pady=(0, 2))
+                
+                self.comm_cards_val = ctk.CTkLabel(pot_frame, text="[--, --, --, --, --]", font=ctk.CTkFont(size=11))
+                self.comm_cards_val.pack(pady=1)
             else:
                 # Player seat display frame
                 frame = ctk.CTkFrame(self.table_panel, fg_color="#1f222a", corner_radius=6)
@@ -370,6 +372,10 @@ class PHPHelpApp(ctk.CTk):
                     'vpip': lbl_vpip,
                     'agg': lbl_agg
                 }
+                
+                if key == 'hero':
+                    self.hero_cards_val = ctk.CTkLabel(frame, text="[--, --]", font=ctk.CTkFont(size=12, weight="bold"), text_color="#2eb85c")
+                    self.hero_cards_val.pack(pady=1)
         
         # Right Panel: Win Probability / Equity
         self.equity_panel = ctk.CTkFrame(self.visual_frame, fg_color="#1f222a", corner_radius=8)
@@ -394,6 +400,83 @@ class PHPHelpApp(ctk.CTk):
         
         self.action_reason_lbl = ctk.CTkLabel(self.equity_panel, text="-", font=ctk.CTkFont(size=10), text_color="#8a90a0", wraplength=180)
         self.action_reason_lbl.pack(pady=2)
+        
+        self.ev_breakdown_frame = ctk.CTkFrame(self.equity_panel, fg_color="#181a20", corner_radius=6)
+        self.ev_breakdown_frame.pack(fill="x", padx=10, pady=(15, 5))
+        
+        self.ev_title_lbl = ctk.CTkLabel(self.ev_breakdown_frame, text="EV BREAKDOWN", font=ctk.CTkFont(weight="bold", size=10), text_color="#8a90a0")
+        self.ev_title_lbl.pack(pady=(5, 2))
+        
+        self.ev_fold_lbl = ctk.CTkLabel(self.ev_breakdown_frame, text="EV(Fold): -", font=ctk.CTkFont(size=11), text_color="#8a90a0")
+        self.ev_fold_lbl.pack(pady=1)
+        
+        self.ev_call_lbl = ctk.CTkLabel(self.ev_breakdown_frame, text="EV(Call): -", font=ctk.CTkFont(size=11), text_color="#8a90a0")
+        self.ev_call_lbl.pack(pady=1)
+        
+        self.ev_raise_lbl = ctk.CTkLabel(self.ev_breakdown_frame, text="EV(Raise): -", font=ctk.CTkFont(size=11), text_color="#8a90a0")
+        self.ev_raise_lbl.pack(pady=(1, 5))
+        
+        # Context Features Frame
+        self.context_tensor_frame = ctk.CTkFrame(self.equity_panel, fg_color="#181a20", corner_radius=6)
+        self.context_tensor_frame.pack(fill="x", padx=10, pady=(3, 5))
+        
+        self.ctx_title_lbl = ctk.CTkLabel(self.context_tensor_frame, text="MODEL CONTEXT FEATURES", font=ctk.CTkFont(weight="bold", size=10), text_color="#8a90a0")
+        self.ctx_title_lbl.pack(pady=(5, 2))
+        
+        self.ctx_row1_lbl = ctk.CTkLabel(self.context_tensor_frame, text="Pos: - | Stack: - BB | Pot: - BB | Eq: -%", font=ctk.CTkFont(size=11), text_color="#8a90a0")
+        self.ctx_row1_lbl.pack(pady=1)
+        
+        self.ctx_row2_lbl = ctk.CTkLabel(self.context_tensor_frame, text="Odds: -% | Opps: - | Street: -", font=ctk.CTkFont(size=11), text_color="#8a90a0")
+        self.ctx_row2_lbl.pack(pady=1)
+        
+        self.ctx_row3_lbl = ctk.CTkLabel(self.context_tensor_frame, text="VPIP: - | AGG: -", font=ctk.CTkFont(size=11), text_color="#8a90a0")
+        self.ctx_row3_lbl.pack(pady=(1, 5))
+
+        # Column 3: Decision Flow Pipeline Tree Panel
+        self.tree_panel = ctk.CTkFrame(self.visual_frame, fg_color="#1f222a", corner_radius=8)
+        self.tree_panel.grid(row=1, column=3, padx=15, pady=15, sticky="nsew")
+        self.tree_panel.grid_columnconfigure(0, weight=1)
+        
+        self.tree_lbl_title = ctk.CTkLabel(self.tree_panel, text="DECISION FLOW PIPELINE", font=ctk.CTkFont(weight="bold", size=12))
+        self.tree_lbl_title.pack(pady=(10, 15))
+        
+        self.pipeline_widgets = {}
+        stages = [
+            ('preflop_chart', '1. Pre-flop Chart'),
+            ('active_model', '2. Active Neural Net'),
+            ('bluff_engine', '3. Post-flop Bluff Engine'),
+            ('math_engine', '4. Math Engine Guardrail')
+        ]
+        
+        for idx, (key, label_text) in enumerate(stages):
+            stage_frame = ctk.CTkFrame(self.tree_panel, fg_color="#181a20", corner_radius=6)
+            stage_frame.pack(fill="x", padx=10, pady=5)
+            
+            lbl_title = ctk.CTkLabel(stage_frame, text=label_text, font=ctk.CTkFont(weight="bold", size=10), text_color="#ffd700")
+            lbl_title.pack(anchor="w", padx=10, pady=(5, 0))
+            
+            status_frame = ctk.CTkFrame(stage_frame, fg_color="transparent")
+            status_frame.pack(fill="x", padx=10, pady=(2, 5))
+            
+            status_dot = ctk.CTkLabel(status_frame, text="●", font=ctk.CTkFont(size=12), text_color="#a0a0a0")
+            status_dot.pack(side="left", padx=(0, 5))
+            
+            status_lbl = ctk.CTkLabel(status_frame, text="Waiting...", font=ctk.CTkFont(size=11, weight="bold"), text_color="#a0a0a0")
+            status_lbl.pack(side="left")
+            
+            details_lbl = ctk.CTkLabel(stage_frame, text="-", font=ctk.CTkFont(size=9), text_color="#8a90a0", wraplength=160, justify="left")
+            details_lbl.pack(anchor="w", padx=10, pady=(0, 5))
+            
+            self.pipeline_widgets[key] = {
+                'dot': status_dot,
+                'status': status_lbl,
+                'details': details_lbl,
+                'frame': stage_frame
+            }
+            
+            if idx < len(stages) - 1:
+                arrow_lbl = ctk.CTkLabel(self.tree_panel, text="↓", font=ctk.CTkFont(size=14, weight="bold"), text_color="#4f5d75")
+                arrow_lbl.pack(pady=2)
 
     def setup_logs(self):
         self.log_frame.grid_columnconfigure(0, weight=1)
@@ -411,9 +494,6 @@ class PHPHelpApp(ctk.CTk):
         self.log_text = ctk.CTkTextbox(self.log_frame, wrap="word")
         self.log_text.grid(row=1, column=0, padx=15, pady=(0, 15), sticky="nsew")
         self.log_text.configure(state="disabled") # read-only until we append
-
-    def update_slider_labels(self, val):
-        self.opp_val_label.configure(text=f"{int(val)} Active Opponents")
 
     def refresh_window_list(self):
         try:
@@ -436,56 +516,135 @@ class PHPHelpApp(ctk.CTk):
             if not titles:
                 titles = ["Bet365"]
             self.window_combo.configure(values=titles)
+            
+            # Auto-select poker window if current is default or invalid
+            valid_curr = any(curr == t for t in titles)
+            if not valid_curr or curr == "Bet365" or curr == "":
+                for t in titles:
+                    if "NL Hold'em" in t or "Double Or Nothing" in t:
+                        self.target_window_var.set(t)
+                        self.append_log(f"[SYSTEM] Auto-selected poker window: {t}")
+                        break
+                        
         except Exception as e:
             self.append_log(f"[SYSTEM] Error refreshing window list: {e}")
+
+    def update_looseness_label(self, val):
+        self.looseness_label.configure(text=f"Pre-flop Looseness: {float(val):+.0%}")
 
     def on_source_changed(self, val):
         if val == "Live Capture":
             self.refresh_window_list()
-            # show target window field in sidebar
-            self.window_label.grid(row=7, column=0, padx=20, pady=(10, 0), sticky="w")
-            self.window_combo.grid(row=8, column=0, padx=20, pady=5, sticky="ew")
-            # shift opponent slider down
-            self.opponents_label.grid(row=9, column=0, padx=20, pady=(10, 0), sticky="w")
-            self.opponents_slider.grid(row=10, column=0, padx=20, pady=5, sticky="ew")
-            self.opp_val_label.grid(row=11, column=0, padx=20, pady=(0, 10))
-            # shift layers and state down
-            self.layers_frame.grid(row=12, column=0, padx=20, pady=(10, 0), sticky="ew")
-            self.state_frame.grid(row=14, column=0, padx=20, pady=20, sticky="ew")
-            self.sidebar.grid_rowconfigure(11, weight=0) # remove old spacer
-            self.sidebar.grid_rowconfigure(13, weight=1) # set new spacer
+            # show target window field in sidebar below looseness controls
+            self.window_label.grid(row=15, column=0, padx=20, pady=(10, 0), sticky="w")
+            self.window_combo.grid(row=16, column=0, padx=20, pady=5, sticky="ew")
+            # shift checkboxes and state down
+            self.preflop_chk.grid(row=17, column=0, padx=20, pady=5, sticky="w")
+            self.math_chk.grid(row=18, column=0, padx=20, pady=5, sticky="w")
+            self.bluff_chk.grid(row=19, column=0, padx=20, pady=5, sticky="w")
+            self.state_frame.grid(row=20, column=0, padx=20, pady=20, sticky="ew")
+            self.sidebar.grid_rowconfigure(21, weight=1) # set new spacer
         else:
             # hide target window field
             self.window_label.grid_forget()
             self.window_combo.grid_forget()
-            # restore opponent slider row positions
-            self.opponents_label.grid(row=7, column=0, padx=20, pady=(10, 0), sticky="w")
-            self.opponents_slider.grid(row=8, column=0, padx=20, pady=5, sticky="ew")
-            self.opp_val_label.grid(row=9, column=0, padx=20, pady=(0, 10))
-            # restore layers and state positions
-            self.layers_frame.grid(row=10, column=0, padx=20, pady=(10, 0), sticky="ew")
-            self.state_frame.grid(row=12, column=0, padx=20, pady=20, sticky="ew")
-            self.sidebar.grid_rowconfigure(13, weight=0) # remove old spacer
-            self.sidebar.grid_rowconfigure(11, weight=1) # set new spacer
+            # restore positions
+            self.preflop_chk.grid(row=15, column=0, padx=20, pady=5, sticky="w")
+            self.math_chk.grid(row=16, column=0, padx=20, pady=5, sticky="w")
+            self.bluff_chk.grid(row=17, column=0, padx=20, pady=5, sticky="w")
+            self.state_frame.grid(row=18, column=0, padx=20, pady=20, sticky="ew")
+            self.sidebar.grid_rowconfigure(19, weight=1) # restore spacer
 
-    def on_model_changed(self, choice):
-        self.decision_engine.set_active_model(choice)
-        self.append_log(f"[Decision] Switched active decision engine to: {choice}")
-        if choice == "XGBoost Mixed (Pro + Human)":
-            self.ratio_label.pack(anchor="w", pady=(10, 0))
-            self.ratio_slider.pack(fill="x", pady=5)
-        else:
-            try:
-                self.ratio_label.pack_forget()
-                self.ratio_slider.pack_forget()
-            except Exception:
-                pass
+    def on_model_changed(self, val):
+        self.decision_engine.set_active_model(val)
+        self.append_log(f"[SYSTEM] Switched decision model to: {val}")
 
-    def on_ratio_slider_changed(self, val):
-        self.decision_engine.mixed_ratio = float(val)
-        pro_pct = int((1.0 - val) * 100)
-        human_pct = int(val * 100)
-        self.ratio_label.configure(text=f"Mix: {pro_pct}% Pro / {human_pct}% Human")
+    def quick_start_live(self):
+        self.append_log("[SYSTEM] Executing Auto-Live Quick Start...")
+        
+        # 1. Set mode to Automatic Play
+        self.mode_var.set("Automatic Play")
+        
+        # 2. Set source to Live Capture
+        self.source_var.set("Live Capture")
+        self.on_source_changed("Live Capture") # Trigger layout shifts and window list refresh
+        
+        # 3. Search for the window matching the pattern
+        try:
+            # Refresh list of visible windows
+            wins = get_visible_windows_with_pids()
+            matched_title = None
+            
+            # Print search logs to guide the user
+            self.append_log(f"[SYSTEM] Scanning {len(wins)} active windows...")
+            
+            # Filter windows that look like poker tables or clients
+            poker_wins = []
+            for pid, hwnd, title in wins:
+                t_lower = title.lower()
+                # Count various types of pipe/vertical bar characters (standard, box-drawing, full-width)
+                pipes = title.count('|') + title.count('│') + title.count('｜')
+                
+                # Check for table keywords
+                is_table = any(k in t_lower for k in ["hold'em", "omaha", "no limit", "pot limit", "nl", "pl", "ante", "double or nothing", "niveau", "table"])
+                # Check for blind fraction like 50/100 or 0.10/0.20
+                has_blind_fraction = bool(re.search(r'\d+/\d+', title))
+                
+                is_lobby = "bet365" in t_lower or "poker" in t_lower
+                
+                if is_table or has_blind_fraction or is_lobby or pipes > 0:
+                    poker_wins.append({
+                        'pid': pid,
+                        'hwnd': hwnd,
+                        'title': title,
+                        'pipes': pipes,
+                        'is_table': is_table or has_blind_fraction or pipes >= 3,
+                        'is_lobby': is_lobby and not (is_table or has_blind_fraction)
+                    })
+            
+            # Print found poker-related windows for debugging
+            for w in poker_wins:
+                self.append_log(f"  Candidate: '{w['title']}' (pipes: {w['pipes']}, table_match: {w['is_table']})")
+                
+            # Selection Strategy:
+            # 1. First, search for a high-confidence TABLE window (is_table=True and pipes >= 2)
+            for w in poker_wins:
+                if w['is_table'] and w['pipes'] >= 2:
+                    matched_title = f"[{w['pid']}] {w['title']}"
+                    break
+                    
+            # 2. Second, search for any TABLE window
+            if not matched_title:
+                for w in poker_wins:
+                    if w['is_table']:
+                        matched_title = f"[{w['pid']}] {w['title']}"
+                        break
+                        
+            # 3. Third, fallback to lobby window
+            if not matched_title:
+                for w in poker_wins:
+                    if w['is_lobby']:
+                        matched_title = f"[{w['pid']}] {w['title']}"
+                        break
+            
+            if matched_title:
+                self.target_window_var.set(matched_title)
+                self.append_log(f"[SYSTEM] Auto-matched & selected target window: {matched_title}")
+                
+                # 4. Start the bot if not already running
+                if not self.bot_running:
+                    self.toggle_bot()
+            else:
+                self.append_log("[ERROR] No poker table or lobby window detected.")
+                self.append_log("[SYSTEM] Listing all visible windows to debug:")
+                list_wins = wins[:20]
+                for pid, hwnd, title in list_wins:
+                    self.append_log(f"  - [{pid}] '{title}' (pipes: {title.count('|')})")
+                if len(wins) > 20:
+                    self.append_log(f"  ... and {len(wins) - 20} more windows.")
+        except Exception as e:
+            self.append_log(f"[ERROR] Auto-Live detection failed: {e}")
+
 
     def on_state_updated(self, state):
         """Callback from state machine to update the GUI status indicator."""
@@ -610,6 +769,32 @@ class PHPHelpApp(ctk.CTk):
                         except Exception:
                             pass
                             
+                        # Parse blinds from window title if possible (e.g. "50/100")
+                        try:
+                            length = ctypes.windll.user32.GetWindowTextLengthW(hwnd)
+                            if length > 0:
+                                buf = ctypes.create_unicode_buffer(length + 1)
+                                ctypes.windll.user32.GetWindowTextW(hwnd, buf, length + 1)
+                                win_title = buf.value
+                                # Try matching decimal stakes first: e.g. "0.10/0.20" or "€0.10/€0.20"
+                                blind_match = re.search(r'(?:€|\$|£)?(\d+\.\d+)/(?:€|\$|£)?(\d+\.\d+)', win_title)
+                                if blind_match:
+                                    sb = float(blind_match.group(1)) * 100.0
+                                    bb = float(blind_match.group(2)) * 100.0
+                                else:
+                                    # Fallback to integer stakes: e.g. "50/100" or "10/20"
+                                    blind_match = re.search(r'(?:€|\$|£)?(\d+)/(?:€|\$|£)?(\d+)', win_title)
+                                    if blind_match:
+                                        sb = float(blind_match.group(1))
+                                        bb = float(blind_match.group(2))
+                                        
+                                if blind_match:
+                                    if self.big_blind_var.get() != bb:
+                                        self.big_blind_var.set(bb)
+                                        self.append_log(f"[SYSTEM] Auto-parsed blinds from window title: SB={sb:.0f}, BB={bb:.0f}")
+                        except Exception as e_title:
+                            self.append_log(f"[SYSTEM] Error parsing blinds from window title: {e_title}")
+                            
                         # Get window coordinates and crop
                         left, top, width, height = get_window_rect(hwnd)
                         win_pos = (left, top)
@@ -631,7 +816,7 @@ class PHPHelpApp(ctk.CTk):
                 
                 # --- CONTINUOUS TRACKING ---
                 # Read raw state from vision
-                raw_state = self.vision.read_board_state(img)
+                raw_state = self.vision.read_board_state(img, board_size=self.board_size_var.get())
                 
                 # Check for hand reset
                 if self.table_state.detect_hand_reset(raw_state):
@@ -640,10 +825,10 @@ class PHPHelpApp(ctk.CTk):
                     
                     if not source.startswith("Mock:"):
                         try:
-                            baseline_stacks, hero_name = self.xml_tracker.get_baseline_stacks()
+                            baseline_stacks, hero_name, dealer_name = self.xml_tracker.get_baseline_stacks()
                             if baseline_stacks:
-                                self.append_log(f"[XML Tracker] Loaded baseline stacks: {baseline_stacks} (Hero: {hero_name})")
-                                self.pending_baseline_stacks = (baseline_stacks, hero_name)
+                                self.append_log(f"[XML Tracker] Loaded baseline stacks: {baseline_stacks} (Hero: {hero_name}, Dealer: {dealer_name})")
+                                self.pending_baseline_stacks = (baseline_stacks, hero_name, dealer_name)
                         except Exception as e:
                             self.append_log(f"[XML Tracker] Error loading baseline stacks: {e}")
                             self.pending_baseline_stacks = None
@@ -655,8 +840,8 @@ class PHPHelpApp(ctk.CTk):
                 
                 # Apply baseline stacks seeding on the first frame of a new hand (only for Live Capture)
                 if not source.startswith("Mock:") and self.pending_baseline_stacks:
-                    baseline_stacks, hero_name = self.pending_baseline_stacks
-                    self.table_state.seed_stacks(baseline_stacks, hero_name)
+                    baseline_stacks, hero_name, dealer_name = self.pending_baseline_stacks
+                    self.table_state.seed_stacks(baseline_stacks, hero_name, dealer_name)
                     self.pending_baseline_stacks = None
                     
                 stabilized_state = self.table_state.to_dict()
@@ -664,7 +849,7 @@ class PHPHelpApp(ctk.CTk):
                 # Update GUI visual elements continuously
                 self.after(0, self.update_telemetry_ui, stabilized_state)
                 
-                # Check if it's Hero's turn (look for active buttons)
+                # Check if it's Hero's turn (look for active buttons and verify Hero has cards dealt)
                 button_matches = self.vision.match_templates_in_roi(
                     img, self.vision.rois['buttons'], self.vision.button_templates, threshold=0.85, max_matches=1
                 )
@@ -678,16 +863,50 @@ class PHPHelpApp(ctk.CTk):
                     self.after(0, self.update_action_ui, "WAITING...", "Not Hero's turn", 0)
                     
                     # Sleep before next continuous tracking frame
-                    time.sleep(1.5 if not source.startswith("Mock:") else 5.0)
+                    time.sleep(1.0 if not source.startswith("Mock:") else 5.0)
                     continue
                     
                 # It IS our turn!
+                if self.state_machine.state != 'WAITING_FOR_TURN':
+                    time.sleep(0.5)
+                    continue
+
                 if self.state_machine.state == 'WAITING_FOR_TURN':
                     fold_btn_coord = button_matches[0][1] # relative coordinates
                     self.state_machine.turn_detected()
                     self.append_log("\n--- HERO TURN DETECTED ---")
                     
                     active_opps = [opp for opp in stabilized_state['opponents'].values() if opp.get('is_active', True)]
+                    
+                    # --- MAX THREAT VPIP/AGG AGGREGATION ---
+                    # Aligned with Bet365/iPoker HUD color thresholds:
+                    # VPIP: Tight (Blue: <18%), Normal (Green: 18-26%), Loose (Yellow: 26-35%), Maniac (Red: >35%)
+                    # AGG: Passive (Blue: <36%), Normal (Green: 36-56%), Aggressive (Yellow: 56-71%), Maniac (Red: >71%)
+                    vpip_map = {'Red': 0.45, 'Yellow': 0.30, 'Green': 0.22, 'Blue': 0.10}
+                    agg_map = {'Red': 0.85, 'Yellow': 0.63, 'Green': 0.46, 'Blue': 0.18}
+                    max_vpip = 0.0
+                    max_agg = 0.0
+                    
+                    if active_opps:
+                        for opp in active_opps:
+                            v_col = opp.get('vpip_color')
+                            a_col = opp.get('agg_color')
+                            
+                            if v_col and v_col in vpip_map:
+                                v_val = vpip_map[v_col]
+                                if v_val > max_vpip: max_vpip = v_val
+                                
+                            if a_col and a_col in agg_map:
+                                a_val = agg_map[a_col]
+                                if a_val > max_agg: max_agg = a_val
+                            
+                    if max_vpip == 0.0: max_vpip = 0.3
+                    if max_agg == 0.0: max_agg = 0.4
+                    
+                    stabilized_state['opp_vpip_norm'] = max_vpip
+                    stabilized_state['opp_agg_norm'] = max_agg
+                    # ---------------------------------------
+                    
                     self.state_machine.state_read_complete()
                     
                     # 4. State Machine: DECIDING
@@ -708,7 +927,6 @@ class PHPHelpApp(ctk.CTk):
                     if detected_opponents > 0:
                         num_opponents = detected_opponents
                         self.opponents_var.set(detected_opponents)
-                        self.after(0, self.update_slider_labels, detected_opponents)
                     else:
                         num_opponents = self.opponents_var.get()
                     num_sims = self.simulations_var.get()
@@ -719,6 +937,7 @@ class PHPHelpApp(ctk.CTk):
                         num_opponents=num_opponents,
                         num_simulations=num_sims
                     )
+                    
                     self.append_log(f"[Decision] {sim_msg}")
                     self.after(0, self.update_equity_ui, equity, sim_msg)
                     
@@ -799,23 +1018,28 @@ class PHPHelpApp(ctk.CTk):
                     elif "4_postflop_river" in source:
                         call_amount = 186.0
 
-                action, reason, bet_size = self.decision_engine.make_decision(
-                    stabilized_state['community_cards'],
-                    stabilized_state['hero_cards'],
-                    equity=equity,
-                    pot_size=pot,
-                    call_amount=call_amount,
-                    hero_stack=hero_stack,
-                    num_opponents=num_opponents,
-                    is_preflop=is_preflop,
+                stabilized_state['big_blind'] = self.big_blind_var.get()
+                
+                board_state = self.table_state.to_board_state(
+                    call_amount=call_amount, 
+                    equity=equity, 
+                    big_blind=self.big_blind_var.get()
+                )
+
+                decision_tuple = self.decision_engine.make_decision(
+                    board_state,
                     use_preflop_chart=self.layer_preflop_var.get(),
                     use_math_engine=self.layer_math_var.get(),
                     use_bluff_engine=self.layer_bluff_var.get(),
                     use_dynamic_sizing=self.layer_sizing_var.get(),
                     bet_raise_available=bet_raise_available,
-                    check_call_available=check_call_available,
-                    active_opponents=active_opps
+                    check_call_available=check_call_available
                 )
+                
+                action = decision_tuple[0]
+                reason = decision_tuple[1]
+                bet_size = decision_tuple[2]
+                ev_dict = decision_tuple[3] if len(decision_tuple) > 3 else None
                 
                 # Save parsed states for debug / diagnostics
                 self.last_table_state = stabilized_state
@@ -832,12 +1056,20 @@ class PHPHelpApp(ctk.CTk):
                         # Re-save decision with safeguard applied
                         self.last_decision = (action, reason, bet_size)
                 
+                # Record Hero's own action in the table state action history
+                if action == 'FOLD':
+                    self.table_state.action_history.append('f')
+                elif action in ['CHECK', 'CALL']:
+                    self.table_state.action_history.append('c')
+                elif action.startswith('BET') or action.startswith('RAISE'):
+                    self.table_state.action_history.append('r')
+                
                 self.append_log(f"[Decision] DECIDED BRANCH: **{action}**")
                 self.append_log(f"[Decision] Reason: {reason}")
                 if bet_size > 0:
                     self.append_log(f"[Decision] Size Allocation: {bet_size} units")
                     
-                self.after(0, self.update_action_ui, action, reason, bet_size)
+                self.after(0, self.update_action_ui, action, reason, bet_size, ev_dict)
                 self.state_machine.decision_made()
                 
                 # 5. State Machine: EXECUTING_ACTION
@@ -881,25 +1113,47 @@ class PHPHelpApp(ctk.CTk):
                 time.sleep(3.0)
 
     def update_telemetry_ui(self, state):
-        self.hero_cards_val.configure(text=f"Hero Hand: {state['hero_cards']}")
-        self.comm_cards_val.configure(text=f"Community Cards: {state['community_cards']}")
+        self.hero_cards_val.configure(text=f"{state['hero_cards']}")
+        self.comm_cards_val.configure(text=f"{state['community_cards']}")
         self.pot_val.configure(text=f"{state['pot_size']}")
         
         # 1. Update Hero Seat
         hero_widget = self.seat_widgets['hero']
         hero_stack = state['hero_stack']
+        is_hero_dealer = (state.get('dealer_idx', -1) == 0)
+        hero_text = "Hero [D]" if is_hero_dealer else "Hero"
+        
         if hero_stack > 0:
-            hero_widget['name'].configure(text="Hero")
+            hero_widget['name'].configure(text=hero_text)
             hero_widget['stack'].configure(text=f"{hero_stack} chips")
             hero_widget['frame'].configure(fg_color="#1b4d3e") # Active green background
             hero_widget['name'].configure(text_color="#2eb85c")
             hero_widget['stack'].configure(text_color="#2eb85c")
         else:
-            hero_widget['name'].configure(text="Hero")
+            hero_widget['name'].configure(text=hero_text)
             hero_widget['stack'].configure(text="0")
             hero_widget['frame'].configure(fg_color="#2d3038") # Folded
             hero_widget['name'].configure(text_color="#8a90a0")
             hero_widget['stack'].configure(text_color="#8a90a0")
+            
+        if is_hero_dealer:
+            hero_widget['frame'].configure(border_color="#ffd700", border_width=2)
+        else:
+            hero_widget['frame'].configure(border_width=0)
+            
+        # Update Hero VPIP and AGG HUD indicator colors on the dashboard
+        color_map = {
+            'Blue': "#3399ff",
+            'Green': "#2eb85c",
+            'Yellow': "#ffd700",
+            'Red': "#e55353",
+            None: "#1f222a" # Hidden
+        }
+        hero_vpip_c = state.get('hero_vpip_color')
+        hero_agg_c = state.get('hero_agg_color')
+        if 'vpip' in hero_widget and 'agg' in hero_widget:
+            hero_widget['vpip'].configure(text_color=color_map.get(hero_vpip_c, "#1f222a"))
+            hero_widget['agg'].configure(text_color=color_map.get(hero_agg_c, "#1f222a"))
             
         # 2. Update Opponent Seats
         opponents = state.get('opponents', {})
@@ -915,8 +1169,15 @@ class PHPHelpApp(ctk.CTk):
                 stack = opp['stack']
                 state_lbl = opp.get('state', 'Active')
                 is_active = opp.get('is_active', True)
+                is_dealer = (state.get('dealer_idx', -1) == i)
+                opp_text = f"[D] {name}" if is_dealer else name
                 
-                widget['name'].configure(text=name)
+                widget['name'].configure(text=opp_text)
+                
+                if is_dealer:
+                    widget['frame'].configure(border_color="#ffd700", border_width=2)
+                else:
+                    widget['frame'].configure(border_width=0)
                 
                 if state_lbl == 'All-In':
                     widget['stack'].configure(text="ALL-IN", text_color="#ffd700")
@@ -955,8 +1216,6 @@ class PHPHelpApp(ctk.CTk):
                 if 'vpip' in widget and 'agg' in widget:
                     widget['vpip'].configure(text_color="#1f222a")
                     widget['agg'].configure(text_color="#1f222a")
-                
-        self.opps_stack_val.configure(text=f"Active Opponents: {active_count}")
 
     def update_equity_ui(self, equity, sim_msg=None):
         self.equity_val.configure(text=f"{equity * 100:.1f}%")
@@ -976,7 +1235,7 @@ class PHPHelpApp(ctk.CTk):
             desc_text = parts[1].strip() if len(parts) > 1 else sim_msg
             self.equity_desc.configure(text=desc_text)
 
-    def update_action_ui(self, action, reason, bet_size):
+    def update_action_ui(self, action, reason, bet_size, ev_dict=None):
         # Format action text nicely
         text = action
         if bet_size > 0:
@@ -997,9 +1256,121 @@ class PHPHelpApp(ctk.CTk):
             
         # Clean up reason text for display
         clean_reason = reason
-        if ":" in clean_reason:
+        if "Pluribus Q-Net" in clean_reason:
+            if "Raw ->" in clean_reason:
+                clean_reason = clean_reason.split("Raw ->")[-1].replace(")", "").strip()
+                clean_reason = clean_reason.replace(",", " | ").replace(":", ": ")
+        elif ":" in clean_reason:
             clean_reason = clean_reason.split(":")[-1].strip()
         self.action_reason_lbl.configure(text=clean_reason)
+        
+        # Update EV Breakdown if available
+        if ev_dict:
+            raw_f, pen_f = ev_dict.get('raw_fold', 0), ev_dict.get('pen_fold', 0)
+            raw_c, pen_c = ev_dict.get('raw_call', 0), ev_dict.get('pen_call', 0)
+            raw_r, pen_r = ev_dict.get('raw_raise', 0), ev_dict.get('pen_raise', 0)
+            
+            prob_f = ev_dict.get('prob_fold', 0)
+            prob_c = ev_dict.get('prob_call', 0)
+            prob_r = ev_dict.get('prob_raise', 0)
+            chosen = ev_dict.get('chosen_action', '')
+            
+            fold_arrow = " <----" if "FOLD" in chosen else ""
+            call_arrow = " <----" if "CALL" in chosen or "CHECK" in chosen else ""
+            raise_arrow = " <----" if "RAISE" in chosen else ""
+            
+            self.ev_fold_lbl.configure(
+                text=f"EV(Fold): {raw_f:.2f} | {prob_f*100:.0f}%{fold_arrow}",
+                text_color="#2eb85c" if pen_f > 0 else "#e55353"
+            )
+            self.ev_call_lbl.configure(
+                text=f"EV(Call): {raw_c:.2f} | {prob_c*100:.0f}%{call_arrow}",
+                text_color="#2eb85c" if pen_c > 0 else "#e55353"
+            )
+            self.ev_raise_lbl.configure(
+                text=f"EV(Raise): {raw_r:.2f} | {prob_r*100:.0f}%{raise_arrow}",
+                text_color="#2eb85c" if pen_r > 0 else "#e55353"
+            )
+        else:
+            self.ev_fold_lbl.configure(text="EV(Fold): -", text_color="#8a90a0")
+            self.ev_call_lbl.configure(text="EV(Call): -", text_color="#8a90a0")
+            self.ev_raise_lbl.configure(text="EV(Raise): -", text_color="#8a90a0")
+            
+        # Update Context Tensors display
+        if hasattr(self, 'last_table_state') and self.last_table_state:
+            try:
+                state = self.last_table_state
+                big_blind = state.get('big_blind', 25.0)
+                
+                pos_val = state.get('position', 0)
+                
+                hero_stack = state.get('hero_stack', 0)
+                stack_bb = hero_stack / big_blind
+                
+                pot_size = state.get('pot_size', 0)
+                pot_bb = pot_size / big_blind
+                
+                eq_val = self.last_equity * 100.0 if hasattr(self, 'last_equity') else 0.0
+                
+                call_amount = state.get('call_amount', 0)
+                pot_odds = (call_amount / (pot_size + call_amount)) * 100.0 if (pot_size + call_amount) > 0 else 0.0
+                
+                num_opps = self.opponents_var.get()
+                
+                board = state.get('community_cards', [])
+                board_len = len(board)
+                if board_len == 0:
+                    street_name = "Pre-flop"
+                elif board_len == 3:
+                    street_name = "Flop"
+                elif board_len == 4:
+                    street_name = "Turn"
+                else:
+                    street_name = "River"
+                    
+                self.ctx_row1_lbl.configure(text=f"Pos: {pos_val} | Stack: {stack_bb:.1f} BB | Pot: {pot_bb:.1f} BB | Eq: {eq_val:.1f}%")
+                self.ctx_row2_lbl.configure(text=f"Odds: {pot_odds:.1f}% | Opps: {num_opps} | Str: {street_name}")
+                
+                opp_vpip = state.get('opp_vpip_norm', 0.3)
+                opp_agg = state.get('opp_agg_norm', 0.4)
+                self.ctx_row3_lbl.configure(text=f"VPIP: {opp_vpip:.2f} | AGG: {opp_agg:.2f}")
+            except Exception as e:
+                pass
+
+        # Update Decision Flow Pipeline widgets
+        if ev_dict and 'decision_path' in ev_dict:
+            path = ev_dict['decision_path']
+            for key, info in path.items():
+                if key in self.pipeline_widgets:
+                    status = info.get('status', 'Bypassed')
+                    details = info.get('details', '')
+                    
+                    widgets = self.pipeline_widgets[key]
+                    widgets['status'].configure(text=status.upper())
+                    widgets['details'].configure(text=details)
+                    
+                    if "triggered" in status.lower() or "active" in status.lower() or "overridden" in status.lower():
+                        if status == "Overridden":
+                            widgets['dot'].configure(text_color="#e55353") # Red
+                            widgets['status'].configure(text_color="#e55353")
+                        else:
+                            widgets['dot'].configure(text_color="#2eb85c") # Green
+                            widgets['status'].configure(text_color="#2eb85c")
+                        widgets['frame'].configure(fg_color="#1c251f" if status != "Overridden" else "#2b1b1b")
+                    elif "passed" in status.lower():
+                        widgets['dot'].configure(text_color="#3399ff") # Blue (Active / Checked out OK)
+                        widgets['status'].configure(text_color="#3399ff")
+                        widgets['frame'].configure(fg_color="#181a20")
+                    else: # Bypassed / Disabled
+                        widgets['dot'].configure(text_color="#4f5d75") # Gray
+                        widgets['status'].configure(text_color="#4f5d75")
+                        widgets['frame'].configure(fg_color="#13151b")
+        else:
+            for key, widgets in self.pipeline_widgets.items():
+                widgets['status'].configure(text="WAITING...", text_color="#a0a0a0")
+                widgets['details'].configure(text="-")
+                widgets['dot'].configure(text_color="#a0a0a0")
+                widgets['frame'].configure(fg_color="#181a20")
 
     def poll_keyboard_shortcuts(self):
         try:
@@ -1051,6 +1422,42 @@ class PHPHelpApp(ctk.CTk):
                 "equity": self.last_equity,
                 "decision": self.last_decision
             }
+            
+            # Reconstruct the exact 9D context vector for model telemetry
+            try:
+                state = self.last_table_state or {}
+                big_blind = state.get('big_blind', 25.0)
+                
+                position = float(state.get('hero_position', 0)) / 10.0
+                bankroll = (float(state.get('hero_stack', 0)) / big_blind) / 500.0
+                pot = (float(state.get('pot_size', 0)) / big_blind) / 500.0
+                equity = float(self.last_equity)
+                
+                call_amount = float(state.get('call_amount', 0))
+                pot_size = float(state.get('pot_size', 0))
+                pot_odds = (call_amount / (pot_size + call_amount)) if (pot_size + call_amount) > 0 else 0.0
+                
+                num_opponents = float(self.opponents_var.get()) / 10.0
+                
+                board_len = len(state.get('community_cards', []))
+                if board_len == 0:
+                    street_val = 0.0
+                elif board_len == 3:
+                    street_val = 1.0
+                elif board_len == 4:
+                    street_val = 2.0
+                else:
+                    street_val = 3.0
+                street_level = street_val / 3.0
+                
+                opp_vpip_norm = state.get('opp_vpip_norm', 0.3)
+                opp_agg_norm = state.get('opp_agg_norm', 0.4)
+                
+                context_vector = [position, bankroll, pot, equity, pot_odds, num_opponents, street_level, opp_vpip_norm, opp_agg_norm]
+                diag_data["context_vector"] = context_vector
+            except Exception as ex:
+                pass
+                
             with open(os.path.join(dir_name, "telemetry.json"), "w", encoding="utf-8") as f:
                 json.dump(diag_data, f, indent=4, default=str)
                 

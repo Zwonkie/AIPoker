@@ -7,7 +7,9 @@ class PokerModelInterface(ABC):
                        is_preflop: bool, use_preflop_chart: bool, use_math_engine: bool,
                        use_bluff_engine: bool, use_dynamic_sizing: bool,
                        bet_raise_available: bool, check_call_available: bool,
-                       active_opponents: list = None) -> tuple:
+                       active_opponents: list = None,
+                       table_state_dict: dict = None,
+                       preflop_looseness: float = 0.0) -> tuple:
         """
         Predicts action, returning: (action, reason, bet_size)
         """
