@@ -85,6 +85,15 @@ def parse_training_log(logfile):
                         "f": int(m.group(6)),
                         "ai": int(m.group(7))
                     })
+            elif "Hero vs Seat " in line and "BB/100" in line:
+                if "exploitation" not in telemetry:
+                    telemetry["exploitation"] = []
+                m = re.search(r"Hero vs (Seat\s+\d+\s+[^:]+):\s+([\+\-]?[\d.]+)\s+BB/100", line)
+                if m:
+                    telemetry["exploitation"].append({
+                        "name": m.group(1).strip(),
+                        "bb100": float(m.group(2))
+                    })
             elif "%" in line and ("<20%" in line or "20-40%" in line or "40-60%" in line or "60-80%" in line or ">80%" in line):
                 parts = [p.strip() for p in line.split("|") if p.strip()]
                 if len(parts) >= 10:

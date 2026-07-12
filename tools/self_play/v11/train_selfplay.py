@@ -192,7 +192,7 @@ def simulate_worker(current_hand, bb_size, equity_sims, num_hands, hero_personal
         if rec and rec.decision_points:
             records.append(rec)
             
-    return records, sim.seat_histories, sim.global_metrics
+    return records, sim.seat_histories, sim.global_metrics, sim.hero_exploitation_net
 
 def format_time(seconds):
     h = int(seconds // 3600)
@@ -206,7 +206,8 @@ def format_time(seconds):
 
 def print_dashboard(hands_done, total_hands, elapsed, hands_per_sec, train_loss, val_loss,
                     seat_profits, seat_vpips, seat_aggs, epoch, personality, bootstrap_alpha,
-                    training_samples, total_hands_simulated, seat_extra_stats, global_metrics, telemetry=None):
+                    training_samples, total_hands_simulated, seat_extra_stats, global_metrics, 
+                    telemetry=None, global_exploitation_net=None):
     """Prints a clear, V8 multi-personality training dashboard with telemetry."""
     pct = (hands_done / max(1, total_hands)) * 100
     eta = ((total_hands - hands_done) / max(1, hands_per_sec)) if hands_per_sec > 0 else 0  # Calculate Phase
@@ -257,6 +258,16 @@ def print_dashboard(hands_done, total_hands, elapsed, hands_per_sec, train_loss,
         f"|  Global Post-Flop Avg Active Players: {avg_players:<4.2f}                                             |",
         "+----------------------------------------------------------------------------------------+"
     ])
+    
+    if global_exploitation_net is not None:
+        lines.extend([
+            "|  EXPLOITATION SCOREBOARD (Hero Net vs Opponent):                                       |",
+        ])
+        for s in range(1, 6):
+            net = global_exploitation_net.get(s, 0.0)
+            bb100_net = (net / max(1.0, total_hands_simulated)) * 10.0
+            lines.append(f"|  - Hero vs Seat {s} {seat_labels[s]:<16}: {bb100_net:>+8.1f} BB/100                                     |")
+        lines.append("+----------------------------------------------------------------------------------------+")
     
     if telemetry is not None:
         stats_dict = telemetry.get_matrix_stats()
@@ -356,7 +367,7 @@ def run_training(personality, num_hands=100000, batch_size=256, epochs_per_batch
                  save_name=None, resume_path=None, initial_hands_done=0,
                  mid_flight_diagnostics_interval=10000):
     if save_name is None:
-        save_name = f"expert_v8_{personality}.pth"
+        save_name = f"expert_v11_{personality}.pth"
         
     print("=" * 60)
     print("  SELF-PLAY RL TRAINING SYSTEM (PLURIBUS V8)")
@@ -402,12 +413,15 @@ def run_training(personality, num_hands=100000, batch_size=256, epochs_per_batch
         print("WARNING: V7 baseline weights not found. Initializing random weights.")
         
     # 2. Paths to league personality models for opponents
-    maniac_path = os.path.join(weights_dir, 'expert_v8_maniac.pth')
-    nit_path = os.path.join(weights_dir, 'expert_v8_nit.pth')
-    sticky_path = os.path.join(weights_dir, 'expert_v8_sticky.pth')
+    maniac_path = os.path.join(weights_dir, 'expert_v11_maniac.pth')
+    nit_path = os.path.join(weights_dir, 'expert_v11_nit.pth')
+    sticky_path = os.path.join(weights_dir, 'expert_v11_sticky.pth')
     past_path = os.path.join(weights_dir, 'v8_past_checkpoint.pth')
     
     # CSV logger
+    global_metrics = {'flop_players': 0, 'flop_count': 0}
+    global_exploitation_net = {i: 0.0 for i in range(1, 6)}
+    
     log_dir = os.path.dirname(__file__)
     log_path = os.path.join(log_dir, f'training_log_{personality}.csv')
     mode = 'a' if initial_hands_done > 0 else 'w'
@@ -520,10 +534,12 @@ def run_training(personality, num_hands=100000, batch_size=256, epochs_per_batch
             batch_records = []
             recent_vpip = {s: [] for s in range(6)}
             recent_agg = {s: [] for s in range(6)}
-            for res, worker_hist, worker_extra in results:
+            for res, worker_hist, worker_extra, worker_exploitation in results:
                 batch_records.extend(res)
                 global_metrics['flop_players'] += worker_extra.get('flop_players', 0)
                 global_metrics['flop_count'] += worker_extra.get('flop_count', 0)
+                for s in range(1, 6):
+                    global_exploitation_net[s] += worker_exploitation.get(s, 0.0)
                 for s in range(6):
                     seat_cumulative_profits[s] += worker_hist[s]['profit']
                     recent_vpip[s].extend(worker_hist[s]['vpip'])
@@ -727,7 +743,7 @@ def run_training(personality, num_hands=100000, batch_size=256, epochs_per_batch
                 training_samples=total_training_samples,
                 total_hands_simulated=total_hands_simulated,
                 seat_extra_stats=seat_extra_stats, global_metrics=global_metrics,
-                telemetry=telemetry
+                telemetry=telemetry, global_exploitation_net=global_exploitation_net
             )
             
         # Save final personality model checkpoint

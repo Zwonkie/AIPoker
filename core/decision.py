@@ -11,17 +11,17 @@ class PokerDecisionEngine:
         # Only loading V8/V9 supported architectures
         self.models = {
             'Herocules (v8 Self-Play)': ModelEngine(expert_name="expert_v8_selfplay.pth"),
-            'Herocules (v8 Nit)': ModelEngine(expert_name="expert_v8_nit.pth"),
-            'Herocules (v8 Maniac)': ModelEngine(expert_name="expert_v8_maniac.pth"),
-            'Herocules (v8 Sticky)': ModelEngine(expert_name="expert_v8_sticky.pth"),
+            'Herocules (v11 Nit)': ModelEngine(expert_name="expert_v11_nit.pth", is_v11=True),
+            'Herocules (v11 Maniac)': ModelEngine(expert_name="expert_v11_maniac.pth", is_v11=True),
+            'Herocules (v11 Sticky)': ModelEngine(expert_name="expert_v11_sticky.pth", is_v11=True),
             'Herocules (v9 Main)': ModelEngine(expert_name="expert_v9_main.pth"),
             'Herocules (v10 Main)': ModelEngine(expert_name="v10_100k_main.pt"),
             'v10_100k_main.pt': ModelEngine(expert_name="v10_100k_main.pt"),
             'v10_50k_main.pt': ModelEngine(expert_name="v10_50k_main.pt"),
             'V10 100k Final': ModelEngine(expert_name="expert_v8_main.pth"),
-            'V10 Maniac': ModelEngine(expert_name="expert_v8_maniac.pth"),
-            'V10 Nit': ModelEngine(expert_name="expert_v8_nit.pth"),
-            'V10 Sticky': ModelEngine(expert_name="expert_v8_sticky.pth"),
+            'V11 Maniac': ModelEngine(expert_name="expert_v11_maniac.pth", is_v11=True),
+            'V11 Nit': ModelEngine(expert_name="expert_v11_nit.pth", is_v11=True),
+            'V11 Sticky': ModelEngine(expert_name="expert_v11_sticky.pth", is_v11=True),
             'Herocules (v11 Main)': ModelEngine(expert_name="expert_v11_main.pth", is_v11=True),
         }
         self.active_model_name = 'Herocules (v11 Main)'

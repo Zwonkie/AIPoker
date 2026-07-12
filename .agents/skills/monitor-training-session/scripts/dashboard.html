@@ -182,6 +182,19 @@
             </tbody>
         </table>
 
+        <div class="section-title">Exploitation Scoreboard (Hero Net vs Opponents)</div>
+        <table>
+            <thead>
+                <tr>
+                    <th>Opponent Name</th>
+                    <th>Hero Net BB/100</th>
+                </tr>
+            </thead>
+            <tbody id="table-exploitation">
+                <!-- Rendered by JS -->
+            </tbody>
+        </table>
+
         <div class="section-title">Equity Action Matrix</div>
         <table>
             <thead>
@@ -258,6 +271,21 @@
                         </tr>
                     `;
                 });
+                
+                // Render Exploitation Scoreboard
+                const exploitationBody = document.getElementById('table-exploitation');
+                if (exploitationBody) {
+                    exploitationBody.innerHTML = '';
+                    (data.exploitation || []).forEach(row => {
+                        const bb100Class = row.bb100 > 0 ? 'positive' : (row.bb100 < 0 ? 'negative' : '');
+                        exploitationBody.innerHTML += `
+                            <tr>
+                                <td><strong>${row.name}</strong></td>
+                                <td class="${bb100Class}">${row.bb100 > 0 ? '+' : ''}${row.bb100.toFixed(1)}</td>
+                            </tr>
+                        `;
+                    });
+                }
 
                 // Render Equity Matrix
                 const equityBody = document.getElementById('table-equity');

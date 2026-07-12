@@ -112,6 +112,7 @@ class SixMaxSimulator:
             'raises': 0, 'folds': 0, 'all_ins': 0
         } for s in range(6)}
         self.global_metrics = {'flop_players': 0, 'flop_count': 0}
+        self.hero_exploitation_net = {i: 0.0 for i in range(1, 6)}
 
     def _get_starting_stack(self, current_hand):
         """Curriculum stack sizing logic based on hand count."""
@@ -746,13 +747,27 @@ class SixMaxSimulator:
             for w in winners:
                 win_shares[w] = share
                 
-        # Record preflop VPIP entry histories and accumulate profits
         for p in range(6):
             if preflop_had_decision[p]:
                 self.seat_histories[p]['vpip'].append(1.0 if vpip_this_hand[p] else 0.0)
                 if len(self.seat_histories[p]['vpip']) > 50:
                     self.seat_histories[p]['vpip'].pop(0)
             self.seat_histories[p]['profit'] += win_shares[p] - committed[p]
-                
+            
+        # Calculate pairwise exchange for Exploitation Scoreboard
+        net_profits = [win_shares[p] - committed[p] for p in range(6)]
+        total_gains = sum(np for np in net_profits if np > 0)
+        
+        if total_gains > 0:
+            for p_lose in range(6):
+                if net_profits[p_lose] < 0:
+                    for p_win in range(6):
+                        if net_profits[p_win] > 0:
+                            transfer = abs(net_profits[p_lose]) * (net_profits[p_win] / total_gains)
+                            if p_lose == 0 and p_win != 0:
+                                self.hero_exploitation_net[p_win] -= transfer
+                            elif p_win == 0 and p_lose != 0:
+                                self.hero_exploitation_net[p_lose] += transfer
+                                
         record.final_hero_profit = win_shares[0] - committed[0]
         return record
