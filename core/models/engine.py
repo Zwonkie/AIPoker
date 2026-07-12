@@ -7,9 +7,15 @@ class ModelEngine:
     Wrapper around pure PyTorch neural networks for inference.
     Exclusively manages V8/V9 model architectures (PokerEVModelV4) after older models were pruned.
     """
-    def __init__(self, expert_name: str, device: str = 'cpu'):
+    def __init__(self, expert_name: str, device: str = 'cpu', is_v11: bool = False):
         self.device = torch.device(device)
-        self.model = PokerEVModelV4().to(self.device)
+        self.is_v11 = is_v11
+        
+        if self.is_v11:
+            from core.models.v11.poker_transformer_v11 import PokerEVModelV4 as PokerEVModelV11
+            self.model = PokerEVModelV11().to(self.device)
+        else:
+            self.model = PokerEVModelV4().to(self.device)
         
         # weights are in core/weights
         base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))

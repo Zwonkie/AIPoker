@@ -38,7 +38,7 @@ class HandRecordV4:
         
     def add_decision(self, step, street, board, hero_position, pot_size, big_blind,
                      call_amount, hero_stack, active_opponents_mask, opponents_stacks,
-                     action_history, equity, action_taken, chips_committed_before):
+                     action_history, equity, action_taken, chips_committed_before, target_evs):
         """Record a single decision point snapshot."""
         self.decision_points.append({
             'step': step,
@@ -54,7 +54,9 @@ class HandRecordV4:
             'action_history': list(action_history),
             'equity': equity,
             'action': action_taken,
-            'committed_before': chips_committed_before
+            'is_all_in': False,
+            'committed_before': chips_committed_before,
+            'target_evs': list(target_evs)
         })
         
     def get_training_samples(self):
@@ -199,7 +201,49 @@ class SixMaxSimulator:
             
         return max(available_evs, key=available_evs.get)
 
-    # Analytical EVs removed in favor of True Monte Carlo Returns
+    def _calculate_mc_target_evs(self, equity, pot, to_call, hero_stack, street_idx, active_opponents, board_str):
+        """Monte Carlo Target EV evaluation using exact opponent profile simulations."""
+        ev_fold = 0.0
+        
+        # Call EV calculation
+        pot_after_call = pot + to_call
+        ev_call = equity * pot_after_call - to_call
+        
+        # Raise EV calculation
+        raise_size = min(pot * 0.75, hero_stack)
+        raise_size = max(raise_size, to_call + self.bb_size)
+        raise_size = min(raise_size, hero_stack)
+        
+        raise_increment = raise_size - to_call
+        new_pot = pot + raise_size + raise_increment
+        pot_odds = raise_increment / max(1.0, new_pot)
+        
+        fold_probs = []
+        for opp in active_opponents:
+            bot = opp['bot']
+            opp_stack = opp['stack']
+            opp_cards = opp['cards']
+            opp_equity = self._calculate_equity(opp_cards, board_str, 1)
+            
+            f_count = 0
+            for _ in range(10):
+                if street_idx == 0:
+                    d = bot.decide_preflop(opp_equity, pot_odds)
+                else:
+                    d = bot.decide_postflop(opp_equity, pot_odds, new_pot, opp_stack, street_idx)
+                if d == 'fold':
+                    f_count += 1
+            fold_probs.append(f_count / 10.0)
+            
+        p_all_fold = 1.0
+        for p in fold_probs:
+            p_all_fold *= p
+            
+        # Showdown EV if called
+        ev_raise_if_called = equity * (pot + 2.0 * raise_size - to_call) - raise_size
+        ev_raise = p_all_fold * pot + (1.0 - p_all_fold) * ev_raise_if_called
+        
+        return [ev_fold, ev_call, ev_raise]
 
     def _hero_decide(self, equity, pot_size, call_amount, hero_stack, num_opponents, 
                      is_preflop, hand_cards=None, table_state_dict=None):
@@ -216,7 +260,27 @@ class SixMaxSimulator:
         
         if roll < 0.05 + model_prob and self.hero_model is not None:
             try:
-                return self._query_model_decide(self.hero_model, hand_cards, equity, pot_size, call_amount, hero_stack, num_opponents, table_state_dict)
+                decision = self._query_model_decide(self.hero_model, hand_cards, equity, pot_size, call_amount, hero_stack, num_opponents, table_state_dict)
+                
+                # Action Forcing for Hero Personality Training
+                hero_vpip = sum(self.seat_histories[0]['vpip']) / max(1, len(self.seat_histories[0]['vpip']))
+                hero_agg = sum(self.seat_histories[0]['agg']) / max(1, len(self.seat_histories[0]['agg']))
+                
+                if self.hero_personality == 'maniac':
+                    if hero_agg < 0.60 and random.random() < 0.50:
+                        return 'raise'
+                    if hero_vpip < 0.65 and is_preflop and random.random() < 0.50:
+                        return random.choice(['call', 'raise'])
+                elif self.hero_personality == 'nit':
+                    if hero_vpip > 0.15 and is_preflop and random.random() < 0.80:
+                        return 'fold'
+                elif self.hero_personality == 'sticky':
+                    if hero_vpip < 0.50 and is_preflop and random.random() < 0.60:
+                        return 'call'
+                    if hero_agg > 0.20 and random.random() < 0.80 and decision == 'raise':
+                        return 'call'
+                        
+                return decision
             except Exception:
                 pass
                 
@@ -282,6 +346,20 @@ class SixMaxSimulator:
                 except Exception:
                     decision = heuristic_bot.decide_preflop(equity, pot_odds)
             
+            # Action Forcing for Opponent NNs
+            if roll >= self.bootstrap_alpha and model is not None:
+                opp_vpip = sum(self.seat_histories[seat_idx]['vpip']) / max(1, len(self.seat_histories[seat_idx]['vpip']))
+                opp_agg = sum(self.seat_histories[seat_idx]['agg']) / max(1, len(self.seat_histories[seat_idx]['agg']))
+                
+                if seat_idx == 1:  # maniac
+                    if opp_agg < 0.60 and random.random() < 0.50: decision = 'raise'
+                    if opp_vpip < 0.65 and random.random() < 0.50: decision = random.choice(['call', 'raise'])
+                elif seat_idx == 2:  # nit
+                    if opp_vpip > 0.15 and random.random() < 0.80: decision = 'fold'
+                elif seat_idx == 3:  # sticky
+                    if opp_vpip < 0.50 and random.random() < 0.60: decision = 'call'
+                    if opp_agg > 0.20 and random.random() < 0.80 and decision == 'raise': decision = 'call'
+            
             # Record VPIP stats on temporary bot profiles for HUD mapping
             opponent['bot'].record_preflop(decision)
         else:
@@ -292,6 +370,16 @@ class SixMaxSimulator:
                     decision = self._query_model_decide(model, opponent['cards'], equity, pot_size, pot_odds * pot_size, stack, opponent['num_opps'], table_state_dict)
                 except Exception:
                     decision = heuristic_bot.decide_postflop(equity, pot_odds, pot_size, stack, street_idx)
+            
+            # Action Forcing for Opponent NNs
+            if model is not None:
+                opp_vpip = sum(self.seat_histories[seat_idx]['vpip']) / max(1, len(self.seat_histories[seat_idx]['vpip']))
+                opp_agg = sum(self.seat_histories[seat_idx]['agg']) / max(1, len(self.seat_histories[seat_idx]['agg']))
+                
+                if seat_idx == 1:  # maniac
+                    if opp_agg < 0.60 and random.random() < 0.50: decision = 'raise'
+                elif seat_idx == 3:  # sticky
+                    if opp_agg > 0.20 and random.random() < 0.80 and decision == 'raise': decision = 'call'
             
             opponent['bot'].record_postflop(decision)
             
@@ -311,6 +399,15 @@ class SixMaxSimulator:
         active = [True] * 6
         committed = [0.0] * 6
         folded = [False] * 6
+        
+        # Phase 4: Dynamic Active Players (> 50,000 hands)
+        if current_hand > 50000:
+            num_to_fold = random.choices([0, 1, 2, 3, 4], weights=[0.40, 0.25, 0.20, 0.10, 0.05], k=1)[0]
+            if num_to_fold > 0:
+                fold_seats = random.sample(range(1, 6), num_to_fold)
+                for s in fold_seats:
+                    active[s] = False
+                    folded[s] = True
         
         # Cards dealing
         deck = Deck()
@@ -449,11 +546,22 @@ class SixMaxSimulator:
                         preflop_had_decision[0] = True
                         active_mask = [0] * 5
                         opp_stacks = [0.0] * 5
+                        active_opps_list = []
                         for s in range(1, 6):
                             if not folded[s]:
                                 active_mask[s - 1] = 1
                                 opp_stacks[s - 1] = stacks[s]
+                                active_opps_list.append({
+                                    'bot': [o for o in opponents if o['seat'] == s][0]['bot'],
+                                    'stack': stacks[s],
+                                    'cards': hands_str[s]
+                                })
                                 
+                        target_evs = self._calculate_mc_target_evs(
+                            equity=eq, pot=pot, to_call=to_call, hero_stack=stacks[0],
+                            street_idx=street_idx, active_opponents=active_opps_list, board_str=board_str
+                        )
+                        
                         record.add_decision(
                             step=step_counter,
                             street=street_idx,
@@ -468,7 +576,8 @@ class SixMaxSimulator:
                             action_history=action_history,
                             equity=eq,
                             action_taken=-1,
-                            chips_committed_before=committed[0]
+                            chips_committed_before=committed[0],
+                            target_evs=target_evs
                         )
                         
                         decision = self._hero_decide(
@@ -519,6 +628,7 @@ class SixMaxSimulator:
                                 self.seat_histories[0]['agg'].pop(0)
                             
                         record.decision_points[-1]['action'] = action_idx
+                        record.decision_points[-1]['is_all_in'] = (stacks[0] == 0)
                         step_counter += 1
                         
                     else:  # Opponent bot

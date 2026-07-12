@@ -31,6 +31,7 @@ Particularly check:
 - **River The Nuts**: Did EV(Raise) dominate EV(Call)? If EV(Call) > EV(Raise) -> **FAIL** (Missing value).
 - **Preflop 72o vs Shove**: Is EV(Fold) optimal? (Note: Update the script if 72o is needed, otherwise check AA).
 - **Multi-Way TPTK**: Did the model overvalue TPTK in a 4-way pot?
+- **Preflop Equity Sweep**: Check the 20% equity interval groups against 1, 3, and 5 active opponents. Does the model appropriately transition from FOLD (<20%) to CALL/RAISE (>80%)? Does it tighten up (fold more marginal hands) when facing 5 opponents vs 1 opponent?
 
 ### Step 4: Generate the Artifact Report
 Do not just dump the terminal output to the user. Create a beautifully formatted markdown artifact named `model_health_report.md`.
@@ -42,3 +43,6 @@ It must include:
 
 ### Step 5: Stop & Present
 Present the artifact to the user and ask if they would like to review the architecture to fix any identified holes.
+
+#### STEP 6: Save the health report
+Save the health report in OFK under the given Version ressource folder. Example : OFK/resources/models/v10/health_report_[model_name].md

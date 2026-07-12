@@ -1,0 +1,129 @@
+{
+  "progress": "7,472",
+  "progress_percent": "7.5",
+  "epoch": "12",
+  "stage": "Phase 1: 100BB Static",
+  "eta": "22m 54s",
+  "train_loss": "17.2495",
+  "val_loss": "17.6362",
+  "entropy": "0.5286",
+  "seats": [
+    {
+      "name": "Seat 0 Hero (Main)",
+      "bb100": 24.6,
+      "vpip": 12.8,
+      "agg": 23.0,
+      "r": 927,
+      "f": 6595,
+      "ai": 46
+    },
+    {
+      "name": "Seat 1 Opp 1 (Maniac)",
+      "bb100": -59.5,
+      "vpip": 27.8,
+      "agg": 47.0,
+      "r": 2782,
+      "f": 5118,
+      "ai": 107
+    },
+    {
+      "name": "Seat 2 Opp 2 (Nit)",
+      "bb100": 34.2,
+      "vpip": 15.0,
+      "agg": 26.4,
+      "r": 897,
+      "f": 6780,
+      "ai": 35
+    },
+    {
+      "name": "Seat 3 Opp 3 (Sticky)",
+      "bb100": 16.4,
+      "vpip": 37.8,
+      "agg": 18.5,
+      "r": 1472,
+      "f": 4682,
+      "ai": 73
+    },
+    {
+      "name": "Seat 4 Opp 4 (Past Self)",
+      "bb100": -30.5,
+      "vpip": 19.5,
+      "agg": 92.5,
+      "r": 2066,
+      "f": 6041,
+      "ai": 129
+    },
+    {
+      "name": "Seat 5 Opp 5 (TAG Bot)",
+      "bb100": 14.8,
+      "vpip": 20.5,
+      "agg": 49.8,
+      "r": 2181,
+      "f": 5957,
+      "ai": 140
+    }
+  ],
+  "equity_matrix": [
+    {
+      "bracket": "<20% (Pure Air)",
+      "fold": "96.4%",
+      "call": "3.1%",
+      "raise": "0.0%",
+      "rr": "0.5%",
+      "all_in": "0.0%",
+      "avg_end_street": "0.1",
+      "net_chips": "-1201.3",
+      "won_chips": "+551",
+      "lost_chips": "-1752"
+    },
+    {
+      "bracket": "20-40% (Draws)",
+      "fold": "95.3%",
+      "call": "3.6%",
+      "raise": "0.2%",
+      "rr": "0.9%",
+      "all_in": "0.0%",
+      "avg_end_street": "0.1",
+      "net_chips": "-8011.4",
+      "won_chips": "+1128",
+      "lost_chips": "-9139"
+    },
+    {
+      "bracket": "40-60% (Marginal)",
+      "fold": "81.8%",
+      "call": "14.1%",
+      "raise": "0.1%",
+      "rr": "3.9%",
+      "all_in": "0.2%",
+      "avg_end_street": "0.4",
+      "net_chips": "-9921.4",
+      "won_chips": "+3611",
+      "lost_chips": "-13532"
+    },
+    {
+      "bracket": "60-80% (Strong)",
+      "fold": "6.4%",
+      "call": "62.8%",
+      "raise": "9.0%",
+      "rr": "16.2%",
+      "all_in": "5.6%",
+      "avg_end_street": "1.6",
+      "net_chips": "+3142.5",
+      "won_chips": "+14799",
+      "lost_chips": "-11657"
+    },
+    {
+      "bracket": ">80% (Nuts)",
+      "fold": "3.4%",
+      "call": "47.3%",
+      "raise": "21.2%",
+      "rr": "12.8%",
+      "all_in": "15.3%",
+      "avg_end_street": "2.4",
+      "net_chips": "+33092.7",
+      "won_chips": "+40860",
+      "lost_chips": "-7768"
+    }
+  ],
+  "personality": "NIT"
+}

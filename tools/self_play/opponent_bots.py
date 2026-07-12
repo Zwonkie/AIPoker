@@ -91,8 +91,11 @@ class NitBot(OpponentBot):
             return 'raise'
         elif equity >= 0.70:
             return 'call'
-        elif equity >= pot_odds and pot_odds > 0:
-            # Will call if getting correct price, but barely
+        elif pot_odds == 0:
+            return 'raise' if random.random() < 0.1 else 'call'
+        elif equity >= pot_odds + 0.15:
+            return 'call'
+        elif equity >= pot_odds:
             return 'call' if random.random() < 0.4 else 'fold'
         else:
             return 'fold'
@@ -121,10 +124,17 @@ class FishBot(OpponentBot):
         elif equity >= 0.25:
             # Calling station: calls with almost anything
             return 'call'
+        elif pot_odds == 0:
+            return 'raise' if random.random() < 0.05 else 'call'
+        elif equity >= pot_odds:
+            return 'call'
         elif random.random() < 0.05:
             # Rare bluff
             return 'raise'
         else:
+            if street == 3:
+                # Sticky calling station on the River
+                return 'fold' if random.random() < 0.05 else 'call'
             return 'fold' if random.random() < 0.6 else 'call'
 
 
@@ -146,11 +156,17 @@ class ManiacBot(OpponentBot):
             return 'call' if random.random() < 0.25 else 'fold'
     
     def decide_postflop(self, equity, pot_odds, pot_size, stack, street):
-        if equity >= 0.40:
+        if equity >= 0.60:
+            if street == 3 and random.random() < 0.10:
+                return 'call'  # Occasional trap on River
             return 'raise'
-        elif equity >= 0.20:
+        elif equity >= 0.35:
             # Aggressive: raises more than calls
-            return 'raise' if random.random() < 0.45 else 'call'
+            return 'raise' if random.random() < 0.60 else 'call'
+        elif pot_odds == 0:
+            return 'raise' if random.random() < 0.30 else 'call'
+        elif equity >= pot_odds:
+            return 'call'
         else:
             # Bluffs frequently even with air
             r = random.random()
@@ -184,9 +200,13 @@ class TAGBot(OpponentBot):
         elif equity >= 0.50:
             # Value bet or check-call
             return 'raise' if random.random() < 0.35 else 'call'
-        elif equity >= pot_odds and pot_odds > 0:
-            # Getting correct pot odds
+        elif pot_odds == 0:
+            return 'raise' if random.random() < 0.15 else 'call'
+        elif equity >= pot_odds + 0.10:
             return 'call'
+        elif equity >= pot_odds:
+            # Getting correct pot odds
+            return 'call' if random.random() < 0.8 else 'fold'
         elif random.random() < 0.10:
             # Occasional bluff on good texture
             return 'raise'

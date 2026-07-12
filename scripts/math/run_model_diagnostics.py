@@ -36,7 +36,7 @@ def create_mock_board_state(street, hero_cards, community_cards, pot, call, stac
         equity=equity
     )
 
-def run_diagnostics(model_name='Pluribus (v9 Main)'):
+def run_diagnostics(model_name='Herocules (v9 Main)'):
     print("==================================================")
     print(f"           MODEL HEALTH DIAGNOSTIC TOOL         ")
     print(f"           Target: {model_name}                 ")
@@ -74,10 +74,35 @@ def run_diagnostics(model_name='Pluribus (v9 Main)'):
         
         print(f"{name.ljust(35)} | {ev_f:<15.2f} | {ev_c:<15.2f} | {ev_r:<15.2f} | {action}")
 
+    print("\n==================================================")
+    print("           PREFLOP EQUITY SWEEP                 ")
+    print("==================================================")
+    print(f"{'Eq Group'.ljust(15)} | {'Opps'.ljust(5)} | {'Raw EV (Fold)'.ljust(15)} | {'Raw EV (Call)'.ljust(15)} | {'Raw EV (Raise)'.ljust(15)} | {'Final Action'}")
+    print("-" * 85)
+    
+    # 20% Equity Intervals
+    eq_groups = [
+        ("<20% (Air)", 0.10),
+        ("20-40% (Weak)", 0.30),
+        ("40-60% (Marg)", 0.50),
+        ("60-80% (Strg)", 0.70),
+        (">80% (Nuts)", 0.90)
+    ]
+    
+    for opps in [1, 3, 5]:
+        for label, eq in eq_groups:
+            bs = create_mock_board_state("Preflop", ['Ah', 'Kd'], [], 15.0, 10.0, 1000.0, eq, opps, "Standard")
+            action, reason, bet_size, ev_dict = engine.make_decision(bs, use_math_engine=False)
+            ev_f = ev_dict.get('FOLD', 0.0)
+            ev_c = ev_dict.get('CALL', 0.0)
+            ev_r = ev_dict.get('RAISE', 0.0)
+            print(f"{label.ljust(15)} | {opps:<5} | {ev_f:<15.2f} | {ev_c:<15.2f} | {ev_r:<15.2f} | {action}")
+        print("-" * 85)
+
     print("\n[Analysis Complete]")
 
 if __name__ == '__main__':
-    target = 'Pluribus (v9 Main)'
+    target = 'Herocules (v9 Main)'
     if len(sys.argv) > 1:
         target = sys.argv[1]
     run_diagnostics(target)

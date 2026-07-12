@@ -1,6 +1,7 @@
 import os
 from core.models.engine import ModelEngine
 from core.bridge.contract_v8_v9 import ContractV8V9
+from core.bridge.v11.contract_v11 import ContractV8V9 as ContractV11
 from core.board_state import BoardState
 from core.action import PokerAction
 
@@ -9,21 +10,30 @@ class PokerDecisionEngine:
         self.game_type = game_type
         # Only loading V8/V9 supported architectures
         self.models = {
-            'Pluribus (v8 Self-Play)': ModelEngine(expert_name="expert_v8_selfplay.pth"),
-            'Pluribus (v8 Nit)': ModelEngine(expert_name="expert_v8_nit.pth"),
-            'Pluribus (v8 Maniac)': ModelEngine(expert_name="expert_v8_maniac.pth"),
-            'Pluribus (v8 Sticky)': ModelEngine(expert_name="expert_v8_sticky.pth"),
-            'Pluribus (v9 Main)': ModelEngine(expert_name="expert_v9_main.pth"),
+            'Herocules (v8 Self-Play)': ModelEngine(expert_name="expert_v8_selfplay.pth"),
+            'Herocules (v8 Nit)': ModelEngine(expert_name="expert_v8_nit.pth"),
+            'Herocules (v8 Maniac)': ModelEngine(expert_name="expert_v8_maniac.pth"),
+            'Herocules (v8 Sticky)': ModelEngine(expert_name="expert_v8_sticky.pth"),
+            'Herocules (v9 Main)': ModelEngine(expert_name="expert_v9_main.pth"),
+            'Herocules (v10 Main)': ModelEngine(expert_name="v10_100k_main.pt"),
+            'v10_100k_main.pt': ModelEngine(expert_name="v10_100k_main.pt"),
+            'v10_50k_main.pt': ModelEngine(expert_name="v10_50k_main.pt"),
+            'V10 100k Final': ModelEngine(expert_name="expert_v8_main.pth"),
+            'V10 Maniac': ModelEngine(expert_name="expert_v8_maniac.pth"),
+            'V10 Nit': ModelEngine(expert_name="expert_v8_nit.pth"),
+            'V10 Sticky': ModelEngine(expert_name="expert_v8_sticky.pth"),
+            'Herocules (v11 Main)': ModelEngine(expert_name="expert_v11_main.pth", is_v11=True),
         }
-        self.active_model_name = 'Pluribus (v9 Main)'
-        self.bridge = ContractV8V9()
+        self.active_model_name = 'Herocules (v11 Main)'
+        self.bridge_v9 = ContractV8V9()
+        self.bridge_v11 = ContractV11()
 
     def set_active_model(self, model_name: str, tree_file: str = None):
         if model_name in self.models:
             self.active_model_name = model_name
         else:
             print(f"Warning: {model_name} is not loaded or supported. Falling back to V9 Main.")
-            self.active_model_name = 'Pluribus (v9 Main)'
+            self.active_model_name = 'Herocules (v9 Main)'
 
     def make_decision(self, board_state: BoardState, 
                       use_preflop_chart: bool = True,
@@ -39,7 +49,10 @@ class PokerDecisionEngine:
             return 'FOLD', "Model not found", 0.0, {}
 
         try:
-            hole, board, ctx, act = self.bridge.to_tensors(board_state, action_history_raw)
+            if getattr(active_model, 'is_v11', False) or 'v11' in self.active_model_name.lower():
+                hole, board, ctx, act = self.bridge_v11.to_tensors(board_state, action_history_raw)
+            else:
+                hole, board, ctx, act = self.bridge_v9.to_tensors(board_state, action_history_raw)
             evs = active_model.predict_ev(hole, board, ctx, act)
         except Exception as e:
             return 'FOLD', f"Fatal decision engine crash: {e}", 0.0, {}
@@ -59,7 +72,7 @@ class PokerDecisionEngine:
 
         # 2. V9 River Air Guardrail
         if board_state.street == 'River' and board_state.equity < 0.35 and board_state.call_amount > 0:
-             if self.active_model_name == 'Pluribus (v9 Main)' and action in ('RAISE', 'ALL_IN'):
+             if self.active_model_name == 'Herocules (v9 Main)' and action in ('RAISE', 'ALL_IN'):
                   action = 'FOLD'
                   reason = "Guardrail: V9 River Air Defense (Equity too low to bluff shove)"
                   bet_size = 0.0
