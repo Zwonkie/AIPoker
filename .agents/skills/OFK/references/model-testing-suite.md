@@ -1,4 +1,4 @@
-# Standard Sensitivity Analysis Scenarios
+# Model Testing Suite
 
 **Date Recorded**: 2026-07-11
 **Related Files**: 
@@ -92,3 +92,24 @@ During model training and iteration (V4, V5, V6), standard sensitivity analysis 
         *   For `7d 2s`, EVs for both active decisions should be negative, making `Fold` the only profitable action.
         *   For `Ah As`, EVs for `Raise` and `Call` should be heavily positive.
         *   This confirms the transformer's preflop card token embeddings have successfully mapped cards into correct relative equity representations during training.
+
+### Scenario F: The River Pure Air Bluff (Bluff Collapse Check)
+*   **State Configuration**:
+    *   **Street**: River
+    *   **Hero Hand**: `2h 3d` (Pure Air)
+    *   **Board**: `As Ks Qs Js 9c`
+    *   **Pot Size**: 100 or 150 chips
+    *   **Call Amount**: 0 (First to act) or 50 (Facing bet)
+    *   **Equity**: 0.0
+*   **Expected Behavior**:
+    *   The model MUST evaluate `Fold` (EV=0 or near 0) higher than `Call` (Calling with 0 equity is mathematically impossible to be profitable).
+    *   If `Raise EV > Fold EV` when facing a bet with pure air, the model suffers from a Bluffing Collapse (hallucinated fold equity).
+
+### Scenario G: The Nutted Trap
+*   **State Configuration**:
+    *   **Street**: River
+    *   **Hero Hand**: `Ts Th` (The absolute nuts - Royal Flush)
+    *   **Board**: `As Ks Qs Js 9c`
+    *   **Opponent**: Calling Station
+*   **Expected Behavior**:
+    *   `Raise EV` should overwhelmingly dominate `Call EV`. If the model is checking or flat-calling the absolute nuts on the river against a loose player, it is missing massive value.

@@ -41,7 +41,7 @@ All memory files in the `references/` directory must follow these rules:
 
 ## 4. Memory Directory Index
 *   [Workspace Architecture Overview](file:///c:/REPO/Antigravity/AIPoker/.agents/skills/OFK/references/workspace-architecture-overview.md): High-level description of the 4-layer architecture (Dashboards -> BoardState -> DataContract -> ModelEngine) and best practices for extending simulators and models.
-*   [Standard Sensitivity Analysis Scenarios](file:///c:/REPO/Antigravity/AIPoker/.agents/skills/OFK/references/standard-sensitivity-scenarios.md): Lists test cases for 72o shoves, pot/stack sweeps, and exploit testing for all 4 personalities.
+*   [Model Testing Suite](file:///c:/REPO/Antigravity/AIPoker/.agents/skills/OFK/references/model-testing-suite.md): Comprehensive suite of critical edge-case scenarios (Pure Air Bluffs, Nutted Traps) for evaluating model health.
 *   [Decision Transformer Data Contract](file:///c:/REPO/Antigravity/AIPoker/.agents/skills/OFK/references/decision-transformer-data-contract.md): Data schema guidelines for state context variables.
 *   [Transformer Resumption Collapse Remediation](file:///c:/REPO/Antigravity/AIPoker/.agents/skills/OFK/references/transformer-resumption-collapse-remediation.md): Documents representation collapse on model training resumption and its LR mitigation.
 *   [Windows PyTorch Multiprocessing Deadlock](file:///c:/REPO/Antigravity/AIPoker/.agents/skills/OFK/references/windows-pytorch-multiprocessing-deadlock.md): Resolves PyTorch 0% CPU/GPU hang by keeping worker pools alive instead of respawning them.
@@ -55,3 +55,4 @@ All memory files in the `references/` directory must follow these rules:
 *   [V8 Sensitivity Report](file:///c:/REPO/Antigravity/AIPoker/.agents/skills/OFK/references/V8/sensitivity-report.md): Side-by-side preflop sensitivity analysis and exploitative strategy convergence results for all V8 personalities and Main Hero.
 *   [V9 Model Specifications & Improvements](file:///c:/REPO/Antigravity/AIPoker/.agents/skills/OFK/references/V9/model-specifications.md): Outlines expanded 50-hand opponent profiling windows for stable strategy estimations.
 *   [V9 River Bluffing Collapse](file:///c:/REPO/Antigravity/AIPoker/.agents/skills/OFK/references/V9/issues-and-fixes.md): Documents the target EV formula flaw causing V9 to over-bluff on the River and outlines short/long-term fixes.
+*   [V10 Model Specifications & Training Improvements](file:///c:/REPO/Antigravity/AIPoker/.agents/skills/OFK/references/V10/model-specifications.md): Details fixes for rigid opponent exploits (e.g. River over-folding) and mandates the Bluff Matrix / action entropy training telemetry.
