@@ -21,7 +21,7 @@ def parse_training_log(logfile):
 
     for i in range(len(lines) - 1, -1, -1):
         line = lines[i].strip()
-        if line.startswith("+===============") and "Train Loss" in lines[i-1] if i > 0 else False:
+        if line.startswith("+===============") and "Loss Q" in lines[i-1] if i > 0 else False:
             end_idx = i
         elif line.startswith("+===============") and "SELF-PLAY" in lines[i+1] if i < len(lines)-1 else False:
             if end_idx != -1:

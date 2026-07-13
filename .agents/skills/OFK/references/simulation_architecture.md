@@ -9,11 +9,15 @@ The environment simulates 6-Max No Limit Hold'em.
 To prevent the model from overfitting to a single playing style, we populate the table with a diverse "league" of opponents. 
 In V11, we have shifted away from rigid neural network adversaries (V10) to a fully heuristic-driven **Fuzzy Opponent Pool**. These bots use gaussian noise to slightly randomize their VPIP, AGG, and Bluff frequencies at the start of every hand to prevent the Hero from memorizing static triggers.
 - **Seat 0 (Hero)**: The active Herocules transformer model being trained.
-- **Seat 1-5**: Populated dynamically from the fuzzy opponent pool using weighted archetypes. **Crucially, in V11, the archetypes (Maniac, Nit, Calling Station, TAG) are randomly shuffled across Seats 1-5 at the start of every single hand.** This prevents the NN from overfitting to positional indices (e.g. assuming Seat 1 is always a Maniac) and forces it to strictly rely on HUD stats to classify opponents.
+- **Seat 1-5**: Populated each hand by sampling *independently* from a **weighted, disciplined-majority opponent pool** (`OPPONENT_POOL_STYLES`/`OPPONENT_POOL_WEIGHTS` in `six_max_simulator.py`): `tag 0.30 / past 0.25 / nit 0.20 / maniac 0.15 / fish 0.10`. Independent per-hand draws also break positional overfitting (the NN cannot assume "Seat 1 is always a Maniac" and must rely on HUD stats to classify opponents). The pool is deliberately ~75% disciplined / ~25% spew-fish so the Hero is **not** trained against a table that is half deliberately-bad players (which previously pulled its policy into a loose-collapse — see `V11/issues-and-fixes.md`).
   - **Maniac/LAG**: Hyper-aggressive, loose preflop, very high AGG frequency.
   - **Nit**: Extremely tight, only plays premium hands (VPIP ~11%).
-  - **Calling Station / Fish**: Plays far too many hands (VPIP ~45%) but is extremely passive.
-  - **TAG**: A baseline Tight-Aggressive opponent (VPIP ~22%, AGG ~45%).
+  - **Calling Station / Fish (Sticky)**: Plays far too many hands (VPIP ~45-50%) but is extremely passive.
+  - **TAG**: A baseline Tight-Aggressive opponent (VPIP ~22%, AGG ~45%). Static heuristic, no NN.
+  - **Past Self**: A frozen *lagged snapshot* of the training Hero, re-saved every 5,000 hands to `v11_past_checkpoint.pth` and loaded back as an opponent. Falls back to the TAG heuristic until the first snapshot of the current run exists. This is the true self-play adversary.
+
+> [!IMPORTANT]
+> **Stats are bucketed per personality, not per table seat.** Because the style occupying a seat is resampled every hand, cumulative VPIP/AGG/profit/exploitation are keyed by a fixed `STYLE_SLOT` (`0 Hero | 1 Maniac | 2 Nit | 3 Sticky | 4 Past | 5 TAG`), which matches the hard-coded dashboard row labels 1:1. Each hand builds a `seat_slot` map and routes every stat increment through it. (Earlier V11 keyed stats by table seat, which averaged all archetypes together and made every seat's HUD read an identical ~25%/43% blob — see `V11/issues-and-fixes.md`.) The archetype **action-forcing** in `_opponent_decide` (which pins Maniac/Nit/Sticky to their target ranges) applies to heuristic opponents too — it is no longer gated on an opponent NN being present.
 
 ### The Curriculum Learning Stack Sizing
 The environment slowly increases the difficulty by widening the stack depth variance across three phases:
@@ -53,13 +57,21 @@ Crucially, it also computes the mathematical **Equity** of Hero's hand against r
 ## 4. The Loss Function, Targets, & Subconscious Heads
 In V11, the loss calculation was fundamentally overhauled to solve sequence destruction and mode collapse. 
 
-### Multi-Action Target Generation (All-Action Loss)
-Instead of only penalizing the Q-value of the action the Hero *actually took*, the V11 simulator runs a real-time Monte Carlo tree search for the opponent models at every decision point. It estimates the true mathematical Expected Value of **Fold**, **Call**, and **Raise** independently.
-1. The batch of chronologically packed sequences is passed through the Transformer model.
-2. The model outputs Q-Values (Expected Value) for Fold, Call, and Raise for every step in the hand sequence.
-3. The simulator's estimated EVs for Fold, Call, and Raise become the target tensors (clipped between -100 BB and +100 BB to prevent gradient explosions).
-4. For the specific action the Hero *actually took*, the estimated EV is overridden with the actual `mc_return` (the true profit experienced at the end of the hand).
-5. A Huber Loss is calculated across **all three actions simultaneously**.
+### Q-Target Generation (All-Action Counterfactual + Realized Override)
+*(Evolved over 2026-07-13 across two fixes — see `V11/issues-and-fixes.md`. First a loose-collapse ratchet was fixed by adding a Fold baseline; then the 200k model was found to **raise everything** (0-equity air included) because the Call/Raise heads had no signal on states where those actions weren't taken. The current scheme trains all three heads.)*
+
+For each Hero decision point the target `[t_fold, t_call, t_raise]` and a **per-action loss weight** `[w_fold, w_call, w_raise]` (`target_w_seq`) are built as follows:
+1. **Go-forward MC return** for the action actually taken: `mc_return = (final_profit + committed_before) / bb` (excludes sunk cost, in Big Blinds).
+2. **Preflop tightness prior** (anti-ratchet): if the taken action is call/raise on the preflop and Hero equity is below the fair multiway share `1.15 × 1/(active_opps+1)`, `mc_return` is lowered by up to `TIGHTNESS_PENALTY_BB` (4 BB) in proportion to the equity shortfall.
+3. **Clip** every target to ±`TARGET_CLIP_BB` (**±40 BB**, tightened from ±100) to damp the fat right tail (occasionally stacking a fish) that biased "enter" Q-values upward.
+4. **Counterfactual EVs for the untaken actions**: the simulator's true-equity Monte Carlo (`_calculate_mc_target_evs`) supplies `[ev_fold≈0, ev_call, ev_raise]` in chips → BB. These are correctly **negative for weak hands** (e.g. `ev_call = equity·pot − cost = −cost` for 0-equity air), which is the "aggression on air is −EV" signal that was previously missing.
+5. **Assemble targets & weights**:
+   - **Fold head** → `0.0`, weight `1.0` (exact go-forward baseline).
+   - **Taken action** → its realized `mc_return`, weight `1.0` (ground truth).
+   - **Untaken actions** → the MC counterfactual EV, weight `COUNTERFACTUAL_WEIGHT` (**0.5** — estimates, so trusted less than realized/ground-truth targets).
+6. **Weighted Huber Loss**: `loss_q = Huber(preds, targets) * (target_w_seq * loss_mask)`, normalized by the total weight. Every head now gets a grounded target at every step: a stable Fold=0 baseline, the realized outcome for what was actually done, and a pessimistic (often negative) counterfactual for the roads not taken — closing both the loose-collapse ratchet *and* the raise-everything hallucination.
+
+The tuning constants (`TARGET_CLIP_BB`, `TIGHTNESS_PENALTY_BB`, `ENTRY_EQUITY_MARGIN`, `COUNTERFACTUAL_WEIGHT`) live at the top of `train_selfplay.py`.
 
 ### Showdown & Side Pot Resolution
 To guarantee mathematically perfect `mc_return` targets, the simulator employs a highly robust **Side Pot Slicing Algorithm** during showdown. Additionally, for terminal states reached before the river (all-in scenarios), the simulator carefully evaluates all active players against a single, shared, deterministic board runout to prevent MC evaluation fragmentation.
@@ -74,5 +86,5 @@ The Mean Squared Error (MSE) of these three heads is summed up to create the `lo
 Because the Huber Loss for Q-values dominates the gradients (scaled in Big Blinds), the auxiliary heads are artificially scaled up. The final backpropagated loss is: `Total_Loss = loss_q + 10.0 * loss_aux`.
 
 > [!IMPORTANT]
-> **The PID Target Mechanism**
-> For personality bots (`maniac`, `nit`, `sticky`), we intercept the target Q-values right before calculating the loss. We read the Hero's rolling VPIP/AGG. If the Maniac is folding too much (VPIP < 65%), we dynamically subtract massive value from the `Fold EV` target. This acts like a gravitational pull, forcing the gradient to discourage folding until the VPIP threshold is breached.
+> **Personality shaping is done via action-forcing, not loss-target interception.**
+> For personality archetypes (`maniac`, `nit`, `sticky/fish`) the simulator reads that personality's *own* rolling VPIP/AGG (from its `STYLE_SLOT` bucket) inside `_hero_decide` / `_opponent_decide` and, when it is drifting off target, **overrides the action actually taken** (e.g. forces a Maniac to raise/enter when its VPIP is too low, forces a Nit to fold). This biases the training *data distribution* toward the archetype rather than editing Q-targets. With the fold-baseline redesign above (Fold target fixed at 0), there is no loss-side "Fold EV subtraction" — any earlier description of a target-interception "PID" mechanism is obsolete and was never present in the code.

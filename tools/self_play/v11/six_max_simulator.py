@@ -73,11 +73,36 @@ class HandRecordV4:
             })
         return samples
 
+# Canonical personality -> stat-bucket slot mapping.
+# Cumulative VPIP/AGG/profit/exploitation are accumulated per PERSONALITY, not per
+# table seat, because the style occupying a given seat is reshuffled every hand.
+# The slot order matches the fixed HUD row labels in train_selfplay.print_dashboard:
+#   0 Hero(Main) | 1 Maniac | 2 Nit | 3 Sticky(fish) | 4 Past Self | 5 TAG Bot
+STYLE_SLOT = {
+    'main': 0, 'hero': 0,
+    'maniac': 1,
+    'nit': 2,
+    'fish': 3,
+    'past': 4,
+    'tag': 5,
+}
+
+# Opponent pool composition (Fix 3): weight the table toward disciplined opponents so
+# the Hero isn't training against a lineup that's half deliberately-bad players. Each
+# opponent seat samples independently; disciplined archetypes (tag/past/nit) dominate,
+# spew-fish (maniac/sticky) are the minority. All five still appear often enough to keep
+# every personality's HUD/stat bucket populated.
+OPPONENT_POOL_STYLES = ['tag', 'past', 'nit', 'maniac', 'fish']
+OPPONENT_POOL_WEIGHTS = [0.30, 0.25, 0.20, 0.15, 0.10]
+
+
 class SixMaxSimulator:
     """
     Headless 6-max NLH simulator for V8.
     Hero occupies Seat 0.
-    Seats 1-5 are populated with league personalities (Maniac, Nit, Calling Station, Past Self, TAG).
+    Seats 1-5 are populated with league personalities (Maniac, Nit, Calling Station, Past Self, TAG),
+    whose table seats are reshuffled each hand. Cumulative stats are bucketed per personality
+    (see STYLE_SLOT), so telemetry attribution is stable regardless of seating.
     """
     
     def __init__(self, bb_size=10.0, equity_sims=200, hero_personality='main',
@@ -105,13 +130,17 @@ class SixMaxSimulator:
         self.maniac_heuristic = copy.deepcopy(LAG)
         self.tag_heuristic = copy.deepcopy(TAG)
         
-        # V9 Dynamic Opponent Profiling (last 50 hands history)
-        # Track VPIP (voluntary preflop entry) and AGG (postflop bet/raise ratio)
+        # Dynamic Opponent Profiling keyed by PERSONALITY SLOT (see STYLE_SLOT), not table seat.
+        # Track VPIP (voluntary preflop entry) and AGG (postflop bet/raise ratio) per personality
+        # so stats stay attributed correctly even though seats are reshuffled every hand.
         self.seat_histories = {s: {
-            'vpip': [], 'agg': [], 'profit': 0.0,
+            'vpip_ops': 0, 'vpip_acts': 0,
+            'agg_ops': 0, 'agg_acts': 0,
+            'profit': 0.0,
             'raises': 0, 'folds': 0, 'all_ins': 0
         } for s in range(6)}
         self.global_metrics = {'flop_players': 0, 'flop_count': 0}
+        # Exploitation matrix is also indexed by personality slot on both axes.
         self.global_exploitation_net = {i: {j: 0.0 for j in range(6)} for i in range(6)}
 
     def _get_starting_stack(self, current_hand):
@@ -163,6 +192,7 @@ class SixMaxSimulator:
         
         board_cards = table_state_dict.get('board', []) if table_state_dict else []
         street_idx = table_state_dict.get('street', 0) if table_state_dict else 0
+        opp_profiles = table_state_dict.get('opponents_profiles', {}) if table_state_dict else {}
         street_map = {0: "Preflop", 1: "Flop", 2: "Turn", 3: "River"}
         street_str = street_map.get(street_idx, "Preflop")
         
@@ -183,12 +213,12 @@ class SixMaxSimulator:
             vpip_col = "Blue"
             agg_col = "Blue"
             
-            if is_active and hasattr(self, 'seat_histories') and (idx+1) in self.seat_histories:
-                v_hist = self.seat_histories[idx+1]['vpip']
-                a_hist = self.seat_histories[idx+1]['agg']
-                v_val = sum(v_hist) / len(v_hist) if len(v_hist) > 0 else 0.30
-                a_val = sum(a_hist) / len(a_hist) if len(a_hist) > 0 else 0.40
-                
+            if is_active and seat_key in opp_profiles:
+                # Use the acting hand's per-seat personality profile (correct VPIP/AGG floats).
+                prof = opp_profiles[seat_key]
+                v_val = prof.get('vpip', 0.30)
+                a_val = prof.get('agg', 0.40)
+
                 if v_val >= 0.35: vpip_col = "Red"
                 elif v_val >= 0.26: vpip_col = "Yellow"
                 elif v_val >= 0.18: vpip_col = "Green"
@@ -315,8 +345,8 @@ class SixMaxSimulator:
                 decision = self._query_model_decide(self.hero_model, hand_cards, equity, pot_size, call_amount, hero_stack, num_opponents, table_state_dict, model_state_history, hero_actions_history)
                 
                 # Action Forcing for Hero Personality Training
-                hero_vpip = sum(self.seat_histories[0]['vpip']) / max(1, len(self.seat_histories[0]['vpip']))
-                hero_agg = sum(self.seat_histories[0]['agg']) / max(1, len(self.seat_histories[0]['agg']))
+                hero_vpip = self.seat_histories[0]['vpip_acts'] / max(1, self.seat_histories[0]['vpip_ops'])
+                hero_agg = self.seat_histories[0]['agg_acts'] / max(1, self.seat_histories[0]['agg_ops'])
                 
                 if self.hero_personality == 'maniac':
                     if hero_agg < 0.60 and random.random() < 0.50:
@@ -388,12 +418,14 @@ class SixMaxSimulator:
                 except Exception:
                     decision = heuristic_bot.decide_preflop(equity, pot_odds)
             
-            # Action Forcing for Opponent NNs
-            if roll >= self.bootstrap_alpha and model is not None:
-                opp_vpip = sum(self.seat_histories[seat_idx]['vpip']) / max(1, len(self.seat_histories[seat_idx]['vpip']))
-                opp_agg = sum(self.seat_histories[seat_idx]['agg']) / max(1, len(self.seat_histories[seat_idx]['agg']))
-                
+            # Action Forcing for Opponent personalities, NN or heuristic
+            # (reads this personality's own accumulated stats).
+            if roll >= self.bootstrap_alpha:
                 style = opponent.get('style')
+                slot = STYLE_SLOT.get(style, seat_idx)
+                opp_vpip = self.seat_histories[slot]['vpip_acts'] / max(1, self.seat_histories[slot]['vpip_ops'])
+                opp_agg = self.seat_histories[slot]['agg_acts'] / max(1, self.seat_histories[slot]['agg_ops'])
+
                 if style == 'maniac':
                     if opp_agg < 0.60 and random.random() < 0.50: decision = 'raise'
                     if opp_vpip < 0.65 and random.random() < 0.50: decision = random.choice(['call', 'raise'])
@@ -414,16 +446,17 @@ class SixMaxSimulator:
                 except Exception:
                     decision = heuristic_bot.decide_postflop(equity, pot_odds, pot_size, stack, street_idx)
             
-            # Action Forcing for Opponent NNs
-            if model is not None:
-                opp_vpip = sum(self.seat_histories[seat_idx]['vpip']) / max(1, len(self.seat_histories[seat_idx]['vpip']))
-                opp_agg = sum(self.seat_histories[seat_idx]['agg']) / max(1, len(self.seat_histories[seat_idx]['agg']))
-                
-                style = opponent.get('style')
-                if style == 'maniac':
-                    if opp_agg < 0.60 and random.random() < 0.50: decision = 'raise'
-                elif style == 'fish':
-                    if opp_agg > 0.20 and random.random() < 0.80 and decision == 'raise': decision = 'call'
+            # Action Forcing for Opponent personalities, NN or heuristic
+            # (reads this personality's own accumulated stats).
+            style = opponent.get('style')
+            slot = STYLE_SLOT.get(style, seat_idx)
+            opp_vpip = self.seat_histories[slot]['vpip_acts'] / max(1, self.seat_histories[slot]['vpip_ops'])
+            opp_agg = self.seat_histories[slot]['agg_acts'] / max(1, self.seat_histories[slot]['agg_ops'])
+
+            if style == 'maniac':
+                if opp_agg < 0.60 and random.random() < 0.50: decision = 'raise'
+            elif style == 'fish':
+                if opp_agg > 0.20 and random.random() < 0.80 and decision == 'raise': decision = 'call'
             
             opponent['bot'].record_postflop(decision)
             
@@ -472,26 +505,36 @@ class SixMaxSimulator:
             num_focus = random.choice([3, 4])
             focus_seats = random.sample(range(1, 6), num_focus)
             
-        # Shuffle base opponent styles to prevent seat-index overfitting
-        base_styles = ['maniac', 'nit', 'fish', 'tag', 'tag']
-        random.shuffle(base_styles)
-        
-        # Compute VPIP / AGG from the last 50 hands running history
+        # Sample each opponent seat's personality from the weighted, disciplined-majority
+        # pool (Fix 3). Independent draws also break any seat-index overfitting.
+        base_styles = random.choices(OPPONENT_POOL_STYLES, weights=OPPONENT_POOL_WEIGHTS, k=5)
+
+        # Map each table seat to its personality stat-bucket slot for this hand.
+        # Seat 0 is always the Hero (slot 0); seats 1-5 depend on the shuffled/focus style.
+        seat_slot = {0: STYLE_SLOT['hero']}
+
+        # Compute VPIP / AGG from cumulative per-personality historic events
         opponents = []
         opponents_profiles = {}
         for s in range(1, 6):
-            v_hist = self.seat_histories[s]['vpip']
-            a_hist = self.seat_histories[s]['agg']
-            
-            v_val = sum(v_hist) / len(v_hist) if len(v_hist) > 0 else 0.30
-            a_val = sum(a_hist) / len(a_hist) if len(a_hist) > 0 else 0.40
-            
             style = 'tag'
             if s in focus_seats:
                 style = self.focus_archetype
             else:
                 style = base_styles[s-1]
-                
+
+            slot = STYLE_SLOT[style]
+            seat_slot[s] = slot
+
+            # Pull this personality's accumulated tendencies for the model's opponent context.
+            v_ops = self.seat_histories[slot]['vpip_ops']
+            v_acts = self.seat_histories[slot]['vpip_acts']
+            a_ops = self.seat_histories[slot]['agg_ops']
+            a_acts = self.seat_histories[slot]['agg_acts']
+
+            v_val = v_acts / v_ops if v_ops > 0 else 0.30
+            a_val = a_acts / a_ops if a_ops > 0 else 0.40
+
             # Temporary opponent bots to track training dashboard VPIP/AGG averages
             if style == 'maniac':
                 opp_bot = self.maniac_heuristic
@@ -502,10 +545,14 @@ class SixMaxSimulator:
             elif style == 'fish':
                 opp_bot = self.fish_heuristic
                 opp_model = self.sticky_model
-            else:
+            elif style == 'past':
+                # "Past Self": frozen former hero checkpoint (falls back to TAG heuristic).
                 opp_bot = self.tag_heuristic
                 opp_model = self.past_model
-                
+            else:  # 'tag' -> static TAG reference bot (pure heuristic, no NN)
+                opp_bot = self.tag_heuristic
+                opp_model = None
+
             opponents.append({
                 'seat': s,
                 'bot': opp_bot,
@@ -605,7 +652,8 @@ class SixMaxSimulator:
                     table_state = {
                         "board": board_str,
                         "street": street_idx,
-                        "action_history": action_history
+                        "action_history": action_history,
+                        "opponents_profiles": opponents_profiles
                     }
                     
                     if current_actor == 0:  # Hero
@@ -696,9 +744,9 @@ class SixMaxSimulator:
                             
                         # Track Hero AGG
                         if street_idx > 0:
-                            self.seat_histories[0]['agg'].append(1.0 if decision == 'raise' else 0.0)
-                            if len(self.seat_histories[0]['agg']) > 50:
-                                self.seat_histories[0]['agg'].pop(0)
+                            self.seat_histories[0]['agg_ops'] += 1
+                            if decision == 'raise':
+                                self.seat_histories[0]['agg_acts'] += 1
                             
                         record.decision_points[-1]['action'] = action_idx
                         record.decision_points[-1]['is_all_in'] = (stacks[0] == 0)
@@ -706,6 +754,7 @@ class SixMaxSimulator:
                         
                     else:  # Opponent bot
                         preflop_had_decision[current_actor] = True
+                        cur_slot = seat_slot[current_actor]  # personality stat bucket for this seat
                         opp_bot_struct = [o for o in opponents if o['seat'] == current_actor][0]
                         opp_bot_struct['num_opps'] = active_opps_count
                         
@@ -714,28 +763,28 @@ class SixMaxSimulator:
                         
                         if decision == 'fold':
                             folded[current_actor] = True
-                            self.seat_histories[current_actor]['folds'] += 1
+                            self.seat_histories[cur_slot]['folds'] += 1
                             hero_actions_histories[current_actor].append(7)
                         elif decision == 'call':
                             vpip_this_hand[current_actor] = True
                             call_amt = min(to_call, stacks[current_actor])
                             stacks[current_actor] -= call_amt
                             if stacks[current_actor] == 0:
-                                self.seat_histories[current_actor]['all_ins'] += 1
+                                self.seat_histories[cur_slot]['all_ins'] += 1
                             committed[current_actor] += call_amt
                             street_committed[current_actor] += call_amt
                             pot += call_amt
                             hero_actions_histories[current_actor].append(3)
                         else:  # raise
                             vpip_this_hand[current_actor] = True
-                            self.seat_histories[current_actor]['raises'] += 1
+                            self.seat_histories[cur_slot]['raises'] += 1
                             raise_size = min(pot * 0.75, stacks[current_actor])
                             raise_size = max(raise_size, to_call + self.bb_size)
                             raise_size = min(raise_size, stacks[current_actor])
-                            
+
                             stacks[current_actor] -= raise_size
                             if stacks[current_actor] == 0:
-                                self.seat_histories[current_actor]['all_ins'] += 1
+                                self.seat_histories[cur_slot]['all_ins'] += 1
                             committed[current_actor] += raise_size
                             street_committed[current_actor] += raise_size
                             pot += raise_size
@@ -746,9 +795,9 @@ class SixMaxSimulator:
                         
                         # Track Opponent AGG
                         if street_idx > 0:
-                            self.seat_histories[current_actor]['agg'].append(1.0 if decision == 'raise' else 0.0)
-                            if len(self.seat_histories[current_actor]['agg']) > 50:
-                                self.seat_histories[current_actor]['agg'].pop(0)
+                            self.seat_histories[cur_slot]['agg_ops'] += 1
+                            if decision == 'raise':
+                                self.seat_histories[cur_slot]['agg_acts'] += 1
                 
                 current_actor = (current_actor + 1) % 6
                 
@@ -821,24 +870,26 @@ class SixMaxSimulator:
                     win_shares[hb] += leftover / len(highest_bettors)
                 
         for p in range(6):
+            slot = seat_slot[p]
             if preflop_had_decision[p]:
-                self.seat_histories[p]['vpip'].append(1.0 if vpip_this_hand[p] else 0.0)
-                if len(self.seat_histories[p]['vpip']) > 50:
-                    self.seat_histories[p]['vpip'].pop(0)
-            self.seat_histories[p]['profit'] += win_shares[p] - committed[p]
-            
-        # Calculate pairwise exchange for Exploitation Scoreboard
+                self.seat_histories[slot]['vpip_ops'] += 1
+                if vpip_this_hand[p]:
+                    self.seat_histories[slot]['vpip_acts'] += 1
+            self.seat_histories[slot]['profit'] += win_shares[p] - committed[p]
+
+        # Calculate pairwise exchange for Exploitation Scoreboard (indexed by personality slot)
         net_profits = [win_shares[p] - committed[p] for p in range(6)]
         total_gains = sum(np for np in net_profits if np > 0)
-        
+
         if total_gains > 0:
             for p_lose in range(6):
                 if net_profits[p_lose] < 0:
                     for p_win in range(6):
                         if net_profits[p_win] > 0:
                             transfer = abs(net_profits[p_lose]) * (net_profits[p_win] / total_gains)
-                            self.global_exploitation_net[p_win][p_lose] += transfer
-                            self.global_exploitation_net[p_lose][p_win] -= transfer
+                            win_slot, lose_slot = seat_slot[p_win], seat_slot[p_lose]
+                            self.global_exploitation_net[win_slot][lose_slot] += transfer
+                            self.global_exploitation_net[lose_slot][win_slot] -= transfer
                                 
         record.final_hero_profit = win_shares[0] - committed[0]
         return record

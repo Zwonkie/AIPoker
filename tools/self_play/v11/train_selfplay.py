@@ -49,6 +49,52 @@ def map_agg_to_midpoint(a):
     elif a < 0.71: return 0.63   # Yellow
     else: return 0.85            # Red
 
+# --- Q-target shaping constants (anti loose-collapse) ---
+# TARGET_CLIP_BB: hard clip on the go-forward MC target (was 100bb). A tighter clip
+#   damps the fat right tail (occasionally stacking a fish for 100bb+) that biased the
+#   "enter" Q-values upward and drove the VPIP ratchet.
+TARGET_CLIP_BB = 40.0
+# Preflop tightness prior: voluntarily entering (call/raise) with below-break-even
+# equity has its target lowered, so weak entries fall under the fold baseline (0) and
+# get folded. Only applied preflop, where VPIP inflation originates.
+TIGHTNESS_PENALTY_BB = 4.0   # max penalty (bb) at zero equity
+ENTRY_EQUITY_MARGIN = 1.15   # required edge over the fair multiway share 1/(opps+1)
+# Weight applied to the UNTAKEN actions' counterfactual (model-free MC) EV targets.
+# The taken action (realized return) and the fold baseline keep full weight 1.0; the
+# untaken heads get a fractional weight since their targets are estimates, not ground
+# truth. This supplies the "raising/calling air is -EV" signal that a taken-action-only
+# loss omits (which caused the 200k model to hallucinate positive Raise EV everywhere).
+COUNTERFACTUAL_WEIGHT = 0.5
+
+
+def robust_torch_save(state_dict, path, retries=6, delay=0.4):
+    """Atomically and resiliently save a state_dict.
+
+    On Windows the per-batch weights file is read by worker processes while the main
+    process rewrites it, which can transiently fail with "File ... cannot be opened"
+    (this crashed a 200k continuation at 199k hands). We write to a unique temp file
+    then os.replace() (atomic) so workers never observe a half-written file, and retry
+    the operation on transient errors. A total failure warns rather than crashing the
+    run — workers simply keep reading the previous complete file for that batch.
+    """
+    tmp = f"{path}.tmp.{os.getpid()}"
+    last_err = None
+    for attempt in range(retries):
+        try:
+            torch.save(state_dict, tmp)
+            os.replace(tmp, path)  # atomic on the same filesystem
+            return True
+        except Exception as e:
+            last_err = e
+            try:
+                if os.path.exists(tmp):
+                    os.remove(tmp)
+            except Exception:
+                pass
+            time.sleep(delay * (attempt + 1))
+    print(f"WARNING: robust_torch_save could not write {path} after {retries} attempts: {last_err}")
+    return False
+
 def vectorize_hand_samples(record, max_seq_len=20):
     """Convert a HandRecordV4 into sequence tensors for V8."""
     dps = record.decision_points
@@ -66,6 +112,9 @@ def vectorize_hand_samples(record, max_seq_len=20):
     action_seq = [0] * max_seq_len
     action_taken_seq = [0] * max_seq_len
     target_evs_seq = [[0.0, 0.0, 0.0] for _ in range(max_seq_len)]
+    # Per-action loss weights: which of [fold, call, raise] Q-heads get a gradient at
+    # each step. We always train the fold baseline + the action actually taken (Fix 1).
+    target_w_seq = [[0.0, 0.0, 0.0] for _ in range(max_seq_len)]
     loss_mask = [0.0] * max_seq_len
     
     # Aux labels
@@ -79,7 +128,7 @@ def vectorize_hand_samples(record, max_seq_len=20):
     bb = dps[0]['big_blind'] if dps else 10.0
     final_profit = record.final_hero_profit
     
-    start_idx = 0
+    start_idx = max_seq_len - len(dps)
     
     for i, dp in enumerate(dps):
         idx = start_idx + i
@@ -135,26 +184,51 @@ def vectorize_hand_samples(record, max_seq_len=20):
         action_seq[idx] = act_map.get(dp['action'], 0)
         action_taken_seq[idx] = dp['action']
         
-        # Multi-Action Targets: [ev_fold, ev_call, ev_raise] from the simulator
-        # These come back in RAW CHIPS. We must scale them to BIG BLINDS!
-        t_evs = [ev / bb for ev in list(dp.get('target_evs', [0.0, 0.0, 0.0]))]
-        
-        # Override the true MC return for the action actually taken
+        # Go-forward Monte-Carlo return for the action actually taken (excludes sunk cost).
+        action_taken = dp['action']  # 0=fold, 1=call, 2=raise
         mc_return = (final_profit + dp['committed_before']) / bb
-        if dp['action'] in [0, 1, 2]:
-            t_evs[dp['action']] = mc_return
-            
-        # Clip Target EVs to avoid massive gradient updates
-        t_evs = [max(-100.0, min(100.0, ev)) for ev in t_evs]
-            
+
+        # --- Fix 2: preflop tightness prior to kill the loose-collapse ratchet ---
+        # Entering (call/raise) preflop with below-break-even equity has its target
+        # lowered, pushing weak voluntary entries under the fold baseline (0).
+        if action_taken in (1, 2) and dp['street'] == 0:
+            active_opps = max(1, int(sum(dp['active_opponents_mask'])))
+            break_even = 1.0 / (active_opps + 1)
+            floor = break_even * ENTRY_EQUITY_MARGIN
+            if dp['equity'] < floor:
+                shortfall = (floor - dp['equity']) / floor  # in [0, 1]
+                mc_return -= TIGHTNESS_PENALTY_BB * shortfall
+
+        # Tighter clip (was +/-100bb) to damp the fat tail that biased "enter" upward.
+        def _clip(ev):
+            return max(-TARGET_CLIP_BB, min(TARGET_CLIP_BB, ev))
+        mc_return = _clip(mc_return)
+
+        # Model-free counterfactual EVs from the simulator's true-equity Monte Carlo
+        # (`_calculate_mc_target_evs`), scaled chips -> BB and clipped. These are correctly
+        # NEGATIVE for weak hands (e.g. calling/raising 0-equity air), which is exactly the
+        # signal a taken-action-only loss omitted.
+        mc_evs = [_clip(ev / bb) for ev in dp.get('target_evs', [0.0, 0.0, 0.0])]
+
+        # --- All-action targets with realized-return override ---
+        # Fold head -> 0 (exact go-forward baseline, full weight).
+        # Taken action -> its realized MC return (ground truth, full weight).
+        # Untaken actions -> model-free counterfactual EV (estimate, fractional weight).
+        t_evs = [0.0, mc_evs[1], mc_evs[2]]
+        t_evs[action_taken] = mc_return
+        t_w = [1.0, COUNTERFACTUAL_WEIGHT, COUNTERFACTUAL_WEIGHT]
+        t_w[0] = 1.0                 # fold baseline always full weight
+        t_w[action_taken] = 1.0      # taken action always full weight
+
         target_evs_seq[idx] = t_evs
+        target_w_seq[idx] = t_w
         loss_mask[idx] = 1.0
         
         opp_bluff_seq[idx] = float(dp.get('opp_bluff_prob', 0.0))
         opp_strength_seq[idx] = float(dp.get('opp_strength', 0.0))
         self_equity_seq[idx] = float(dp['equity'])
         
-    return [(hole_ints, board_seq, context_seq, action_seq, action_taken_seq, target_evs_seq, loss_mask, opp_bluff_seq, opp_strength_seq, self_equity_seq)]
+    return [(hole_ints, board_seq, context_seq, action_seq, action_taken_seq, target_evs_seq, loss_mask, opp_bluff_seq, opp_strength_seq, self_equity_seq, target_w_seq)]
 
 def simulate_worker(current_hand, bb_size, equity_sims, num_hands, hero_personality,
                     active_model_path=None, maniac_model_path=None,
@@ -456,7 +530,11 @@ def run_training(personality, num_hands=100000, batch_size=256, epochs_per_batch
     nit_path = os.path.join(weights_dir, 'expert_v11_nit.pth')
     sticky_path = os.path.join(weights_dir, 'expert_v11_sticky.pth')
     past_path = os.path.join(weights_dir, 'v11_past_checkpoint.pth')
-    
+    # Fresh run: drop any stale past-self checkpoint so "Past Self" only ever plays a
+    # lagged snapshot of the CURRENT run (not leftovers from a previous training).
+    if initial_hands_done == 0 and os.path.exists(past_path):
+        os.remove(past_path)
+
     # CSV logger
     global_metrics = {'flop_players': 0, 'flop_count': 0}
     global_exploitation_net = {i: {j: 0.0 for j in range(6)} for i in range(6)}
@@ -485,6 +563,10 @@ def run_training(personality, num_hands=100000, batch_size=256, epochs_per_batch
     seat_cumulative_profits = [0.0] * 6
     current_seat_vpips = [0.30] * 6
     current_seat_aggs = [0.40] * 6
+    global_vpip_ops = [0] * 6
+    global_vpip_acts = [0] * 6
+    global_agg_ops = [0] * 6
+    global_agg_acts = [0] * 6
     seat_extra_stats = {s: {'raises': 0, 'folds': 0, 'all_ins': 0} for s in range(6)}
     global_metrics = {'flop_players': 0, 'flop_count': 0}
     total_hands_simulated = 0
@@ -524,7 +606,7 @@ def run_training(personality, num_hands=100000, batch_size=256, epochs_per_batch
                 checkpoint_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', '..', 'core', 'weights'))
                 os.makedirs(checkpoint_dir, exist_ok=True)
                 checkpoint_path = os.path.join(checkpoint_dir, save_name)
-                torch.save(model.state_dict(), checkpoint_path)
+                robust_torch_save(model.state_dict(), checkpoint_path)
                 
                 import subprocess
                 diag_script = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', '..', 'scripts', 'math', 'run_model_diagnostics.py'))
@@ -547,21 +629,22 @@ def run_training(personality, num_hands=100000, batch_size=256, epochs_per_batch
             
             # Save active model weights temporarily for workers to read
             active_model_path = os.path.join(log_dir, f'temp_active_model_{personality}.pth')
-            torch.save(model.state_dict(), active_model_path)
+            robust_torch_save(model.state_dict(), active_model_path)
             
             # Save past self checkpoint every 5,000 hands
             if hands_done > 0 and (hands_done // 5000) > ((hands_done - len(batch_records)) // 5000):
-                torch.save(model.state_dict(), past_path)
+                robust_torch_save(model.state_dict(), past_path)
                 
             # Worker args
             hands_per_worker = max(1, batch_hands // num_workers)
             
-            # Opponent model paths: DISABLED for fresh V11 retraining.
-            # Using fuzzy heuristic bots only (no NN opponent counterparts).
+            # Opponent model paths: personality NNs disabled for fresh V11 retraining
+            # (they use fuzzy heuristic bots). "Past Self" DOES load the lagged snapshot
+            # once the first 5,000-hand checkpoint of this run exists.
             m_path = None
             n_path = None
             s_path = None
-            p_path = None
+            p_path = past_path if os.path.exists(past_path) else None
             
             # Phase 5: Focus Rounds Logic
             focus_archetype = None
@@ -577,8 +660,11 @@ def run_training(personality, num_hands=100000, batch_size=256, epochs_per_batch
             results = pool.starmap(simulate_worker, args)
                 
             batch_records = []
-            recent_vpip = {s: [] for s in range(6)}
-            recent_agg = {s: [] for s in range(6)}
+            recent_vpip_ops = {s: 0 for s in range(6)}
+            recent_vpip_acts = {s: 0 for s in range(6)}
+            recent_agg_ops = {s: 0 for s in range(6)}
+            recent_agg_acts = {s: 0 for s in range(6)}
+            
             for res, worker_hist, worker_extra, worker_exploitation in results:
                 batch_records.extend(res)
                 global_metrics['flop_players'] += worker_extra.get('flop_players', 0)
@@ -588,26 +674,40 @@ def run_training(personality, num_hands=100000, batch_size=256, epochs_per_batch
                         global_exploitation_net[i][j] += worker_exploitation.get(i, {}).get(j, 0.0)
                 for s in range(6):
                     seat_cumulative_profits[s] += worker_hist[s]['profit']
-                    recent_vpip[s].extend(worker_hist[s]['vpip'])
-                    recent_agg[s].extend(worker_hist[s]['agg'])
+                    recent_vpip_ops[s] += worker_hist[s]['vpip_ops']
+                    recent_vpip_acts[s] += worker_hist[s]['vpip_acts']
+                    recent_agg_ops[s] += worker_hist[s]['agg_ops']
+                    recent_agg_acts[s] += worker_hist[s]['agg_acts']
                     seat_extra_stats[s]['raises'] += worker_hist[s].get('raises', 0)
                     seat_extra_stats[s]['folds'] += worker_hist[s].get('folds', 0)
                     seat_extra_stats[s]['all_ins'] += worker_hist[s].get('all_ins', 0)
                     
             for s in range(6):
-                v_list = recent_vpip[s]
-                a_list = recent_agg[s]
-                if len(v_list) > 0:
-                    current_seat_vpips[s] = sum(v_list) / len(v_list)
-                if len(a_list) > 0:
-                    current_seat_aggs[s] = sum(a_list) / len(a_list)
+                global_vpip_ops[s] += recent_vpip_ops[s]
+                global_vpip_acts[s] += recent_vpip_acts[s]
+                global_agg_ops[s] += recent_agg_ops[s]
+                global_agg_acts[s] += recent_agg_acts[s]
+
+                if hands_done < 1000:
+                    if global_vpip_ops[s] > 0:
+                        current_seat_vpips[s] = global_vpip_acts[s] / global_vpip_ops[s]
+                    if global_agg_ops[s] > 0:
+                        current_seat_aggs[s] = global_agg_acts[s] / global_agg_ops[s]
+                else:
+                    # Calculate batch VPIP/AGG
+                    batch_vpip = recent_vpip_acts[s] / recent_vpip_ops[s] if recent_vpip_ops[s] > 0 else current_seat_vpips[s]
+                    batch_agg = recent_agg_acts[s] / recent_agg_ops[s] if recent_agg_ops[s] > 0 else current_seat_aggs[s]
+                    
+                    # Apply Exponential Moving Average (EMA) (alpha = 0.2)
+                    current_seat_vpips[s] = 0.8 * current_seat_vpips[s] + 0.2 * batch_vpip
+                    current_seat_aggs[s] = 0.8 * current_seat_aggs[s] + 0.2 * batch_agg
                 
             hands_done += len(batch_records)
             total_hands_simulated += len(batch_records)
                 
             # Vectorize simulated hands
             X_hole, X_board, X_ctx, X_act, X_sa, Y_mc, X_mask = [], [], [], [], [], [], []
-            Y_bluff, Y_strength, Y_equity = [], [], []
+            Y_bluff, Y_strength, Y_equity, Y_w = [], [], [], []
             for rec in batch_records:
                 samples = vectorize_hand_samples(rec)
                 if rec.decision_points:
@@ -621,7 +721,7 @@ def run_training(personality, num_hands=100000, batch_size=256, epochs_per_batch
                     net_profit = rec.final_hero_profit
                     telemetry.record_hand_terminal_state(eq, street, action, call_amount, is_all_in, net_profit)
 
-                for h, b, c, a, sa, mc, mask, opp_b, opp_s, self_e in samples:
+                for h, b, c, a, sa, mc, mask, opp_b, opp_s, self_e, tw in samples:
                     X_hole.append(h)
                     X_board.append(b)
                     X_ctx.append(c)
@@ -632,6 +732,7 @@ def run_training(personality, num_hands=100000, batch_size=256, epochs_per_batch
                     Y_bluff.append(opp_b)
                     Y_strength.append(opp_s)
                     Y_equity.append(self_e)
+                    Y_w.append(tw)
                     
             if not X_hole:
                 continue
@@ -646,11 +747,12 @@ def run_training(personality, num_hands=100000, batch_size=256, epochs_per_batch
             bluff_t = torch.tensor(Y_bluff, dtype=torch.float32)
             str_t = torch.tensor(Y_strength, dtype=torch.float32)
             eq_t = torch.tensor(Y_equity, dtype=torch.float32)
-            
+            w_t = torch.tensor(Y_w, dtype=torch.float32)
+
             total_training_samples += len(X_hole)
             
             # Split train/val
-            dataset = TensorDataset(hole_t, board_t, ctx_t, act_t, sa_t, mc_t, mask_t, bluff_t, str_t, eq_t)
+            dataset = TensorDataset(hole_t, board_t, ctx_t, act_t, sa_t, mc_t, mask_t, bluff_t, str_t, eq_t, w_t)
             train_size = int(0.8 * len(dataset))
             val_size = len(dataset) - train_size
             if train_size == 0 or val_size == 0:
@@ -669,7 +771,7 @@ def run_training(personality, num_hands=100000, batch_size=256, epochs_per_batch
                 epoch_loss_str = 0.0
                 epoch_loss_eq = 0.0
                 total_items = 0
-                for b_h, b_b, b_c, b_a, b_sa, b_mc, b_m, b_bluff, b_str, b_eq in train_loader:
+                for b_h, b_b, b_c, b_a, b_sa, b_mc, b_m, b_bluff, b_str, b_eq, b_w in train_loader:
                     b_h = b_h.to(device, non_blocking=True)
                     b_b = b_b.to(device, non_blocking=True)
                     b_c = b_c.to(device, non_blocking=True)
@@ -680,11 +782,12 @@ def run_training(personality, num_hands=100000, batch_size=256, epochs_per_batch
                     b_bluff = b_bluff.to(device, non_blocking=True)
                     b_str = b_str.to(device, non_blocking=True)
                     b_eq = b_eq.to(device, non_blocking=True)
+                    b_w = b_w.to(device, non_blocking=True)
                     
                     optimizer.zero_grad()
                     
                     with torch.cuda.amp.autocast():
-                        out = model(b_h, b_b, b_c, b_a, key_padding_mask=(b_m == 0.0))
+                        out = model(b_h, b_b, b_c, b_a)
                         if isinstance(out, dict):
                             preds = out['q_vals']
                             pred_bluff = out['bluff']
@@ -698,13 +801,12 @@ def run_training(personality, num_hands=100000, batch_size=256, epochs_per_batch
                             batch_entropy = -(probs * torch.log(probs + 1e-9)).sum(dim=-1).mean().item()
                             telemetry.record_entropy_value(batch_entropy)
                         
-                        # Multi-Action Target EV Loss
-                        # Only calculate Q-loss for the action actually taken to fix heuristic EV distortion
-                        action_mask = torch.zeros_like(preds)
-                        action_mask.scatter_(2, b_sa.unsqueeze(-1), 1.0)
-                        
-                        loss_q = criterion(preds, b_mc) * b_m.unsqueeze(-1) * action_mask
-                        final_loss_q = loss_q.sum() / (b_m.sum().clamp(min=1.0))
+                        # Multi-Action Target EV Loss (Fix 1): per-action weights train the
+                        # fold baseline (target 0) plus the action actually taken, instead of
+                        # masking to only the taken action. b_w is [B, T, 3] of 0/1 weights.
+                        step_w = b_w * b_m.unsqueeze(-1)
+                        loss_q = criterion(preds, b_mc) * step_w
+                        final_loss_q = loss_q.sum() / step_w.sum().clamp(min=1.0)
                         
                         # Interpretable Auxiliary Heads Loss
                         if isinstance(out, dict):
@@ -752,7 +854,7 @@ def run_training(personality, num_hands=100000, batch_size=256, epochs_per_batch
             val_epoch_loss = 0.0
             val_items = 0
             with torch.no_grad():
-                for b_h, b_b, b_c, b_a, b_sa, b_mc, b_m, b_bluff, b_str, b_eq in val_loader:
+                for b_h, b_b, b_c, b_a, b_sa, b_mc, b_m, b_bluff, b_str, b_eq, b_w in val_loader:
                     b_h = b_h.to(device)
                     b_b = b_b.to(device)
                     b_c = b_c.to(device)
@@ -763,9 +865,10 @@ def run_training(personality, num_hands=100000, batch_size=256, epochs_per_batch
                     b_bluff = b_bluff.to(device)
                     b_str = b_str.to(device)
                     b_eq = b_eq.to(device)
+                    b_w = b_w.to(device)
                     
                     with torch.cuda.amp.autocast():
-                        out = model(b_h, b_b, b_c, b_a, key_padding_mask=(b_m == 0.0))
+                        out = model(b_h, b_b, b_c, b_a)
                         if isinstance(out, dict):
                             preds = out['q_vals']
                             pred_bluff = out['bluff']
@@ -774,11 +877,9 @@ def run_training(personality, num_hands=100000, batch_size=256, epochs_per_batch
                         else:
                             preds = out
                             
-                        action_mask = torch.zeros_like(preds)
-                        action_mask.scatter_(2, b_sa.unsqueeze(-1), 1.0)
-                        
-                        loss_q = criterion(preds, b_mc) * b_m.unsqueeze(-1) * action_mask
-                        final_loss_q = loss_q.sum() / (b_m.sum().clamp(min=1.0))
+                        step_w = b_w * b_m.unsqueeze(-1)
+                        loss_q = criterion(preds, b_mc) * step_w
+                        final_loss_q = loss_q.sum() / step_w.sum().clamp(min=1.0)
                         
                         if isinstance(out, dict):
                             loss_bluff = nn.functional.mse_loss(pred_bluff, b_bluff, reduction='none') * b_m
@@ -825,7 +926,7 @@ def run_training(personality, num_hands=100000, batch_size=256, epochs_per_batch
             
         # Save final personality model checkpoint
         final_save_path = os.path.join(weights_dir, save_name)
-        torch.save(model.state_dict(), final_save_path)
+        robust_torch_save(model.state_dict(), final_save_path)
         print(f"\nTraining completed successfully! Saved final weights to: {final_save_path}")
         
     finally:
@@ -847,7 +948,11 @@ if __name__ == '__main__':
     parser.add_argument('--resume_path', type=str, default=None, help="Resume from an existing checkpoint.")
     parser.add_argument('--save_name', type=str, default=None, help="Output weights filename.")
     parser.add_argument('--hands_done', type=int, default=0, help="Initial hand offset to resume tracking from.")
-    
+    parser.add_argument('--num_hands', type=int, default=None,
+                        help="Target TOTAL hands to train to (overrides config target_hands). "
+                             "To continue an existing run for +100k, pass e.g. "
+                             "--resume_path <ckpt> --hands_done 100000 --num_hands 200000.")
+
     args = parser.parse_args()
     
     # Load YAML config
@@ -857,9 +962,11 @@ if __name__ == '__main__':
         
     t_cfg = config.get('training', {})
     
+    target_hands = args.num_hands if args.num_hands is not None else t_cfg.get('target_hands', 100000)
+
     run_training(
         personality=args.personality,
-        num_hands=t_cfg.get('target_hands', 100000),
+        num_hands=target_hands,
         batch_size=t_cfg.get('batch_size', 256),
         epochs_per_batch=t_cfg.get('epochs_per_batch', 3),
         sim_batch_size=t_cfg.get('sim_batch_size', 2000),

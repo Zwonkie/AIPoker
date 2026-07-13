@@ -1,0 +1,2086 @@
+============================================================
+  SELF-PLAY RL TRAINING SYSTEM (PLURIBUS V8)
+============================================================
+  Target Hands:    100,000
+  Personality:     MAIN
+  Sim Batch Size:  2,000
+  Epochs/Batch:    3
+  Learning Rate:   0.001
+  Save File Name:  expert_v11_main.pth
+============================================================
+WARNING: V7 baseline weights not found. Initializing random weights.
+
+Launching simulation batch workers...
++========================================================================================+
+|  SELF-PLAY V8 MULTI-PERSONALITY LEAGUE SYSTEM (RTX 4080 GPU)                           |
++========================================================================================+
+|  Active Personality: MAIN                                                               |
+|  Hands Simulated:         1,842 /    100,000   (  1.8%)                            |
+|  Training Epoch:        3                                                              |
+|  Bootstrap Alpha:      1.00                                                            |
+|  Curriculum Stage:   Phase 1: 100BB Static                                         |
+|  Elapsed Time:       41s                                                              |
+|  Sim Speed:              44 hands/sec                                                 |
+|  ETA:                36m 53s                                                          |
+|  Training Samples:        1,842                                                        |
++----------------------------------------------------------------------------------------+
+|  CUMULATIVE PERFORMANCE BY SEAT:                                                       |
+|  - Seat 0 Hero (Main)     :  +97.3 BB/100 (VPIP:23.8% AGG:56.3%) [R:676   F:1448  AI:52  ]|
+|  - Seat 1 Opp 1 (Maniac)  : -131.4 BB/100 (VPIP:28.3% AGG:69.7%) [R:962   F:1363  AI:96  ]|
+|  - Seat 2 Opp 2 (Nit)     :  +42.1 BB/100 (VPIP:14.2% AGG:23.5%) [R:210   F:1637  AI:13  ]|
+|  - Seat 3 Opp 3 (Sticky)  :  -73.6 BB/100 (VPIP:38.4% AGG:17.3%) [R:393   F:1181  AI:32  ]|
+|  - Seat 4 Opp 4 (Past Self):  +11.1 BB/100 (VPIP:20.9% AGG:59.3%) [R:672   F:1530  AI:68  ]|
+|  - Seat 5 Opp 5 (TAG Bot) :  +54.5 BB/100 (VPIP:21.5% AGG:55.8%) [R:727   F:1500  AI:72  ]|
++----------------------------------------------------------------------------------------+
+|  Global Post-Flop Avg Active Players: 1.81                                             |
++----------------------------------------------------------------------------------------+
+|  EXPLOITATION SCOREBOARD (Net BB/100 Matrix):                                          |
+|  [Winner \ Loser] | Hero  | S1    | S2    | S3    | S4    | S5    |                    |
+|  Hero (Main)      |   -   | +57.2 |  +1.5 | +21.5 | +22.8 |  -5.6 |                    |
+|  Opp 1 (Maniac)   | -57.2 |   -   |  -3.5 |  +0.1 | -29.3 | -41.5 |                    |
+|  Opp 2 (Nit)      |  -1.5 |  +3.5 |   -   |  +4.3 | +14.5 | +21.2 |                    |
+|  Opp 3 (Sticky)   | -21.5 |  -0.1 |  -4.3 |   -   | -30.5 | -17.2 |                    |
+|  Opp 4 (Past Self) | -22.8 | +29.3 | -14.5 | +30.5 |   -   | -11.3 |                    |
+|  Opp 5 (TAG Bot)  |  +5.6 | +41.5 | -21.2 | +17.2 | +11.3 |   -   |                    |
++----------------------------------------------------------------------------------------+
+|  Action Entropy:       1.0687                                                        |
++----------------------------------------------------------------------------------------------------------+
+|  Equity Matrix     | Fold  | Call  | Raise | RR   | All-In | Avg End Street | Net Chips | Won    | Lost  |
++----------------------------------------------------------------------------------------------------------+
+|  <20% (Pure Air)   | 94.0% |  4.1% |  0.3% |  1.5% |  0.0%  |      0.1       | -1312.8   |   +216 |  -1529 |
+|  20-40% (Draws)    | 92.8% |  5.0% |  0.9% |  1.2% |  0.1%  |      0.2       | -3837.2   |  +1124 |  -4961 |
+|  40-60% (Marginal) | 34.1% | 35.5% |  5.5% | 21.8% |  3.2%  |      0.5       | -2501.1   |  +7755 | -10257 |
+|  60-80% (Strong)   |  3.2% | 18.1% | 12.8% | 42.6% | 23.4%  |      1.2       | +1269.7   | +14445 | -13175 |
+|  >80% (Nuts)       |  0.0% |  1.7% | 30.0% | 31.7% | 36.7%  |      1.9       | +23874.7   | +27078 |  -3203 |
++----------------------------------------------------------------------------------------------------------+
+|  Train Loss:          26.5058  |  Val Loss:  32.8237                                |
+|  Loss Q: 25.3480 | Bluff: 0.0409 | Str: 0.0296 | Eq: 0.0453                 |
++========================================================================================+
++========================================================================================+
+|  SELF-PLAY V8 MULTI-PERSONALITY LEAGUE SYSTEM (RTX 4080 GPU)                           |
++========================================================================================+
+|  Active Personality: MAIN                                                               |
+|  Hands Simulated:         3,702 /    100,000   (  3.7%)                            |
+|  Training Epoch:        6                                                              |
+|  Bootstrap Alpha:      1.00                                                            |
+|  Curriculum Stage:   Phase 1: 100BB Static                                         |
+|  Elapsed Time:       1m 21s                                                           |
+|  Sim Speed:              46 hands/sec                                                 |
+|  ETA:                35m 7s                                                           |
+|  Training Samples:        3,702                                                        |
++----------------------------------------------------------------------------------------+
+|  CUMULATIVE PERFORMANCE BY SEAT:                                                       |
+|  - Seat 0 Hero (Main)     :  +74.8 BB/100 (VPIP:23.4% AGG:56.1%) [R:1348  F:2952  AI:116 ]|
+|  - Seat 1 Opp 1 (Maniac)  : -105.8 BB/100 (VPIP:28.2% AGG:69.8%) [R:2016  F:2733  AI:203 ]|
+|  - Seat 2 Opp 2 (Nit)     :  +32.2 BB/100 (VPIP:14.1% AGG:23.9%) [R:432   F:3304  AI:30  ]|
+|  - Seat 3 Opp 3 (Sticky)  :  -56.5 BB/100 (VPIP:38.5% AGG:17.1%) [R:766   F:2360  AI:60  ]|
+|  - Seat 4 Opp 4 (Past Self):   -8.6 BB/100 (VPIP:21.2% AGG:58.0%) [R:1358  F:3015  AI:135 ]|
+|  - Seat 5 Opp 5 (TAG Bot) :  +63.8 BB/100 (VPIP:21.7% AGG:56.5%) [R:1491  F:3002  AI:147 ]|
++----------------------------------------------------------------------------------------+
+|  Global Post-Flop Avg Active Players: 1.80                                             |
++----------------------------------------------------------------------------------------+
+|  EXPLOITATION SCOREBOARD (Net BB/100 Matrix):                                          |
+|  [Winner \ Loser] | Hero  | S1    | S2    | S3    | S4    | S5    |                    |
+|  Hero (Main)      |   -   | +30.2 |  -1.9 | +29.9 | +13.4 |  +3.3 |                    |
+|  Opp 1 (Maniac)   | -30.2 |   -   |  -1.6 | -11.7 | -31.3 | -31.0 |                    |
+|  Opp 2 (Nit)      |  +1.9 |  +1.6 |   -   |  +9.0 |  +6.7 | +13.0 |                    |
+|  Opp 3 (Sticky)   | -29.9 | +11.7 |  -9.0 |   -   | -13.8 | -15.4 |                    |
+|  Opp 4 (Past Self) | -13.4 | +31.3 |  -6.7 | +13.8 |   -   | -33.7 |                    |
+|  Opp 5 (TAG Bot)  |  -3.3 | +31.0 | -13.0 | +15.4 | +33.7 |   -   |                    |
++----------------------------------------------------------------------------------------+
+|  Action Entropy:       0.7679                                                        |
++----------------------------------------------------------------------------------------------------------+
+|  Equity Matrix     | Fold  | Call  | Raise | RR   | All-In | Avg End Street | Net Chips | Won    | Lost  |
++----------------------------------------------------------------------------------------------------------+
+|  <20% (Pure Air)   | 94.5% |  4.0% |  0.2% |  1.4% |  0.0%  |      0.1       | -2104.2   |   +384 |  -2488 |
+|  20-40% (Draws)    | 92.6% |  5.2% |  0.6% |  1.4% |  0.1%  |      0.2       | -7479.1   |  +1790 |  -9269 |
+|  40-60% (Marginal) | 36.7% | 33.3% |  6.2% | 18.8% |  5.0%  |      0.6       | -5607.5   | +17807 | -23414 |
+|  60-80% (Strong)   |  4.1% | 15.4% | 16.0% | 38.5% | 26.0%  |      1.2       | -10441.0   | +21968 | -32409 |
+|  >80% (Nuts)       |  0.0% |  2.4% | 29.6% | 28.0% | 40.0%  |      2.0       | +52648.7   | +57320 |  -4672 |
++----------------------------------------------------------------------------------------------------------+
+|  Train Loss:          28.7059  |  Val Loss:  30.6355                                |
+|  Loss Q: 27.8381 | Bluff: 0.0336 | Str: 0.0273 | Eq: 0.0259                 |
++========================================================================================+
++========================================================================================+
+|  SELF-PLAY V8 MULTI-PERSONALITY LEAGUE SYSTEM (RTX 4080 GPU)                           |
++========================================================================================+
+|  Active Personality: MAIN                                                               |
+|  Hands Simulated:         5,569 /    100,000   (  5.6%)                            |
+|  Training Epoch:        9                                                              |
+|  Bootstrap Alpha:      1.00                                                            |
+|  Curriculum Stage:   Phase 1: 100BB Static                                         |
+|  Elapsed Time:       2m 1s                                                            |
+|  Sim Speed:              46 hands/sec                                                 |
+|  ETA:                34m 12s                                                          |
+|  Training Samples:        5,569                                                        |
++----------------------------------------------------------------------------------------+
+|  CUMULATIVE PERFORMANCE BY SEAT:                                                       |
+|  - Seat 0 Hero (Main)     :  +40.9 BB/100 (VPIP:22.8% AGG:55.5%) [R:1988  F:4475  AI:172 ]|
+|  - Seat 1 Opp 1 (Maniac)  :  -92.4 BB/100 (VPIP:27.7% AGG:69.4%) [R:2901  F:4131  AI:283 ]|
+|  - Seat 2 Opp 2 (Nit)     :  +13.3 BB/100 (VPIP:14.0% AGG:24.3%) [R:650   F:4957  AI:46  ]|
+|  - Seat 3 Opp 3 (Sticky)  :  -39.4 BB/100 (VPIP:38.8% AGG:17.1%) [R:1184  F:3495  AI:88  ]|
+|  - Seat 4 Opp 4 (Past Self):   +4.6 BB/100 (VPIP:21.3% AGG:57.6%) [R:2036  F:4488  AI:196 ]|
+|  - Seat 5 Opp 5 (TAG Bot) :  +73.0 BB/100 (VPIP:21.7% AGG:56.4%) [R:2192  F:4488  AI:211 ]|
++----------------------------------------------------------------------------------------+
+|  Global Post-Flop Avg Active Players: 1.80                                             |
++----------------------------------------------------------------------------------------+
+|  EXPLOITATION SCOREBOARD (Net BB/100 Matrix):                                          |
+|  [Winner \ Loser] | Hero  | S1    | S2    | S3    | S4    | S5    |                    |
+|  Hero (Main)      |   -   | +13.8 |  -2.7 | +27.1 |  +4.5 |  -1.8 |                    |
+|  Opp 1 (Maniac)   | -13.8 |   -   |  +1.5 | -14.1 | -25.0 | -41.0 |                    |
+|  Opp 2 (Nit)      |  +2.7 |  -1.5 |   -   |  +5.0 |  +6.1 |  +1.0 |                    |
+|  Opp 3 (Sticky)   | -27.1 | +14.1 |  -5.0 |   -   |  -3.0 | -18.4 |                    |
+|  Opp 4 (Past Self) |  -4.5 | +25.0 |  -6.1 |  +3.0 |   -   | -12.7 |                    |
+|  Opp 5 (TAG Bot)  |  +1.8 | +41.0 |  -1.0 | +18.4 | +12.7 |   -   |                    |
++----------------------------------------------------------------------------------------+
+|  Action Entropy:       0.6593                                                        |
++----------------------------------------------------------------------------------------------------------+
+|  Equity Matrix     | Fold  | Call  | Raise | RR   | All-In | Avg End Street | Net Chips | Won    | Lost  |
++----------------------------------------------------------------------------------------------------------+
+|  <20% (Pure Air)   | 94.4% |  4.0% |  0.3% |  1.2% |  0.1%  |      0.1       | -5677.1   |   +748 |  -6425 |
+|  20-40% (Draws)    | 93.2% |  4.8% |  0.7% |  1.3% |  0.1%  |      0.2       | -11226.9   |  +2837 | -14064 |
+|  40-60% (Marginal) | 38.0% | 33.7% |  5.0% | 18.3% |  5.1%  |      0.6       | -12527.3   | +24947 | -37475 |
+|  60-80% (Strong)   |  3.9% | 15.3% | 16.5% | 39.2% | 25.1%  |      1.3       | -17536.2   | +33019 | -50555 |
+|  >80% (Nuts)       |  0.0% |  3.9% | 28.1% | 27.5% | 40.4%  |      1.9       | +68965.1   | +79334 | -10369 |
++----------------------------------------------------------------------------------------------------------+
+|  Train Loss:          28.7529  |  Val Loss:  27.2462                                |
+|  Loss Q: 27.9890 | Bluff: 0.0344 | Str: 0.0244 | Eq: 0.0176                 |
++========================================================================================+
++========================================================================================+
+|  SELF-PLAY V8 MULTI-PERSONALITY LEAGUE SYSTEM (RTX 4080 GPU)                           |
++========================================================================================+
+|  Active Personality: MAIN                                                               |
+|  Hands Simulated:         7,433 /    100,000   (  7.4%)                            |
+|  Training Epoch:       12                                                              |
+|  Bootstrap Alpha:      1.00                                                            |
+|  Curriculum Stage:   Phase 1: 100BB Static                                         |
+|  Elapsed Time:       2m 42s                                                           |
+|  Sim Speed:              46 hands/sec                                                 |
+|  ETA:                33m 41s                                                          |
+|  Training Samples:        7,433                                                        |
++----------------------------------------------------------------------------------------+
+|  CUMULATIVE PERFORMANCE BY SEAT:                                                       |
+|  - Seat 0 Hero (Main)     :  +27.6 BB/100 (VPIP:22.4% AGG:56.4%) [R:2720  F:5995  AI:251 ]|
+|  - Seat 1 Opp 1 (Maniac)  : -107.1 BB/100 (VPIP:27.9% AGG:69.7%) [R:3911  F:5499  AI:384 ]|
+|  - Seat 2 Opp 2 (Nit)     :  +20.4 BB/100 (VPIP:14.2% AGG:24.6%) [R:878   F:6595  AI:60  ]|
+|  - Seat 3 Opp 3 (Sticky)  :  -58.4 BB/100 (VPIP:38.9% AGG:17.0%) [R:1561  F:4660  AI:112 ]|
+|  - Seat 4 Opp 4 (Past Self):  +27.3 BB/100 (VPIP:21.5% AGG:56.9%) [R:2763  F:5995  AI:269 ]|
+|  - Seat 5 Opp 5 (TAG Bot) :  +90.2 BB/100 (VPIP:22.2% AGG:56.9%) [R:2987  F:5953  AI:289 ]|
++----------------------------------------------------------------------------------------+
+|  Global Post-Flop Avg Active Players: 1.80                                             |
++----------------------------------------------------------------------------------------+
+|  EXPLOITATION SCOREBOARD (Net BB/100 Matrix):                                          |
+|  [Winner \ Loser] | Hero  | S1    | S2    | S3    | S4    | S5    |                    |
+|  Hero (Main)      |   -   | +17.7 |  -3.2 | +27.2 |  -1.0 | -13.1 |                    |
+|  Opp 1 (Maniac)   | -17.7 |   -   |  -3.4 |  -5.0 | -34.4 | -46.6 |                    |
+|  Opp 2 (Nit)      |  +3.2 |  +3.4 |   -   |  +4.6 |  +6.1 |  +3.1 |                    |
+|  Opp 3 (Sticky)   | -27.2 |  +5.0 |  -4.6 |   -   |  -9.4 | -22.2 |                    |
+|  Opp 4 (Past Self) |  +1.0 | +34.4 |  -6.1 |  +9.4 |   -   | -11.4 |                    |
+|  Opp 5 (TAG Bot)  | +13.1 | +46.6 |  -3.1 | +22.2 | +11.4 |   -   |                    |
++----------------------------------------------------------------------------------------+
+|  Action Entropy:       0.7244                                                        |
++----------------------------------------------------------------------------------------------------------+
+|  Equity Matrix     | Fold  | Call  | Raise | RR   | All-In | Avg End Street | Net Chips | Won    | Lost  |
++----------------------------------------------------------------------------------------------------------+
+|  <20% (Pure Air)   | 94.7% |  3.7% |  0.4% |  1.2% |  0.1%  |      0.1       | -5943.0   |  +1421 |  -7364 |
+|  20-40% (Draws)    | 93.3% |  4.6% |  0.7% |  1.2% |  0.1%  |      0.2       | -21138.3   |  +4672 | -25811 |
+|  40-60% (Marginal) | 38.2% | 32.9% |  4.9% | 18.5% |  5.5%  |      0.6       | -29267.4   | +27662 | -56929 |
+|  60-80% (Strong)   |  3.8% | 13.5% | 16.5% | 36.8% | 29.4%  |      1.3       | -10071.5   | +59776 | -69848 |
+|  >80% (Nuts)       |  0.0% |  3.9% | 29.6% | 24.0% | 42.5%  |      1.9       | +85829.6   | +104666 | -18836 |
++----------------------------------------------------------------------------------------------------------+
+|  Train Loss:          35.5613  |  Val Loss:  41.9785                                |
+|  Loss Q: 34.8915 | Bluff: 0.0290 | Str: 0.0225 | Eq: 0.0155                 |
++========================================================================================+
++========================================================================================+
+|  SELF-PLAY V8 MULTI-PERSONALITY LEAGUE SYSTEM (RTX 4080 GPU)                           |
++========================================================================================+
+|  Active Personality: MAIN                                                               |
+|  Hands Simulated:         9,298 /    100,000   (  9.3%)                            |
+|  Training Epoch:       15                                                              |
+|  Bootstrap Alpha:      1.00                                                            |
+|  Curriculum Stage:   Phase 1: 100BB Static                                         |
+|  Elapsed Time:       3m 23s                                                           |
+|  Sim Speed:              46 hands/sec                                                 |
+|  ETA:                33m 4s                                                           |
+|  Training Samples:        9,298                                                        |
++----------------------------------------------------------------------------------------+
+|  CUMULATIVE PERFORMANCE BY SEAT:                                                       |
+|  - Seat 0 Hero (Main)     :  +52.3 BB/100 (VPIP:22.2% AGG:57.3%) [R:3438  F:7490  AI:321 ]|
+|  - Seat 1 Opp 1 (Maniac)  :  -96.5 BB/100 (VPIP:28.0% AGG:69.3%) [R:4861  F:6845  AI:476 ]|
+|  - Seat 2 Opp 2 (Nit)     :  +18.5 BB/100 (VPIP:14.0% AGG:24.5%) [R:1103  F:8265  AI:80  ]|
+|  - Seat 3 Opp 3 (Sticky)  :  -55.8 BB/100 (VPIP:38.5% AGG:17.0%) [R:1939  F:5862  AI:143 ]|
+|  - Seat 4 Opp 4 (Past Self):  +16.8 BB/100 (VPIP:21.2% AGG:57.2%) [R:3400  F:7537  AI:331 ]|
+|  - Seat 5 Opp 5 (TAG Bot) :  +64.7 BB/100 (VPIP:22.5% AGG:56.8%) [R:3777  F:7420  AI:370 ]|
++----------------------------------------------------------------------------------------+
+|  Global Post-Flop Avg Active Players: 1.79                                             |
++----------------------------------------------------------------------------------------+
+|  EXPLOITATION SCOREBOARD (Net BB/100 Matrix):                                          |
+|  [Winner \ Loser] | Hero  | S1    | S2    | S3    | S4    | S5    |                    |
+|  Hero (Main)      |   -   | +21.4 |  -2.3 | +25.9 |  +9.3 |  -1.9 |                    |
+|  Opp 1 (Maniac)   | -21.4 |   -   |  -6.1 |  -1.1 | -31.0 | -37.0 |                    |
+|  Opp 2 (Nit)      |  +2.3 |  +6.1 |   -   |  +3.7 |  +3.4 |  +3.0 |                    |
+|  Opp 3 (Sticky)   | -25.9 |  +1.1 |  -3.7 |   -   |  -8.5 | -18.8 |                    |
+|  Opp 4 (Past Self) |  -9.3 | +31.0 |  -3.4 |  +8.5 |   -   |  -9.9 |                    |
+|  Opp 5 (TAG Bot)  |  +1.9 | +37.0 |  -3.0 | +18.8 |  +9.9 |   -   |                    |
++----------------------------------------------------------------------------------------+
+|  Action Entropy:       0.7440                                                        |
++----------------------------------------------------------------------------------------------------------+
+|  Equity Matrix     | Fold  | Call  | Raise | RR   | All-In | Avg End Street | Net Chips | Won    | Lost  |
++----------------------------------------------------------------------------------------------------------+
+|  <20% (Pure Air)   | 94.8% |  3.5% |  0.3% |  1.3% |  0.1%  |      0.1       | -6176.7   |  +1696 |  -7873 |
+|  20-40% (Draws)    | 93.3% |  4.6% |  0.7% |  1.2% |  0.1%  |      0.1       | -25750.1   |  +5606 | -31356 |
+|  40-60% (Marginal) | 37.9% | 33.3% |  4.6% | 18.8% |  5.4%  |      0.6       | -31594.7   | +36916 | -68511 |
+|  60-80% (Strong)   |  3.3% | 12.9% | 16.2% | 37.2% | 30.4%  |      1.2       |  +182.5   | +82389 | -82207 |
+|  >80% (Nuts)       |  0.0% |  5.7% | 28.3% | 22.9% | 43.1%  |      2.0       | +110504.2   | +135369 | -24865 |
++----------------------------------------------------------------------------------------------------------+
+|  Train Loss:          29.0953  |  Val Loss:  38.0114                                |
+|  Loss Q: 28.3334 | Bluff: 0.0385 | Str: 0.0220 | Eq: 0.0157                 |
++========================================================================================+
++========================================================================================+
+|  SELF-PLAY V8 MULTI-PERSONALITY LEAGUE SYSTEM (RTX 4080 GPU)                           |
++========================================================================================+
+|  Active Personality: MAIN                                                               |
+|  Hands Simulated:        11,161 /    100,000   ( 11.2%)                            |
+|  Training Epoch:       18                                                              |
+|  Bootstrap Alpha:      1.00                                                            |
+|  Curriculum Stage:   Phase 2: Moderate Stacks                                      |
+|  Elapsed Time:       4m 5s                                                            |
+|  Sim Speed:              46 hands/sec                                                 |
+|  ETA:                32m 30s                                                          |
+|  Training Samples:       11,161                                                        |
++----------------------------------------------------------------------------------------+
+|  CUMULATIVE PERFORMANCE BY SEAT:                                                       |
+|  - Seat 0 Hero (Main)     :  +59.9 BB/100 (VPIP:22.0% AGG:56.7%) [R:4089  F:9013  AI:378 ]|
+|  - Seat 1 Opp 1 (Maniac)  :  -89.9 BB/100 (VPIP:28.4% AGG:70.1%) [R:5943  F:8189  AI:582 ]|
+|  - Seat 2 Opp 2 (Nit)     :  +19.5 BB/100 (VPIP:14.0% AGG:24.6%) [R:1328  F:9914  AI:91  ]|
+|  - Seat 3 Opp 3 (Sticky)  :  -62.0 BB/100 (VPIP:38.5% AGG:17.1%) [R:2315  F:7056  AI:173 ]|
+|  - Seat 4 Opp 4 (Past Self):  +21.5 BB/100 (VPIP:21.5% AGG:57.7%) [R:4157  F:9029  AI:410 ]|
+|  - Seat 5 Opp 5 (TAG Bot) :  +51.0 BB/100 (VPIP:22.4% AGG:56.9%) [R:4523  F:8882  AI:450 ]|
++----------------------------------------------------------------------------------------+
+|  Global Post-Flop Avg Active Players: 1.79                                             |
++----------------------------------------------------------------------------------------+
+|  EXPLOITATION SCOREBOARD (Net BB/100 Matrix):                                          |
+|  [Winner \ Loser] | Hero  | S1    | S2    | S3    | S4    | S5    |                    |
+|  Hero (Main)      |   -   | +19.9 |  -1.4 | +27.3 |  +6.6 |  +7.5 |                    |
+|  Opp 1 (Maniac)   | -19.9 |   -   |  -8.8 |  -1.8 | -24.1 | -35.3 |                    |
+|  Opp 2 (Nit)      |  +1.4 |  +8.8 |   -   |  +4.2 |  +3.5 |  +1.6 |                    |
+|  Opp 3 (Sticky)   | -27.3 |  +1.8 |  -4.2 |   -   | -13.3 | -19.0 |                    |
+|  Opp 4 (Past Self) |  -6.6 | +24.1 |  -3.5 | +13.3 |   -   |  -5.8 |                    |
+|  Opp 5 (TAG Bot)  |  -7.5 | +35.3 |  -1.6 | +19.0 |  +5.8 |   -   |                    |
++----------------------------------------------------------------------------------------+
+|  Action Entropy:       0.7604                                                        |
++----------------------------------------------------------------------------------------------------------+
+|  Equity Matrix     | Fold  | Call  | Raise | RR   | All-In | Avg End Street | Net Chips | Won    | Lost  |
++----------------------------------------------------------------------------------------------------------+
+|  <20% (Pure Air)   | 94.9% |  3.4% |  0.3% |  1.3% |  0.1%  |      0.1       | -8124.5   |  +1857 |  -9982 |
+|  20-40% (Draws)    | 93.4% |  4.4% |  0.7% |  1.3% |  0.1%  |      0.1       | -29626.5   |  +6887 | -36513 |
+|  40-60% (Marginal) | 38.5% | 32.6% |  4.5% | 19.2% |  5.2%  |      0.6       | -32571.7   | +45099 | -77671 |
+|  60-80% (Strong)   |  3.2% | 13.7% | 16.1% | 35.8% | 31.2%  |      1.3       | +9028.0   | +103802 | -94774 |
+|  >80% (Nuts)       |  0.0% |  7.7% | 29.1% | 21.4% | 41.9%  |      2.0       | +126304.4   | +155937 | -29632 |
++----------------------------------------------------------------------------------------------------------+
+|  Train Loss:          26.9818  |  Val Loss:  31.6058                                |
+|  Loss Q: 26.2557 | Bluff: 0.0333 | Str: 0.0230 | Eq: 0.0164                 |
++========================================================================================+
+
+==================================================
+--- INTERMEDIATE SENSITIVITY CHECK AT 10k Hands ---
+| Hand | Equity | Fold EV | Call EV | Raise EV | Action |
+| :--- | :---: | :---: | :---: | :---: | :---: |
+| 7d 2s (Garbage)      | 0.30 |   -0.03 |    0.16 |    -0.03 | **CALL** |
+| Jh Ts (Medium)       | 0.46 |    0.06 |    0.04 |    -0.69 | **FOLD** |
+| Ad Qo (Strong)       | 0.60 |   -0.02 |    0.31 |    -0.01 | **CALL** |
+| Qd Qs (Premium)      | 0.78 |   -0.03 |    2.56 |    15.52 | **RAISE** |
+| Ah As (Nuts)         | 0.85 |   -0.07 |    0.50 |     0.86 | **RAISE** |
+==================================================
+
+C:\REPO\Antigravity\AIPoker\.venv\Lib\site-packages\torch\_utils.py:831: UserWarning: TypedStorage is deprecated. It will be removed in the future and UntypedStorage will be the only storage class. This should only matter to you if you are using storages directly.  To access UntypedStorage directly, use tensor.untyped_storage() instead of tensor.storage()
+  return self.fget.__get__(instance, owner)()
+==================================================
+           MODEL HEALTH DIAGNOSTIC TOOL         
+           Target: Herocules (v11 Main)                 
+==================================================
+WARNING: expert_v8_selfplay.pth not found at C:\REPO\Antigravity\AIPoker\core\weights\expert_v8_selfplay.pth. Model will output random garbage.
+WARNING: Could not load weights: Error(s) in loading state_dict for PokerEVModelV4:
+	size mismatch for state_proj.0.weight: copying a param with shape torch.Size([256, 159]) from checkpoint, the shape in current model is torch.Size([256, 163]).
+WARNING: Could not load weights: Error(s) in loading state_dict for PokerEVModelV4:
+	size mismatch for state_proj.0.weight: copying a param with shape torch.Size([256, 159]) from checkpoint, the shape in current model is torch.Size([256, 163]).
+WARNING: Could not load weights: Error(s) in loading state_dict for PokerEVModelV4:
+	size mismatch for state_proj.0.weight: copying a param with shape torch.Size([256, 159]) from checkpoint, the shape in current model is torch.Size([256, 163]).
+WARNING: expert_v9_main.pth not found at C:\REPO\Antigravity\AIPoker\core\weights\expert_v9_main.pth. Model will output random garbage.
+WARNING: v10_100k_main.pt not found at C:\REPO\Antigravity\AIPoker\core\weights\v10_100k_main.pt. Model will output random garbage.
+WARNING: v10_100k_main.pt not found at C:\REPO\Antigravity\AIPoker\core\weights\v10_100k_main.pt. Model will output random garbage.
+WARNING: v10_50k_main.pt not found at C:\REPO\Antigravity\AIPoker\core\weights\v10_50k_main.pt. Model will output random garbage.
+WARNING: expert_v8_main.pth not found at C:\REPO\Antigravity\AIPoker\core\weights\expert_v8_main.pth. Model will output random garbage.
+WARNING: Could not load weights: Error(s) in loading state_dict for PokerEVModelV4:
+	size mismatch for state_proj.0.weight: copying a param with shape torch.Size([256, 159]) from checkpoint, the shape in current model is torch.Size([256, 163]).
+WARNING: Could not load weights: Error(s) in loading state_dict for PokerEVModelV4:
+	size mismatch for state_proj.0.weight: copying a param with shape torch.Size([256, 159]) from checkpoint, the shape in current model is torch.Size([256, 163]).
+WARNING: Could not load weights: Error(s) in loading state_dict for PokerEVModelV4:
+	size mismatch for state_proj.0.weight: copying a param with shape torch.Size([256, 159]) from checkpoint, the shape in current model is torch.Size([256, 163]).
+WARNING: Could not load weights: Error(s) in loading state_dict for PokerEVModelV4:
+	size mismatch for state_proj.0.weight: copying a param with shape torch.Size([256, 159]) from checkpoint, the shape in current model is torch.Size([256, 163]).
+Scenario                            | Raw EV (Fold)   | Raw EV (Call)   | Raw EV (Raise)  | Final Action
+-------------------------------------------------------------------------------------------------------------------
+River Pure Air (First to Act)       | 0.04            | 0.08            | -0.56           | CALL
+River Pure Air (Facing Bet)         | 0.05            | 0.07            | -0.60           | CALL
+River The Nuts (Facing Bet)         | 0.06            | 0.11            | -0.61           | CALL
+River The Nuts (Calling Station)    | 0.06            | 0.10            | -0.63           | CALL
+Preflop AA vs Nit (Deep)            | -0.04           | 0.45            | 0.46            | RAISE
+Preflop AA vs Maniac                | -0.04           | 0.43            | 0.39            | CALL
+Flop TPTK Multi-Way (4-way pot)     | -0.05           | 1.49            | 7.05            | RAISE
+Turn Flush Draw vs Bet              | 0.01            | 0.80            | 2.11            | RAISE
+
+==================================================
+           PREFLOP EQUITY SWEEP                 
+==================================================
+Eq Group        | Opps  | Raw EV (Fold)   | Raw EV (Call)   | Raw EV (Raise)  | Final Action
+-------------------------------------------------------------------------------------
+<20% (Air)      | 1     | 0.00            | 0.13            | 0.31            | RAISE
+20-40% (Weak)   | 1     | -0.00           | 0.44            | 1.44            | RAISE
+40-60% (Marg)   | 1     | 0.06            | 0.02            | -0.69           | FOLD
+60-80% (Strg)   | 1     | -0.04           | 1.68            | 8.45            | RAISE
+>80% (Nuts)     | 1     | -0.05           | 0.49            | 0.84            | RAISE
+-------------------------------------------------------------------------------------
+<20% (Air)      | 3     | 0.00            | 0.12            | 0.35            | RAISE
+20-40% (Weak)   | 3     | -0.00           | 0.44            | 1.47            | RAISE
+40-60% (Marg)   | 3     | 0.06            | 0.02            | -0.69           | FOLD
+60-80% (Strg)   | 3     | -0.04           | 1.64            | 8.30            | RAISE
+>80% (Nuts)     | 3     | -0.05           | 0.50            | 0.90            | RAISE
+-------------------------------------------------------------------------------------
+<20% (Air)      | 5     | 0.00            | 0.14            | 0.49            | RAISE
+20-40% (Weak)   | 5     | -0.00           | 0.43            | 1.43            | RAISE
+40-60% (Marg)   | 5     | 0.06            | 0.02            | -0.68           | FOLD
+60-80% (Strg)   | 5     | -0.04           | 1.59            | 8.14            | RAISE
+>80% (Nuts)     | 5     | -0.05           | 0.50            | 0.93            | RAISE
+-------------------------------------------------------------------------------------
+
+[Analysis Complete]
+
+[DIAGNOSTICS] Mid-flight diagnostics triggered at 11161 hands...
++========================================================================================+
+|  SELF-PLAY V8 MULTI-PERSONALITY LEAGUE SYSTEM (RTX 4080 GPU)                           |
++========================================================================================+
+|  Active Personality: MAIN                                                               |
+|  Hands Simulated:        13,008 /    100,000   ( 13.0%)                            |
+|  Training Epoch:       21                                                              |
+|  Bootstrap Alpha:      0.94                                                            |
+|  Curriculum Stage:   Phase 2: Moderate Stacks                                      |
+|  Elapsed Time:       4m 49s                                                           |
+|  Sim Speed:              45 hands/sec                                                 |
+|  ETA:                32m 15s                                                          |
+|  Training Samples:       13,008                                                        |
++----------------------------------------------------------------------------------------+
+|  CUMULATIVE PERFORMANCE BY SEAT:                                                       |
+|  - Seat 0 Hero (Main)     :  +41.0 BB/100 (VPIP:22.5% AGG:55.9%) [R:4862  F:10468 AI:458 ]|
+|  - Seat 1 Opp 1 (Maniac)  :  -88.1 BB/100 (VPIP:28.9% AGG:70.3%) [R:7032  F:9509  AI:694 ]|
+|  - Seat 2 Opp 2 (Nit)     :  +19.7 BB/100 (VPIP:13.9% AGG:24.3%) [R:1530  F:11571 AI:105 ]|
+|  - Seat 3 Opp 3 (Sticky)  :  -59.0 BB/100 (VPIP:38.7% AGG:17.1%) [R:2716  F:8237  AI:208 ]|
+|  - Seat 4 Opp 4 (Past Self):  +29.3 BB/100 (VPIP:21.6% AGG:57.3%) [R:4897  F:10542 AI:482 ]|
+|  - Seat 5 Opp 5 (TAG Bot) :  +57.0 BB/100 (VPIP:22.2% AGG:56.9%) [R:5236  F:10389 AI:526 ]|
++----------------------------------------------------------------------------------------+
+|  Global Post-Flop Avg Active Players: 1.80                                             |
++----------------------------------------------------------------------------------------+
+|  EXPLOITATION SCOREBOARD (Net BB/100 Matrix):                                          |
+|  [Winner \ Loser] | Hero  | S1    | S2    | S3    | S4    | S5    |                    |
+|  Hero (Main)      |   -   | +19.5 |  -1.1 | +24.8 |  +0.1 |  -2.4 |                    |
+|  Opp 1 (Maniac)   | -19.5 |   -   |  -9.7 |  -0.6 | -25.8 | -32.5 |                    |
+|  Opp 2 (Nit)      |  +1.1 |  +9.7 |   -   |  +4.2 |  +4.2 |  +0.5 |                    |
+|  Opp 3 (Sticky)   | -24.8 |  +0.6 |  -4.2 |   -   | -13.6 | -16.9 |                    |
+|  Opp 4 (Past Self) |  -0.1 | +25.8 |  -4.2 | +13.6 |   -   |  -5.7 |                    |
+|  Opp 5 (TAG Bot)  |  +2.4 | +32.5 |  -0.5 | +16.9 |  +5.7 |   -   |                    |
++----------------------------------------------------------------------------------------+
+|  Action Entropy:       0.7813                                                        |
++----------------------------------------------------------------------------------------------------------+
+|  Equity Matrix     | Fold  | Call  | Raise | RR   | All-In | Avg End Street | Net Chips | Won    | Lost  |
++----------------------------------------------------------------------------------------------------------+
+|  <20% (Pure Air)   | 94.7% |  3.5% |  0.3% |  1.3% |  0.1%  |      0.1       | -9433.4   |  +2344 | -11777 |
+|  20-40% (Draws)    | 93.1% |  4.5% |  0.8% |  1.4% |  0.1%  |      0.2       | -35210.9   |  +9283 | -44494 |
+|  40-60% (Marginal) | 38.4% | 32.2% |  4.9% | 18.8% |  5.7%  |      0.6       | -49443.0   | +51429 | -100872 |
+|  60-80% (Strong)   |  3.7% | 13.0% | 15.2% | 36.0% | 32.1%  |      1.2       |   -49.4   | +118474 | -118524 |
+|  >80% (Nuts)       |  0.0% |  7.3% | 29.8% | 21.2% | 41.7%  |      2.0       | +145629.0   | +181586 | -35957 |
++----------------------------------------------------------------------------------------------------------+
+|  Train Loss:          31.7659  |  Val Loss:  36.3594                                |
+|  Loss Q: 31.0300 | Bluff: 0.0297 | Str: 0.0223 | Eq: 0.0217                 |
++========================================================================================+
++========================================================================================+
+|  SELF-PLAY V8 MULTI-PERSONALITY LEAGUE SYSTEM (RTX 4080 GPU)                           |
++========================================================================================+
+|  Active Personality: MAIN                                                               |
+|  Hands Simulated:        14,864 /    100,000   ( 14.9%)                            |
+|  Training Epoch:       24                                                              |
+|  Bootstrap Alpha:      0.85                                                            |
+|  Curriculum Stage:   Phase 2: Moderate Stacks                                      |
+|  Elapsed Time:       5m 32s                                                           |
+|  Sim Speed:              45 hands/sec                                                 |
+|  ETA:                31m 43s                                                          |
+|  Training Samples:       14,864                                                        |
++----------------------------------------------------------------------------------------+
+|  CUMULATIVE PERFORMANCE BY SEAT:                                                       |
+|  - Seat 0 Hero (Main)     :  +37.3 BB/100 (VPIP:21.8% AGG:54.8%) [R:5405  F:12033 AI:497 ]|
+|  - Seat 1 Opp 1 (Maniac)  :  -84.2 BB/100 (VPIP:29.8% AGG:70.2%) [R:8033  F:10771 AI:784 ]|
+|  - Seat 2 Opp 2 (Nit)     :  +20.2 BB/100 (VPIP:13.9% AGG:24.7%) [R:1755  F:13232 AI:119 ]|
+|  - Seat 3 Opp 3 (Sticky)  :  -58.4 BB/100 (VPIP:39.0% AGG:17.2%) [R:3058  F:9375  AI:236 ]|
+|  - Seat 4 Opp 4 (Past Self):  +33.5 BB/100 (VPIP:21.3% AGG:58.0%) [R:5508  F:12063 AI:546 ]|
+|  - Seat 5 Opp 5 (TAG Bot) :  +51.6 BB/100 (VPIP:21.8% AGG:56.8%) [R:5844  F:11894 AI:584 ]|
++----------------------------------------------------------------------------------------+
+|  Global Post-Flop Avg Active Players: 1.80                                             |
++----------------------------------------------------------------------------------------+
+|  EXPLOITATION SCOREBOARD (Net BB/100 Matrix):                                          |
+|  [Winner \ Loser] | Hero  | S1    | S2    | S3    | S4    | S5    |                    |
+|  Hero (Main)      |   -   | +16.8 |  -0.8 | +25.1 |  -2.3 |  -1.6 |                    |
+|  Opp 1 (Maniac)   | -16.8 |   -   |  -8.4 |  +0.4 | -30.9 | -28.5 |                    |
+|  Opp 2 (Nit)      |  +0.8 |  +8.4 |   -   |  +3.5 |  +6.3 |  +1.3 |                    |
+|  Opp 3 (Sticky)   | -25.1 |  -0.4 |  -3.5 |   -   | -12.6 | -16.9 |                    |
+|  Opp 4 (Past Self) |  +2.3 | +30.9 |  -6.3 | +12.6 |   -   |  -5.9 |                    |
+|  Opp 5 (TAG Bot)  |  +1.6 | +28.5 |  -1.3 | +16.9 |  +5.9 |   -   |                    |
++----------------------------------------------------------------------------------------+
+|  Action Entropy:       0.7994                                                        |
++----------------------------------------------------------------------------------------------------------+
+|  Equity Matrix     | Fold  | Call  | Raise | RR   | All-In | Avg End Street | Net Chips | Won    | Lost  |
++----------------------------------------------------------------------------------------------------------+
+|  <20% (Pure Air)   | 94.8% |  3.5% |  0.3% |  1.3% |  0.1%  |      0.1       | -10605.1   |  +2491 | -13097 |
+|  20-40% (Draws)    | 93.2% |  4.4% |  0.8% |  1.5% |  0.1%  |      0.2       | -38622.6   | +10384 | -49006 |
+|  40-60% (Marginal) | 40.0% | 31.4% |  4.8% | 18.4% |  5.4%  |      0.6       | -55294.0   | +55509 | -110803 |
+|  60-80% (Strong)   |  5.9% | 13.2% | 15.3% | 34.7% | 30.9%  |      1.2       | -1967.2   | +129043 | -131010 |
+|  >80% (Nuts)       |  0.4% |  8.2% | 29.7% | 20.8% | 40.8%  |      2.0       | +159609.3   | +200849 | -41240 |
++----------------------------------------------------------------------------------------------------------+
+|  Train Loss:          22.6969  |  Val Loss:  16.2208                                |
+|  Loss Q: 21.9588 | Bluff: 0.0336 | Str: 0.0218 | Eq: 0.0184                 |
++========================================================================================+
++========================================================================================+
+|  SELF-PLAY V8 MULTI-PERSONALITY LEAGUE SYSTEM (RTX 4080 GPU)                           |
++========================================================================================+
+|  Active Personality: MAIN                                                               |
+|  Hands Simulated:        16,694 /    100,000   ( 16.7%)                            |
+|  Training Epoch:       27                                                              |
+|  Bootstrap Alpha:      0.76                                                            |
+|  Curriculum Stage:   Phase 2: Moderate Stacks                                      |
+|  Elapsed Time:       6m 22s                                                           |
+|  Sim Speed:              44 hands/sec                                                 |
+|  ETA:                31m 47s                                                          |
+|  Training Samples:       16,694                                                        |
++----------------------------------------------------------------------------------------+
+|  CUMULATIVE PERFORMANCE BY SEAT:                                                       |
+|  - Seat 0 Hero (Main)     :  +39.9 BB/100 (VPIP:24.7% AGG:55.8%) [R:6177  F:13289 AI:570 ]|
+|  - Seat 1 Opp 1 (Maniac)  :  -87.9 BB/100 (VPIP:30.6% AGG:69.5%) [R:9021  F:12051 AI:869 ]|
+|  - Seat 2 Opp 2 (Nit)     :  +13.1 BB/100 (VPIP:13.7% AGG:23.8%) [R:1927  F:14906 AI:130 ]|
+|  - Seat 3 Opp 3 (Sticky)  :  -61.1 BB/100 (VPIP:39.9% AGG:17.1%) [R:3403  F:10465 AI:264 ]|
+|  - Seat 4 Opp 4 (Past Self):  +46.1 BB/100 (VPIP:20.6% AGG:57.7%) [R:6082  F:13612 AI:599 ]|
+|  - Seat 5 Opp 5 (TAG Bot) :  +49.9 BB/100 (VPIP:21.0% AGG:56.6%) [R:6385  F:13448 AI:635 ]|
++----------------------------------------------------------------------------------------+
+|  Global Post-Flop Avg Active Players: 1.81                                             |
++----------------------------------------------------------------------------------------+
+|  EXPLOITATION SCOREBOARD (Net BB/100 Matrix):                                          |
+|  [Winner \ Loser] | Hero  | S1    | S2    | S3    | S4    | S5    |                    |
+|  Hero (Main)      |   -   | +22.4 |  +0.1 | +21.5 |  -2.7 |  -1.4 |                    |
+|  Opp 1 (Maniac)   | -22.4 |   -   |  -7.2 |  +3.3 | -33.6 | -28.0 |                    |
+|  Opp 2 (Nit)      |  -0.1 |  +7.2 |   -   |  +2.6 |  +3.6 |  -0.2 |                    |
+|  Opp 3 (Sticky)   | -21.5 |  -3.3 |  -2.6 |   -   | -17.7 | -16.0 |                    |
+|  Opp 4 (Past Self) |  +2.7 | +33.6 |  -3.6 | +17.7 |   -   |  -4.3 |                    |
+|  Opp 5 (TAG Bot)  |  +1.4 | +28.0 |  +0.2 | +16.0 |  +4.3 |   -   |                    |
++----------------------------------------------------------------------------------------+
+|  Action Entropy:       0.8219                                                        |
++----------------------------------------------------------------------------------------------------------+
+|  Equity Matrix     | Fold  | Call  | Raise | RR   | All-In | Avg End Street | Net Chips | Won    | Lost  |
++----------------------------------------------------------------------------------------------------------+
+|  <20% (Pure Air)   | 92.9% |  5.3% |  0.4% |  1.3% |  0.1%  |      0.1       | -17214.8   |  +3291 | -20505 |
+|  20-40% (Draws)    | 92.1% |  5.3% |  0.8% |  1.7% |  0.2%  |      0.2       | -47700.2   | +12235 | -59935 |
+|  40-60% (Marginal) | 39.5% | 31.8% |  4.9% | 18.5% |  5.3%  |      0.6       | -57533.6   | +64607 | -122140 |
+|  60-80% (Strong)   |  5.7% | 13.5% | 16.5% | 33.5% | 30.8%  |      1.2       | +11852.4   | +158636 | -146784 |
+|  >80% (Nuts)       |  0.4% |  8.3% | 29.3% | 20.8% | 41.2%  |      2.0       | +174541.6   | +222314 | -47773 |
++----------------------------------------------------------------------------------------------------------+
+|  Train Loss:          28.7524  |  Val Loss:  45.6159                                |
+|  Loss Q: 27.9799 | Bluff: 0.0356 | Str: 0.0221 | Eq: 0.0195                 |
++========================================================================================+
++========================================================================================+
+|  SELF-PLAY V8 MULTI-PERSONALITY LEAGUE SYSTEM (RTX 4080 GPU)                           |
++========================================================================================+
+|  Active Personality: MAIN                                                               |
+|  Hands Simulated:        18,544 /    100,000   ( 18.5%)                            |
+|  Training Epoch:       30                                                              |
+|  Bootstrap Alpha:      0.67                                                            |
+|  Curriculum Stage:   Phase 2: Moderate Stacks                                      |
+|  Elapsed Time:       7m 8s                                                            |
+|  Sim Speed:              43 hands/sec                                                 |
+|  ETA:                31m 24s                                                          |
+|  Training Samples:       18,544                                                        |
++----------------------------------------------------------------------------------------+
+|  CUMULATIVE PERFORMANCE BY SEAT:                                                       |
+|  - Seat 0 Hero (Main)     :  +37.1 BB/100 (VPIP:23.6% AGG:57.2%) [R:6856  F:14837 AI:625 ]|
+|  - Seat 1 Opp 1 (Maniac)  :  -85.7 BB/100 (VPIP:32.4% AGG:69.3%) [R:10245 F:13218 AI:968 ]|
+|  - Seat 2 Opp 2 (Nit)     :  +15.5 BB/100 (VPIP:13.4% AGG:24.5%) [R:2135  F:16604 AI:141 ]|
+|  - Seat 3 Opp 3 (Sticky)  :  -64.2 BB/100 (VPIP:41.3% AGG:16.6%) [R:3732  F:11507 AI:289 ]|
+|  - Seat 4 Opp 4 (Past Self):  +52.2 BB/100 (VPIP:20.3% AGG:57.6%) [R:6722  F:15167 AI:656 ]|
+|  - Seat 5 Opp 5 (TAG Bot) :  +45.0 BB/100 (VPIP:20.5% AGG:56.4%) [R:7004  F:14987 AI:695 ]|
++----------------------------------------------------------------------------------------+
+|  Global Post-Flop Avg Active Players: 1.82                                             |
++----------------------------------------------------------------------------------------+
+|  EXPLOITATION SCOREBOARD (Net BB/100 Matrix):                                          |
+|  [Winner \ Loser] | Hero  | S1    | S2    | S3    | S4    | S5    |                    |
+|  Hero (Main)      |   -   | +20.4 |  +0.7 | +19.8 |  -3.9 |  +0.0 |                    |
+|  Opp 1 (Maniac)   | -20.4 |   -   |  -9.2 |  +5.3 | -31.8 | -29.4 |                    |
+|  Opp 2 (Nit)      |  -0.7 |  +9.2 |   -   |  +4.2 |  +3.0 |  -0.2 |                    |
+|  Opp 3 (Sticky)   | -19.8 |  -5.3 |  -4.2 |   -   | -17.9 | -16.9 |                    |
+|  Opp 4 (Past Self) |  +3.9 | +31.8 |  -3.0 | +17.9 |   -   |  +1.5 |                    |
+|  Opp 5 (TAG Bot)  |  -0.0 | +29.4 |  +0.2 | +16.9 |  -1.5 |   -   |                    |
++----------------------------------------------------------------------------------------+
+|  Action Entropy:       0.8359                                                        |
++----------------------------------------------------------------------------------------------------------+
+|  Equity Matrix     | Fold  | Call  | Raise | RR   | All-In | Avg End Street | Net Chips | Won    | Lost  |
++----------------------------------------------------------------------------------------------------------+
+|  <20% (Pure Air)   | 93.2% |  5.1% |  0.3% |  1.3% |  0.1%  |      0.1       | -17993.9   |  +3861 | -21855 |
+|  20-40% (Draws)    | 92.3% |  5.0% |  0.8% |  1.8% |  0.1%  |      0.2       | -51599.2   | +14266 | -65866 |
+|  40-60% (Marginal) | 40.0% | 31.2% |  4.9% | 18.6% |  5.3%  |      0.6       | -63263.1   | +72655 | -135918 |
+|  60-80% (Strong)   |  6.1% | 13.1% | 16.4% | 32.9% | 31.6%  |      1.2       | +7892.9   | +171716 | -163823 |
+|  >80% (Nuts)       |  0.4% |  8.2% | 29.9% | 20.8% | 40.7%  |      2.0       | +190752.5   | +241761 | -51008 |
++----------------------------------------------------------------------------------------------------------+
+|  Train Loss:          26.9970  |  Val Loss:  27.1145                                |
+|  Loss Q: 26.3206 | Bluff: 0.0298 | Str: 0.0192 | Eq: 0.0186                 |
++========================================================================================+
++========================================================================================+
+|  SELF-PLAY V8 MULTI-PERSONALITY LEAGUE SYSTEM (RTX 4080 GPU)                           |
++========================================================================================+
+|  Active Personality: MAIN                                                               |
+|  Hands Simulated:        20,410 /    100,000   ( 20.4%)                            |
+|  Training Epoch:       33                                                              |
+|  Bootstrap Alpha:      0.57                                                            |
+|  Curriculum Stage:   Phase 2: Moderate Stacks                                      |
+|  Elapsed Time:       7m 57s                                                           |
+|  Sim Speed:              43 hands/sec                                                 |
+|  ETA:                31m 2s                                                           |
+|  Training Samples:       20,410                                                        |
++----------------------------------------------------------------------------------------+
+|  CUMULATIVE PERFORMANCE BY SEAT:                                                       |
+|  - Seat 0 Hero (Main)     :  +32.6 BB/100 (VPIP:22.1% AGG:56.7%) [R:7367  F:16470 AI:665 ]|
+|  - Seat 1 Opp 1 (Maniac)  :  -90.7 BB/100 (VPIP:34.6% AGG:69.3%) [R:11486 F:14306 AI:1065]|
+|  - Seat 2 Opp 2 (Nit)     :  +18.8 BB/100 (VPIP:13.2% AGG:24.9%) [R:2346  F:18285 AI:150 ]|
+|  - Seat 3 Opp 3 (Sticky)  :  -57.0 BB/100 (VPIP:42.9% AGG:16.6%) [R:4134  F:12496 AI:332 ]|
+|  - Seat 4 Opp 4 (Past Self):  +51.5 BB/100 (VPIP:19.7% AGG:56.9%) [R:7275  F:16749 AI:704 ]|
+|  - Seat 5 Opp 5 (TAG Bot) :  +44.8 BB/100 (VPIP:20.3% AGG:56.7%) [R:7638  F:16516 AI:751 ]|
++----------------------------------------------------------------------------------------+
+|  Global Post-Flop Avg Active Players: 1.82                                             |
++----------------------------------------------------------------------------------------+
+|  EXPLOITATION SCOREBOARD (Net BB/100 Matrix):                                          |
+|  [Winner \ Loser] | Hero  | S1    | S2    | S3    | S4    | S5    |                    |
+|  Hero (Main)      |   -   | +22.2 |  -0.6 | +16.1 |  -6.6 |  +1.5 |                    |
+|  Opp 1 (Maniac)   | -22.2 |   -   |  -9.3 |  +0.3 | -28.9 | -30.7 |                    |
+|  Opp 2 (Nit)      |  +0.6 |  +9.3 |   -   |  +5.3 |  +3.8 |  -0.1 |                    |
+|  Opp 3 (Sticky)   | -16.1 |  -0.3 |  -5.3 |   -   | -19.7 | -15.7 |                    |
+|  Opp 4 (Past Self) |  +6.6 | +28.9 |  -3.8 | +19.7 |   -   |  +0.1 |                    |
+|  Opp 5 (TAG Bot)  |  -1.5 | +30.7 |  +0.1 | +15.7 |  -0.1 |   -   |                    |
++----------------------------------------------------------------------------------------+
+|  Action Entropy:       0.8518                                                        |
++----------------------------------------------------------------------------------------------------------+
+|  Equity Matrix     | Fold  | Call  | Raise | RR   | All-In | Avg End Street | Net Chips | Won    | Lost  |
++----------------------------------------------------------------------------------------------------------+
+|  <20% (Pure Air)   | 93.5% |  4.9% |  0.3% |  1.2% |  0.1%  |      0.1       | -19185.7   |  +4046 | -23232 |
+|  20-40% (Draws)    | 92.5% |  4.8% |  0.8% |  1.7% |  0.2%  |      0.1       | -56233.0   | +16987 | -73220 |
+|  40-60% (Marginal) | 41.7% | 29.8% |  4.7% | 18.7% |  5.1%  |      0.5       | -65470.4   | +78403 | -143873 |
+|  60-80% (Strong)   |  7.6% | 12.8% | 16.1% | 32.4% | 31.1%  |      1.2       | +9185.0   | +184645 | -175460 |
+|  >80% (Nuts)       |  0.7% |  8.4% | 29.8% | 20.8% | 40.4%  |      2.0       | +194833.2   | +253236 | -58403 |
++----------------------------------------------------------------------------------------------------------+
+|  Train Loss:          21.0346  |  Val Loss:  20.4032                                |
+|  Loss Q: 20.4842 | Bluff: 0.0184 | Str: 0.0190 | Eq: 0.0177                 |
++========================================================================================+
++========================================================================================+
+|  SELF-PLAY V8 MULTI-PERSONALITY LEAGUE SYSTEM (RTX 4080 GPU)                           |
++========================================================================================+
+|  Active Personality: MAIN                                                               |
+|  Hands Simulated:        22,262 /    100,000   ( 22.3%)                            |
+|  Training Epoch:       36                                                              |
+|  Bootstrap Alpha:      0.48                                                            |
+|  Curriculum Stage:   Phase 2: Moderate Stacks                                      |
+|  Elapsed Time:       8m 46s                                                           |
+|  Sim Speed:              42 hands/sec                                                 |
+|  ETA:                30m 37s                                                          |
+|  Training Samples:       22,262                                                        |
++----------------------------------------------------------------------------------------+
+|  CUMULATIVE PERFORMANCE BY SEAT:                                                       |
+|  - Seat 0 Hero (Main)     :  +30.6 BB/100 (VPIP:20.3% AGG:54.4%) [R:7740  F:18141 AI:689 ]|
+|  - Seat 1 Opp 1 (Maniac)  :  -87.4 BB/100 (VPIP:37.0% AGG:69.2%) [R:12728 F:15335 AI:1154]|
+|  - Seat 2 Opp 2 (Nit)     :  +17.0 BB/100 (VPIP:12.9% AGG:24.4%) [R:2512  F:19969 AI:166 ]|
+|  - Seat 3 Opp 3 (Sticky)  :  -56.4 BB/100 (VPIP:44.2% AGG:16.8%) [R:4484  F:13473 AI:369 ]|
+|  - Seat 4 Opp 4 (Past Self):  +51.1 BB/100 (VPIP:19.3% AGG:57.2%) [R:7844  F:18311 AI:764 ]|
+|  - Seat 5 Opp 5 (TAG Bot) :  +45.0 BB/100 (VPIP:19.8% AGG:56.9%) [R:8175  F:18081 AI:807 ]|
++----------------------------------------------------------------------------------------+
+|  Global Post-Flop Avg Active Players: 1.83                                             |
++----------------------------------------------------------------------------------------+
+|  EXPLOITATION SCOREBOARD (Net BB/100 Matrix):                                          |
+|  [Winner \ Loser] | Hero  | S1    | S2    | S3    | S4    | S5    |                    |
+|  Hero (Main)      |   -   | +21.2 |  +0.5 | +16.5 |  -7.5 |  -0.1 |                    |
+|  Opp 1 (Maniac)   | -21.2 |   -   |  -8.6 |  -1.1 | -27.8 | -28.7 |                    |
+|  Opp 2 (Nit)      |  -0.5 |  +8.6 |   -   |  +5.1 |  +3.0 |  +0.8 |                    |
+|  Opp 3 (Sticky)   | -16.5 |  +1.1 |  -5.1 |   -   | -19.8 | -16.2 |                    |
+|  Opp 4 (Past Self) |  +7.5 | +27.8 |  -3.0 | +19.8 |   -   |  -0.9 |                    |
+|  Opp 5 (TAG Bot)  |  +0.1 | +28.7 |  -0.8 | +16.2 |  +0.9 |   -   |                    |
++----------------------------------------------------------------------------------------+
+|  Action Entropy:       0.8645                                                        |
++----------------------------------------------------------------------------------------------------------+
+|  Equity Matrix     | Fold  | Call  | Raise | RR   | All-In | Avg End Street | Net Chips | Won    | Lost  |
++----------------------------------------------------------------------------------------------------------+
+|  <20% (Pure Air)   | 93.7% |  4.7% |  0.3% |  1.2% |  0.1%  |      0.1       | -20508.7   |  +4481 | -24989 |
+|  20-40% (Draws)    | 92.7% |  4.6% |  0.8% |  1.8% |  0.2%  |      0.1       | -59895.3   | +18692 | -78587 |
+|  40-60% (Marginal) | 44.3% | 28.4% |  4.5% | 17.9% |  4.9%  |      0.5       | -69582.4   | +82270 | -151853 |
+|  60-80% (Strong)   |  9.1% | 12.5% | 16.0% | 32.1% | 30.3%  |      1.2       | +16536.1   | +196142 | -179606 |
+|  >80% (Nuts)       |  1.9% |  8.4% | 29.8% | 20.6% | 39.2%  |      2.0       | +197981.6   | +257020 | -59038 |
++----------------------------------------------------------------------------------------------------------+
+|  Train Loss:          13.4574  |  Val Loss:  13.9629                                |
+|  Loss Q: 12.9130 | Bluff: 0.0174 | Str: 0.0193 | Eq: 0.0178                 |
++========================================================================================+
+C:\REPO\Antigravity\AIPoker\.venv\Lib\site-packages\torch\_utils.py:831: UserWarning: TypedStorage is deprecated. It will be removed in the future and UntypedStorage will be the only storage class. This should only matter to you if you are using storages directly.  To access UntypedStorage directly, use tensor.untyped_storage() instead of tensor.storage()
+  return self.fget.__get__(instance, owner)()
+==================================================
+           MODEL HEALTH DIAGNOSTIC TOOL         
+           Target: Herocules (v11 Main)                 
+==================================================
+WARNING: expert_v8_selfplay.pth not found at C:\REPO\Antigravity\AIPoker\core\weights\expert_v8_selfplay.pth. Model will output random garbage.
+WARNING: Could not load weights: Error(s) in loading state_dict for PokerEVModelV4:
+	size mismatch for state_proj.0.weight: copying a param with shape torch.Size([256, 159]) from checkpoint, the shape in current model is torch.Size([256, 163]).
+WARNING: Could not load weights: Error(s) in loading state_dict for PokerEVModelV4:
+	size mismatch for state_proj.0.weight: copying a param with shape torch.Size([256, 159]) from checkpoint, the shape in current model is torch.Size([256, 163]).
+WARNING: Could not load weights: Error(s) in loading state_dict for PokerEVModelV4:
+	size mismatch for state_proj.0.weight: copying a param with shape torch.Size([256, 159]) from checkpoint, the shape in current model is torch.Size([256, 163]).
+WARNING: expert_v9_main.pth not found at C:\REPO\Antigravity\AIPoker\core\weights\expert_v9_main.pth. Model will output random garbage.
+WARNING: v10_100k_main.pt not found at C:\REPO\Antigravity\AIPoker\core\weights\v10_100k_main.pt. Model will output random garbage.
+WARNING: v10_100k_main.pt not found at C:\REPO\Antigravity\AIPoker\core\weights\v10_100k_main.pt. Model will output random garbage.
+WARNING: v10_50k_main.pt not found at C:\REPO\Antigravity\AIPoker\core\weights\v10_50k_main.pt. Model will output random garbage.
+WARNING: expert_v8_main.pth not found at C:\REPO\Antigravity\AIPoker\core\weights\expert_v8_main.pth. Model will output random garbage.
+WARNING: Could not load weights: Error(s) in loading state_dict for PokerEVModelV4:
+	size mismatch for state_proj.0.weight: copying a param with shape torch.Size([256, 159]) from checkpoint, the shape in current model is torch.Size([256, 163]).
+WARNING: Could not load weights: Error(s) in loading state_dict for PokerEVModelV4:
+	size mismatch for state_proj.0.weight: copying a param with shape torch.Size([256, 159]) from checkpoint, the shape in current model is torch.Size([256, 163]).
+WARNING: Could not load weights: Error(s) in loading state_dict for PokerEVModelV4:
+	size mismatch for state_proj.0.weight: copying a param with shape torch.Size([256, 159]) from checkpoint, the shape in current model is torch.Size([256, 163]).
+WARNING: Could not load weights: Error(s) in loading state_dict for PokerEVModelV4:
+	size mismatch for state_proj.0.weight: copying a param with shape torch.Size([256, 159]) from checkpoint, the shape in current model is torch.Size([256, 163]).
+Scenario                            | Raw EV (Fold)   | Raw EV (Call)   | Raw EV (Raise)  | Final Action
+-------------------------------------------------------------------------------------------------------------------
+River Pure Air (First to Act)       | 0.01            | -0.19           | -0.92           | FOLD
+River Pure Air (Facing Bet)         | 0.01            | -0.19           | -0.92           | FOLD
+River The Nuts (Facing Bet)         | 0.00            | -0.20           | -0.98           | FOLD
+River The Nuts (Calling Station)    | 0.00            | -0.20           | -0.98           | FOLD
+Preflop AA vs Nit (Deep)            | 0.03            | -0.24           | -0.71           | FOLD
+Preflop AA vs Maniac                | 0.03            | -0.24           | -0.70           | FOLD
+Flop TPTK Multi-Way (4-way pot)     | 0.03            | -0.25           | -0.65           | FOLD
+Turn Flush Draw vs Bet              | 0.02            | -0.22           | -0.78           | FOLD
+
+==================================================
+           PREFLOP EQUITY SWEEP                 
+==================================================
+Eq Group        | Opps  | Raw EV (Fold)   | Raw EV (Call)   | Raw EV (Raise)  | Final Action
+-------------------------------------------------------------------------------------
+<20% (Air)      | 1     | 0.01            | -0.20           | -0.94           | FOLD
+20-40% (Weak)   | 1     | 0.00            | -0.20           | -0.97           | FOLD
+40-60% (Marg)   | 1     | 0.02            | -0.20           | -0.88           | FOLD
+60-80% (Strg)   | 1     | 0.04            | -0.24           | -0.68           | FOLD
+>80% (Nuts)     | 1     | 0.03            | -0.25           | -0.65           | FOLD
+-------------------------------------------------------------------------------------
+<20% (Air)      | 3     | 0.01            | -0.20           | -0.95           | FOLD
+20-40% (Weak)   | 3     | 0.00            | -0.20           | -0.97           | FOLD
+40-60% (Marg)   | 3     | 0.02            | -0.20           | -0.89           | FOLD
+60-80% (Strg)   | 3     | 0.04            | -0.24           | -0.69           | FOLD
+>80% (Nuts)     | 3     | 0.03            | -0.25           | -0.65           | FOLD
+-------------------------------------------------------------------------------------
+<20% (Air)      | 5     | 0.01            | -0.20           | -0.95           | FOLD
+20-40% (Weak)   | 5     | 0.00            | -0.20           | -0.98           | FOLD
+40-60% (Marg)   | 5     | 0.01            | -0.20           | -0.90           | FOLD
+60-80% (Strg)   | 5     | 0.03            | -0.23           | -0.71           | FOLD
+>80% (Nuts)     | 5     | 0.03            | -0.25           | -0.65           | FOLD
+-------------------------------------------------------------------------------------
+
+[Analysis Complete]
+
+[DIAGNOSTICS] Mid-flight diagnostics triggered at 22262 hands...
++========================================================================================+
+|  SELF-PLAY V8 MULTI-PERSONALITY LEAGUE SYSTEM (RTX 4080 GPU)                           |
++========================================================================================+
+|  Active Personality: MAIN                                                               |
+|  Hands Simulated:        24,118 /    100,000   ( 24.1%)                            |
+|  Training Epoch:       39                                                              |
+|  Bootstrap Alpha:      0.39                                                            |
+|  Curriculum Stage:   Phase 2: Moderate Stacks                                      |
+|  Elapsed Time:       9m 37s                                                           |
+|  Sim Speed:              42 hands/sec                                                 |
+|  ETA:                30m 17s                                                          |
+|  Training Samples:       24,118                                                        |
++----------------------------------------------------------------------------------------+
+|  CUMULATIVE PERFORMANCE BY SEAT:                                                       |
+|  - Seat 0 Hero (Main)     :  +26.0 BB/100 (VPIP:18.6% AGG:48.9%) [R:7931  F:19854 AI:692 ]|
+|  - Seat 1 Opp 1 (Maniac)  :  -85.1 BB/100 (VPIP:39.1% AGG:69.1%) [R:13937 F:16357 AI:1220]|
+|  - Seat 2 Opp 2 (Nit)     :  +15.6 BB/100 (VPIP:12.5% AGG:24.7%) [R:2669  F:21653 AI:173 ]|
+|  - Seat 3 Opp 3 (Sticky)  :  -55.6 BB/100 (VPIP:45.3% AGG:16.9%) [R:4809  F:14468 AI:393 ]|
+|  - Seat 4 Opp 4 (Past Self):  +50.9 BB/100 (VPIP:18.8% AGG:57.0%) [R:8329  F:19871 AI:812 ]|
+|  - Seat 5 Opp 5 (TAG Bot) :  +48.1 BB/100 (VPIP:19.6% AGG:57.3%) [R:8717  F:19612 AI:845 ]|
++----------------------------------------------------------------------------------------+
+|  Global Post-Flop Avg Active Players: 1.83                                             |
++----------------------------------------------------------------------------------------+
+|  EXPLOITATION SCOREBOARD (Net BB/100 Matrix):                                          |
+|  [Winner \ Loser] | Hero  | S1    | S2    | S3    | S4    | S5    |                    |
+|  Hero (Main)      |   -   | +18.4 |  -0.2 | +14.8 |  -7.2 |  +0.2 |                    |
+|  Opp 1 (Maniac)   | -18.4 |   -   |  -8.0 |  -1.7 | -26.1 | -30.8 |                    |
+|  Opp 2 (Nit)      |  +0.2 |  +8.0 |   -   |  +4.6 |  +2.3 |  +0.6 |                    |
+|  Opp 3 (Sticky)   | -14.8 |  +1.7 |  -4.6 |   -   | -19.9 | -18.0 |                    |
+|  Opp 4 (Past Self) |  +7.2 | +26.1 |  -2.3 | +19.9 |   -   |  -0.0 |                    |
+|  Opp 5 (TAG Bot)  |  -0.2 | +30.8 |  -0.6 | +18.0 |  +0.0 |   -   |                    |
++----------------------------------------------------------------------------------------+
+|  Action Entropy:       0.8779                                                        |
++----------------------------------------------------------------------------------------------------------+
+|  Equity Matrix     | Fold  | Call  | Raise | RR   | All-In | Avg End Street | Net Chips | Won    | Lost  |
++----------------------------------------------------------------------------------------------------------+
+|  <20% (Pure Air)   | 93.9% |  4.5% |  0.3% |  1.1% |  0.1%  |      0.1       | -20820.3   |  +4589 | -25410 |
+|  20-40% (Draws)    | 93.0% |  4.4% |  0.7% |  1.7% |  0.2%  |      0.1       | -62775.9   | +18927 | -81703 |
+|  40-60% (Marginal) | 47.2% | 27.3% |  4.2% | 16.9% |  4.5%  |      0.5       | -70872.1   | +83347 | -154219 |
+|  60-80% (Strong)   | 13.1% | 12.5% | 15.5% | 30.8% | 28.1%  |      1.1       | +15836.0   | +198258 | -182422 |
+|  >80% (Nuts)       |  4.7% |  9.0% | 28.7% | 20.2% | 37.4%  |      2.0       | +197539.2   | +259145 | -61606 |
++----------------------------------------------------------------------------------------------------------+
+|  Train Loss:           4.5423  |  Val Loss:   2.0818                                |
+|  Loss Q: 4.0204 | Bluff: 0.0224 | Str: 0.0160 | Eq: 0.0138                 |
++========================================================================================+
++========================================================================================+
+|  SELF-PLAY V8 MULTI-PERSONALITY LEAGUE SYSTEM (RTX 4080 GPU)                           |
++========================================================================================+
+|  Active Personality: MAIN                                                               |
+|  Hands Simulated:        25,978 /    100,000   ( 26.0%)                            |
+|  Training Epoch:       42                                                              |
+|  Bootstrap Alpha:      0.29                                                            |
+|  Curriculum Stage:   Phase 2: Moderate Stacks                                      |
+|  Elapsed Time:       10m 49s                                                          |
+|  Sim Speed:              40 hands/sec                                                 |
+|  ETA:                30m 50s                                                          |
+|  Training Samples:       25,978                                                        |
++----------------------------------------------------------------------------------------+
+|  CUMULATIVE PERFORMANCE BY SEAT:                                                       |
+|  - Seat 0 Hero (Main)     :  +21.6 BB/100 (VPIP:28.0% AGG:43.6%) [R:8308  F:20595 AI:731 ]|
+|  - Seat 1 Opp 1 (Maniac)  :  -84.8 BB/100 (VPIP:41.8% AGG:68.2%) [R:15119 F:17285 AI:1291]|
+|  - Seat 2 Opp 2 (Nit)     :  +15.4 BB/100 (VPIP:11.7% AGG:24.2%) [R:2770  F:23368 AI:178 ]|
+|  - Seat 3 Opp 3 (Sticky)  :  -54.1 BB/100 (VPIP:46.1% AGG:16.5%) [R:5060  F:15456 AI:417 ]|
+|  - Seat 4 Opp 4 (Past Self):  +53.5 BB/100 (VPIP:17.5% AGG:56.7%) [R:8663  F:21527 AI:845 ]|
+|  - Seat 5 Opp 5 (TAG Bot) :  +48.4 BB/100 (VPIP:18.3% AGG:56.8%) [R:9078  F:21227 AI:877 ]|
++----------------------------------------------------------------------------------------+
+|  Global Post-Flop Avg Active Players: 1.87                                             |
++----------------------------------------------------------------------------------------+
+|  EXPLOITATION SCOREBOARD (Net BB/100 Matrix):                                          |
+|  [Winner \ Loser] | Hero  | S1    | S2    | S3    | S4    | S5    |                    |
+|  Hero (Main)      |   -   | +17.9 |  -0.4 | +14.2 |  -9.3 |  -0.9 |                    |
+|  Opp 1 (Maniac)   | -17.9 |   -   |  -8.8 |  -0.1 | -28.8 | -29.3 |                    |
+|  Opp 2 (Nit)      |  +0.4 |  +8.8 |   -   |  +3.8 |  +2.3 |  +0.2 |                    |
+|  Opp 3 (Sticky)   | -14.2 |  +0.1 |  -3.8 |   -   | -18.0 | -18.1 |                    |
+|  Opp 4 (Past Self) |  +9.3 | +28.8 |  -2.3 | +18.0 |   -   |  -0.4 |                    |
+|  Opp 5 (TAG Bot)  |  +0.9 | +29.3 |  -0.2 | +18.1 |  +0.4 |   -   |                    |
++----------------------------------------------------------------------------------------+
+|  Action Entropy:       0.8885                                                        |
++----------------------------------------------------------------------------------------------------------+
+|  Equity Matrix     | Fold  | Call  | Raise | RR   | All-In | Avg End Street | Net Chips | Won    | Lost  |
++----------------------------------------------------------------------------------------------------------+
+|  <20% (Pure Air)   | 90.3% |  8.2% |  0.3% |  1.1% |  0.1%  |      0.1       | -32647.6   |  +7223 | -39870 |
+|  20-40% (Draws)    | 90.1% |  7.4% |  0.7% |  1.7% |  0.2%  |      0.1       | -70800.0   | +25876 | -96676 |
+|  40-60% (Marginal) | 45.5% | 29.9% |  4.0% | 16.2% |  4.4%  |      0.5       | -73344.4   | +91838 | -165182 |
+|  60-80% (Strong)   | 12.3% | 16.8% | 14.9% | 29.4% | 26.7%  |      1.2       | +16229.1   | +212871 | -196642 |
+|  >80% (Nuts)       |  4.2% | 14.8% | 26.7% | 19.0% | 35.3%  |      2.0       | +212511.8   | +280084 | -67572 |
++----------------------------------------------------------------------------------------------------------+
+|  Train Loss:          24.9245  |  Val Loss:  26.7728                                |
+|  Loss Q: 23.9014 | Bluff: 0.0462 | Str: 0.0286 | Eq: 0.0275                 |
++========================================================================================+
+
+==================================================
+--- INTERMEDIATE SENSITIVITY CHECK AT 25k Hands ---
+| Hand | Equity | Fold EV | Call EV | Raise EV | Action |
+| :--- | :---: | :---: | :---: | :---: | :---: |
+| 7d 2s (Garbage)      | 0.30 |    0.12 |   -0.13 |    -0.86 | **FOLD** |
+| Jh Ts (Medium)       | 0.46 |    0.12 |   -0.14 |    -0.84 | **FOLD** |
+| Ad Qo (Strong)       | 0.60 |    0.14 |    0.17 |    -0.63 | **CALL** |
+| Qd Qs (Premium)      | 0.78 |    0.13 |    0.23 |    -0.53 | **CALL** |
+| Ah As (Nuts)         | 0.85 |    0.14 |    0.13 |    -0.65 | **FOLD** |
+==================================================
+
++========================================================================================+
+|  SELF-PLAY V8 MULTI-PERSONALITY LEAGUE SYSTEM (RTX 4080 GPU)                           |
++========================================================================================+
+|  Active Personality: MAIN                                                               |
+|  Hands Simulated:        27,838 /    100,000   ( 27.8%)                            |
+|  Training Epoch:       45                                                              |
+|  Bootstrap Alpha:      0.20                                                            |
+|  Curriculum Stage:   Phase 2: Moderate Stacks                                      |
+|  Elapsed Time:       11m 45s                                                          |
+|  Sim Speed:              39 hands/sec                                                 |
+|  ETA:                30m 27s                                                          |
+|  Training Samples:       27,838                                                        |
++----------------------------------------------------------------------------------------+
+|  CUMULATIVE PERFORMANCE BY SEAT:                                                       |
+|  - Seat 0 Hero (Main)     :  +17.9 BB/100 (VPIP:24.3% AGG:39.1%) [R:8439  F:22334 AI:736 ]|
+|  - Seat 1 Opp 1 (Maniac)  :  -88.0 BB/100 (VPIP:44.6% AGG:68.5%) [R:16441 F:18141 AI:1381]|
+|  - Seat 2 Opp 2 (Nit)     :  +18.6 BB/100 (VPIP:11.6% AGG:24.6%) [R:2931  F:25047 AI:184 ]|
+|  - Seat 3 Opp 3 (Sticky)  :  -53.8 BB/100 (VPIP:46.9% AGG:16.2%) [R:5346  F:16442 AI:444 ]|
+|  - Seat 4 Opp 4 (Past Self):  +53.7 BB/100 (VPIP:17.3% AGG:57.0%) [R:9163  F:23099 AI:894 ]|
+|  - Seat 5 Opp 5 (TAG Bot) :  +51.7 BB/100 (VPIP:18.3% AGG:56.7%) [R:9629  F:22785 AI:929 ]|
++----------------------------------------------------------------------------------------+
+|  Global Post-Flop Avg Active Players: 1.87                                             |
++----------------------------------------------------------------------------------------+
+|  EXPLOITATION SCOREBOARD (Net BB/100 Matrix):                                          |
+|  [Winner \ Loser] | Hero  | S1    | S2    | S3    | S4    | S5    |                    |
+|  Hero (Main)      |   -   | +16.5 |  -0.7 | +13.0 |  -9.4 |  -1.4 |                    |
+|  Opp 1 (Maniac)   | -16.5 |   -   |  -9.7 |  +0.9 | -30.0 | -32.7 |                    |
+|  Opp 2 (Nit)      |  +0.7 |  +9.7 |   -   |  +4.4 |  +2.9 |  +0.9 |                    |
+|  Opp 3 (Sticky)   | -13.0 |  -0.9 |  -4.4 |   -   | -17.0 | -18.6 |                    |
+|  Opp 4 (Past Self) |  +9.4 | +30.0 |  -2.9 | +17.0 |   -   |  +0.2 |                    |
+|  Opp 5 (TAG Bot)  |  +1.4 | +32.7 |  -0.9 | +18.6 |  -0.2 |   -   |                    |
++----------------------------------------------------------------------------------------+
+|  Action Entropy:       0.8936                                                        |
++----------------------------------------------------------------------------------------------------------+
+|  Equity Matrix     | Fold  | Call  | Raise | RR   | All-In | Avg End Street | Net Chips | Won    | Lost  |
++----------------------------------------------------------------------------------------------------------+
+|  <20% (Pure Air)   | 90.7% |  7.8% |  0.3% |  1.1% |  0.1%  |      0.1       | -32926.5   |  +7338 | -40264 |
+|  20-40% (Draws)    | 90.6% |  7.0% |  0.6% |  1.6% |  0.2%  |      0.1       | -72979.4   | +26074 | -99053 |
+|  40-60% (Marginal) | 48.1% | 28.6% |  3.7% | 15.4% |  4.1%  |      0.5       | -76496.4   | +92292 | -168788 |
+|  60-80% (Strong)   | 14.5% | 17.3% | 14.2% | 28.3% | 25.7%  |      1.2       | +15230.9   | +215871 | -200640 |
+|  >80% (Nuts)       |  5.4% | 15.7% | 26.4% | 18.5% | 34.0%  |      2.0       | +212585.9   | +281422 | -68837 |
++----------------------------------------------------------------------------------------------------------+
+|  Train Loss:           4.1467  |  Val Loss:   8.8840                                |
+|  Loss Q: 3.7270 | Bluff: 0.0162 | Str: 0.0161 | Eq: 0.0097                 |
++========================================================================================+
++========================================================================================+
+|  SELF-PLAY V8 MULTI-PERSONALITY LEAGUE SYSTEM (RTX 4080 GPU)                           |
++========================================================================================+
+|  Active Personality: MAIN                                                               |
+|  Hands Simulated:        29,690 /    100,000   ( 29.7%)                            |
+|  Training Epoch:       48                                                              |
+|  Bootstrap Alpha:      0.11                                                            |
+|  Curriculum Stage:   Phase 2: Moderate Stacks                                      |
+|  Elapsed Time:       13m 5s                                                           |
+|  Sim Speed:              38 hands/sec                                                 |
+|  ETA:                31m 0s                                                           |
+|  Training Samples:       29,690                                                        |
++----------------------------------------------------------------------------------------+
+|  CUMULATIVE PERFORMANCE BY SEAT:                                                       |
+|  - Seat 0 Hero (Main)     :  +10.1 BB/100 (VPIP:30.3% AGG:33.5%) [R:8635  F:23231 AI:766 ]|
+|  - Seat 1 Opp 1 (Maniac)  :  -86.0 BB/100 (VPIP:47.0% AGG:67.7%) [R:17688 F:18981 AI:1457]|
+|  - Seat 2 Opp 2 (Nit)     :  +20.2 BB/100 (VPIP:10.8% AGG:24.4%) [R:3040  F:26776 AI:195 ]|
+|  - Seat 3 Opp 3 (Sticky)  :  -54.6 BB/100 (VPIP:47.5% AGG:15.8%) [R:5618  F:17432 AI:478 ]|
+|  - Seat 4 Opp 4 (Past Self):  +54.0 BB/100 (VPIP:16.5% AGG:56.9%) [R:9553  F:24732 AI:929 ]|
+|  - Seat 5 Opp 5 (TAG Bot) :  +56.4 BB/100 (VPIP:17.3% AGG:56.2%) [R:10029 F:24392 AI:962 ]|
++----------------------------------------------------------------------------------------+
+|  Global Post-Flop Avg Active Players: 1.89                                             |
++----------------------------------------------------------------------------------------+
+|  EXPLOITATION SCOREBOARD (Net BB/100 Matrix):                                          |
+|  [Winner \ Loser] | Hero  | S1    | S2    | S3    | S4    | S5    |                    |
+|  Hero (Main)      |   -   | +12.1 |  -1.2 | +12.9 | -10.3 |  -3.4 |                    |
+|  Opp 1 (Maniac)   | -12.1 |   -   | -11.2 |  +1.6 | -29.6 | -34.7 |                    |
+|  Opp 2 (Nit)      |  +1.2 | +11.2 |   -   |  +4.3 |  +2.6 |  +0.9 |                    |
+|  Opp 3 (Sticky)   | -12.9 |  -1.6 |  -4.3 |   -   | -16.7 | -19.1 |                    |
+|  Opp 4 (Past Self) | +10.3 | +29.6 |  -2.6 | +16.7 |   -   |  -0.0 |                    |
+|  Opp 5 (TAG Bot)  |  +3.4 | +34.7 |  -0.9 | +19.1 |  +0.0 |   -   |                    |
++----------------------------------------------------------------------------------------+
+|  Action Entropy:       0.8980                                                        |
++----------------------------------------------------------------------------------------------------------+
+|  Equity Matrix     | Fold  | Call  | Raise | RR   | All-In | Avg End Street | Net Chips | Won    | Lost  |
++----------------------------------------------------------------------------------------------------------+
+|  <20% (Pure Air)   | 89.3% |  9.3% |  0.3% |  1.0% |  0.2%  |      0.1       | -47885.4   |  +8558 | -56444 |
+|  20-40% (Draws)    | 88.2% |  9.4% |  0.6% |  1.6% |  0.2%  |      0.2       | -82573.0   | +30501 | -113074 |
+|  40-60% (Marginal) | 46.0% | 31.6% |  3.6% | 14.7% |  4.0%  |      0.5       | -73532.0   | +102824 | -176356 |
+|  60-80% (Strong)   | 13.7% | 21.3% | 13.3% | 27.0% | 24.8%  |      1.3       | +11668.3   | +227252 | -215583 |
+|  >80% (Nuts)       |  5.0% | 20.5% | 25.0% | 17.7% | 31.8%  |      2.1       | +217569.3   | +288557 | -70987 |
++----------------------------------------------------------------------------------------------------------+
+|  Train Loss:          19.7581  |  Val Loss:  18.9897                                |
+|  Loss Q: 18.8608 | Bluff: 0.0400 | Str: 0.0275 | Eq: 0.0222                 |
++========================================================================================+
++========================================================================================+
+|  SELF-PLAY V8 MULTI-PERSONALITY LEAGUE SYSTEM (RTX 4080 GPU)                           |
++========================================================================================+
+|  Active Personality: MAIN                                                               |
+|  Hands Simulated:        31,542 /    100,000   ( 31.5%)                            |
+|  Training Epoch:       51                                                              |
+|  Bootstrap Alpha:      0.02                                                            |
+|  Curriculum Stage:   Phase 3: Extreme Stacks                                       |
+|  Elapsed Time:       14m 25s                                                          |
+|  Sim Speed:              36 hands/sec                                                 |
+|  ETA:                31m 18s                                                          |
+|  Training Samples:       31,542                                                        |
++----------------------------------------------------------------------------------------+
+|  CUMULATIVE PERFORMANCE BY SEAT:                                                       |
+|  - Seat 0 Hero (Main)     :  +10.8 BB/100 (VPIP:28.2% AGG:42.6%) [R:9507  F:24761 AI:872 ]|
+|  - Seat 1 Opp 1 (Maniac)  :  -86.7 BB/100 (VPIP:49.7% AGG:68.1%) [R:19298 F:19794 AI:1614]|
+|  - Seat 2 Opp 2 (Nit)     :  +22.7 BB/100 (VPIP:10.6% AGG:25.1%) [R:3191  F:28501 AI:208 ]|
+|  - Seat 3 Opp 3 (Sticky)  :  -53.4 BB/100 (VPIP:48.0% AGG:16.1%) [R:5939  F:18431 AI:520 ]|
+|  - Seat 4 Opp 4 (Past Self):  +51.8 BB/100 (VPIP:16.5% AGG:57.2%) [R:10077 F:26326 AI:989 ]|
+|  - Seat 5 Opp 5 (TAG Bot) :  +54.8 BB/100 (VPIP:17.3% AGG:56.4%) [R:10600 F:25982 AI:1029]|
++----------------------------------------------------------------------------------------+
+|  Global Post-Flop Avg Active Players: 1.90                                             |
++----------------------------------------------------------------------------------------+
+|  EXPLOITATION SCOREBOARD (Net BB/100 Matrix):                                          |
+|  [Winner \ Loser] | Hero  | S1    | S2    | S3    | S4    | S5    |                    |
+|  Hero (Main)      |   -   | +12.0 |  -1.7 | +12.7 |  -8.6 |  -3.6 |                    |
+|  Opp 1 (Maniac)   | -12.0 |   -   | -12.5 |  +0.9 | -29.5 | -33.5 |                    |
+|  Opp 2 (Nit)      |  +1.7 | +12.5 |   -   |  +5.2 |  +2.7 |  +0.7 |                    |
+|  Opp 3 (Sticky)   | -12.7 |  -0.9 |  -5.2 |   -   | -15.9 | -18.8 |                    |
+|  Opp 4 (Past Self) |  +8.6 | +29.5 |  -2.7 | +15.9 |   -   |  +0.4 |                    |
+|  Opp 5 (TAG Bot)  |  +3.6 | +33.5 |  -0.7 | +18.8 |  -0.4 |   -   |                    |
++----------------------------------------------------------------------------------------+
+|  Action Entropy:       0.8879                                                        |
++----------------------------------------------------------------------------------------------------------+
+|  Equity Matrix     | Fold  | Call  | Raise | RR   | All-In | Avg End Street | Net Chips | Won    | Lost  |
++----------------------------------------------------------------------------------------------------------+
+|  <20% (Pure Air)   | 89.6% |  8.8% |  0.3% |  1.0% |  0.2%  |      0.1       | -53174.7   | +11152 | -64327 |
+|  20-40% (Draws)    | 88.4% |  9.0% |  0.6% |  1.7% |  0.3%  |      0.1       | -97736.6   | +35342 | -133078 |
+|  40-60% (Marginal) | 45.4% | 30.4% |  3.6% | 15.7% |  4.9%  |      0.5       | -82670.1   | +122714 | -205384 |
+|  60-80% (Strong)   | 13.3% | 20.8% | 13.5% | 26.7% | 25.7%  |      1.3       | +18748.0   | +247634 | -228886 |
+|  >80% (Nuts)       |  4.7% | 19.9% | 25.1% | 18.1% | 32.1%  |      2.1       | +243827.8   | +314851 | -71024 |
++----------------------------------------------------------------------------------------------------------+
+|  Train Loss:          38.4391  |  Val Loss:  52.0675                                |
+|  Loss Q: 37.6675 | Bluff: 0.0300 | Str: 0.0192 | Eq: 0.0279                 |
++========================================================================================+
++========================================================================================+
+|  SELF-PLAY V8 MULTI-PERSONALITY LEAGUE SYSTEM (RTX 4080 GPU)                           |
++========================================================================================+
+|  Active Personality: MAIN                                                               |
+|  Hands Simulated:        33,398 /    100,000   ( 33.4%)                            |
+|  Training Epoch:       54                                                              |
+|  Bootstrap Alpha:      0.00                                                            |
+|  Curriculum Stage:   Phase 3: Extreme Stacks                                       |
+|  Elapsed Time:       15m 45s                                                          |
+|  Sim Speed:              35 hands/sec                                                 |
+|  ETA:                31m 25s                                                          |
+|  Training Samples:       33,398                                                        |
++----------------------------------------------------------------------------------------+
+|  CUMULATIVE PERFORMANCE BY SEAT:                                                       |
+|  - Seat 0 Hero (Main)     :   +8.4 BB/100 (VPIP:25.4% AGG:49.8%) [R:10089 F:26385 AI:962 ]|
+|  - Seat 1 Opp 1 (Maniac)  :  -83.1 BB/100 (VPIP:52.1% AGG:68.0%) [R:20726 F:20591 AI:1766]|
+|  - Seat 2 Opp 2 (Nit)     :  +22.2 BB/100 (VPIP:10.2% AGG:24.8%) [R:3317  F:30262 AI:219 ]|
+|  - Seat 3 Opp 3 (Sticky)  :  -55.3 BB/100 (VPIP:48.4% AGG:16.2%) [R:6292  F:19399 AI:593 ]|
+|  - Seat 4 Opp 4 (Past Self):  +53.1 BB/100 (VPIP:16.5% AGG:56.2%) [R:10555 F:27921 AI:1055]|
+|  - Seat 5 Opp 5 (TAG Bot) :  +54.6 BB/100 (VPIP:17.3% AGG:56.8%) [R:11074 F:27579 AI:1091]|
++----------------------------------------------------------------------------------------+
+|  Global Post-Flop Avg Active Players: 1.90                                             |
++----------------------------------------------------------------------------------------+
+|  EXPLOITATION SCOREBOARD (Net BB/100 Matrix):                                          |
+|  [Winner \ Loser] | Hero  | S1    | S2    | S3    | S4    | S5    |                    |
+|  Hero (Main)      |   -   | +11.7 |  -3.4 | +13.3 |  -8.3 |  -4.9 |                    |
+|  Opp 1 (Maniac)   | -11.7 |   -   | -11.3 |  +1.2 | -30.2 | -31.1 |                    |
+|  Opp 2 (Nit)      |  +3.4 | +11.3 |   -   |  +5.1 |  +2.4 |  +0.1 |                    |
+|  Opp 3 (Sticky)   | -13.3 |  -1.2 |  -5.1 |   -   | -15.9 | -19.9 |                    |
+|  Opp 4 (Past Self) |  +8.3 | +30.2 |  -2.4 | +15.9 |   -   |  +1.1 |                    |
+|  Opp 5 (TAG Bot)  |  +4.9 | +31.1 |  -0.1 | +19.9 |  -1.1 |   -   |                    |
++----------------------------------------------------------------------------------------+
+|  Action Entropy:       0.8889                                                        |
++----------------------------------------------------------------------------------------------------------+
+|  Equity Matrix     | Fold  | Call  | Raise | RR   | All-In | Avg End Street | Net Chips | Won    | Lost  |
++----------------------------------------------------------------------------------------------------------+
+|  <20% (Pure Air)   | 90.1% |  8.3% |  0.3% |  1.0% |  0.2%  |      0.1       | -56759.6   | +12715 | -69474 |
+|  20-40% (Draws)    | 88.7% |  8.7% |  0.6% |  1.7% |  0.4%  |      0.1       | -101844.5   | +40290 | -142134 |
+|  40-60% (Marginal) | 46.5% | 29.0% |  3.5% | 15.5% |  5.5%  |      0.5       | -95130.9   | +133714 | -228845 |
+|  60-80% (Strong)   | 13.7% | 20.0% | 13.0% | 27.0% | 26.3%  |      1.2       | +19468.6   | +258992 | -239523 |
+|  >80% (Nuts)       |  5.1% | 19.4% | 24.8% | 18.3% | 32.6%  |      2.1       | +256919.7   | +332035 | -75115 |
++----------------------------------------------------------------------------------------------------------+
+|  Train Loss:          25.8080  |  Val Loss:  19.4420                                |
+|  Loss Q: 25.1072 | Bluff: 0.0239 | Str: 0.0195 | Eq: 0.0267                 |
++========================================================================================+
+C:\REPO\Antigravity\AIPoker\.venv\Lib\site-packages\torch\_utils.py:831: UserWarning: TypedStorage is deprecated. It will be removed in the future and UntypedStorage will be the only storage class. This should only matter to you if you are using storages directly.  To access UntypedStorage directly, use tensor.untyped_storage() instead of tensor.storage()
+  return self.fget.__get__(instance, owner)()
+==================================================
+           MODEL HEALTH DIAGNOSTIC TOOL         
+           Target: Herocules (v11 Main)                 
+==================================================
+WARNING: expert_v8_selfplay.pth not found at C:\REPO\Antigravity\AIPoker\core\weights\expert_v8_selfplay.pth. Model will output random garbage.
+WARNING: Could not load weights: Error(s) in loading state_dict for PokerEVModelV4:
+	size mismatch for state_proj.0.weight: copying a param with shape torch.Size([256, 159]) from checkpoint, the shape in current model is torch.Size([256, 163]).
+WARNING: Could not load weights: Error(s) in loading state_dict for PokerEVModelV4:
+	size mismatch for state_proj.0.weight: copying a param with shape torch.Size([256, 159]) from checkpoint, the shape in current model is torch.Size([256, 163]).
+WARNING: Could not load weights: Error(s) in loading state_dict for PokerEVModelV4:
+	size mismatch for state_proj.0.weight: copying a param with shape torch.Size([256, 159]) from checkpoint, the shape in current model is torch.Size([256, 163]).
+WARNING: expert_v9_main.pth not found at C:\REPO\Antigravity\AIPoker\core\weights\expert_v9_main.pth. Model will output random garbage.
+WARNING: v10_100k_main.pt not found at C:\REPO\Antigravity\AIPoker\core\weights\v10_100k_main.pt. Model will output random garbage.
+WARNING: v10_100k_main.pt not found at C:\REPO\Antigravity\AIPoker\core\weights\v10_100k_main.pt. Model will output random garbage.
+WARNING: v10_50k_main.pt not found at C:\REPO\Antigravity\AIPoker\core\weights\v10_50k_main.pt. Model will output random garbage.
+WARNING: expert_v8_main.pth not found at C:\REPO\Antigravity\AIPoker\core\weights\expert_v8_main.pth. Model will output random garbage.
+WARNING: Could not load weights: Error(s) in loading state_dict for PokerEVModelV4:
+	size mismatch for state_proj.0.weight: copying a param with shape torch.Size([256, 159]) from checkpoint, the shape in current model is torch.Size([256, 163]).
+WARNING: Could not load weights: Error(s) in loading state_dict for PokerEVModelV4:
+	size mismatch for state_proj.0.weight: copying a param with shape torch.Size([256, 159]) from checkpoint, the shape in current model is torch.Size([256, 163]).
+WARNING: Could not load weights: Error(s) in loading state_dict for PokerEVModelV4:
+	size mismatch for state_proj.0.weight: copying a param with shape torch.Size([256, 159]) from checkpoint, the shape in current model is torch.Size([256, 163]).
+WARNING: Could not load weights: Error(s) in loading state_dict for PokerEVModelV4:
+	size mismatch for state_proj.0.weight: copying a param with shape torch.Size([256, 159]) from checkpoint, the shape in current model is torch.Size([256, 163]).
+Scenario                            | Raw EV (Fold)   | Raw EV (Call)   | Raw EV (Raise)  | Final Action
+-------------------------------------------------------------------------------------------------------------------
+River Pure Air (First to Act)       | 0.01            | -0.59           | -1.79           | FOLD
+River Pure Air (Facing Bet)         | 0.01            | -0.59           | -1.78           | FOLD
+River The Nuts (Facing Bet)         | 0.01            | -0.57           | -1.75           | FOLD
+River The Nuts (Calling Station)    | 0.01            | -0.57           | -1.75           | FOLD
+Preflop AA vs Nit (Deep)            | 0.02            | 1.92            | 9.13            | RAISE
+Preflop AA vs Maniac                | 0.02            | 1.92            | 9.19            | RAISE
+Flop TPTK Multi-Way (4-way pot)     | 0.02            | -0.47           | -1.57           | FOLD
+Turn Flush Draw vs Bet              | 0.00            | -0.54           | -1.70           | FOLD
+
+==================================================
+           PREFLOP EQUITY SWEEP                 
+==================================================
+Eq Group        | Opps  | Raw EV (Fold)   | Raw EV (Call)   | Raw EV (Raise)  | Final Action
+-------------------------------------------------------------------------------------
+<20% (Air)      | 1     | 0.01            | -0.58           | -1.78           | FOLD
+20-40% (Weak)   | 1     | 0.01            | -0.51           | -1.62           | FOLD
+40-60% (Marg)   | 1     | 0.01            | -0.59           | -1.79           | FOLD
+60-80% (Strg)   | 1     | 0.01            | -0.56           | -1.74           | FOLD
+>80% (Nuts)     | 1     | -0.01           | 0.32            | 0.72            | RAISE
+-------------------------------------------------------------------------------------
+<20% (Air)      | 3     | 0.01            | -0.59           | -1.78           | FOLD
+20-40% (Weak)   | 3     | 0.00            | -0.53           | -1.68           | FOLD
+40-60% (Marg)   | 3     | 0.01            | -0.59           | -1.79           | FOLD
+60-80% (Strg)   | 3     | 0.01            | -0.57           | -1.76           | FOLD
+>80% (Nuts)     | 3     | 0.01            | 0.20            | 0.07            | CALL
+-------------------------------------------------------------------------------------
+<20% (Air)      | 5     | 0.01            | -0.59           | -1.78           | FOLD
+20-40% (Weak)   | 5     | 0.00            | -0.55           | -1.71           | FOLD
+40-60% (Marg)   | 5     | 0.01            | -0.59           | -1.80           | FOLD
+60-80% (Strg)   | 5     | 0.01            | -0.58           | -1.77           | FOLD
+>80% (Nuts)     | 5     | 0.05            | 0.05            | -0.48           | FOLD
+-------------------------------------------------------------------------------------
+
+[Analysis Complete]
+
+[DIAGNOSTICS] Mid-flight diagnostics triggered at 33398 hands...
++========================================================================================+
+|  SELF-PLAY V8 MULTI-PERSONALITY LEAGUE SYSTEM (RTX 4080 GPU)                           |
++========================================================================================+
+|  Active Personality: MAIN                                                               |
+|  Hands Simulated:        35,257 /    100,000   ( 35.3%)                            |
+|  Training Epoch:       57                                                              |
+|  Bootstrap Alpha:      0.00                                                            |
+|  Curriculum Stage:   Phase 3: Extreme Stacks                                       |
+|  Elapsed Time:       16m 53s                                                          |
+|  Sim Speed:              35 hands/sec                                                 |
+|  ETA:                31m 1s                                                           |
+|  Training Samples:       35,257                                                        |
++----------------------------------------------------------------------------------------+
+|  CUMULATIVE PERFORMANCE BY SEAT:                                                       |
+|  - Seat 0 Hero (Main)     :   +6.1 BB/100 (VPIP:21.7% AGG:50.0%) [R:10265 F:28143 AI:983 ]|
+|  - Seat 1 Opp 1 (Maniac)  :  -83.1 BB/100 (VPIP:53.9% AGG:68.6%) [R:22186 F:21366 AI:1902]|
+|  - Seat 2 Opp 2 (Nit)     :  +21.2 BB/100 (VPIP:10.3% AGG:24.8%) [R:3461  F:31973 AI:230 ]|
+|  - Seat 3 Opp 3 (Sticky)  :  -54.9 BB/100 (VPIP:48.7% AGG:16.4%) [R:6602  F:20384 AI:651 ]|
+|  - Seat 4 Opp 4 (Past Self):  +56.9 BB/100 (VPIP:16.6% AGG:56.6%) [R:11078 F:29497 AI:1130]|
+|  - Seat 5 Opp 5 (TAG Bot) :  +53.8 BB/100 (VPIP:17.3% AGG:56.0%) [R:11531 F:29169 AI:1146]|
++----------------------------------------------------------------------------------------+
+|  Global Post-Flop Avg Active Players: 1.90                                             |
++----------------------------------------------------------------------------------------+
+|  EXPLOITATION SCOREBOARD (Net BB/100 Matrix):                                          |
+|  [Winner \ Loser] | Hero  | S1    | S2    | S3    | S4    | S5    |                    |
+|  Hero (Main)      |   -   | +10.8 |  -3.7 | +12.1 |  -8.5 |  -4.7 |                    |
+|  Opp 1 (Maniac)   | -10.8 |   -   | -10.3 |  +1.8 | -32.7 | -31.1 |                    |
+|  Opp 2 (Nit)      |  +3.7 | +10.3 |   -   |  +5.6 |  +1.5 |  +0.2 |                    |
+|  Opp 3 (Sticky)   | -12.1 |  -1.8 |  -5.6 |   -   | -16.6 | -18.9 |                    |
+|  Opp 4 (Past Self) |  +8.5 | +32.7 |  -1.5 | +16.6 |   -   |  +0.6 |                    |
+|  Opp 5 (TAG Bot)  |  +4.7 | +31.1 |  -0.2 | +18.9 |  -0.6 |   -   |                    |
++----------------------------------------------------------------------------------------+
+|  Action Entropy:       0.8902                                                        |
++----------------------------------------------------------------------------------------------------------+
+|  Equity Matrix     | Fold  | Call  | Raise | RR   | All-In | Avg End Street | Net Chips | Won    | Lost  |
++----------------------------------------------------------------------------------------------------------+
+|  <20% (Pure Air)   | 90.5% |  8.0% |  0.3% |  1.0% |  0.2%  |      0.1       | -59620.5   | +12902 | -72523 |
+|  20-40% (Draws)    | 89.2% |  8.2% |  0.6% |  1.7% |  0.4%  |      0.1       | -104874.5   | +40527 | -145402 |
+|  40-60% (Marginal) | 48.6% | 27.7% |  3.3% | 15.1% |  5.3%  |      0.5       | -93198.4   | +137737 | -230935 |
+|  60-80% (Strong)   | 15.6% | 19.3% | 12.6% | 26.6% | 25.8%  |      1.2       | +20017.7   | +263758 | -243740 |
+|  >80% (Nuts)       |  5.4% | 19.2% | 24.7% | 18.1% | 32.6%  |      2.1       | +253564.1   | +332224 | -78660 |
++----------------------------------------------------------------------------------------------------------+
+|  Train Loss:           5.8565  |  Val Loss:  10.7058                                |
+|  Loss Q: 5.3781 | Bluff: 0.0132 | Str: 0.0151 | Eq: 0.0195                 |
++========================================================================================+
++========================================================================================+
+|  SELF-PLAY V8 MULTI-PERSONALITY LEAGUE SYSTEM (RTX 4080 GPU)                           |
++========================================================================================+
+|  Active Personality: MAIN                                                               |
+|  Hands Simulated:        37,114 /    100,000   ( 37.1%)                            |
+|  Training Epoch:       60                                                              |
+|  Bootstrap Alpha:      0.00                                                            |
+|  Curriculum Stage:   Phase 3: Extreme Stacks                                       |
+|  Elapsed Time:       18m 25s                                                          |
+|  Sim Speed:              34 hands/sec                                                 |
+|  ETA:                31m 13s                                                          |
+|  Training Samples:       37,114                                                        |
++----------------------------------------------------------------------------------------+
+|  CUMULATIVE PERFORMANCE BY SEAT:                                                       |
+|  - Seat 0 Hero (Main)     :   +2.4 BB/100 (VPIP:28.3% AGG:42.0%) [R:10492 F:29036 AI:1033]|
+|  - Seat 1 Opp 1 (Maniac)  :  -86.4 BB/100 (VPIP:55.0% AGG:67.8%) [R:23384 F:22177 AI:1994]|
+|  - Seat 2 Opp 2 (Nit)     :  +20.6 BB/100 (VPIP: 9.8% AGG:24.5%) [R:3567  F:33707 AI:239 ]|
+|  - Seat 3 Opp 3 (Sticky)  :  -51.6 BB/100 (VPIP:49.0% AGG:16.2%) [R:6866  F:21358 AI:697 ]|
+|  - Seat 4 Opp 4 (Past Self):  +60.6 BB/100 (VPIP:15.9% AGG:56.2%) [R:11412 F:31120 AI:1171]|
+|  - Seat 5 Opp 5 (TAG Bot) :  +54.5 BB/100 (VPIP:16.3% AGG:55.8%) [R:11886 F:30818 AI:1192]|
++----------------------------------------------------------------------------------------+
+|  Global Post-Flop Avg Active Players: 1.92                                             |
++----------------------------------------------------------------------------------------+
+|  EXPLOITATION SCOREBOARD (Net BB/100 Matrix):                                          |
+|  [Winner \ Loser] | Hero  | S1    | S2    | S3    | S4    | S5    |                    |
+|  Hero (Main)      |   -   | +10.5 |  -3.4 | +10.2 |  -9.6 |  -5.3 |                    |
+|  Opp 1 (Maniac)   | -10.5 |   -   | -10.7 |  +0.1 | -34.5 | -30.8 |                    |
+|  Opp 2 (Nit)      |  +3.4 | +10.7 |   -   |  +5.7 |  +1.1 |  -0.3 |                    |
+|  Opp 3 (Sticky)   | -10.2 |  -0.1 |  -5.7 |   -   | -17.1 | -18.6 |                    |
+|  Opp 4 (Past Self) |  +9.6 | +34.5 |  -1.1 | +17.1 |   -   |  +0.5 |                    |
+|  Opp 5 (TAG Bot)  |  +5.3 | +30.8 |  +0.3 | +18.6 |  -0.5 |   -   |                    |
++----------------------------------------------------------------------------------------+
+|  Action Entropy:       0.8871                                                        |
++----------------------------------------------------------------------------------------------------------+
+|  Equity Matrix     | Fold  | Call  | Raise | RR   | All-In | Avg End Street | Net Chips | Won    | Lost  |
++----------------------------------------------------------------------------------------------------------+
+|  <20% (Pure Air)   | 89.1% |  9.4% |  0.3% |  0.9% |  0.3%  |      0.1       | -76309.3   | +14950 | -91260 |
+|  20-40% (Draws)    | 87.6% |  9.9% |  0.6% |  1.6% |  0.4%  |      0.1       | -110391.1   | +44643 | -155034 |
+|  40-60% (Marginal) | 47.0% | 29.9% |  3.3% | 14.6% |  5.2%  |      0.5       | -95385.1   | +143280 | -238665 |
+|  60-80% (Strong)   | 14.9% | 22.8% | 12.0% | 25.4% | 24.9%  |      1.3       | +23373.1   | +274644 | -251271 |
+|  >80% (Nuts)       |  5.1% | 23.5% | 23.0% | 16.9% | 31.4%  |      2.1       | +261787.9   | +342938 | -81150 |
++----------------------------------------------------------------------------------------------------------+
+|  Train Loss:          13.8373  |  Val Loss:  18.8088                                |
+|  Loss Q: 12.6651 | Bluff: 0.0460 | Str: 0.0288 | Eq: 0.0424                 |
++========================================================================================+
++========================================================================================+
+|  SELF-PLAY V8 MULTI-PERSONALITY LEAGUE SYSTEM (RTX 4080 GPU)                           |
++========================================================================================+
+|  Active Personality: MAIN                                                               |
+|  Hands Simulated:        38,966 /    100,000   ( 39.0%)                            |
+|  Training Epoch:       63                                                              |
+|  Bootstrap Alpha:      0.00                                                            |
+|  Curriculum Stage:   Phase 3: Extreme Stacks                                       |
+|  Elapsed Time:       20m 14s                                                          |
+|  Sim Speed:              32 hands/sec                                                 |
+|  ETA:                31m 42s                                                          |
+|  Training Samples:       38,966                                                        |
++----------------------------------------------------------------------------------------+
+|  CUMULATIVE PERFORMANCE BY SEAT:                                                       |
+|  - Seat 0 Hero (Main)     :   -2.6 BB/100 (VPIP:39.9% AGG:35.1%) [R:10667 F:29384 AI:1092]|
+|  - Seat 1 Opp 1 (Maniac)  :  -85.8 BB/100 (VPIP:56.0% AGG:66.7%) [R:24518 F:22944 AI:2079]|
+|  - Seat 2 Opp 2 (Nit)     :  +21.6 BB/100 (VPIP: 9.2% AGG:24.3%) [R:3650  F:35436 AI:248 ]|
+|  - Seat 3 Opp 3 (Sticky)  :  -51.1 BB/100 (VPIP:49.2% AGG:15.7%) [R:7063  F:22328 AI:736 ]|
+|  - Seat 4 Opp 4 (Past Self):  +62.2 BB/100 (VPIP:14.9% AGG:55.1%) [R:11642 F:32778 AI:1192]|
+|  - Seat 5 Opp 5 (TAG Bot) :  +55.7 BB/100 (VPIP:14.7% AGG:55.5%) [R:12126 F:32520 AI:1223]|
++----------------------------------------------------------------------------------------+
+|  Global Post-Flop Avg Active Players: 1.95                                             |
++----------------------------------------------------------------------------------------+
+|  EXPLOITATION SCOREBOARD (Net BB/100 Matrix):                                          |
+|  [Winner \ Loser] | Hero  | S1    | S2    | S3    | S4    | S5    |                    |
+|  Hero (Main)      |   -   |  +7.9 |  -3.5 |  +9.4 | -10.9 |  -5.4 |                    |
+|  Opp 1 (Maniac)   |  -7.9 |   -   | -11.5 |  +0.1 | -35.1 | -31.4 |                    |
+|  Opp 2 (Nit)      |  +3.5 | +11.5 |   -   |  +5.3 |  +0.9 |  +0.4 |                    |
+|  Opp 3 (Sticky)   |  -9.4 |  -0.1 |  -5.3 |   -   | -17.3 | -19.1 |                    |
+|  Opp 4 (Past Self) | +10.9 | +35.1 |  -0.9 | +17.3 |   -   |  -0.2 |                    |
+|  Opp 5 (TAG Bot)  |  +5.4 | +31.4 |  -0.4 | +19.1 |  +0.2 |   -   |                    |
++----------------------------------------------------------------------------------------+
+|  Action Entropy:       0.8887                                                        |
++----------------------------------------------------------------------------------------------------------+
+|  Equity Matrix     | Fold  | Call  | Raise | RR   | All-In | Avg End Street | Net Chips | Won    | Lost  |
++----------------------------------------------------------------------------------------------------------+
+|  <20% (Pure Air)   | 85.8% | 12.5% |  0.3% |  1.0% |  0.4%  |      0.2       | -96428.2   | +22482 | -118910 |
+|  20-40% (Draws)    | 85.0% | 12.5% |  0.6% |  1.6% |  0.4%  |      0.2       | -110690.9   | +60440 | -171131 |
+|  40-60% (Marginal) | 44.9% | 32.9% |  3.2% | 13.8% |  5.2%  |      0.6       | -103808.1   | +152937 | -256745 |
+|  60-80% (Strong)   | 14.1% | 26.4% | 11.6% | 23.8% | 24.1%  |      1.3       | +26725.3   | +286826 | -260100 |
+|  >80% (Nuts)       |  4.8% | 27.4% | 22.1% | 16.0% | 29.7%  |      2.1       | +267592.3   | +349335 | -81743 |
++----------------------------------------------------------------------------------------------------------+
+|  Train Loss:          20.3523  |  Val Loss:  20.6174                                |
+|  Loss Q: 19.1924 | Bluff: 0.0506 | Str: 0.0311 | Eq: 0.0344                 |
++========================================================================================+
++========================================================================================+
+|  SELF-PLAY V8 MULTI-PERSONALITY LEAGUE SYSTEM (RTX 4080 GPU)                           |
++========================================================================================+
+|  Active Personality: MAIN                                                               |
+|  Hands Simulated:        40,842 /    100,000   ( 40.8%)                            |
+|  Training Epoch:       66                                                              |
+|  Bootstrap Alpha:      0.00                                                            |
+|  Curriculum Stage:   Phase 3: Extreme Stacks                                       |
+|  Elapsed Time:       21m 36s                                                          |
+|  Sim Speed:              31 hands/sec                                                 |
+|  ETA:                31m 18s                                                          |
+|  Training Samples:       40,842                                                        |
++----------------------------------------------------------------------------------------+
+|  CUMULATIVE PERFORMANCE BY SEAT:                                                       |
+|  - Seat 0 Hero (Main)     :   -7.2 BB/100 (VPIP:40.0% AGG:32.3%) [R:11085 F:30530 AI:1188]|
+|  - Seat 1 Opp 1 (Maniac)  :  -78.3 BB/100 (VPIP:57.0% AGG:66.5%) [R:25908 F:23712 AI:2217]|
+|  - Seat 2 Opp 2 (Nit)     :  +21.3 BB/100 (VPIP: 9.4% AGG:24.3%) [R:3805  F:37143 AI:262 ]|
+|  - Seat 3 Opp 3 (Sticky)  :  -51.3 BB/100 (VPIP:49.3% AGG:15.6%) [R:7336  F:23314 AI:795 ]|
+|  - Seat 4 Opp 4 (Past Self):  +61.1 BB/100 (VPIP:14.9% AGG:55.2%) [R:12060 F:34395 AI:1242]|
+|  - Seat 5 Opp 5 (TAG Bot) :  +54.4 BB/100 (VPIP:14.7% AGG:54.9%) [R:12529 F:34151 AI:1279]|
++----------------------------------------------------------------------------------------+
+|  Global Post-Flop Avg Active Players: 1.96                                             |
++----------------------------------------------------------------------------------------+
+|  EXPLOITATION SCOREBOARD (Net BB/100 Matrix):                                          |
+|  [Winner \ Loser] | Hero  | S1    | S2    | S3    | S4    | S5    |                    |
+|  Hero (Main)      |   -   |  +5.5 |  -3.3 |  +7.5 | -11.0 |  -5.9 |                    |
+|  Opp 1 (Maniac)   |  -5.5 |   -   | -12.0 |  +2.5 | -33.4 | -29.9 |                    |
+|  Opp 2 (Nit)      |  +3.3 | +12.0 |   -   |  +5.0 |  +0.7 |  +0.3 |                    |
+|  Opp 3 (Sticky)   |  -7.5 |  -2.5 |  -5.0 |   -   | -16.8 | -19.5 |                    |
+|  Opp 4 (Past Self) | +11.0 | +33.4 |  -0.7 | +16.8 |   -   |  +0.5 |                    |
+|  Opp 5 (TAG Bot)  |  +5.9 | +29.9 |  -0.3 | +19.5 |  -0.5 |   -   |                    |
++----------------------------------------------------------------------------------------+
+|  Action Entropy:       0.8952                                                        |
++----------------------------------------------------------------------------------------------------------+
+|  Equity Matrix     | Fold  | Call  | Raise | RR   | All-In | Avg End Street | Net Chips | Won    | Lost  |
++----------------------------------------------------------------------------------------------------------+
+|  <20% (Pure Air)   | 85.6% | 12.7% |  0.3% |  1.0% |  0.5%  |      0.2       | -112367.5   | +23348 | -135716 |
+|  20-40% (Draws)    | 84.1% | 13.3% |  0.5% |  1.6% |  0.5%  |      0.2       | -118013.6   | +67237 | -185251 |
+|  40-60% (Marginal) | 43.8% | 33.9% |  3.1% | 13.6% |  5.6%  |      0.6       | -108428.9   | +165035 | -273463 |
+|  60-80% (Strong)   | 13.6% | 27.9% | 11.3% | 23.2% | 23.9%  |      1.3       | +28741.9   | +301204 | -272462 |
+|  >80% (Nuts)       |  4.5% | 29.6% | 21.3% | 15.4% | 29.2%  |      2.2       | +273712.9   | +359660 | -85947 |
++----------------------------------------------------------------------------------------------------------+
+|  Train Loss:          22.5992  |  Val Loss:  22.2965                                |
+|  Loss Q: 21.5999 | Bluff: 0.0419 | Str: 0.0275 | Eq: 0.0305                 |
++========================================================================================+
++========================================================================================+
+|  SELF-PLAY V8 MULTI-PERSONALITY LEAGUE SYSTEM (RTX 4080 GPU)                           |
++========================================================================================+
+|  Active Personality: MAIN                                                               |
+|  Hands Simulated:        42,709 /    100,000   ( 42.7%)                            |
+|  Training Epoch:       69                                                              |
+|  Bootstrap Alpha:      0.00                                                            |
+|  Curriculum Stage:   Phase 3: Extreme Stacks                                       |
+|  Elapsed Time:       22m 48s                                                          |
+|  Sim Speed:              31 hands/sec                                                 |
+|  ETA:                30m 35s                                                          |
+|  Training Samples:       42,709                                                        |
++----------------------------------------------------------------------------------------+
+|  CUMULATIVE PERFORMANCE BY SEAT:                                                       |
+|  - Seat 0 Hero (Main)     :  -10.6 BB/100 (VPIP:37.7% AGG:36.5%) [R:11754 F:31905 AI:1306]|
+|  - Seat 1 Opp 1 (Maniac)  :  -73.9 BB/100 (VPIP:57.6% AGG:66.6%) [R:27325 F:24545 AI:2362]|
+|  - Seat 2 Opp 2 (Nit)     :  +20.3 BB/100 (VPIP: 9.6% AGG:24.5%) [R:3965  F:38850 AI:274 ]|
+|  - Seat 3 Opp 3 (Sticky)  :  -50.3 BB/100 (VPIP:49.5% AGG:15.7%) [R:7649  F:24288 AI:867 ]|
+|  - Seat 4 Opp 4 (Past Self):  +60.0 BB/100 (VPIP:15.2% AGG:54.7%) [R:12499 F:35984 AI:1299]|
+|  - Seat 5 Opp 5 (TAG Bot) :  +54.6 BB/100 (VPIP:14.7% AGG:54.9%) [R:12948 F:35786 AI:1326]|
++----------------------------------------------------------------------------------------+
+|  Global Post-Flop Avg Active Players: 1.97                                             |
++----------------------------------------------------------------------------------------+
+|  EXPLOITATION SCOREBOARD (Net BB/100 Matrix):                                          |
+|  [Winner \ Loser] | Hero  | S1    | S2    | S3    | S4    | S5    |                    |
+|  Hero (Main)      |   -   |  +6.0 |  -3.6 |  +7.8 | -13.1 |  -7.7 |                    |
+|  Opp 1 (Maniac)   |  -6.0 |   -   | -11.0 |  +2.0 | -30.7 | -28.2 |                    |
+|  Opp 2 (Nit)      |  +3.6 | +11.0 |   -   |  +4.8 |  +0.6 |  +0.3 |                    |
+|  Opp 3 (Sticky)   |  -7.8 |  -2.0 |  -4.8 |   -   | -16.7 | -19.0 |                    |
+|  Opp 4 (Past Self) | +13.1 | +30.7 |  -0.6 | +16.7 |   -   |  +0.1 |                    |
+|  Opp 5 (TAG Bot)  |  +7.7 | +28.2 |  -0.3 | +19.0 |  -0.1 |   -   |                    |
++----------------------------------------------------------------------------------------+
+|  Action Entropy:       0.9005                                                        |
++----------------------------------------------------------------------------------------------------------+
+|  Equity Matrix     | Fold  | Call  | Raise | RR   | All-In | Avg End Street | Net Chips | Won    | Lost  |
++----------------------------------------------------------------------------------------------------------+
+|  <20% (Pure Air)   | 85.7% | 12.5% |  0.3% |  1.0% |  0.5%  |      0.2       | -120851.4   | +24895 | -145747 |
+|  20-40% (Draws)    | 84.0% | 13.3% |  0.6% |  1.6% |  0.6%  |      0.2       | -123265.4   | +78876 | -202141 |
+|  40-60% (Marginal) | 43.2% | 33.9% |  3.1% | 13.6% |  6.1%  |      0.6       | -118457.4   | +180067 | -298525 |
+|  60-80% (Strong)   | 13.4% | 27.9% | 11.2% | 23.2% | 24.3%  |      1.3       | +30928.5   | +316456 | -285528 |
+|  >80% (Nuts)       |  4.5% | 29.2% | 20.8% | 15.4% | 30.2%  |      2.2       | +279267.5   | +373511 | -94243 |
++----------------------------------------------------------------------------------------------------------+
+|  Train Loss:          29.4834  |  Val Loss:  26.3963                                |
+|  Loss Q: 28.6291 | Bluff: 0.0367 | Str: 0.0239 | Eq: 0.0248                 |
++========================================================================================+
++========================================================================================+
+|  SELF-PLAY V8 MULTI-PERSONALITY LEAGUE SYSTEM (RTX 4080 GPU)                           |
++========================================================================================+
+|  Active Personality: MAIN                                                               |
+|  Hands Simulated:        44,572 /    100,000   ( 44.6%)                            |
+|  Training Epoch:       72                                                              |
+|  Bootstrap Alpha:      0.00                                                            |
+|  Curriculum Stage:   Phase 3: Extreme Stacks                                       |
+|  Elapsed Time:       23m 52s                                                          |
+|  Sim Speed:              31 hands/sec                                                 |
+|  ETA:                29m 41s                                                          |
+|  Training Samples:       44,572                                                        |
++----------------------------------------------------------------------------------------+
+|  CUMULATIVE PERFORMANCE BY SEAT:                                                       |
+|  - Seat 0 Hero (Main)     :  -11.2 BB/100 (VPIP:34.6% AGG:31.6%) [R:11907 F:33391 AI:1332]|
+|  - Seat 1 Opp 1 (Maniac)  :  -75.0 BB/100 (VPIP:58.4% AGG:66.5%) [R:28719 F:25324 AI:2491]|
+|  - Seat 2 Opp 2 (Nit)     :  +20.9 BB/100 (VPIP: 9.6% AGG:25.1%) [R:4115  F:40566 AI:288 ]|
+|  - Seat 3 Opp 3 (Sticky)  :  -48.4 BB/100 (VPIP:49.6% AGG:15.9%) [R:7977  F:25282 AI:930 ]|
+|  - Seat 4 Opp 4 (Past Self):  +60.5 BB/100 (VPIP:15.3% AGG:53.5%) [R:12885 F:37608 AI:1346]|
+|  - Seat 5 Opp 5 (TAG Bot) :  +53.2 BB/100 (VPIP:14.9% AGG:56.1%) [R:13421 F:37375 AI:1385]|
++----------------------------------------------------------------------------------------+
+|  Global Post-Flop Avg Active Players: 1.97                                             |
++----------------------------------------------------------------------------------------+
+|  EXPLOITATION SCOREBOARD (Net BB/100 Matrix):                                          |
+|  [Winner \ Loser] | Hero  | S1    | S2    | S3    | S4    | S5    |                    |
+|  Hero (Main)      |   -   |  +5.8 |  -3.5 |  +7.5 | -12.8 |  -8.2 |                    |
+|  Opp 1 (Maniac)   |  -5.8 |   -   | -11.8 |  +2.1 | -32.1 | -27.5 |                    |
+|  Opp 2 (Nit)      |  +3.5 | +11.8 |   -   |  +4.7 |  +0.6 |  +0.3 |                    |
+|  Opp 3 (Sticky)   |  -7.5 |  -2.1 |  -4.7 |   -   | -15.7 | -18.4 |                    |
+|  Opp 4 (Past Self) | +12.8 | +32.1 |  -0.6 | +15.7 |   -   |  +0.5 |                    |
+|  Opp 5 (TAG Bot)  |  +8.2 | +27.5 |  -0.3 | +18.4 |  -0.5 |   -   |                    |
++----------------------------------------------------------------------------------------+
+|  Action Entropy:       0.9009                                                        |
++----------------------------------------------------------------------------------------------------------+
+|  Equity Matrix     | Fold  | Call  | Raise | RR   | All-In | Avg End Street | Net Chips | Won    | Lost  |
++----------------------------------------------------------------------------------------------------------+
+|  <20% (Pure Air)   | 86.0% | 12.2% |  0.3% |  1.0% |  0.5%  |      0.2       | -125420.1   | +25428 | -150848 |
+|  20-40% (Draws)    | 84.1% | 13.3% |  0.5% |  1.6% |  0.5%  |      0.2       | -127663.0   | +80209 | -207872 |
+|  40-60% (Marginal) | 43.2% | 34.5% |  3.0% | 13.2% |  6.1%  |      0.6       | -119293.6   | +183834 | -303128 |
+|  60-80% (Strong)   | 13.2% | 29.5% | 11.0% | 22.7% | 23.7%  |      1.3       | +30678.3   | +319834 | -289155 |
+|  >80% (Nuts)       |  4.4% | 30.6% | 20.2% | 15.1% | 29.8%  |      2.2       | +284246.2   | +379054 | -94808 |
++----------------------------------------------------------------------------------------------------------+
+|  Train Loss:           7.6085  |  Val Loss:  11.1966                                |
+|  Loss Q: 6.8821 | Bluff: 0.0304 | Str: 0.0223 | Eq: 0.0200                 |
++========================================================================================+
+C:\REPO\Antigravity\AIPoker\.venv\Lib\site-packages\torch\_utils.py:831: UserWarning: TypedStorage is deprecated. It will be removed in the future and UntypedStorage will be the only storage class. This should only matter to you if you are using storages directly.  To access UntypedStorage directly, use tensor.untyped_storage() instead of tensor.storage()
+  return self.fget.__get__(instance, owner)()
+==================================================
+           MODEL HEALTH DIAGNOSTIC TOOL         
+           Target: Herocules (v11 Main)                 
+==================================================
+WARNING: expert_v8_selfplay.pth not found at C:\REPO\Antigravity\AIPoker\core\weights\expert_v8_selfplay.pth. Model will output random garbage.
+WARNING: Could not load weights: Error(s) in loading state_dict for PokerEVModelV4:
+	size mismatch for state_proj.0.weight: copying a param with shape torch.Size([256, 159]) from checkpoint, the shape in current model is torch.Size([256, 163]).
+WARNING: Could not load weights: Error(s) in loading state_dict for PokerEVModelV4:
+	size mismatch for state_proj.0.weight: copying a param with shape torch.Size([256, 159]) from checkpoint, the shape in current model is torch.Size([256, 163]).
+WARNING: Could not load weights: Error(s) in loading state_dict for PokerEVModelV4:
+	size mismatch for state_proj.0.weight: copying a param with shape torch.Size([256, 159]) from checkpoint, the shape in current model is torch.Size([256, 163]).
+WARNING: expert_v9_main.pth not found at C:\REPO\Antigravity\AIPoker\core\weights\expert_v9_main.pth. Model will output random garbage.
+WARNING: v10_100k_main.pt not found at C:\REPO\Antigravity\AIPoker\core\weights\v10_100k_main.pt. Model will output random garbage.
+WARNING: v10_100k_main.pt not found at C:\REPO\Antigravity\AIPoker\core\weights\v10_100k_main.pt. Model will output random garbage.
+WARNING: v10_50k_main.pt not found at C:\REPO\Antigravity\AIPoker\core\weights\v10_50k_main.pt. Model will output random garbage.
+WARNING: expert_v8_main.pth not found at C:\REPO\Antigravity\AIPoker\core\weights\expert_v8_main.pth. Model will output random garbage.
+WARNING: Could not load weights: Error(s) in loading state_dict for PokerEVModelV4:
+	size mismatch for state_proj.0.weight: copying a param with shape torch.Size([256, 159]) from checkpoint, the shape in current model is torch.Size([256, 163]).
+WARNING: Could not load weights: Error(s) in loading state_dict for PokerEVModelV4:
+	size mismatch for state_proj.0.weight: copying a param with shape torch.Size([256, 159]) from checkpoint, the shape in current model is torch.Size([256, 163]).
+WARNING: Could not load weights: Error(s) in loading state_dict for PokerEVModelV4:
+	size mismatch for state_proj.0.weight: copying a param with shape torch.Size([256, 159]) from checkpoint, the shape in current model is torch.Size([256, 163]).
+WARNING: Could not load weights: Error(s) in loading state_dict for PokerEVModelV4:
+	size mismatch for state_proj.0.weight: copying a param with shape torch.Size([256, 159]) from checkpoint, the shape in current model is torch.Size([256, 163]).
+Scenario                            | Raw EV (Fold)   | Raw EV (Call)   | Raw EV (Raise)  | Final Action
+-------------------------------------------------------------------------------------------------------------------
+River Pure Air (First to Act)       | -0.08           | 0.08            | -1.67           | CALL
+River Pure Air (Facing Bet)         | -0.08           | 0.13            | -1.65           | CALL
+River The Nuts (Facing Bet)         | -0.06           | 0.54            | -1.30           | CALL
+River The Nuts (Calling Station)    | -0.06           | 0.60            | -1.24           | CALL
+Preflop AA vs Nit (Deep)            | -0.01           | 1.33            | 0.06            | CALL
+Preflop AA vs Maniac                | -0.01           | 1.35            | 0.09            | CALL
+Flop TPTK Multi-Way (4-way pot)     | -0.03           | 1.36            | -0.48           | CALL
+Turn Flush Draw vs Bet              | -0.06           | 0.58            | -1.37           | CALL
+
+==================================================
+           PREFLOP EQUITY SWEEP                 
+==================================================
+Eq Group        | Opps  | Raw EV (Fold)   | Raw EV (Call)   | Raw EV (Raise)  | Final Action
+-------------------------------------------------------------------------------------
+<20% (Air)      | 1     | -0.07           | 0.02            | -1.71           | CALL
+20-40% (Weak)   | 1     | -0.07           | 0.48            | -1.46           | CALL
+40-60% (Marg)   | 1     | -0.09           | 0.25            | -1.62           | CALL
+60-80% (Strg)   | 1     | -0.01           | 1.49            | -0.29           | CALL
+>80% (Nuts)     | 1     | -0.01           | 1.53            | -0.25           | CALL
+-------------------------------------------------------------------------------------
+<20% (Air)      | 3     | -0.06           | -0.05           | -1.76           | CALL
+20-40% (Weak)   | 3     | -0.09           | 0.34            | -1.58           | CALL
+40-60% (Marg)   | 3     | -0.09           | 0.17            | -1.66           | CALL
+60-80% (Strg)   | 3     | -0.02           | 1.48            | -0.32           | CALL
+>80% (Nuts)     | 3     | -0.01           | 1.53            | -0.26           | CALL
+-------------------------------------------------------------------------------------
+<20% (Air)      | 5     | -0.02           | -0.23           | -1.83           | FOLD
+20-40% (Weak)   | 5     | -0.07           | 0.12            | -1.69           | CALL
+40-60% (Marg)   | 5     | -0.05           | -0.07           | -1.77           | FOLD
+60-80% (Strg)   | 5     | -0.03           | 1.36            | -0.52           | CALL
+>80% (Nuts)     | 5     | -0.02           | 1.48            | -0.34           | CALL
+-------------------------------------------------------------------------------------
+
+[Analysis Complete]
+
+[DIAGNOSTICS] Mid-flight diagnostics triggered at 44572 hands...
++========================================================================================+
+|  SELF-PLAY V8 MULTI-PERSONALITY LEAGUE SYSTEM (RTX 4080 GPU)                           |
++========================================================================================+
+|  Active Personality: MAIN                                                               |
+|  Hands Simulated:        46,437 /    100,000   ( 46.4%)                            |
+|  Training Epoch:       75                                                              |
+|  Bootstrap Alpha:      0.00                                                            |
+|  Curriculum Stage:   Phase 3: Extreme Stacks                                       |
+|  Elapsed Time:       25m 18s                                                          |
+|  Sim Speed:              31 hands/sec                                                 |
+|  ETA:                29m 11s                                                          |
+|  Training Samples:       46,437                                                        |
++----------------------------------------------------------------------------------------+
+|  CUMULATIVE PERFORMANCE BY SEAT:                                                       |
+|  - Seat 0 Hero (Main)     :  -13.2 BB/100 (VPIP:36.5% AGG:27.2%) [R:12066 F:34456 AI:1372]|
+|  - Seat 1 Opp 1 (Maniac)  :  -77.8 BB/100 (VPIP:59.0% AGG:66.1%) [R:30022 F:26080 AI:2594]|
+|  - Seat 2 Opp 2 (Nit)     :  +20.5 BB/100 (VPIP: 9.6% AGG:24.9%) [R:4263  F:42285 AI:306 ]|
+|  - Seat 3 Opp 3 (Sticky)  :  -47.9 BB/100 (VPIP:49.6% AGG:15.7%) [R:8253  F:26267 AI:973 ]|
+|  - Seat 4 Opp 4 (Past Self):  +63.1 BB/100 (VPIP:14.9% AGG:54.0%) [R:13268 F:39218 AI:1387]|
+|  - Seat 5 Opp 5 (TAG Bot) :  +55.3 BB/100 (VPIP:14.8% AGG:55.7%) [R:13795 F:39003 AI:1426]|
++----------------------------------------------------------------------------------------+
+|  Global Post-Flop Avg Active Players: 1.98                                             |
++----------------------------------------------------------------------------------------+
+|  EXPLOITATION SCOREBOARD (Net BB/100 Matrix):                                          |
+|  [Winner \ Loser] | Hero  | S1    | S2    | S3    | S4    | S5    |                    |
+|  Hero (Main)      |   -   |  +4.7 |  -3.2 |  +7.8 | -14.4 |  -8.2 |                    |
+|  Opp 1 (Maniac)   |  -4.7 |   -   | -11.8 |  +1.2 | -33.3 | -29.2 |                    |
+|  Opp 2 (Nit)      |  +3.2 | +11.8 |   -   |  +4.4 |  +0.9 |  +0.2 |                    |
+|  Opp 3 (Sticky)   |  -7.8 |  -1.2 |  -4.4 |   -   | -15.9 | -18.6 |                    |
+|  Opp 4 (Past Self) | +14.4 | +33.3 |  -0.9 | +15.9 |   -   |  +0.5 |                    |
+|  Opp 5 (TAG Bot)  |  +8.2 | +29.2 |  -0.2 | +18.6 |  -0.5 |   -   |                    |
++----------------------------------------------------------------------------------------+
+|  Action Entropy:       0.9013                                                        |
++----------------------------------------------------------------------------------------------------------+
+|  Equity Matrix     | Fold  | Call  | Raise | RR   | All-In | Avg End Street | Net Chips | Won    | Lost  |
++----------------------------------------------------------------------------------------------------------+
+|  <20% (Pure Air)   | 85.6% | 12.5% |  0.3% |  1.0% |  0.6%  |      0.2       | -138087.4   | +26253 | -164340 |
+|  20-40% (Draws)    | 83.1% | 14.2% |  0.5% |  1.5% |  0.6%  |      0.2       | -132855.0   | +86431 | -219286 |
+|  40-60% (Marginal) | 42.1% | 36.1% |  3.0% | 12.8% |  6.1%  |      0.6       | -122177.4   | +189254 | -311432 |
+|  60-80% (Strong)   | 12.7% | 31.6% | 10.7% | 22.1% | 23.0%  |      1.4       | +29841.0   | +325915 | -296074 |
+|  >80% (Nuts)       |  4.1% | 33.2% | 19.3% | 14.5% | 28.8%  |      2.2       | +293941.5   | +390391 | -96450 |
++----------------------------------------------------------------------------------------------------------+
+|  Train Loss:          15.6917  |  Val Loss:  10.4912                                |
+|  Loss Q: 14.7104 | Bluff: 0.0413 | Str: 0.0272 | Eq: 0.0296                 |
++========================================================================================+
++========================================================================================+
+|  SELF-PLAY V8 MULTI-PERSONALITY LEAGUE SYSTEM (RTX 4080 GPU)                           |
++========================================================================================+
+|  Active Personality: MAIN                                                               |
+|  Hands Simulated:        48,316 /    100,000   ( 48.3%)                            |
+|  Training Epoch:       78                                                              |
+|  Bootstrap Alpha:      0.00                                                            |
+|  Curriculum Stage:   Phase 3: Extreme Stacks                                       |
+|  Elapsed Time:       26m 35s                                                          |
+|  Sim Speed:              30 hands/sec                                                 |
+|  ETA:                28m 26s                                                          |
+|  Training Samples:       48,316                                                        |
++----------------------------------------------------------------------------------------+
+|  CUMULATIVE PERFORMANCE BY SEAT:                                                       |
+|  - Seat 0 Hero (Main)     :  -14.0 BB/100 (VPIP:32.4% AGG:28.2%) [R:12379 F:36064 AI:1423]|
+|  - Seat 1 Opp 1 (Maniac)  :  -79.6 BB/100 (VPIP:59.3% AGG:66.1%) [R:31430 F:26891 AI:2725]|
+|  - Seat 2 Opp 2 (Nit)     :  +21.3 BB/100 (VPIP: 9.6% AGG:26.8%) [R:4430  F:43990 AI:323 ]|
+|  - Seat 3 Opp 3 (Sticky)  :  -49.9 BB/100 (VPIP:49.7% AGG:15.6%) [R:8569  F:27256 AI:1042]|
+|  - Seat 4 Opp 4 (Past Self):  +67.1 BB/100 (VPIP:15.1% AGG:55.5%) [R:13762 F:40806 AI:1449]|
+|  - Seat 5 Opp 5 (TAG Bot) :  +55.1 BB/100 (VPIP:15.2% AGG:57.1%) [R:14284 F:40565 AI:1481]|
++----------------------------------------------------------------------------------------+
+|  Global Post-Flop Avg Active Players: 1.98                                             |
++----------------------------------------------------------------------------------------+
+|  EXPLOITATION SCOREBOARD (Net BB/100 Matrix):                                          |
+|  [Winner \ Loser] | Hero  | S1    | S2    | S3    | S4    | S5    |                    |
+|  Hero (Main)      |   -   |  +4.8 |  -3.0 |  +7.8 | -14.9 |  -8.6 |                    |
+|  Opp 1 (Maniac)   |  -4.8 |   -   | -12.3 |  +2.1 | -35.5 | -29.0 |                    |
+|  Opp 2 (Nit)      |  +3.0 | +12.3 |   -   |  +4.4 |  +1.5 |  +0.1 |                    |
+|  Opp 3 (Sticky)   |  -7.8 |  -2.1 |  -4.4 |   -   | -17.3 | -18.4 |                    |
+|  Opp 4 (Past Self) | +14.9 | +35.5 |  -1.5 | +17.3 |   -   |  +0.9 |                    |
+|  Opp 5 (TAG Bot)  |  +8.6 | +29.0 |  -0.1 | +18.4 |  -0.9 |   -   |                    |
++----------------------------------------------------------------------------------------+
+|  Action Entropy:       0.9024                                                        |
++----------------------------------------------------------------------------------------------------------+
+|  Equity Matrix     | Fold  | Call  | Raise | RR   | All-In | Avg End Street | Net Chips | Won    | Lost  |
++----------------------------------------------------------------------------------------------------------+
+|  <20% (Pure Air)   | 86.1% | 12.2% |  0.3% |  0.9% |  0.6%  |      0.2       | -141268.9   | +26375 | -167644 |
+|  20-40% (Draws)    | 83.5% | 13.9% |  0.5% |  1.5% |  0.6%  |      0.2       | -140842.2   | +87554 | -228397 |
+|  40-60% (Marginal) | 42.7% | 35.7% |  3.0% | 12.5% |  6.1%  |      0.6       | -126528.4   | +194350 | -320878 |
+|  60-80% (Strong)   | 12.7% | 31.8% | 10.4% | 21.9% | 23.2%  |      1.4       | +29895.3   | +339506 | -309610 |
+|  >80% (Nuts)       |  4.1% | 33.6% | 19.1% | 14.3% | 28.8%  |      2.2       | +303132.6   | +400724 | -97592 |
++----------------------------------------------------------------------------------------------------------+
+|  Train Loss:          15.2308  |  Val Loss:  19.6897                                |
+|  Loss Q: 14.6169 | Bluff: 0.0228 | Str: 0.0196 | Eq: 0.0189                 |
++========================================================================================+
++========================================================================================+
+|  SELF-PLAY V8 MULTI-PERSONALITY LEAGUE SYSTEM (RTX 4080 GPU)                           |
++========================================================================================+
+|  Active Personality: MAIN                                                               |
+|  Hands Simulated:        50,201 /    100,000   ( 50.2%)                            |
+|  Training Epoch:       81                                                              |
+|  Bootstrap Alpha:      0.00                                                            |
+|  Curriculum Stage:   Phase 4: Dynamic Activity                                      |
+|  Elapsed Time:       28m 33s                                                          |
+|  Sim Speed:              29 hands/sec                                                 |
+|  ETA:                28m 20s                                                          |
+|  Training Samples:       50,201                                                        |
++----------------------------------------------------------------------------------------+
+|  CUMULATIVE PERFORMANCE BY SEAT:                                                       |
+|  - Seat 0 Hero (Main)     :  -16.0 BB/100 (VPIP:42.7% AGG:27.1%) [R:12935 F:36441 AI:1548]|
+|  - Seat 1 Opp 1 (Maniac)  :  -79.1 BB/100 (VPIP:59.4% AGG:65.7%) [R:32653 F:27700 AI:2839]|
+|  - Seat 2 Opp 2 (Nit)     :  +22.0 BB/100 (VPIP: 8.9% AGG:26.0%) [R:4520  F:45728 AI:332 ]|
+|  - Seat 3 Opp 3 (Sticky)  :  -47.4 BB/100 (VPIP:49.7% AGG:15.3%) [R:8786  F:28234 AI:1098]|
+|  - Seat 4 Opp 4 (Past Self):  +67.1 BB/100 (VPIP:14.1% AGG:55.1%) [R:13993 F:42477 AI:1483]|
+|  - Seat 5 Opp 5 (TAG Bot) :  +53.4 BB/100 (VPIP:14.0% AGG:56.3%) [R:14495 F:42254 AI:1513]|
++----------------------------------------------------------------------------------------+
+|  Global Post-Flop Avg Active Players: 2.00                                             |
++----------------------------------------------------------------------------------------+
+|  EXPLOITATION SCOREBOARD (Net BB/100 Matrix):                                          |
+|  [Winner \ Loser] | Hero  | S1    | S2    | S3    | S4    | S5    |                    |
+|  Hero (Main)      |   -   |  +4.7 |  -3.7 |  +7.1 | -15.3 |  -8.8 |                    |
+|  Opp 1 (Maniac)   |  -4.7 |   -   | -12.7 |  +1.8 | -35.0 | -28.5 |                    |
+|  Opp 2 (Nit)      |  +3.7 | +12.7 |   -   |  +4.1 |  +1.4 |  +0.1 |                    |
+|  Opp 3 (Sticky)   |  -7.1 |  -1.8 |  -4.1 |   -   | -17.1 | -17.4 |                    |
+|  Opp 4 (Past Self) | +15.3 | +35.0 |  -1.4 | +17.1 |   -   |  +1.2 |                    |
+|  Opp 5 (TAG Bot)  |  +8.8 | +28.5 |  -0.1 | +17.4 |  -1.2 |   -   |                    |
++----------------------------------------------------------------------------------------+
+|  Action Entropy:       0.9044                                                        |
++----------------------------------------------------------------------------------------------------------+
+|  Equity Matrix     | Fold  | Call  | Raise | RR   | All-In | Avg End Street | Net Chips | Won    | Lost  |
++----------------------------------------------------------------------------------------------------------+
+|  <20% (Pure Air)   | 83.8% | 14.4% |  0.3% |  0.9% |  0.6%  |      0.2       | -154978.4   | +30043 | -185022 |
+|  20-40% (Draws)    | 81.5% | 15.8% |  0.5% |  1.5% |  0.7%  |      0.2       | -148209.5   | +103016 | -251226 |
+|  40-60% (Marginal) | 41.2% | 36.8% |  3.0% | 12.5% |  6.5%  |      0.6       | -137946.6   | +212412 | -350359 |
+|  60-80% (Strong)   | 12.2% | 32.7% | 10.3% | 21.6% | 23.2%  |      1.4       | +34599.6   | +355426 | -320826 |
+|  >80% (Nuts)       |  3.9% | 34.9% | 18.5% | 14.0% | 28.7%  |      2.2       | +317912.9   | +425639 | -107726 |
++----------------------------------------------------------------------------------------------------------+
+|  Train Loss:          27.1243  |  Val Loss:  29.0629                                |
+|  Loss Q: 26.1707 | Bluff: 0.0399 | Str: 0.0277 | Eq: 0.0277                 |
++========================================================================================+
++========================================================================================+
+|  SELF-PLAY V8 MULTI-PERSONALITY LEAGUE SYSTEM (RTX 4080 GPU)                           |
++========================================================================================+
+|  Active Personality: MAIN                                                               |
+|  Hands Simulated:        52,027 /    100,000   ( 52.0%)                            |
+|  Training Epoch:       84                                                              |
+|  Bootstrap Alpha:      0.00                                                            |
+|  Curriculum Stage:   Phase 4: Dynamic Activity                                      |
+|  Elapsed Time:       30m 5s                                                           |
+|  Sim Speed:              29 hands/sec                                                 |
+|  ETA:                27m 44s                                                          |
+|  Training Samples:       52,027                                                        |
++----------------------------------------------------------------------------------------+
+|  CUMULATIVE PERFORMANCE BY SEAT:                                                       |
+|  - Seat 0 Hero (Main)     :  -14.7 BB/100 (VPIP:41.7% AGG:30.8%) [R:13551 F:37616 AI:1644]|
+|  - Seat 1 Opp 1 (Maniac)  :  -79.1 BB/100 (VPIP:60.1% AGG:65.4%) [R:33799 F:28270 AI:2954]|
+|  - Seat 2 Opp 2 (Nit)     :  +22.2 BB/100 (VPIP: 9.8% AGG:25.9%) [R:4658  F:47010 AI:339 ]|
+|  - Seat 3 Opp 3 (Sticky)  :  -43.8 BB/100 (VPIP:49.9% AGG:15.5%) [R:9060  F:28989 AI:1137]|
+|  - Seat 4 Opp 4 (Past Self):  +65.0 BB/100 (VPIP:15.6% AGG:54.6%) [R:14418 F:43596 AI:1533]|
+|  - Seat 5 Opp 5 (TAG Bot) :  +50.4 BB/100 (VPIP:15.0% AGG:55.5%) [R:14890 F:43436 AI:1563]|
++----------------------------------------------------------------------------------------+
+|  Global Post-Flop Avg Active Players: 1.99                                             |
++----------------------------------------------------------------------------------------+
+|  EXPLOITATION SCOREBOARD (Net BB/100 Matrix):                                          |
+|  [Winner \ Loser] | Hero  | S1    | S2    | S3    | S4    | S5    |                    |
+|  Hero (Main)      |   -   |  +6.6 |  -4.4 |  +6.6 | -15.0 |  -8.5 |                    |
+|  Opp 1 (Maniac)   |  -6.6 |   -   | -12.5 |  +1.4 | -34.1 | -27.3 |                    |
+|  Opp 2 (Nit)      |  +4.4 | +12.5 |   -   |  +3.9 |  +1.3 |  +0.1 |                    |
+|  Opp 3 (Sticky)   |  -6.6 |  -1.4 |  -3.9 |   -   | -15.4 | -16.4 |                    |
+|  Opp 4 (Past Self) | +15.0 | +34.1 |  -1.3 | +15.4 |   -   |  +1.7 |                    |
+|  Opp 5 (TAG Bot)  |  +8.5 | +27.3 |  -0.1 | +16.4 |  -1.7 |   -   |                    |
++----------------------------------------------------------------------------------------+
+|  Action Entropy:       0.9060                                                        |
++----------------------------------------------------------------------------------------------------------+
+|  Equity Matrix     | Fold  | Call  | Raise | RR   | All-In | Avg End Street | Net Chips | Won    | Lost  |
++----------------------------------------------------------------------------------------------------------+
+|  <20% (Pure Air)   | 83.9% | 14.3% |  0.3% |  0.9% |  0.6%  |      0.2       | -159425.5   | +30994 | -190419 |
+|  20-40% (Draws)    | 81.4% | 15.9% |  0.5% |  1.5% |  0.7%  |      0.2       | -158467.0   | +108608 | -267075 |
+|  40-60% (Marginal) | 40.2% | 37.6% |  3.0% | 12.5% |  6.7%  |      0.6       | -145793.7   | +222419 | -368212 |
+|  60-80% (Strong)   | 11.9% | 32.8% | 10.2% | 22.1% | 23.1%  |      1.4       | +44142.3   | +372191 | -328049 |
+|  >80% (Nuts)       |  3.8% | 34.4% | 18.5% | 14.1% | 29.2%  |      2.2       | +333677.5   | +449086 | -115409 |
++----------------------------------------------------------------------------------------------------------+
+|  Train Loss:          23.4583  |  Val Loss:  30.2601                                |
+|  Loss Q: 22.4978 | Bluff: 0.0444 | Str: 0.0241 | Eq: 0.0275                 |
++========================================================================================+
++========================================================================================+
+|  SELF-PLAY V8 MULTI-PERSONALITY LEAGUE SYSTEM (RTX 4080 GPU)                           |
++========================================================================================+
+|  Active Personality: MAIN                                                               |
+|  Hands Simulated:        53,863 /    100,000   ( 53.9%)                            |
+|  Training Epoch:       87                                                              |
+|  Bootstrap Alpha:      0.00                                                            |
+|  Curriculum Stage:   Phase 4: Dynamic Activity                                      |
+|  Elapsed Time:       31m 13s                                                          |
+|  Sim Speed:              29 hands/sec                                                 |
+|  ETA:                26m 44s                                                          |
+|  Training Samples:       53,863                                                        |
++----------------------------------------------------------------------------------------+
+|  CUMULATIVE PERFORMANCE BY SEAT:                                                       |
+|  - Seat 0 Hero (Main)     :  -17.4 BB/100 (VPIP:39.8% AGG:39.3%) [R:14467 F:38897 AI:1778]|
+|  - Seat 1 Opp 1 (Maniac)  :  -76.9 BB/100 (VPIP:60.4% AGG:65.9%) [R:35022 F:28870 AI:3107]|
+|  - Seat 2 Opp 2 (Nit)     :  +21.8 BB/100 (VPIP:10.4% AGG:25.2%) [R:4809  F:48275 AI:360 ]|
+|  - Seat 3 Opp 3 (Sticky)  :  -41.5 BB/100 (VPIP:50.0% AGG:15.7%) [R:9358  F:29734 AI:1193]|
+|  - Seat 4 Opp 4 (Past Self):  +64.7 BB/100 (VPIP:17.1% AGG:56.0%) [R:14949 F:44722 AI:1609]|
+|  - Seat 5 Opp 5 (TAG Bot) :  +49.3 BB/100 (VPIP:16.4% AGG:56.0%) [R:15447 F:44559 AI:1645]|
++----------------------------------------------------------------------------------------+
+|  Global Post-Flop Avg Active Players: 1.99                                             |
++----------------------------------------------------------------------------------------+
+|  EXPLOITATION SCOREBOARD (Net BB/100 Matrix):                                          |
+|  [Winner \ Loser] | Hero  | S1    | S2    | S3    | S4    | S5    |                    |
+|  Hero (Main)      |   -   |  +5.3 |  -4.5 |  +5.5 | -14.8 |  -8.9 |                    |
+|  Opp 1 (Maniac)   |  -5.3 |   -   | -11.9 |  +1.1 | -35.1 | -25.6 |                    |
+|  Opp 2 (Nit)      |  +4.5 | +11.9 |   -   |  +4.0 |  +1.1 |  +0.3 |                    |
+|  Opp 3 (Sticky)   |  -5.5 |  -1.1 |  -4.0 |   -   | -14.8 | -16.2 |                    |
+|  Opp 4 (Past Self) | +14.8 | +35.1 |  -1.1 | +14.8 |   -   |  +1.1 |                    |
+|  Opp 5 (TAG Bot)  |  +8.9 | +25.6 |  -0.3 | +16.2 |  -1.1 |   -   |                    |
++----------------------------------------------------------------------------------------+
+|  Action Entropy:       0.9087                                                        |
++----------------------------------------------------------------------------------------------------------+
+|  Equity Matrix     | Fold  | Call  | Raise | RR   | All-In | Avg End Street | Net Chips | Won    | Lost  |
++----------------------------------------------------------------------------------------------------------+
+|  <20% (Pure Air)   | 84.0% | 14.0% |  0.3% |  1.0% |  0.7%  |      0.2       | -175783.0   | +32013 | -207796 |
+|  20-40% (Draws)    | 81.5% | 15.7% |  0.6% |  1.5% |  0.8%  |      0.2       | -173927.5   | +115064 | -288992 |
+|  40-60% (Marginal) | 40.0% | 37.1% |  3.0% | 13.0% |  7.0%  |      0.6       | -149497.8   | +240352 | -389849 |
+|  60-80% (Strong)   | 11.5% | 32.1% | 10.0% | 22.9% | 23.5%  |      1.3       | +44467.6   | +389735 | -345268 |
+|  >80% (Nuts)       |  3.7% | 33.6% | 18.4% | 14.3% | 30.0%  |      2.2       | +351087.6   | +469261 | -118174 |
++----------------------------------------------------------------------------------------------------------+
+|  Train Loss:          35.5713  |  Val Loss:  35.4041                                |
+|  Loss Q: 34.8426 | Bluff: 0.0270 | Str: 0.0229 | Eq: 0.0229                 |
++========================================================================================+
++========================================================================================+
+|  SELF-PLAY V8 MULTI-PERSONALITY LEAGUE SYSTEM (RTX 4080 GPU)                           |
++========================================================================================+
+|  Active Personality: MAIN                                                               |
+|  Hands Simulated:        55,673 /    100,000   ( 55.7%)                            |
+|  Training Epoch:       90                                                              |
+|  Bootstrap Alpha:      0.00                                                            |
+|  Curriculum Stage:   Phase 4: Dynamic Activity                                      |
+|  Elapsed Time:       32m 25s                                                          |
+|  Sim Speed:              29 hands/sec                                                 |
+|  ETA:                25m 49s                                                          |
+|  Training Samples:       55,673                                                        |
++----------------------------------------------------------------------------------------+
+|  CUMULATIVE PERFORMANCE BY SEAT:                                                       |
+|  - Seat 0 Hero (Main)     :  -23.3 BB/100 (VPIP:39.3% AGG:45.5%) [R:15423 F:40068 AI:1918]|
+|  - Seat 1 Opp 1 (Maniac)  :  -72.2 BB/100 (VPIP:61.0% AGG:66.1%) [R:36297 F:29463 AI:3254]|
+|  - Seat 2 Opp 2 (Nit)     :  +19.3 BB/100 (VPIP:10.9% AGG:24.9%) [R:4946  F:49559 AI:372 ]|
+|  - Seat 3 Opp 3 (Sticky)  :  -39.2 BB/100 (VPIP:50.0% AGG:16.1%) [R:9614  F:30487 AI:1249]|
+|  - Seat 4 Opp 4 (Past Self):  +60.6 BB/100 (VPIP:17.7% AGG:56.6%) [R:15449 F:45912 AI:1675]|
+|  - Seat 5 Opp 5 (TAG Bot) :  +54.8 BB/100 (VPIP:17.4% AGG:56.4%) [R:15937 F:45732 AI:1717]|
++----------------------------------------------------------------------------------------+
+|  Global Post-Flop Avg Active Players: 1.99                                             |
++----------------------------------------------------------------------------------------+
+|  EXPLOITATION SCOREBOARD (Net BB/100 Matrix):                                          |
+|  [Winner \ Loser] | Hero  | S1    | S2    | S3    | S4    | S5    |                    |
+|  Hero (Main)      |   -   |  +0.6 |  -3.6 |  +3.9 | -13.9 | -10.3 |                    |
+|  Opp 1 (Maniac)   |  -0.6 |   -   | -10.9 |  +0.7 | -32.5 | -28.8 |                    |
+|  Opp 2 (Nit)      |  +3.6 | +10.9 |   -   |  +3.7 |  +0.9 |  +0.1 |                    |
+|  Opp 3 (Sticky)   |  -3.9 |  -0.7 |  -3.7 |   -   | -14.0 | -17.0 |                    |
+|  Opp 4 (Past Self) | +13.9 | +32.5 |  -0.9 | +14.0 |   -   |  +1.2 |                    |
+|  Opp 5 (TAG Bot)  | +10.3 | +28.8 |  -0.1 | +17.0 |  -1.2 |   -   |                    |
++----------------------------------------------------------------------------------------+
+|  Action Entropy:       0.9097                                                        |
++----------------------------------------------------------------------------------------------------------+
+|  Equity Matrix     | Fold  | Call  | Raise | RR   | All-In | Avg End Street | Net Chips | Won    | Lost  |
++----------------------------------------------------------------------------------------------------------+
+|  <20% (Pure Air)   | 84.1% | 13.8% |  0.4% |  1.0% |  0.7%  |      0.2       | -190036.6   | +33169 | -223205 |
+|  20-40% (Draws)    | 81.4% | 15.6% |  0.6% |  1.6% |  0.8%  |      0.2       | -185384.6   | +126161 | -311546 |
+|  40-60% (Marginal) | 39.1% | 36.9% |  3.1% | 13.6% |  7.3%  |      0.6       | -167694.6   | +258560 | -426255 |
+|  60-80% (Strong)   | 11.3% | 31.5% | 10.0% | 23.4% | 23.7%  |      1.3       | +38103.0   | +405378 | -367275 |
+|  >80% (Nuts)       |  3.5% | 33.0% | 18.6% | 14.4% | 30.5%  |      2.2       | +364841.9   | +487170 | -122328 |
++----------------------------------------------------------------------------------------------------------+
+|  Train Loss:          39.1191  |  Val Loss:  34.4543                                |
+|  Loss Q: 38.2548 | Bluff: 0.0378 | Str: 0.0246 | Eq: 0.0240                 |
++========================================================================================+
+C:\REPO\Antigravity\AIPoker\.venv\Lib\site-packages\torch\_utils.py:831: UserWarning: TypedStorage is deprecated. It will be removed in the future and UntypedStorage will be the only storage class. This should only matter to you if you are using storages directly.  To access UntypedStorage directly, use tensor.untyped_storage() instead of tensor.storage()
+  return self.fget.__get__(instance, owner)()
+==================================================
+           MODEL HEALTH DIAGNOSTIC TOOL         
+           Target: Herocules (v11 Main)                 
+==================================================
+WARNING: expert_v8_selfplay.pth not found at C:\REPO\Antigravity\AIPoker\core\weights\expert_v8_selfplay.pth. Model will output random garbage.
+WARNING: Could not load weights: Error(s) in loading state_dict for PokerEVModelV4:
+	size mismatch for state_proj.0.weight: copying a param with shape torch.Size([256, 159]) from checkpoint, the shape in current model is torch.Size([256, 163]).
+WARNING: Could not load weights: Error(s) in loading state_dict for PokerEVModelV4:
+	size mismatch for state_proj.0.weight: copying a param with shape torch.Size([256, 159]) from checkpoint, the shape in current model is torch.Size([256, 163]).
+WARNING: Could not load weights: Error(s) in loading state_dict for PokerEVModelV4:
+	size mismatch for state_proj.0.weight: copying a param with shape torch.Size([256, 159]) from checkpoint, the shape in current model is torch.Size([256, 163]).
+WARNING: expert_v9_main.pth not found at C:\REPO\Antigravity\AIPoker\core\weights\expert_v9_main.pth. Model will output random garbage.
+WARNING: v10_100k_main.pt not found at C:\REPO\Antigravity\AIPoker\core\weights\v10_100k_main.pt. Model will output random garbage.
+WARNING: v10_100k_main.pt not found at C:\REPO\Antigravity\AIPoker\core\weights\v10_100k_main.pt. Model will output random garbage.
+WARNING: v10_50k_main.pt not found at C:\REPO\Antigravity\AIPoker\core\weights\v10_50k_main.pt. Model will output random garbage.
+WARNING: expert_v8_main.pth not found at C:\REPO\Antigravity\AIPoker\core\weights\expert_v8_main.pth. Model will output random garbage.
+WARNING: Could not load weights: Error(s) in loading state_dict for PokerEVModelV4:
+	size mismatch for state_proj.0.weight: copying a param with shape torch.Size([256, 159]) from checkpoint, the shape in current model is torch.Size([256, 163]).
+WARNING: Could not load weights: Error(s) in loading state_dict for PokerEVModelV4:
+	size mismatch for state_proj.0.weight: copying a param with shape torch.Size([256, 159]) from checkpoint, the shape in current model is torch.Size([256, 163]).
+WARNING: Could not load weights: Error(s) in loading state_dict for PokerEVModelV4:
+	size mismatch for state_proj.0.weight: copying a param with shape torch.Size([256, 159]) from checkpoint, the shape in current model is torch.Size([256, 163]).
+WARNING: Could not load weights: Error(s) in loading state_dict for PokerEVModelV4:
+	size mismatch for state_proj.0.weight: copying a param with shape torch.Size([256, 159]) from checkpoint, the shape in current model is torch.Size([256, 163]).
+Scenario                            | Raw EV (Fold)   | Raw EV (Call)   | Raw EV (Raise)  | Final Action
+-------------------------------------------------------------------------------------------------------------------
+River Pure Air (First to Act)       | 0.02            | -0.54           | -2.56           | FOLD
+River Pure Air (Facing Bet)         | 0.02            | -0.54           | -2.55           | FOLD
+River The Nuts (Facing Bet)         | -0.01           | -0.32           | -2.34           | FOLD
+River The Nuts (Calling Station)    | -0.00           | -0.35           | -2.35           | FOLD
+Preflop AA vs Nit (Deep)            | -0.02           | -0.16           | -2.15           | FOLD
+Preflop AA vs Maniac                | -0.02           | -0.18           | -2.16           | FOLD
+Flop TPTK Multi-Way (4-way pot)     | 0.03            | 3.34            | 11.47           | RAISE
+Turn Flush Draw vs Bet              | -0.02           | -0.02           | -1.91           | CALL
+
+==================================================
+           PREFLOP EQUITY SWEEP                 
+==================================================
+Eq Group        | Opps  | Raw EV (Fold)   | Raw EV (Call)   | Raw EV (Raise)  | Final Action
+-------------------------------------------------------------------------------------
+<20% (Air)      | 1     | 0.00            | -0.42           | -2.47           | FOLD
+20-40% (Weak)   | 1     | -0.02           | -0.28           | -2.30           | FOLD
+40-60% (Marg)   | 1     | 0.01            | -0.46           | -2.50           | FOLD
+60-80% (Strg)   | 1     | 0.07            | 5.07            | 19.94           | RAISE
+>80% (Nuts)     | 1     | 0.00            | 1.90            | 5.12            | RAISE
+-------------------------------------------------------------------------------------
+<20% (Air)      | 3     | 0.02            | -0.53           | -2.57           | FOLD
+20-40% (Weak)   | 3     | 0.00            | -0.43           | -2.47           | FOLD
+40-60% (Marg)   | 3     | 0.02            | -0.52           | -2.56           | FOLD
+60-80% (Strg)   | 3     | 0.06            | 5.06            | 19.67           | RAISE
+>80% (Nuts)     | 3     | 0.00            | 1.92            | 5.20            | RAISE
+-------------------------------------------------------------------------------------
+<20% (Air)      | 5     | 0.02            | -0.59           | -2.63           | FOLD
+20-40% (Weak)   | 5     | 0.01            | -0.55           | -2.60           | FOLD
+40-60% (Marg)   | 5     | 0.01            | -0.57           | -2.62           | FOLD
+60-80% (Strg)   | 5     | 0.02            | 4.38            | 16.25           | RAISE
+>80% (Nuts)     | 5     | -0.02           | 1.79            | 4.72            | RAISE
+-------------------------------------------------------------------------------------
+
+[Analysis Complete]
+
+[DIAGNOSTICS] Mid-flight diagnostics triggered at 55673 hands...
++========================================================================================+
+|  SELF-PLAY V8 MULTI-PERSONALITY LEAGUE SYSTEM (RTX 4080 GPU)                           |
++========================================================================================+
+|  Active Personality: MAIN                                                               |
+|  Hands Simulated:        57,518 /    100,000   ( 57.5%)                            |
+|  Training Epoch:       93                                                              |
+|  Bootstrap Alpha:      0.00                                                            |
+|  Curriculum Stage:   Phase 4: Dynamic Activity                                      |
+|  Elapsed Time:       33m 27s                                                          |
+|  Sim Speed:              29 hands/sec                                                 |
+|  ETA:                24m 42s                                                          |
+|  Training Samples:       57,518                                                        |
++----------------------------------------------------------------------------------------+
+|  CUMULATIVE PERFORMANCE BY SEAT:                                                       |
+|  - Seat 0 Hero (Main)     :  -22.7 BB/100 (VPIP:34.4% AGG:45.8%) [R:15735 F:41668 AI:1959]|
+|  - Seat 1 Opp 1 (Maniac)  :  -71.0 BB/100 (VPIP:61.3% AGG:66.2%) [R:37350 F:30032 AI:3355]|
+|  - Seat 2 Opp 2 (Nit)     :  +19.3 BB/100 (VPIP:11.4% AGG:25.0%) [R:5075  F:50816 AI:380 ]|
+|  - Seat 3 Opp 3 (Sticky)  :  -39.8 BB/100 (VPIP:50.2% AGG:16.0%) [R:9895  F:31211 AI:1293]|
+|  - Seat 4 Opp 4 (Past Self):  +60.5 BB/100 (VPIP:19.0% AGG:56.6%) [R:15912 F:47026 AI:1728]|
+|  - Seat 5 Opp 5 (TAG Bot) :  +53.7 BB/100 (VPIP:18.3% AGG:55.9%) [R:16387 F:46861 AI:1766]|
++----------------------------------------------------------------------------------------+
+|  Global Post-Flop Avg Active Players: 1.98                                             |
++----------------------------------------------------------------------------------------+
+|  EXPLOITATION SCOREBOARD (Net BB/100 Matrix):                                          |
+|  [Winner \ Loser] | Hero  | S1    | S2    | S3    | S4    | S5    |                    |
+|  Hero (Main)      |   -   |  +0.3 |  -3.3 |  +4.0 | -13.8 |  -9.8 |                    |
+|  Opp 1 (Maniac)   |  -0.3 |   -   | -11.0 |  +1.3 | -32.5 | -28.5 |                    |
+|  Opp 2 (Nit)      |  +3.3 | +11.0 |   -   |  +3.8 |  +0.9 |  +0.3 |                    |
+|  Opp 3 (Sticky)   |  -4.0 |  -1.3 |  -3.8 |   -   | -14.4 | -16.3 |                    |
+|  Opp 4 (Past Self) | +13.8 | +32.5 |  -0.9 | +14.4 |   -   |  +0.7 |                    |
+|  Opp 5 (TAG Bot)  |  +9.8 | +28.5 |  -0.3 | +16.3 |  -0.7 |   -   |                    |
++----------------------------------------------------------------------------------------+
+|  Action Entropy:       0.9077                                                        |
++----------------------------------------------------------------------------------------------------------+
+|  Equity Matrix     | Fold  | Call  | Raise | RR   | All-In | Avg End Street | Net Chips | Won    | Lost  |
++----------------------------------------------------------------------------------------------------------+
+|  <20% (Pure Air)   | 84.4% | 13.5% |  0.4% |  1.0% |  0.7%  |      0.2       | -190944.7   | +33234 | -224178 |
+|  20-40% (Draws)    | 81.8% | 15.2% |  0.6% |  1.6% |  0.8%  |      0.2       | -186284.5   | +127775 | -314060 |
+|  40-60% (Marginal) | 41.0% | 35.6% |  2.9% | 13.3% |  7.2%  |      0.6       | -175173.8   | +264225 | -439399 |
+|  60-80% (Strong)   | 12.2% | 31.4% |  9.7% | 23.3% | 23.4%  |      1.3       | +38364.5   | +409684 | -371319 |
+|  >80% (Nuts)       |  3.8% | 32.8% | 18.7% | 14.3% | 30.3%  |      2.2       | +372412.8   | +496526 | -124113 |
++----------------------------------------------------------------------------------------------------------+
+|  Train Loss:          10.7158  |  Val Loss:  13.9933                                |
+|  Loss Q: 10.0938 | Bluff: 0.0266 | Str: 0.0182 | Eq: 0.0174                 |
++========================================================================================+
++========================================================================================+
+|  SELF-PLAY V8 MULTI-PERSONALITY LEAGUE SYSTEM (RTX 4080 GPU)                           |
++========================================================================================+
+|  Active Personality: MAIN                                                               |
+|  Hands Simulated:        59,316 /    100,000   ( 59.3%)                            |
+|  Training Epoch:       96                                                              |
+|  Bootstrap Alpha:      0.00                                                            |
+|  Curriculum Stage:   Phase 4: Dynamic Activity                                      |
+|  Elapsed Time:       34m 52s                                                          |
+|  Sim Speed:              28 hands/sec                                                 |
+|  ETA:                23m 55s                                                          |
+|  Training Samples:       59,316                                                        |
++----------------------------------------------------------------------------------------+
+|  CUMULATIVE PERFORMANCE BY SEAT:                                                       |
+|  - Seat 0 Hero (Main)     :  -25.4 BB/100 (VPIP:44.9% AGG:45.0%) [R:16631 F:41983 AI:2122]|
+|  - Seat 1 Opp 1 (Maniac)  :  -67.7 BB/100 (VPIP:60.7% AGG:66.1%) [R:38305 F:30666 AI:3467]|
+|  - Seat 2 Opp 2 (Nit)     :  +18.8 BB/100 (VPIP:10.8% AGG:25.2%) [R:5175  F:52115 AI:393 ]|
+|  - Seat 3 Opp 3 (Sticky)  :  -38.1 BB/100 (VPIP:50.1% AGG:16.1%) [R:10119 F:31968 AI:1351]|
+|  - Seat 4 Opp 4 (Past Self):  +60.7 BB/100 (VPIP:18.4% AGG:57.5%) [R:16239 F:48254 AI:1774]|
+|  - Seat 5 Opp 5 (TAG Bot) :  +51.7 BB/100 (VPIP:18.1% AGG:55.6%) [R:16755 F:48078 AI:1821]|
++----------------------------------------------------------------------------------------+
+|  Global Post-Flop Avg Active Players: 1.99                                             |
++----------------------------------------------------------------------------------------+
+|  EXPLOITATION SCOREBOARD (Net BB/100 Matrix):                                          |
+|  [Winner \ Loser] | Hero  | S1    | S2    | S3    | S4    | S5    |                    |
+|  Hero (Main)      |   -   |  -2.3 |  -3.3 |  +3.8 | -14.9 |  -8.6 |                    |
+|  Opp 1 (Maniac)   |  +2.3 |   -   | -11.3 |  +1.0 | -31.8 | -27.9 |                    |
+|  Opp 2 (Nit)      |  +3.3 | +11.3 |   -   |  +3.5 |  +0.3 |  +0.3 |                    |
+|  Opp 3 (Sticky)   |  -3.8 |  -1.0 |  -3.5 |   -   | -13.7 | -16.2 |                    |
+|  Opp 4 (Past Self) | +14.9 | +31.8 |  -0.3 | +13.7 |   -   |  +0.7 |                    |
+|  Opp 5 (TAG Bot)  |  +8.6 | +27.9 |  -0.3 | +16.2 |  -0.7 |   -   |                    |
++----------------------------------------------------------------------------------------+
+|  Action Entropy:       0.9073                                                        |
++----------------------------------------------------------------------------------------------------------+
+|  Equity Matrix     | Fold  | Call  | Raise | RR   | All-In | Avg End Street | Net Chips | Won    | Lost  |
++----------------------------------------------------------------------------------------------------------+
+|  <20% (Pure Air)   | 83.1% | 14.7% |  0.4% |  1.0% |  0.8%  |      0.2       | -215485.6   | +37536 | -253021 |
+|  20-40% (Draws)    | 80.1% | 16.7% |  0.6% |  1.6% |  0.9%  |      0.2       | -204657.0   | +139329 | -343986 |
+|  40-60% (Marginal) | 39.4% | 36.8% |  3.0% | 13.5% |  7.4%  |      0.6       | -183441.5   | +288626 | -472068 |
+|  60-80% (Strong)   | 11.8% | 31.1% |  9.6% | 23.8% | 23.6%  |      1.3       | +46899.0   | +437508 | -390609 |
+|  >80% (Nuts)       |  3.7% | 32.8% | 18.9% | 14.3% | 30.4%  |      2.2       | +394429.9   | +525905 | -131475 |
++----------------------------------------------------------------------------------------------------------+
+|  Train Loss:          40.0278  |  Val Loss:  29.6415                                |
+|  Loss Q: 38.8876 | Bluff: 0.0501 | Str: 0.0302 | Eq: 0.0337                 |
++========================================================================================+
++========================================================================================+
+|  SELF-PLAY V8 MULTI-PERSONALITY LEAGUE SYSTEM (RTX 4080 GPU)                           |
++========================================================================================+
+|  Active Personality: MAIN                                                               |
+|  Hands Simulated:        61,164 /    100,000   ( 61.2%)                            |
+|  Training Epoch:       99                                                              |
+|  Bootstrap Alpha:      0.00                                                            |
+|  Curriculum Stage:   Phase 4: Dynamic Activity                                      |
+|  Elapsed Time:       36m 14s                                                          |
+|  Sim Speed:              28 hands/sec                                                 |
+|  ETA:                23m 0s                                                           |
+|  Training Samples:       61,164                                                        |
++----------------------------------------------------------------------------------------+
+|  CUMULATIVE PERFORMANCE BY SEAT:                                                       |
+|  - Seat 0 Hero (Main)     :  -28.6 BB/100 (VPIP:50.4% AGG:45.7%) [R:17968 F:42555 AI:2348]|
+|  - Seat 1 Opp 1 (Maniac)  :  -66.3 BB/100 (VPIP:61.0% AGG:66.2%) [R:39495 F:31272 AI:3617]|
+|  - Seat 2 Opp 2 (Nit)     :  +18.5 BB/100 (VPIP:10.7% AGG:24.9%) [R:5303  F:53449 AI:408 ]|
+|  - Seat 3 Opp 3 (Sticky)  :  -36.3 BB/100 (VPIP:50.1% AGG:16.1%) [R:10376 F:32724 AI:1409]|
+|  - Seat 4 Opp 4 (Past Self):  +60.2 BB/100 (VPIP:18.4% AGG:57.5%) [R:16635 F:49435 AI:1839]|
+|  - Seat 5 Opp 5 (TAG Bot) :  +52.5 BB/100 (VPIP:18.2% AGG:56.3%) [R:17180 F:49248 AI:1880]|
++----------------------------------------------------------------------------------------+
+|  Global Post-Flop Avg Active Players: 1.99                                             |
++----------------------------------------------------------------------------------------+
+|  EXPLOITATION SCOREBOARD (Net BB/100 Matrix):                                          |
+|  [Winner \ Loser] | Hero  | S1    | S2    | S3    | S4    | S5    |                    |
+|  Hero (Main)      |   -   |  -4.0 |  -3.5 |  +3.1 | -15.9 |  -8.3 |                    |
+|  Opp 1 (Maniac)   |  +4.0 |   -   | -10.5 |  +0.8 | -31.7 | -28.9 |                    |
+|  Opp 2 (Nit)      |  +3.5 | +10.5 |   -   |  +3.7 |  +0.2 |  +0.5 |                    |
+|  Opp 3 (Sticky)   |  -3.1 |  -0.8 |  -3.7 |   -   | -12.8 | -15.9 |                    |
+|  Opp 4 (Past Self) | +15.9 | +31.7 |  -0.2 | +12.8 |   -   |  +0.1 |                    |
+|  Opp 5 (TAG Bot)  |  +8.3 | +28.9 |  -0.5 | +15.9 |  -0.1 |   -   |                    |
++----------------------------------------------------------------------------------------+
+|  Action Entropy:       0.9066                                                        |
++----------------------------------------------------------------------------------------------------------+
+|  Equity Matrix     | Fold  | Call  | Raise | RR   | All-In | Avg End Street | Net Chips | Won    | Lost  |
++----------------------------------------------------------------------------------------------------------+
+|  <20% (Pure Air)   | 82.4% | 15.3% |  0.4% |  1.0% |  0.8%  |      0.2       | -225977.9   | +39296 | -265274 |
+|  20-40% (Draws)    | 78.9% | 17.8% |  0.6% |  1.7% |  1.0%  |      0.2       | -223615.9   | +153847 | -377462 |
+|  40-60% (Marginal) | 37.9% | 36.7% |  2.9% | 14.3% |  8.2%  |      0.6       | -209928.7   | +320948 | -530877 |
+|  60-80% (Strong)   | 11.6% | 30.5% |  9.4% | 24.3% | 24.2%  |      1.3       | +52304.5   | +471833 | -419529 |
+|  >80% (Nuts)       |  3.5% | 32.2% | 18.5% | 14.7% | 31.1%  |      2.2       | +420351.9   | +558636 | -138284 |
++----------------------------------------------------------------------------------------------------------+
+|  Train Loss:          45.6779  |  Val Loss:  45.8257                                |
+|  Loss Q: 44.7032 | Bluff: 0.0428 | Str: 0.0252 | Eq: 0.0295                 |
++========================================================================================+
++========================================================================================+
+|  SELF-PLAY V8 MULTI-PERSONALITY LEAGUE SYSTEM (RTX 4080 GPU)                           |
++========================================================================================+
+|  Active Personality: MAIN                                                               |
+|  Hands Simulated:        63,002 /    100,000   ( 63.0%)                            |
+|  Training Epoch:      102                                                              |
+|  Bootstrap Alpha:      0.00                                                            |
+|  Curriculum Stage:   Phase 4: Dynamic Activity                                      |
+|  Elapsed Time:       37m 16s                                                          |
+|  Sim Speed:              28 hands/sec                                                 |
+|  ETA:                21m 53s                                                          |
+|  Training Samples:       63,002                                                        |
++----------------------------------------------------------------------------------------+
+|  CUMULATIVE PERFORMANCE BY SEAT:                                                       |
+|  - Seat 0 Hero (Main)     :  -27.0 BB/100 (VPIP:43.2% AGG:43.7%) [R:18253 F:44172 AI:2379]|
+|  - Seat 1 Opp 1 (Maniac)  :  -67.1 BB/100 (VPIP:61.5% AGG:66.2%) [R:40620 F:31813 AI:3710]|
+|  - Seat 2 Opp 2 (Nit)     :  +18.0 BB/100 (VPIP:11.0% AGG:23.5%) [R:5413  F:54693 AI:421 ]|
+|  - Seat 3 Opp 3 (Sticky)  :  -36.6 BB/100 (VPIP:50.2% AGG:16.1%) [R:10624 F:33454 AI:1436]|
+|  - Seat 4 Opp 4 (Past Self):  +59.6 BB/100 (VPIP:18.9% AGG:58.3%) [R:17095 F:50592 AI:1897]|
+|  - Seat 5 Opp 5 (TAG Bot) :  +53.2 BB/100 (VPIP:18.7% AGG:56.1%) [R:17603 F:50366 AI:1930]|
++----------------------------------------------------------------------------------------+
+|  Global Post-Flop Avg Active Players: 1.99                                             |
++----------------------------------------------------------------------------------------+
+|  EXPLOITATION SCOREBOARD (Net BB/100 Matrix):                                          |
+|  [Winner \ Loser] | Hero  | S1    | S2    | S3    | S4    | S5    |                    |
+|  Hero (Main)      |   -   |  -3.5 |  -3.3 |  +3.1 | -15.5 |  -7.7 |                    |
+|  Opp 1 (Maniac)   |  +3.5 |   -   | -10.3 |  +1.9 | -32.3 | -29.9 |                    |
+|  Opp 2 (Nit)      |  +3.3 | +10.3 |   -   |  +3.6 |  +0.3 |  +0.5 |                    |
+|  Opp 3 (Sticky)   |  -3.1 |  -1.9 |  -3.6 |   -   | -12.7 | -15.3 |                    |
+|  Opp 4 (Past Self) | +15.5 | +32.3 |  -0.3 | +12.7 |   -   |  -0.8 |                    |
+|  Opp 5 (TAG Bot)  |  +7.7 | +29.9 |  -0.5 | +15.3 |  +0.8 |   -   |                    |
++----------------------------------------------------------------------------------------+
+|  Action Entropy:       0.9048                                                        |
++----------------------------------------------------------------------------------------------------------+
+|  Equity Matrix     | Fold  | Call  | Raise | RR   | All-In | Avg End Street | Net Chips | Won    | Lost  |
++----------------------------------------------------------------------------------------------------------+
+|  <20% (Pure Air)   | 82.7% | 15.0% |  0.4% |  1.0% |  0.8%  |      0.2       | -224555.2   | +40869 | -265424 |
+|  20-40% (Draws)    | 79.4% | 17.3% |  0.6% |  1.7% |  1.0%  |      0.2       | -225830.7   | +155023 | -380854 |
+|  40-60% (Marginal) | 39.8% | 35.6% |  2.8% | 13.9% |  7.9%  |      0.5       | -212677.3   | +323349 | -536027 |
+|  60-80% (Strong)   | 12.4% | 30.4% |  9.3% | 24.1% | 23.8%  |      1.3       | +51769.3   | +475904 | -424135 |
+|  >80% (Nuts)       |  3.9% | 32.3% | 18.3% | 14.6% | 30.9%  |      2.2       | +428620.7   | +571901 | -143281 |
++----------------------------------------------------------------------------------------------------------+
+|  Train Loss:          10.9700  |  Val Loss:  12.4038                                |
+|  Loss Q: 10.4093 | Bluff: 0.0241 | Str: 0.0170 | Eq: 0.0150                 |
++========================================================================================+
++========================================================================================+
+|  SELF-PLAY V8 MULTI-PERSONALITY LEAGUE SYSTEM (RTX 4080 GPU)                           |
++========================================================================================+
+|  Active Personality: MAIN                                                               |
+|  Hands Simulated:        64,832 /    100,000   ( 64.8%)                            |
+|  Training Epoch:      105                                                              |
+|  Bootstrap Alpha:      0.00                                                            |
+|  Curriculum Stage:   Phase 4: Dynamic Activity                                      |
+|  Elapsed Time:       38m 40s                                                          |
+|  Sim Speed:              28 hands/sec                                                 |
+|  ETA:                20m 58s                                                          |
+|  Training Samples:       64,832                                                        |
++----------------------------------------------------------------------------------------+
+|  CUMULATIVE PERFORMANCE BY SEAT:                                                       |
+|  - Seat 0 Hero (Main)     :  -27.2 BB/100 (VPIP:45.6% AGG:40.4%) [R:18839 F:45039 AI:2457]|
+|  - Seat 1 Opp 1 (Maniac)  :  -66.6 BB/100 (VPIP:61.6% AGG:66.3%) [R:41727 F:32418 AI:3811]|
+|  - Seat 2 Opp 2 (Nit)     :  +19.2 BB/100 (VPIP:11.1% AGG:24.0%) [R:5521  F:56000 AI:429 ]|
+|  - Seat 3 Opp 3 (Sticky)  :  -36.5 BB/100 (VPIP:50.2% AGG:16.3%) [R:10894 F:34199 AI:1481]|
+|  - Seat 4 Opp 4 (Past Self):  +58.8 BB/100 (VPIP:18.8% AGG:57.4%) [R:17447 F:51787 AI:1938]|
+|  - Seat 5 Opp 5 (TAG Bot) :  +52.1 BB/100 (VPIP:18.9% AGG:55.8%) [R:18018 F:51543 AI:1971]|
++----------------------------------------------------------------------------------------+
+|  Global Post-Flop Avg Active Players: 1.99                                             |
++----------------------------------------------------------------------------------------+
+|  EXPLOITATION SCOREBOARD (Net BB/100 Matrix):                                          |
+|  [Winner \ Loser] | Hero  | S1    | S2    | S3    | S4    | S5    |                    |
+|  Hero (Main)      |   -   |  -3.3 |  -3.4 |  +2.5 | -15.5 |  -7.5 |                    |
+|  Opp 1 (Maniac)   |  +3.3 |   -   | -11.1 |  +2.2 | -32.2 | -28.7 |                    |
+|  Opp 2 (Nit)      |  +3.4 | +11.1 |   -   |  +3.9 |  +0.3 |  +0.5 |                    |
+|  Opp 3 (Sticky)   |  -2.5 |  -2.2 |  -3.9 |   -   | -12.5 | -15.3 |                    |
+|  Opp 4 (Past Self) | +15.5 | +32.2 |  -0.3 | +12.5 |   -   |  -1.1 |                    |
+|  Opp 5 (TAG Bot)  |  +7.5 | +28.7 |  -0.5 | +15.3 |  +1.1 |   -   |                    |
++----------------------------------------------------------------------------------------+
+|  Action Entropy:       0.9026                                                        |
++----------------------------------------------------------------------------------------------------------+
+|  Equity Matrix     | Fold  | Call  | Raise | RR   | All-In | Avg End Street | Net Chips | Won    | Lost  |
++----------------------------------------------------------------------------------------------------------+
+|  <20% (Pure Air)   | 82.7% | 15.1% |  0.4% |  1.0% |  0.8%  |      0.2       | -229826.8   | +41436 | -271263 |
+|  20-40% (Draws)    | 78.8% | 17.9% |  0.6% |  1.7% |  1.0%  |      0.2       | -232699.8   | +159061 | -391761 |
+|  40-60% (Marginal) | 38.7% | 36.7% |  2.9% | 13.8% |  7.9%  |      0.5       | -225226.6   | +332645 | -557872 |
+|  60-80% (Strong)   | 12.1% | 31.1% |  9.2% | 24.1% | 23.4%  |      1.3       | +57648.3   | +494726 | -437078 |
+|  >80% (Nuts)       |  3.7% | 33.7% | 18.0% | 14.3% | 30.3%  |      2.2       | +440939.5   | +594617 | -153677 |
++----------------------------------------------------------------------------------------------------------+
+|  Train Loss:          22.8500  |  Val Loss:  27.0899                                |
+|  Loss Q: 21.8247 | Bluff: 0.0481 | Str: 0.0271 | Eq: 0.0274                 |
++========================================================================================+
++========================================================================================+
+|  SELF-PLAY V8 MULTI-PERSONALITY LEAGUE SYSTEM (RTX 4080 GPU)                           |
++========================================================================================+
+|  Active Personality: MAIN                                                               |
+|  Hands Simulated:        66,672 /    100,000   ( 66.7%)                            |
+|  Training Epoch:      108                                                              |
+|  Bootstrap Alpha:      0.00                                                            |
+|  Curriculum Stage:   Phase 4: Dynamic Activity                                      |
+|  Elapsed Time:       40m 25s                                                          |
+|  Sim Speed:              27 hands/sec                                                 |
+|  ETA:                20m 12s                                                          |
+|  Training Samples:       66,672                                                        |
++----------------------------------------------------------------------------------------+
+|  CUMULATIVE PERFORMANCE BY SEAT:                                                       |
+|  - Seat 0 Hero (Main)     :  -29.8 BB/100 (VPIP:53.5% AGG:36.8%) [R:19366 F:45374 AI:2563]|
+|  - Seat 1 Opp 1 (Maniac)  :  -61.8 BB/100 (VPIP:61.5% AGG:66.7%) [R:42718 F:32982 AI:3896]|
+|  - Seat 2 Opp 2 (Nit)     :  +19.2 BB/100 (VPIP:10.9% AGG:24.3%) [R:5611  F:57283 AI:438 ]|
+|  - Seat 3 Opp 3 (Sticky)  :  -34.4 BB/100 (VPIP:50.2% AGG:15.7%) [R:11069 F:34954 AI:1512]|
+|  - Seat 4 Opp 4 (Past Self):  +55.1 BB/100 (VPIP:18.2% AGG:56.0%) [R:17714 F:52952 AI:1965]|
+|  - Seat 5 Opp 5 (TAG Bot) :  +51.7 BB/100 (VPIP:18.1% AGG:55.3%) [R:18295 F:52734 AI:2005]|
++----------------------------------------------------------------------------------------+
+|  Global Post-Flop Avg Active Players: 1.99                                             |
++----------------------------------------------------------------------------------------+
+|  EXPLOITATION SCOREBOARD (Net BB/100 Matrix):                                          |
+|  [Winner \ Loser] | Hero  | S1    | S2    | S3    | S4    | S5    |                    |
+|  Hero (Main)      |   -   |  -4.9 |  -3.8 |  +1.7 | -14.5 |  -8.3 |                    |
+|  Opp 1 (Maniac)   |  +4.9 |   -   | -10.8 |  +2.2 | -30.5 | -27.6 |                    |
+|  Opp 2 (Nit)      |  +3.8 | +10.8 |   -   |  +3.4 |  +0.5 |  +0.7 |                    |
+|  Opp 3 (Sticky)   |  -1.7 |  -2.2 |  -3.4 |   -   | -12.0 | -15.1 |                    |
+|  Opp 4 (Past Self) | +14.5 | +30.5 |  -0.5 | +12.0 |   -   |  -1.4 |                    |
+|  Opp 5 (TAG Bot)  |  +8.3 | +27.6 |  -0.7 | +15.1 |  +1.4 |   -   |                    |
++----------------------------------------------------------------------------------------+
+|  Action Entropy:       0.9016                                                        |
++----------------------------------------------------------------------------------------------------------+
+|  Equity Matrix     | Fold  | Call  | Raise | RR   | All-In | Avg End Street | Net Chips | Won    | Lost  |
++----------------------------------------------------------------------------------------------------------+
+|  <20% (Pure Air)   | 81.4% | 16.3% |  0.4% |  1.0% |  0.8%  |      0.2       | -245959.3   | +44629 | -290588 |
+|  20-40% (Draws)    | 77.4% | 19.2% |  0.6% |  1.7% |  1.0%  |      0.2       | -245783.0   | +167963 | -413746 |
+|  40-60% (Marginal) | 37.4% | 38.4% |  2.8% | 13.5% |  7.9%  |      0.6       | -237672.1   | +348568 | -586240 |
+|  60-80% (Strong)   | 11.8% | 32.4% |  9.0% | 23.5% | 23.3%  |      1.3       | +58211.5   | +509333 | -451121 |
+|  >80% (Nuts)       |  3.5% | 34.7% | 17.7% | 14.3% | 29.9%  |      2.2       | +458609.5   | +620603 | -161993 |
++----------------------------------------------------------------------------------------------------------+
+|  Train Loss:          29.3501  |  Val Loss:  27.0289                                |
+|  Loss Q: 28.3836 | Bluff: 0.0365 | Str: 0.0282 | Eq: 0.0320                 |
++========================================================================================+
+C:\REPO\Antigravity\AIPoker\.venv\Lib\site-packages\torch\_utils.py:831: UserWarning: TypedStorage is deprecated. It will be removed in the future and UntypedStorage will be the only storage class. This should only matter to you if you are using storages directly.  To access UntypedStorage directly, use tensor.untyped_storage() instead of tensor.storage()
+  return self.fget.__get__(instance, owner)()
+==================================================
+           MODEL HEALTH DIAGNOSTIC TOOL         
+           Target: Herocules (v11 Main)                 
+==================================================
+WARNING: expert_v8_selfplay.pth not found at C:\REPO\Antigravity\AIPoker\core\weights\expert_v8_selfplay.pth. Model will output random garbage.
+WARNING: Could not load weights: Error(s) in loading state_dict for PokerEVModelV4:
+	size mismatch for state_proj.0.weight: copying a param with shape torch.Size([256, 159]) from checkpoint, the shape in current model is torch.Size([256, 163]).
+WARNING: Could not load weights: Error(s) in loading state_dict for PokerEVModelV4:
+	size mismatch for state_proj.0.weight: copying a param with shape torch.Size([256, 159]) from checkpoint, the shape in current model is torch.Size([256, 163]).
+WARNING: Could not load weights: Error(s) in loading state_dict for PokerEVModelV4:
+	size mismatch for state_proj.0.weight: copying a param with shape torch.Size([256, 159]) from checkpoint, the shape in current model is torch.Size([256, 163]).
+WARNING: expert_v9_main.pth not found at C:\REPO\Antigravity\AIPoker\core\weights\expert_v9_main.pth. Model will output random garbage.
+WARNING: v10_100k_main.pt not found at C:\REPO\Antigravity\AIPoker\core\weights\v10_100k_main.pt. Model will output random garbage.
+WARNING: v10_100k_main.pt not found at C:\REPO\Antigravity\AIPoker\core\weights\v10_100k_main.pt. Model will output random garbage.
+WARNING: v10_50k_main.pt not found at C:\REPO\Antigravity\AIPoker\core\weights\v10_50k_main.pt. Model will output random garbage.
+WARNING: expert_v8_main.pth not found at C:\REPO\Antigravity\AIPoker\core\weights\expert_v8_main.pth. Model will output random garbage.
+WARNING: Could not load weights: Error(s) in loading state_dict for PokerEVModelV4:
+	size mismatch for state_proj.0.weight: copying a param with shape torch.Size([256, 159]) from checkpoint, the shape in current model is torch.Size([256, 163]).
+WARNING: Could not load weights: Error(s) in loading state_dict for PokerEVModelV4:
+	size mismatch for state_proj.0.weight: copying a param with shape torch.Size([256, 159]) from checkpoint, the shape in current model is torch.Size([256, 163]).
+WARNING: Could not load weights: Error(s) in loading state_dict for PokerEVModelV4:
+	size mismatch for state_proj.0.weight: copying a param with shape torch.Size([256, 159]) from checkpoint, the shape in current model is torch.Size([256, 163]).
+WARNING: Could not load weights: Error(s) in loading state_dict for PokerEVModelV4:
+	size mismatch for state_proj.0.weight: copying a param with shape torch.Size([256, 159]) from checkpoint, the shape in current model is torch.Size([256, 163]).
+Scenario                            | Raw EV (Fold)   | Raw EV (Call)   | Raw EV (Raise)  | Final Action
+-------------------------------------------------------------------------------------------------------------------
+River Pure Air (First to Act)       | -0.01           | -0.42           | -2.25           | FOLD
+River Pure Air (Facing Bet)         | -0.01           | -0.41           | -2.25           | FOLD
+River The Nuts (Facing Bet)         | -0.00           | 0.18            | -1.57           | CALL
+River The Nuts (Calling Station)    | -0.00           | 0.17            | -1.58           | CALL
+Preflop AA vs Nit (Deep)            | 0.03            | 1.06            | 0.63            | CALL
+Preflop AA vs Maniac                | 0.03            | 1.06            | 0.61            | CALL
+Flop TPTK Multi-Way (4-way pot)     | 0.02            | 1.12            | 0.81            | CALL
+Turn Flush Draw vs Bet              | 0.04            | 0.96            | 0.19            | CALL
+
+==================================================
+           PREFLOP EQUITY SWEEP                 
+==================================================
+Eq Group        | Opps  | Raw EV (Fold)   | Raw EV (Call)   | Raw EV (Raise)  | Final Action
+-------------------------------------------------------------------------------------
+<20% (Air)      | 1     | -0.02           | -0.20           | -2.04           | FOLD
+20-40% (Weak)   | 1     | 0.00            | 0.08            | -1.69           | CALL
+40-60% (Marg)   | 1     | -0.02           | -0.20           | -2.03           | FOLD
+60-80% (Strg)   | 1     | 0.04            | 0.86            | -0.12           | CALL
+>80% (Nuts)     | 1     | 0.04            | 0.98            | 0.36            | CALL
+-------------------------------------------------------------------------------------
+<20% (Air)      | 3     | -0.01           | -0.34           | -2.16           | FOLD
+20-40% (Weak)   | 3     | -0.02           | -0.17           | -2.00           | FOLD
+40-60% (Marg)   | 3     | -0.01           | -0.32           | -2.13           | FOLD
+60-80% (Strg)   | 3     | 0.04            | 0.83            | -0.22           | CALL
+>80% (Nuts)     | 3     | 0.04            | 0.98            | 0.34            | CALL
+-------------------------------------------------------------------------------------
+<20% (Air)      | 5     | -0.03           | -0.54           | -2.38           | FOLD
+20-40% (Weak)   | 5     | -0.02           | -0.48           | -2.32           | FOLD
+40-60% (Marg)   | 5     | -0.03           | -0.53           | -2.37           | FOLD
+60-80% (Strg)   | 5     | 0.02            | 0.61            | -0.80           | CALL
+>80% (Nuts)     | 5     | 0.04            | 0.96            | 0.28            | CALL
+-------------------------------------------------------------------------------------
+
+[Analysis Complete]
+
+[DIAGNOSTICS] Mid-flight diagnostics triggered at 66672 hands...
++========================================================================================+
+|  SELF-PLAY V8 MULTI-PERSONALITY LEAGUE SYSTEM (RTX 4080 GPU)                           |
++========================================================================================+
+|  Active Personality: MAIN                                                               |
+|  Hands Simulated:        68,495 /    100,000   ( 68.5%)                            |
+|  Training Epoch:      111                                                              |
+|  Bootstrap Alpha:      0.00                                                            |
+|  Curriculum Stage:   Phase 4: Dynamic Activity                                      |
+|  Elapsed Time:       41m 49s                                                          |
+|  Sim Speed:              27 hands/sec                                                 |
+|  ETA:                19m 14s                                                          |
+|  Training Samples:       68,495                                                        |
++----------------------------------------------------------------------------------------+
+|  CUMULATIVE PERFORMANCE BY SEAT:                                                       |
+|  - Seat 0 Hero (Main)     :  -30.7 BB/100 (VPIP:48.7% AGG:33.4%) [R:19594 F:46690 AI:2597]|
+|  - Seat 1 Opp 1 (Maniac)  :  -60.9 BB/100 (VPIP:61.6% AGG:67.0%) [R:43826 F:33550 AI:4006]|
+|  - Seat 2 Opp 2 (Nit)     :  +19.1 BB/100 (VPIP:11.2% AGG:24.5%) [R:5753  F:58564 AI:455 ]|
+|  - Seat 3 Opp 3 (Sticky)  :  -34.3 BB/100 (VPIP:50.1% AGG:15.9%) [R:11318 F:35705 AI:1545]|
+|  - Seat 4 Opp 4 (Past Self):  +55.3 BB/100 (VPIP:19.3% AGG:56.6%) [R:18194 F:54055 AI:2015]|
+|  - Seat 5 Opp 5 (TAG Bot) :  +51.5 BB/100 (VPIP:18.8% AGG:55.6%) [R:18769 F:53881 AI:2061]|
++----------------------------------------------------------------------------------------+
+|  Global Post-Flop Avg Active Players: 1.99                                             |
++----------------------------------------------------------------------------------------+
+|  EXPLOITATION SCOREBOARD (Net BB/100 Matrix):                                          |
+|  [Winner \ Loser] | Hero  | S1    | S2    | S3    | S4    | S5    |                    |
+|  Hero (Main)      |   -   |  -6.1 |  -3.4 |  +2.0 | -14.3 |  -8.9 |                    |
+|  Opp 1 (Maniac)   |  +6.1 |   -   | -11.1 |  +2.7 | -30.9 | -27.7 |                    |
+|  Opp 2 (Nit)      |  +3.4 | +11.1 |   -   |  +3.3 |  +0.4 |  +0.8 |                    |
+|  Opp 3 (Sticky)   |  -2.0 |  -2.7 |  -3.3 |   -   | -11.9 | -14.3 |                    |
+|  Opp 4 (Past Self) | +14.3 | +30.9 |  -0.4 | +11.9 |   -   |  -1.4 |                    |
+|  Opp 5 (TAG Bot)  |  +8.9 | +27.7 |  -0.8 | +14.3 |  +1.4 |   -   |                    |
++----------------------------------------------------------------------------------------+
+|  Action Entropy:       0.9019                                                        |
++----------------------------------------------------------------------------------------------------------+
+|  Equity Matrix     | Fold  | Call  | Raise | RR   | All-In | Avg End Street | Net Chips | Won    | Lost  |
++----------------------------------------------------------------------------------------------------------+
+|  <20% (Pure Air)   | 81.6% | 16.1% |  0.4% |  1.0% |  0.8%  |      0.2       | -247922.9   | +44764 | -292687 |
+|  20-40% (Draws)    | 77.7% | 19.0% |  0.6% |  1.7% |  1.0%  |      0.2       | -254974.6   | +169412 | -424386 |
+|  40-60% (Marginal) | 37.5% | 38.8% |  2.7% | 13.2% |  7.7%  |      0.5       | -239613.4   | +353112 | -592725 |
+|  60-80% (Strong)   | 11.8% | 33.5% |  8.9% | 23.0% | 22.8%  |      1.3       | +55644.5   | +511852 | -456207 |
+|  >80% (Nuts)       |  3.3% | 35.9% | 17.4% | 14.1% | 29.2%  |      2.2       | +462562.0   | +629629 | -167067 |
++----------------------------------------------------------------------------------------------------------+
+|  Train Loss:          11.6067  |  Val Loss:  12.0882                                |
+|  Loss Q: 10.6776 | Bluff: 0.0460 | Str: 0.0262 | Eq: 0.0207                 |
++========================================================================================+
