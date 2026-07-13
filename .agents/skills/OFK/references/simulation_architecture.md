@@ -37,7 +37,7 @@ We use a **Heuristic Bootstrap Decay (`bootstrap_alpha`)**:
 - **> 30,000 Hands**: `alpha = 0.0`. The NN is fully in charge.
 
 > [!TIP]
-> **5% Exploration Anchor**: Even when `alpha = 0.0`, the system forces a completely random action 5% of the time. This applies to **ALL** bots at the table (both the Hero NN and all Opponent NNs/Heuristics). This ensures the models occasionally explore weird, off-policy nodes (like shoving 100BB preflop with 72o) to learn exactly *why* those are bad ideas.
+> **5% Exploration Anchor**: Even when `alpha = 0.0`, the system forces a completely random action 5% of the time. This applies to **ALL** bots at the table. To prevent heuristic poisoning, the simulation protects premium hands (Equity > 0.70) from randomly folding, restricting the exploration strictly to calls and raises for those nodes.
 
 ## 3. The Data Structure (`HandRecordV4`)
 As the hand plays out, the simulator creates a sequence of `DecisionPoints` for the Hero. Each point records:
@@ -62,7 +62,7 @@ Instead of only penalizing the Q-value of the action the Hero *actually took*, t
 5. A Huber Loss is calculated across **all three actions simultaneously**.
 
 ### Showdown & Side Pot Resolution
-To guarantee mathematically perfect `mc_return` targets, the simulator employs a highly robust **Side Pot Slicing Algorithm** during showdown. Instead of simply dividing the pot evenly among winners, it sorts all players by their total committed chips and iteratively processes the pot in "slices". Each slice is awarded only to the eligible players who matched that exact level of contribution, cleanly handling complex multi-way all-in scenarios.
+To guarantee mathematically perfect `mc_return` targets, the simulator employs a highly robust **Side Pot Slicing Algorithm** during showdown. Additionally, for terminal states reached before the river (all-in scenarios), the simulator carefully evaluates all active players against a single, shared, deterministic board runout to prevent MC evaluation fragmentation.
 
 ### Interpretable Auxiliary Heads (The Subconscious)
 To force the model to build an internal world model, the V11 architecture splits the final representation into three smaller auxiliary heads before the main Q-value head:
@@ -71,7 +71,7 @@ To force the model to build an internal world model, the V11 architecture splits
 - `head_equity`: Predicts the mathematical `equity`.
 
 The Mean Squared Error (MSE) of these three heads is summed up to create the `loss_aux`.
-The final backpropagated loss is: `Total_Loss = loss_q + 0.1 * loss_aux`.
+Because the Huber Loss for Q-values dominates the gradients (scaled in Big Blinds), the auxiliary heads are artificially scaled up. The final backpropagated loss is: `Total_Loss = loss_q + 10.0 * loss_aux`.
 
 > [!IMPORTANT]
 > **The PID Target Mechanism**

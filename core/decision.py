@@ -99,7 +99,9 @@ class PokerDecisionEngine:
         # 3. Apply Post-flop Math Engine Guardrail (Pot Odds Check)
         math_engine_status = "Passed"
         math_engine_details = "Math checks out OK"
-        if use_math_engine and board_state.street != 'Preflop' and board_state.call_amount > 0:
+        # Bypass math engine for V11 models to prevent masking their true behavior
+        is_v11_model = getattr(active_model, 'is_v11', False) or 'v11' in self.active_model_name.lower()
+        if use_math_engine and board_state.street != 'Preflop' and board_state.call_amount > 0 and not is_v11_model:
             pot_odds = board_state.call_amount / (board_state.pot_size + board_state.call_amount)
             
             buffer_offset = -0.05

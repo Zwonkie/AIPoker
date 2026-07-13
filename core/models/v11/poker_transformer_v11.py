@@ -7,7 +7,7 @@ class PokerEVModelV4(nn.Module):
     Decision Transformer model for Pluribus V4.
     Processes sequences of (State, Action) inputs using Multi-Head Self-Attention.
     """
-    def __init__(self, card_embed_dim=64, context_dim=31, d_model=128, nhead=4, num_layers=3, dim_feedforward=512, max_seq_len=20):
+    def __init__(self, card_embed_dim=64, context_dim=35, d_model=128, nhead=4, num_layers=3, dim_feedforward=512, max_seq_len=20):
         super().__init__()
         self.d_model = d_model
         self.max_seq_len = max_seq_len
@@ -20,7 +20,7 @@ class PokerEVModelV4(nn.Module):
         
         # State Projection: maps raw card sum + context features into d_model space
         # Card representation is: hole cards (64-dim) + board cards (64-dim) = 128-dim
-        # Context representation is: 31-dim
+        # Context representation is: 35-dim
         self.state_proj = nn.Sequential(
             nn.Linear(card_embed_dim * 2 + context_dim, 256),
             nn.ReLU(),
@@ -95,7 +95,7 @@ class PokerEVModelV4(nn.Module):
         
         # 6. Process sequence with step-isolating mask (no dilution, no NaNs)
         mask = self._generate_causal_mask(seq_len, device)
-        transformer_out = self.transformer(x, mask=mask) # [batch, seq_len, 128]
+        transformer_out = self.transformer(x, mask=mask, src_key_padding_mask=key_padding_mask) # [batch, seq_len, 128]
         
         # 7. Predict Q-Values and Auxiliaries
         q_vals = self.head(transformer_out) # [batch, seq_len, 3]

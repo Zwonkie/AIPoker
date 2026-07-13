@@ -7,7 +7,7 @@ class PokerEVModelV4(nn.Module):
     Decision Transformer model for Pluribus V4.
     Processes sequences of (State, Action) inputs using Multi-Head Self-Attention.
     """
-    def __init__(self, card_embed_dim=64, context_dim=31, d_model=128, nhead=4, num_layers=3, dim_feedforward=512, max_seq_len=20):
+    def __init__(self, card_embed_dim=64, context_dim=35, d_model=128, nhead=4, num_layers=3, dim_feedforward=512, max_seq_len=20):
         super().__init__()
         self.d_model = d_model
         self.max_seq_len = max_seq_len

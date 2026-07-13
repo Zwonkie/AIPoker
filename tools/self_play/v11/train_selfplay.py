@@ -62,7 +62,7 @@ def vectorize_hand_samples(record, max_seq_len=20):
     act_map = {0: 7, 1: 3, 2: 6}
     
     board_seq = [[52]*5 for _ in range(max_seq_len)]
-    context_seq = [[0.0]*31 for _ in range(max_seq_len)]
+    context_seq = [[0.0]*35 for _ in range(max_seq_len)]
     action_seq = [0] * max_seq_len
     action_taken_seq = [0] * max_seq_len
     target_evs_seq = [[0.0, 0.0, 0.0] for _ in range(max_seq_len)]
@@ -79,7 +79,7 @@ def vectorize_hand_samples(record, max_seq_len=20):
     bb = dps[0]['big_blind'] if dps else 10.0
     final_profit = record.final_hero_profit
     
-    start_idx = max_seq_len - len(dps)
+    start_idx = 0
     
     for i, dp in enumerate(dps):
         idx = start_idx + i
@@ -94,9 +94,9 @@ def vectorize_hand_samples(record, max_seq_len=20):
         if active_opps_count > 0:
             sum_vpip = 0.0
             sum_agg = 0.0
-            for idx in range(5):
-                if dp['active_opponents_mask'][idx] == 1.0:
-                    seat_key = f"seat_{idx+1}"
+            for j in range(5):
+                if dp['active_opponents_mask'][j] == 1.0:
+                    seat_key = f"seat_{j+1}"
                     prof = record.opponents_profiles.get(seat_key, {'vpip': 0.3, 'agg': 0.4})
                     sum_vpip += map_vpip_to_midpoint(prof.get('vpip', 0.3))
                     sum_agg += map_agg_to_midpoint(prof.get('agg', 0.4))
@@ -115,15 +115,19 @@ def vectorize_hand_samples(record, max_seq_len=20):
             active_opps_count / 10.0,
             dp['street'] / 3.0,
             global_vpip, global_agg,
-            (dp['pot_size'] / bb) / 1000.0,
             (dp['call_amount'] / bb) / 400.0
         ]
         
-        for idx in range(5):
-            seat_key = f"seat_{idx+1}"
+        for j in range(5):
+            seat_key = f"seat_{j+1}"
             prof = record.opponents_profiles.get(seat_key, {'vpip': 0.3, 'agg': 0.4})
-            ctx.append(float(dp['active_opponents_mask'][idx]))
-            ctx.append((dp['opponents_stacks'][idx] / bb) / 400.0)
+            
+            opp_pos = (j + 1 + dp['hero_position']) % 6
+            pos_val = float(opp_pos) / 5.0 if dp['active_opponents_mask'][j] == 1.0 else -1.0
+            
+            ctx.append(float(dp['active_opponents_mask'][j]))
+            ctx.append(pos_val)
+            ctx.append((dp['opponents_stacks'][j] / bb) / 400.0)
             ctx.append(map_vpip_to_midpoint(prof.get('vpip', 0.3)))
             ctx.append(map_agg_to_midpoint(prof.get('agg', 0.4)))
             
@@ -230,7 +234,8 @@ def format_time(seconds):
 def print_dashboard(hands_done, total_hands, elapsed, hands_per_sec, train_loss, val_loss,
                     seat_profits, seat_vpips, seat_aggs, epoch, personality, bootstrap_alpha,
                     training_samples, total_hands_simulated, seat_extra_stats, global_metrics, 
-                    telemetry=None, global_exploitation_net=None):
+                    telemetry=None, global_exploitation_net=None,
+                    train_loss_q=0.0, train_loss_bluff=0.0, train_loss_str=0.0, train_loss_eq=0.0):
     """Prints a clear, V8 multi-personality training dashboard with telemetry."""
     pct = (hands_done / max(1, total_hands)) * 100
     eta = ((total_hands - hands_done) / max(1, hands_per_sec)) if hands_per_sec > 0 else 0  # Calculate Phase
@@ -333,7 +338,8 @@ def print_dashboard(hands_done, total_hands, elapsed, hands_per_sec, train_loss,
         lines.append("+----------------------------------------------------------------------------------------------------------+")
         
     lines.extend([
-        f"|  Train Loss (Hub):   {train_loss:>8.4f}  |  Val Loss: {val_loss:>8.4f}                                |",
+        f"|  Train Loss:         {train_loss:>8.4f}  |  Val Loss: {val_loss:>8.4f}                                |",
+        f"|  Loss Q: {train_loss_q:>6.4f} | Bluff: {train_loss_bluff:>6.4f} | Str: {train_loss_str:>6.4f} | Eq: {train_loss_eq:>6.4f}                 |",
         "+========================================================================================+"
     ])
     
@@ -380,11 +386,14 @@ def run_intermediate_sensitivity_check(model, step_label, device):
             hud=HUDStats(vpip_color="Green", agg_color="Green")
         )
         
-        h_t, b_t, c_t, a_t = bridge.to_tensors(state, action_history_raw=["r"])
+        h_t, b_t, c_t, a_t = bridge.to_tensors(state, hero_actions=[6])
+        
+        mask_array = [0.0 if i < 1 else 1.0 for i in range(bridge.max_seq_len)]
+        key_padding_mask = torch.tensor([mask_array], dtype=torch.bool, device=device)
         
         with torch.no_grad():
-            preds = model(h_t.to(device), b_t.to(device), c_t.to(device), a_t.to(device))
-            q_vals = preds['q_vals'].squeeze(0)[-1] if isinstance(preds, dict) else preds.squeeze(0)[-1]
+            preds = model(h_t.to(device), b_t.to(device), c_t.to(device), a_t.to(device), key_padding_mask=key_padding_mask)
+            q_vals = preds['q_vals'].squeeze(0)[0] if isinstance(preds, dict) else preds.squeeze(0)[0]
             
         f_ev, c_ev, r_ev = q_vals[0].item(), q_vals[1].item(), q_vals[2].item()
         best_act = "RAISE" if r_ev > c_ev and r_ev > f_ev else "CALL" if c_ev > f_ev else "FOLD"
@@ -460,6 +469,7 @@ def run_training(personality, num_hands=100000, batch_size=256, epochs_per_batch
     if initial_hands_done == 0:
         csv_writer.writerow([
             'timestamp', 'hands_done', 'training_samples', 'train_loss', 'val_loss',
+            'train_loss_q', 'train_loss_bluff', 'train_loss_str', 'train_loss_eq',
             'hero_bb100', 'hands_per_sec', 'elapsed_sec'
         ])
     
@@ -468,6 +478,10 @@ def run_training(personality, num_hands=100000, batch_size=256, epochs_per_batch
     total_training_samples = 0
     train_loss = 0.0
     val_loss = 0.0
+    train_loss_q = 0.0
+    train_loss_bluff = 0.0
+    train_loss_str = 0.0
+    train_loss_eq = 0.0
     seat_cumulative_profits = [0.0] * 6
     current_seat_vpips = [0.30] * 6
     current_seat_aggs = [0.40] * 6
@@ -542,11 +556,12 @@ def run_training(personality, num_hands=100000, batch_size=256, epochs_per_batch
             # Worker args
             hands_per_worker = max(1, batch_hands // num_workers)
             
-            # Opponent model paths to load (only load if training 'main' or if pre-trained checkpoints exist)
-            m_path = maniac_path if os.path.exists(maniac_path) else None
-            n_path = nit_path if os.path.exists(nit_path) else None
-            s_path = sticky_path if os.path.exists(sticky_path) else None
-            p_path = past_path if os.path.exists(past_path) else None
+            # Opponent model paths: DISABLED for fresh V11 retraining.
+            # Using fuzzy heuristic bots only (no NN opponent counterparts).
+            m_path = None
+            n_path = None
+            s_path = None
+            p_path = None
             
             # Phase 5: Focus Rounds Logic
             focus_archetype = None
@@ -649,12 +664,17 @@ def run_training(personality, num_hands=100000, batch_size=256, epochs_per_batch
             for epoch in range(epochs_per_batch):
                 model.train()
                 epoch_loss = 0.0
+                epoch_loss_q = 0.0
+                epoch_loss_bluff = 0.0
+                epoch_loss_str = 0.0
+                epoch_loss_eq = 0.0
                 total_items = 0
                 for b_h, b_b, b_c, b_a, b_sa, b_mc, b_m, b_bluff, b_str, b_eq in train_loader:
                     b_h = b_h.to(device, non_blocking=True)
                     b_b = b_b.to(device, non_blocking=True)
                     b_c = b_c.to(device, non_blocking=True)
                     b_a = b_a.to(device, non_blocking=True)
+                    b_sa = b_sa.to(device, non_blocking=True)
                     b_mc = b_mc.to(device, non_blocking=True)
                     b_m = b_m.to(device, non_blocking=True)
                     b_bluff = b_bluff.to(device, non_blocking=True)
@@ -679,20 +699,31 @@ def run_training(personality, num_hands=100000, batch_size=256, epochs_per_batch
                             telemetry.record_entropy_value(batch_entropy)
                         
                         # Multi-Action Target EV Loss
-                        # b_mc is already [batch, seq_len, 3] containing the exact target EVs for Fold/Call/Raise
-                        loss_q = criterion(preds, b_mc) * b_m.unsqueeze(-1)
-                        final_loss_q = loss_q.sum() / (b_m.sum().clamp(min=1.0) * 3.0)
+                        # Only calculate Q-loss for the action actually taken to fix heuristic EV distortion
+                        action_mask = torch.zeros_like(preds)
+                        action_mask.scatter_(2, b_sa.unsqueeze(-1), 1.0)
+                        
+                        loss_q = criterion(preds, b_mc) * b_m.unsqueeze(-1) * action_mask
+                        final_loss_q = loss_q.sum() / (b_m.sum().clamp(min=1.0))
                         
                         # Interpretable Auxiliary Heads Loss
                         if isinstance(out, dict):
                             loss_bluff = nn.functional.mse_loss(pred_bluff, b_bluff, reduction='none') * b_m
                             loss_str = nn.functional.mse_loss(pred_str, b_str, reduction='none') * b_m
                             loss_eq = nn.functional.mse_loss(pred_eq, b_eq, reduction='none') * b_m
-                            final_loss_aux = (loss_bluff + loss_str + loss_eq).sum() / b_m.sum().clamp(min=1.0)
+                            
+                            sc_bluff = loss_bluff.sum() / b_m.sum().clamp(min=1.0)
+                            sc_str = loss_str.sum() / b_m.sum().clamp(min=1.0)
+                            sc_eq = loss_eq.sum() / b_m.sum().clamp(min=1.0)
+                            
+                            final_loss_aux = sc_bluff + sc_str + sc_eq
                         else:
                             final_loss_aux = 0.0
+                            sc_bluff = 0.0
+                            sc_str = 0.0
+                            sc_eq = 0.0
                             
-                        final_loss = final_loss_q + 0.1 * final_loss_aux
+                        final_loss = final_loss_q + 10.0 * final_loss_aux
                         
                     scaler.scale(final_loss).backward()
                     scaler.unscale_(optimizer)
@@ -700,11 +731,19 @@ def run_training(personality, num_hands=100000, batch_size=256, epochs_per_batch
                     scaler.step(optimizer)
                     scaler.update()
                     
-                    epoch_loss += final_loss.item() * len(b_h)
+                    epoch_loss += float(final_loss) * len(b_h)
+                    epoch_loss_q += float(final_loss_q) * len(b_h)
+                    epoch_loss_bluff += float(sc_bluff) * len(b_h)
+                    epoch_loss_str += float(sc_str) * len(b_h)
+                    epoch_loss_eq += float(sc_eq) * len(b_h)
                     total_items += len(b_h)
                     
                 total_epochs_completed += 1
                 train_loss = epoch_loss / total_items if total_items > 0 else 0.0
+                train_loss_q = epoch_loss_q / total_items if total_items > 0 else 0.0
+                train_loss_bluff = epoch_loss_bluff / total_items if total_items > 0 else 0.0
+                train_loss_str = epoch_loss_str / total_items if total_items > 0 else 0.0
+                train_loss_eq = epoch_loss_eq / total_items if total_items > 0 else 0.0
                 
             scheduler.step()
             
@@ -718,6 +757,7 @@ def run_training(personality, num_hands=100000, batch_size=256, epochs_per_batch
                     b_b = b_b.to(device)
                     b_c = b_c.to(device)
                     b_a = b_a.to(device)
+                    b_sa = b_sa.to(device)
                     b_mc = b_mc.to(device)
                     b_m = b_m.to(device)
                     b_bluff = b_bluff.to(device)
@@ -734,8 +774,11 @@ def run_training(personality, num_hands=100000, batch_size=256, epochs_per_batch
                         else:
                             preds = out
                             
-                        loss_q = criterion(preds, b_mc) * b_m.unsqueeze(-1)
-                        final_loss_q = loss_q.sum() / (b_m.sum().clamp(min=1.0) * 3.0)
+                        action_mask = torch.zeros_like(preds)
+                        action_mask.scatter_(2, b_sa.unsqueeze(-1), 1.0)
+                        
+                        loss_q = criterion(preds, b_mc) * b_m.unsqueeze(-1) * action_mask
+                        final_loss_q = loss_q.sum() / (b_m.sum().clamp(min=1.0))
                         
                         if isinstance(out, dict):
                             loss_bluff = nn.functional.mse_loss(pred_bluff, b_bluff, reduction='none') * b_m
@@ -745,7 +788,7 @@ def run_training(personality, num_hands=100000, batch_size=256, epochs_per_batch
                         else:
                             final_loss_aux = 0.0
                             
-                        final_loss = final_loss_q + 0.1 * final_loss_aux
+                        final_loss = final_loss_q + 10.0 * final_loss_aux
                         
                     val_epoch_loss += final_loss.item() * len(b_h)
                     val_items += len(b_h)
@@ -759,8 +802,9 @@ def run_training(personality, num_hands=100000, batch_size=256, epochs_per_batch
             
             csv_writer.writerow([
                 time.strftime('%Y-%m-%d %H:%M:%S'), hands_done, total_training_samples,
-                f"{train_loss:.6f}", f"{val_loss:.6f}", f"{hero_bb100:.2f}",
-                f"{hands_per_sec:.2f}", f"{elapsed:.2f}"
+                f"{train_loss:.6f}", f"{val_loss:.6f}", f"{train_loss_q:.6f}",
+                f"{train_loss_bluff:.6f}", f"{train_loss_str:.6f}", f"{train_loss_eq:.6f}",
+                f"{hero_bb100:.2f}", f"{hands_per_sec:.2f}", f"{elapsed:.2f}"
             ])
             log_file.flush()
             
@@ -774,7 +818,9 @@ def run_training(personality, num_hands=100000, batch_size=256, epochs_per_batch
                 training_samples=total_training_samples,
                 total_hands_simulated=total_hands_simulated,
                 seat_extra_stats=seat_extra_stats, global_metrics=global_metrics,
-                telemetry=telemetry, global_exploitation_net=global_exploitation_net
+                telemetry=telemetry, global_exploitation_net=global_exploitation_net,
+                train_loss_q=train_loss_q, train_loss_bluff=train_loss_bluff,
+                train_loss_str=train_loss_str, train_loss_eq=train_loss_eq
             )
             
         # Save final personality model checkpoint

@@ -21,19 +21,19 @@ def card_to_int(card_str: str) -> int:
 
 class ContractV8V9(DataContract):
     """
-    Implements the 31-feature context extraction for Pluribus V8 and V9 models.
+    Implements the 35-feature context extraction for Pluribus V8 and V9 models.
     (PokerEVModelV4 architecture)
     """
     
     def __init__(self, max_seq_len: int = 20):
         self.max_seq_len = max_seq_len
 
-    def to_tensors(self, states, action_history_raw: list = None) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
+    def to_tensors(self, states, hero_actions: list = None) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
         if not isinstance(states, list):
             states = [states]
             
         states = states[-self.max_seq_len:]
-        start_idx = self.max_seq_len - len(states)
+        start_idx = 0
         
         # 1. Hole Cards (from final state)
         hole_ints = [card_to_int(c) for c in states[-1].hero_cards]
@@ -43,8 +43,8 @@ class ContractV8V9(DataContract):
         # 2. Board Cards Sequence (padded to max_seq_len)
         board_seq = [[52]*5 for _ in range(self.max_seq_len)]
         
-        # 3. Context (31 features) Sequence
-        context_seq = [[0.0]*31 for _ in range(self.max_seq_len)]
+        # 3. Context (35 features) Sequence
+        context_seq = [[0.0]*35 for _ in range(self.max_seq_len)]
         
         for i, state in enumerate(states):
             idx = start_idx + i
@@ -106,7 +106,6 @@ class ContractV8V9(DataContract):
                 opp_agg_norm,
                 
                 # BB Ratios
-                (state.pot_size / state.big_blind) / 1000.0,
                 (state.call_amount / state.big_blind) / 400.0
             ]
             
@@ -123,22 +122,27 @@ class ContractV8V9(DataContract):
                     vpip_col = "Blue"
                     agg_col = "Blue"
                 
+                opp_pos = (j + 1 + state.hero_position) % 6
+                pos_val = float(opp_pos) / 5.0 if active_mask[j] == 1.0 else -1.0
+                
                 ctx.append(active_mask[j])
+                ctx.append(pos_val)
                 ctx.append((opp_stack / state.big_blind) / 400.0)
-                ctx.append(vpip_map.get(vpip_col, 0.3))
-                ctx.append(agg_map.get(agg_col, 0.4))
+                if active_mask[j] == 1.0:
+                    ctx.append(vpip_map.get(vpip_col, 0.3))
+                    ctx.append(agg_map.get(agg_col, 0.4))
+                else:
+                    ctx.append(0.0)
+                    ctx.append(0.0)
                 
             context_seq[idx] = ctx
             
         # 4. Action Sequence
         act_ints = [0] * self.max_seq_len
-        if action_history_raw:
-            # We only do this if we are replaying sequences (e.g. for ML training/diagnostics)
-            acts = [VOCAB.get(char, 0) for char in action_history_raw]
-            if len(acts) < self.max_seq_len:
-                act_ints = [0] * (self.max_seq_len - len(acts)) + acts
-            else:
-                act_ints = acts[-self.max_seq_len:]
+        if hero_actions is not None:
+            # Transformer shifts actions by 1 internally. act_ints[i] should be the action taken AT states[i]
+            for i in range(min(len(hero_actions), len(states))):
+                act_ints[i] = hero_actions[i]
         
         # Convert to batch-first tensors [1, ...]
         hole_tensor = torch.tensor([hole_ints], dtype=torch.long)

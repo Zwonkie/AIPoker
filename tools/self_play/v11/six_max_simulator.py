@@ -156,7 +156,7 @@ class SixMaxSimulator:
         )
         return round(eq * 100) / 100.0
 
-    def _query_model_decide(self, model, hand_cards, equity, pot_size, call_amount, hero_stack, num_opponents, table_state_dict=None, model_state_history=None):
+    def _query_model_decide(self, model, hand_cards, equity, pot_size, call_amount, hero_stack, num_opponents, table_state_dict=None, model_state_history=None, hero_actions_history=None):
         """Decide action using a specified neural network model."""
         from core.board_state import BoardState, SeatState, HUDStats
         from core.bridge.v11.contract_v11 import ContractV8V9 as ContractV11
@@ -214,16 +214,20 @@ class SixMaxSimulator:
             states_to_pass = [board_state]
             
         bridge = ContractV11()
-        h_t, b_t, c_t, a_t = bridge.to_tensors(states_to_pass, action_history_raw=table_state_dict.get('action_history') if table_state_dict else None)
+        h_t, b_t, c_t, a_t = bridge.to_tensors(states_to_pass, hero_actions=hero_actions_history)
         
         device = model.device if hasattr(model, 'device') else next(model.parameters()).device
         
+        seq_len = len(states_to_pass)
+        mask_array = [0.0 if i < seq_len else 1.0 for i in range(bridge.max_seq_len)]
+        key_padding_mask = torch.tensor([mask_array], dtype=torch.bool, device=device)
+        
         with torch.no_grad():
-            preds = model(h_t.to(device), b_t.to(device), c_t.to(device), a_t.to(device))
+            preds = model(h_t.to(device), b_t.to(device), c_t.to(device), a_t.to(device), key_padding_mask=key_padding_mask)
             if isinstance(preds, dict):
-                q_vals = preds['q_vals'].squeeze(0)[-1]
+                q_vals = preds['q_vals'].squeeze(0)[seq_len - 1]
             else:
-                q_vals = preds.squeeze(0)[-1]
+                q_vals = preds.squeeze(0)[seq_len - 1]
             
         ev_fold = q_vals[0].item()
         ev_call = q_vals[1].item()
@@ -292,11 +296,13 @@ class SixMaxSimulator:
         return [ev_fold, ev_call, ev_raise], max_opp_equity, opp_bluff_prob
 
     def _hero_decide(self, equity, pot_size, call_amount, hero_stack, num_opponents, 
-                     is_preflop, hand_cards=None, table_state_dict=None, model_state_history=None):
+                     is_preflop, hand_cards=None, table_state_dict=None, model_state_history=None, hero_actions_history=None):
         """Decision logic for Hero (the active learning model) with hybrid exploration split."""
         # 1. 5% Pure Random Exploration to prevent off-policy data gaps
         roll = random.random()
         if roll < 0.05:
+            if equity > 0.70:
+                return random.choice(['call', 'raise'])
             return random.choice(['fold', 'call', 'raise'])
             
         # 2. Dynamic model vs heuristic split
@@ -306,7 +312,7 @@ class SixMaxSimulator:
         
         if roll < 0.05 + model_prob and self.hero_model is not None:
             try:
-                decision = self._query_model_decide(self.hero_model, hand_cards, equity, pot_size, call_amount, hero_stack, num_opponents, table_state_dict, model_state_history)
+                decision = self._query_model_decide(self.hero_model, hand_cards, equity, pot_size, call_amount, hero_stack, num_opponents, table_state_dict, model_state_history, hero_actions_history)
                 
                 # Action Forcing for Hero Personality Training
                 hero_vpip = sum(self.seat_histories[0]['vpip']) / max(1, len(self.seat_histories[0]['vpip']))
@@ -352,11 +358,14 @@ class SixMaxSimulator:
             else:
                 return self.tag_heuristic.decide_postflop(equity, pot_odds, pot_size, hero_stack, street_idx)
 
-    def _opponent_decide(self, seat_idx, opponent, equity, pot_odds, pot_size, stack, street_idx, table_state_dict=None, model_state_history=None):
+    def _opponent_decide(self, seat_idx, opponent, equity, pot_odds, pot_size, stack, street_idx, table_state_dict=None, model_state_history=None, hero_actions_history=None):
         """Decision logic for Seats 1 to 5, querying personality NNs or heuristics."""
         # 1. 5% Random Exploration for Opponent Bots
         if random.random() < 0.05:
-            decision = random.choice(['fold', 'call', 'raise'])
+            if equity > 0.70:
+                decision = random.choice(['call', 'raise'])
+            else:
+                decision = random.choice(['fold', 'call', 'raise'])
             if street_idx == 0:
                 opponent['bot'].record_preflop(decision)
             else:
@@ -375,7 +384,7 @@ class SixMaxSimulator:
                 decision = heuristic_bot.decide_preflop(equity, pot_odds)
             else:
                 try:
-                    decision = self._query_model_decide(model, opponent['cards'], equity, pot_size, pot_odds * pot_size, stack, opponent['num_opps'], table_state_dict, model_state_history)
+                    decision = self._query_model_decide(model, opponent['cards'], equity, pot_size, pot_odds * pot_size, stack, opponent['num_opps'], table_state_dict, model_state_history, hero_actions_history)
                 except Exception:
                     decision = heuristic_bot.decide_preflop(equity, pot_odds)
             
@@ -401,7 +410,7 @@ class SixMaxSimulator:
                 decision = heuristic_bot.decide_postflop(equity, pot_odds, pot_size, stack, street_idx)
             else:
                 try:
-                    decision = self._query_model_decide(model, opponent['cards'], equity, pot_size, pot_odds * pot_size, stack, opponent['num_opps'], table_state_dict, model_state_history)
+                    decision = self._query_model_decide(model, opponent['cards'], equity, pot_size, pot_odds * pot_size, stack, opponent['num_opps'], table_state_dict, model_state_history, hero_actions_history)
                 except Exception:
                     decision = heuristic_bot.decide_postflop(equity, pot_odds, pot_size, stack, street_idx)
             
@@ -441,6 +450,7 @@ class SixMaxSimulator:
         committed = [0.0] * 6
         folded = [False] * 6
         model_state_histories = {s: [] for s in range(6)}
+        hero_actions_histories = {s: [] for s in range(6)}
         
         # Phase 4: Dynamic Active Players (> 50,000 hands)
         if current_hand > 50000:
@@ -642,7 +652,8 @@ class SixMaxSimulator:
                             eq, pot, to_call, stacks[0], active_opps_count,
                             (street_idx == 0), hand_cards=hands_str[0],
                             table_state_dict=table_state,
-                            model_state_history=model_state_histories[0]
+                            model_state_history=model_state_histories[0],
+                            hero_actions_history=hero_actions_histories[0]
                         )
                             
                         if decision == 'fold':
@@ -650,6 +661,7 @@ class SixMaxSimulator:
                             folded[0] = True
                             self.seat_histories[0]['folds'] += 1
                             action_history.append('f')
+                            hero_actions_histories[0].append(7)
                         elif decision == 'call':
                             vpip_this_hand[0] = True
                             action_idx = 1
@@ -661,6 +673,7 @@ class SixMaxSimulator:
                             street_committed[0] += call_amt
                             pot += call_amt
                             action_history.append('c')
+                            hero_actions_histories[0].append(3)
                         else:  # raise
                             vpip_this_hand[0] = True
                             action_idx = 2
@@ -679,6 +692,7 @@ class SixMaxSimulator:
                             highest_bet = street_committed[0]
                             last_raiser = 0
                             action_history.append('r')
+                            hero_actions_histories[0].append(6)
                             
                         # Track Hero AGG
                         if street_idx > 0:
@@ -696,11 +710,12 @@ class SixMaxSimulator:
                         opp_bot_struct['num_opps'] = active_opps_count
                         
                         pot_odds = to_call / (pot + to_call) if (pot + to_call) > 0 else 0.0
-                        decision = self._opponent_decide(current_actor, opp_bot_struct, eq, pot_odds, pot, stacks[current_actor], street_idx, table_state, model_state_history=model_state_histories[current_actor])
+                        decision = self._opponent_decide(current_actor, opp_bot_struct, eq, pot_odds, pot, stacks[current_actor], street_idx, table_state, model_state_history=model_state_histories[current_actor], hero_actions_history=hero_actions_histories[current_actor])
                         
                         if decision == 'fold':
                             folded[current_actor] = True
                             self.seat_histories[current_actor]['folds'] += 1
+                            hero_actions_histories[current_actor].append(7)
                         elif decision == 'call':
                             vpip_this_hand[current_actor] = True
                             call_amt = min(to_call, stacks[current_actor])
@@ -710,6 +725,7 @@ class SixMaxSimulator:
                             committed[current_actor] += call_amt
                             street_committed[current_actor] += call_amt
                             pot += call_amt
+                            hero_actions_histories[current_actor].append(3)
                         else:  # raise
                             vpip_this_hand[current_actor] = True
                             self.seat_histories[current_actor]['raises'] += 1
@@ -726,6 +742,7 @@ class SixMaxSimulator:
                             
                             highest_bet = street_committed[current_actor]
                             last_raiser = current_actor
+                            hero_actions_histories[current_actor].append(6)
                         
                         # Track Opponent AGG
                         if street_idx > 0:
@@ -760,13 +777,12 @@ class SixMaxSimulator:
             win_shares[winner] = pot
         else:
             scores = []
-            board_ints = board_cards_int
+            board_ints = list(board_cards_int)
+            while len(board_ints) < 5:
+                c = deck.draw(1)
+                board_ints.extend(c)
             for p in active_players:
-                temp_board = list(board_ints)
-                while len(temp_board) < 5:
-                    c = deck.draw(1)
-                    temp_board.extend(c)
-                score = _treys_evaluator.evaluate(temp_board, hands_ints[p])
+                score = _treys_evaluator.evaluate(board_ints, hands_ints[p])
                 scores.append((p, score))
                 
             # Side pot resolution
