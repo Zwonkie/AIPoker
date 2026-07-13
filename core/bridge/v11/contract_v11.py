@@ -106,8 +106,8 @@ class ContractV8V9(DataContract):
                 opp_agg_norm,
                 
                 # BB Ratios
-                state.pot_size / state.big_blind,
-                state.call_amount / state.big_blind
+                (state.pot_size / state.big_blind) / 1000.0,
+                (state.call_amount / state.big_blind) / 400.0
             ]
             
             # Opponents' seats HUD

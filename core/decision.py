@@ -28,6 +28,9 @@ class PokerDecisionEngine:
         self.active_model_name = 'Herocules (v11 Main)'
         self.bridge_v9 = ContractV8V9()
         self.bridge_v11 = ContractV11()
+        self.hand_history_buffer = []
+        self._last_street = None
+        self._last_hole_cards = None
 
     def set_active_model(self, model_name: str, tree_file: str = None):
         if model_name in self.models:
@@ -49,9 +52,24 @@ class PokerDecisionEngine:
         if not active_model:
             return 'FOLD', "Model not found", 0.0, {}
 
+        # Round Reset Logic (Sandbox tracking)
+        street_order = {'Preflop': 0, 'Flop': 1, 'Turn': 2, 'River': 3}
+        current_street_val = street_order.get(board_state.street, 0)
+        last_street_val = street_order.get(self._last_street, -1)
+        
+        current_hole_cards = sorted([str(c) for c in board_state.hero_cards]) if board_state.hero_cards else []
+        # Reset if hole cards changed or street went backwards (e.g., new hand started)
+        if current_hole_cards != self._last_hole_cards or current_street_val < last_street_val:
+            self.hand_history_buffer = []
+            
+        self._last_street = board_state.street
+        self._last_hole_cards = current_hole_cards
+        
+        self.hand_history_buffer.append(board_state)
+
         try:
             if getattr(active_model, 'is_v11', False) or 'v11' in self.active_model_name.lower():
-                hole, board, ctx, act = self.bridge_v11.to_tensors(board_state, action_history_raw)
+                hole, board, ctx, act = self.bridge_v11.to_tensors(self.hand_history_buffer, action_history_raw)
             else:
                 hole, board, ctx, act = self.bridge_v9.to_tensors(board_state, action_history_raw)
             evs = active_model.predict_ev(hole, board, ctx, act)

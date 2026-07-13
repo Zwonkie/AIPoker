@@ -366,21 +366,8 @@ class SixMaxSimulator:
         is_preflop = (street_idx == 0)
         
         # Map seat index to corresponding NN model and heuristic fallback
-        model = None
-        heuristic_bot = self.tag_heuristic
-        
-        if seat_idx == 1:
-            model = self.maniac_model
-            heuristic_bot = self.maniac_heuristic
-        elif seat_idx == 2:
-            model = self.nit_model
-            heuristic_bot = self.nit_heuristic
-        elif seat_idx == 3:
-            model = self.sticky_model
-            heuristic_bot = self.fish_heuristic
-        elif seat_idx == 4:
-            model = self.past_model
-            heuristic_bot = self.tag_heuristic
+        model = opponent.get('model')
+        heuristic_bot = opponent.get('bot', self.tag_heuristic)
         
         if is_preflop:
             roll = random.random()
@@ -397,12 +384,13 @@ class SixMaxSimulator:
                 opp_vpip = sum(self.seat_histories[seat_idx]['vpip']) / max(1, len(self.seat_histories[seat_idx]['vpip']))
                 opp_agg = sum(self.seat_histories[seat_idx]['agg']) / max(1, len(self.seat_histories[seat_idx]['agg']))
                 
-                if seat_idx == 1:  # maniac
+                style = opponent.get('style')
+                if style == 'maniac':
                     if opp_agg < 0.60 and random.random() < 0.50: decision = 'raise'
                     if opp_vpip < 0.65 and random.random() < 0.50: decision = random.choice(['call', 'raise'])
-                elif seat_idx == 2:  # nit
+                elif style == 'nit':
                     if opp_vpip > 0.15 and random.random() < 0.80: decision = 'fold'
-                elif seat_idx == 3:  # sticky
+                elif style == 'fish':
                     if opp_vpip < 0.50 and random.random() < 0.60: decision = 'call'
                     if opp_agg > 0.20 and random.random() < 0.80 and decision == 'raise': decision = 'call'
             
@@ -422,9 +410,10 @@ class SixMaxSimulator:
                 opp_vpip = sum(self.seat_histories[seat_idx]['vpip']) / max(1, len(self.seat_histories[seat_idx]['vpip']))
                 opp_agg = sum(self.seat_histories[seat_idx]['agg']) / max(1, len(self.seat_histories[seat_idx]['agg']))
                 
-                if seat_idx == 1:  # maniac
+                style = opponent.get('style')
+                if style == 'maniac':
                     if opp_agg < 0.60 and random.random() < 0.50: decision = 'raise'
-                elif seat_idx == 3:  # sticky
+                elif style == 'fish':
                     if opp_agg > 0.20 and random.random() < 0.80 and decision == 'raise': decision = 'call'
             
             opponent['bot'].record_postflop(decision)
@@ -473,6 +462,10 @@ class SixMaxSimulator:
             num_focus = random.choice([3, 4])
             focus_seats = random.sample(range(1, 6), num_focus)
             
+        # Shuffle base opponent styles to prevent seat-index overfitting
+        base_styles = ['maniac', 'nit', 'fish', 'tag', 'tag']
+        random.shuffle(base_styles)
+        
         # Compute VPIP / AGG from the last 50 hands running history
         opponents = []
         opponents_profiles = {}
@@ -487,26 +480,27 @@ class SixMaxSimulator:
             if s in focus_seats:
                 style = self.focus_archetype
             else:
-                if s == 1:
-                    style = 'maniac'
-                elif s == 2:
-                    style = 'nit'
-                elif s == 3:
-                    style = 'fish'
+                style = base_styles[s-1]
                 
             # Temporary opponent bots to track training dashboard VPIP/AGG averages
             if style == 'maniac':
                 opp_bot = self.maniac_heuristic
+                opp_model = self.maniac_model
             elif style == 'nit':
                 opp_bot = self.nit_heuristic
+                opp_model = self.nit_model
             elif style == 'fish':
                 opp_bot = self.fish_heuristic
+                opp_model = self.sticky_model
             else:
                 opp_bot = self.tag_heuristic
+                opp_model = self.past_model
                 
             opponents.append({
                 'seat': s,
                 'bot': opp_bot,
+                'model': opp_model,
+                'style': style,
                 'cards': hands_str[s],
                 'num_opps': 5
             })
@@ -775,12 +769,40 @@ class SixMaxSimulator:
                 score = _treys_evaluator.evaluate(temp_board, hands_ints[p])
                 scores.append((p, score))
                 
-            best_score = min(score for p, score in scores)
-            winners = [p for p, score in scores if score == best_score]
+            # Side pot resolution
+            eligible_players = list(active_players)
+            unique_commits = sorted(list(set([committed[p] for p in eligible_players if committed[p] > 0])))
             
-            share = pot / len(winners)
-            for w in winners:
-                win_shares[w] = share
+            previous_commit = 0.0
+            for current_commit in unique_commits:
+                slice_amount = current_commit - previous_commit
+                if slice_amount <= 0:
+                    continue
+                    
+                slice_pot = 0.0
+                for p in range(6):
+                    if committed[p] > previous_commit:
+                        contribution = min(committed[p] - previous_commit, slice_amount)
+                        slice_pot += contribution
+                
+                slice_eligible = [p for p in eligible_players if committed[p] >= current_commit]
+                
+                if slice_pot > 0 and slice_eligible:
+                    best_score = min(score for p, score in scores if p in slice_eligible)
+                    winners = [p for p, score in scores if p in slice_eligible and score == best_score]
+                    share = slice_pot / len(winners)
+                    for w in winners:
+                        win_shares[w] += share
+                        
+                previous_commit = current_commit
+                
+            total_distributed = sum(win_shares)
+            leftover = pot - total_distributed
+            if leftover > 1e-5:
+                highest_active_commit = max([committed[p] for p in active_players])
+                highest_bettors = [p for p in active_players if committed[p] == highest_active_commit]
+                for hb in highest_bettors:
+                    win_shares[hb] += leftover / len(highest_bettors)
                 
         for p in range(6):
             if preflop_had_decision[p]:

@@ -1,6 +1,6 @@
 version: "v11"
 training:
-  target_hands: 150000
+  target_hands: 200000
   batch_size: 256
   epochs_per_batch: 3
   sim_batch_size: 2000

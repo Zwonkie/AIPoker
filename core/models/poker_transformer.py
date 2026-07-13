@@ -48,9 +48,17 @@ class PokerEVModelV4(nn.Module):
             nn.Linear(64, 3)
         )
         
+        # 4. Auxiliary Head: predicts [bluff, strength, equity] for each step
+        self.aux_head = nn.Sequential(
+            nn.Linear(d_model, 64),
+            nn.ReLU(),
+            nn.Linear(64, 3)
+        )
+        
     def _generate_causal_mask(self, sz, device):
-        """Generate a mask that isolates each step (only diagonal is False/allowed) to prevent padding dilution and avoid NaNs."""
-        return ~torch.eye(sz, dtype=torch.bool, device=device)
+        """Generate a proper causal mask (blocks attending to future steps)."""
+        mask = torch.triu(torch.ones(sz, sz, dtype=torch.bool, device=device), diagonal=1)
+        return mask
 
     def forward(self, hole, board, context, actions, key_padding_mask=None):
         """
@@ -88,10 +96,17 @@ class PokerEVModelV4(nn.Module):
         # 5. Form Transformer Inputs: State + PrevAction + Positional Encoding
         x = state_emb + act_emb + self.pos_emb[:, :seq_len, :]
         
-        # 6. Process sequence with step-isolating mask (no dilution, no NaNs)
+        # 6. Process sequence with causal mask and key padding mask
         mask = self._generate_causal_mask(seq_len, device)
-        transformer_out = self.transformer(x, mask=mask) # [batch, seq_len, 128]
+        transformer_out = self.transformer(x, mask=mask, src_key_padding_mask=key_padding_mask) # [batch, seq_len, 128]
         
-        # 7. Predict Q-Values
+        # 7. Predict Q-Values and Aux targets
         q_vals = self.head(transformer_out) # [batch, seq_len, 3]
-        return q_vals
+        aux_vals = self.aux_head(transformer_out) # [batch, seq_len, 3]
+        
+        return {
+            'q_vals': q_vals,
+            'bluff': aux_vals[:, :, 0],
+            'strength': aux_vals[:, :, 1],
+            'equity': aux_vals[:, :, 2]
+        }

@@ -115,8 +115,8 @@ def vectorize_hand_samples(record, max_seq_len=20):
             active_opps_count / 10.0,
             dp['street'] / 3.0,
             global_vpip, global_agg,
-            dp['pot_size'] / bb,
-            dp['call_amount'] / bb
+            (dp['pot_size'] / bb) / 1000.0,
+            (dp['call_amount'] / bb) / 400.0
         ]
         
         for idx in range(5):
@@ -139,6 +139,9 @@ def vectorize_hand_samples(record, max_seq_len=20):
         mc_return = (final_profit + dp['committed_before']) / bb
         if dp['action'] in [0, 1, 2]:
             t_evs[dp['action']] = mc_return
+            
+        # Clip Target EVs to avoid massive gradient updates
+        t_evs = [max(-100.0, min(100.0, ev)) for ev in t_evs]
             
         target_evs_seq[idx] = t_evs
         loss_mask[idx] = 1.0
@@ -661,7 +664,7 @@ def run_training(personality, num_hands=100000, batch_size=256, epochs_per_batch
                     optimizer.zero_grad()
                     
                     with torch.cuda.amp.autocast():
-                        out = model(b_h, b_b, b_c, b_a)
+                        out = model(b_h, b_b, b_c, b_a, key_padding_mask=(b_m == 0.0))
                         if isinstance(out, dict):
                             preds = out['q_vals']
                             pred_bluff = out['bluff']
@@ -722,7 +725,7 @@ def run_training(personality, num_hands=100000, batch_size=256, epochs_per_batch
                     b_eq = b_eq.to(device)
                     
                     with torch.cuda.amp.autocast():
-                        out = model(b_h, b_b, b_c, b_a)
+                        out = model(b_h, b_b, b_c, b_a, key_padding_mask=(b_m == 0.0))
                         if isinstance(out, dict):
                             preds = out['q_vals']
                             pred_bluff = out['bluff']

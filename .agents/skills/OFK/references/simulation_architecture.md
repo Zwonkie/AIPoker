@@ -9,10 +9,10 @@ The environment simulates 6-Max No Limit Hold'em.
 To prevent the model from overfitting to a single playing style, we populate the table with a diverse "league" of opponents. 
 In V11, we have shifted away from rigid neural network adversaries (V10) to a fully heuristic-driven **Fuzzy Opponent Pool**. These bots use gaussian noise to slightly randomize their VPIP, AGG, and Bluff frequencies at the start of every hand to prevent the Hero from memorizing static triggers.
 - **Seat 0 (Hero)**: The active Herocules transformer model being trained.
-- **Seat 1-5**: Populated dynamically from the fuzzy opponent pool using weighted archetypes:
+- **Seat 1-5**: Populated dynamically from the fuzzy opponent pool using weighted archetypes. **Crucially, in V11, the archetypes (Maniac, Nit, Calling Station, TAG) are randomly shuffled across Seats 1-5 at the start of every single hand.** This prevents the NN from overfitting to positional indices (e.g. assuming Seat 1 is always a Maniac) and forces it to strictly rely on HUD stats to classify opponents.
   - **Maniac/LAG**: Hyper-aggressive, loose preflop, very high AGG frequency.
   - **Nit**: Extremely tight, only plays premium hands (VPIP ~11%).
-  - **Calling Station**: Plays far too many hands (VPIP ~45%) but is extremely passive.
+  - **Calling Station / Fish**: Plays far too many hands (VPIP ~45%) but is extremely passive.
   - **TAG**: A baseline Tight-Aggressive opponent (VPIP ~22%, AGG ~45%).
 
 ### The Curriculum Learning Stack Sizing
@@ -57,9 +57,12 @@ In V11, the loss calculation was fundamentally overhauled to solve sequence dest
 Instead of only penalizing the Q-value of the action the Hero *actually took*, the V11 simulator runs a real-time Monte Carlo tree search for the opponent models at every decision point. It estimates the true mathematical Expected Value of **Fold**, **Call**, and **Raise** independently.
 1. The batch of chronologically packed sequences is passed through the Transformer model.
 2. The model outputs Q-Values (Expected Value) for Fold, Call, and Raise for every step in the hand sequence.
-3. The simulator's estimated EVs for Fold, Call, and Raise become the target tensors.
+3. The simulator's estimated EVs for Fold, Call, and Raise become the target tensors (clipped between -100 BB and +100 BB to prevent gradient explosions).
 4. For the specific action the Hero *actually took*, the estimated EV is overridden with the actual `mc_return` (the true profit experienced at the end of the hand).
 5. A Huber Loss is calculated across **all three actions simultaneously**.
+
+### Showdown & Side Pot Resolution
+To guarantee mathematically perfect `mc_return` targets, the simulator employs a highly robust **Side Pot Slicing Algorithm** during showdown. Instead of simply dividing the pot evenly among winners, it sorts all players by their total committed chips and iteratively processes the pot in "slices". Each slice is awarded only to the eligible players who matched that exact level of contribution, cleanly handling complex multi-way all-in scenarios.
 
 ### Interpretable Auxiliary Heads (The Subconscious)
 To force the model to build an internal world model, the V11 architecture splits the final representation into three smaller auxiliary heads before the main Q-value head:

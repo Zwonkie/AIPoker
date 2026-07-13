@@ -27,6 +27,14 @@ The workspace is strictly partitioned into the following sequence:
 4. **Model Engine (`core/models/`)**: 
    The PyTorch inference wrapper. It receives the standardized tensors from the Bridge, runs a forward pass through the Neural Network (`engine.py`), and returns universal Fold/Call/Raise Q-values.
 
+## Sandbox Separation
+
+To decouple stateless GUI parsing from stateful ML sequences, follow the sandbox paradigm:
+
+1. **Live Vision Sandbox (`PHPHelp.py`)**: Must remain strictly stateless. It extracts the table frame-by-frame and emits a single current `BoardState` on each turn. It does not track hand history.
+2. **Training Simulator Sandbox (`tools/self_play/`)**: Evaluates the network without OCR. Because it plays sequentially, the simulator is responsible for natively maintaining `model_state_history` lists for all players and passing them to the bridge.
+3. **Live Bridge Sandbox (`core/decision.py`)**: Intercepts the single `BoardState` from the Live Vision Sandbox. It must act as a stateful memory buffer (`hand_history_buffer`) across a hand, accumulating states until the hand ends or the street resets, before passing the fully reconstructed history array to the model contract.
+
 ### Best Work Practices for this Workspace:
 - **Simulator Neutrality**: RL self-play simulators (`tools/self_play/`) **must** construct and mutate `BoardState` objects natively. Do not duplicate model bridge logic in simulators. Let the simulator act exactly like `PHPHelp.py` does in live play.
 - **Model Isolation**: When developing a new model version (e.g., `V10`), **create a new bridge contract** (`contract_v10.py`). Do not clutter old contracts with feature toggles or legacy support flags.

@@ -44,3 +44,5 @@ During retraining, the model began exhibiting the "Monster-Under-The-Bed" syndro
 
 ## Resolution / Guidelines
 **Mandatory Fix**: Unify the padding direction. Left-padding is the standard for autoregressive transformers when extracting the final prediction. `train_selfplay.py` must offset decision points by `max_seq_len - len(dps)` to match the inference expectation, and the `ContractV11` must maintain a rolling history buffer rather than only populating index `-1`.
+
+*Update 2026-07-13:* The fix was successfully verified during live training. The "Monster-Under-The-Bed" syndrome (folding >80% equity hands) was eliminated. Intermediate sensitivity checks showed the model accurately outputting positive EV for RAISING with the Nuts (`Ah As`) where it previously FOLDED.

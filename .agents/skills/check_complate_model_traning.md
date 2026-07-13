@@ -71,4 +71,4 @@ To do this systematic check I would conduct a forensic review across the followi
 *   **Rake / Cost of Action:** Is the simulation charging a rake? Does it account for the exact cost to call? If `Reward = Pot Won`, but it ignores the `Chips Invested`, the model will learn to overcall massively because it only sees the upside.
 
 ## Output
-Present a report for the user and save it as "Expert_complete_model_[model_name]_check_YYYYMMDD.md" for latest model training.
+Present a report for the user and save it as "Expert_complete_model_[model_name]_check_YYYYMMDD_HHSSMM.md" for latest model training.
