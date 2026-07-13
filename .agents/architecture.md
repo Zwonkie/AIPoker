@@ -97,3 +97,5 @@ flowchart TD
 ## 7. Simulation artifacts
 [OFK reference](.agents\skills\OFK\references\simulation_architecture.md)
 
+## 8. Unified Training Log (active_training.log)
+All training runs, regardless of personality or model version, must output to active_training.log. The dashboard parser and HTML UI read exclusively from this file, eliminating the need to track per-personality log filenames.
