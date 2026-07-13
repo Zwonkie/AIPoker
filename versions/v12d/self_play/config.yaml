@@ -7,6 +7,27 @@ training:
   learning_rate: 0.001
   equity_sims: 2000
   mid_flight_diagnostics_interval: 10000
+  # --- Verify-mode knobs (isolate the core learning loop) --------------------
+  # The overfit_sanity test already proved the loop is WIRED correctly (critic + actor
+  # both fit; real targets learnable). These knobs strip the full run down so the emergent
+  # VPIP ratchet can be reintroduced one factor at a time.
+  aux_loss_weight: 0.0          # 0 = bluff/strength/equity heads OFF (default 10.0)
+  disable_target_shaping: true  # BIAS PRIORS off (tightness penalty + counterfactual EVs)
+  target_clip_bb: 40.0          # VARIANCE clip -- KEEP ON. Removing it diverged the critic
+                                # (Q-loss 10-20, policy -> uniform, VPIP 73%). Not a bias hack.
+  disable_bootstrap: true       # pure-model play from hand 0 (no heuristic warmup)
+  disable_exploration: true     # no 5% random / heuristic anchor -> data = model's true policy
+  # --- Policy target source (THE fix under test) -------------------------------
+  # inspect_ev_targets proved the counterfactual EVs are well-calibrated (fold weak hands)
+  # but the realized-return override reinforces weak entries that won uncontested vs folders.
+  # 'counterfactual' feeds regret-matching the correct EVs and removes that ratchet.
+  policy_target_source: counterfactual  # 'realized' (legacy) | 'counterfactual'
+  # --- Actor sharpening: NOW attacks Cause 2 (regret softness) on a CORRECT fold-first
+  # target. Unlike the earlier attempt (which sharpened a realized/loose target), sharpening
+  # the counterfactual target should TIGHTEN: regret([0,-0.07,-0.53])=[.61,.39,0] entry 39%
+  # -> temp 0.4 -> ~[.82,.18] entry ~18%.
+  policy_target_temperature: 0.4
+  policy_entropy_penalty: 0.0
 
 curriculum:
   phase_1_max_hands: 10000
@@ -18,6 +39,9 @@ curriculum:
   # Set true to hold stacks in the moderate band the whole run and isolate that effect.
   # V12-D: Phase 3 OFF — stacks stay in the 80-120bb moderate band for the whole run.
   disable_extreme_stacks: true
+  # Verify mode: a single flat depth removes stack size as a variable entirely (overrides
+  # ALL stack curriculum incl. phases 1-2). Set to null to use the banded curriculum above.
+  fixed_stack_bb: 100.0
 
 # --- Opponent lineup ---------------------------------------------------------
 # V12-D DIAGNOSTIC: isolate the VPIP ratchet. The field is a tight, STATIC set of

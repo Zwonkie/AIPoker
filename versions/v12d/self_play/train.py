@@ -81,6 +81,34 @@ COUNTERFACTUAL_WEIGHT = 0.5
 # Weight on the actor (policy) loss relative to the critic (Q) loss. The policy head is
 # what actually selects actions at play time, so it carries a full-strength gradient.
 POLICY_LOSS_WEIGHT = 1.0
+# Actor-sharpening (v12d). The regret-matching policy target is intrinsically high-entropy,
+# so with the anti-ratchet priors off the actor stays near-uniform and enters ~70% of hands
+# even though its argmax is directionally correct. POLICY_TARGET_TEMP < 1.0 sharpens the
+# TARGET distribution before the cross-entropy loss (temp=1.0 is a no-op). The complementary
+# entropy-penalty lever (coefficient on +H(pred) in the actor loss) is a run_training arg.
+POLICY_TARGET_TEMP = 1.0
+# Source of the values fed to the regret-matching POLICY target:
+#  'realized'      -> taken action uses its REALIZED go-forward return (legacy). Against a
+#                     folding field this reinforces weak entries that won uncontested (the
+#                     fold-equity ratchet: inspect_ev_targets Part 2 showed +7.82bb realized
+#                     vs -4.04bb counterfactual for weak-hand raises).
+#  'counterfactual'-> use the well-calibrated all-action counterfactual EVs (fold=0, weak
+#                     entries correctly negative). Removes the on-policy survivorship bias.
+# NOTE: the CRITIC always keeps the realized return on its taken-action head; this only
+# changes what the ACTOR regresses toward.
+POLICY_TARGET_SOURCE = 'realized'
+
+
+def sharpen_distribution(probs, temp):
+    """Raise each prob to 1/temp and renormalize. temp<1 sharpens (peaks the argmax),
+    temp>1 flattens, temp==1 is identity. Preserves the action ordering."""
+    if temp == 1.0:
+        return probs
+    powed = [p ** (1.0 / temp) for p in probs]
+    s = sum(powed)
+    if s <= 1e-12:
+        return probs
+    return [p / s for p in powed]
 
 
 def regret_match_policy(action_values):
@@ -232,14 +260,17 @@ def vectorize_hand_samples(record, max_seq_len=20):
         target_evs_seq[idx] = t_evs
         target_w_seq[idx] = t_w
 
-        # --- V12 actor target: regret-matching policy over the counterfactual values ---
+        # --- V12 actor target: regret-matching policy over the action values ---
         # One-step regret matching from the uniform strategy: the value of the uniform
         # strategy is the mean action value; an action's regret is how much it beats that
         # mean. The target policy is proportional to POSITIVE regret (uniform if none).
-        # Because this is a NORMALIZED distribution over ALL three action values at once,
-        # a single over-estimated head can no longer capture every decision the way
-        # argmax(Q) did -- fold (pinned at 0) wins for air, value hands win for strength.
-        policy_target_seq[idx] = regret_match_policy(t_evs)
+        # POLICY_TARGET_SOURCE selects whether the taken action carries its realized return
+        # (legacy) or the counterfactual EV (removes the fold-equity survivorship ratchet).
+        if POLICY_TARGET_SOURCE == 'counterfactual':
+            p_evs = [0.0, mc_evs[1], mc_evs[2]]
+        else:
+            p_evs = t_evs
+        policy_target_seq[idx] = sharpen_distribution(regret_match_policy(p_evs), POLICY_TARGET_TEMP)
 
         loss_mask[idx] = 1.0
         
@@ -254,7 +285,7 @@ def simulate_worker(current_hand, bb_size, equity_sims, num_hands, hero_personal
                     nit_model_path=None, sticky_model_path=None, past_model_path=None,
                     bootstrap_alpha=0.0, focus_archetype=None,
                     opp_pool=None, opp_weights=None, live_players=6,
-                    disable_extreme_stacks=False):
+                    disable_extreme_stacks=False, fixed_stack_bb=None, disable_exploration=False):
     """Headless simulation worker process for V8."""
     sim = SixMaxSimulator(
         bb_size=bb_size, equity_sims=equity_sims, hero_personality=hero_personality,
@@ -268,6 +299,8 @@ def simulate_worker(current_hand, bb_size, equity_sims, num_hands, hero_personal
         sim.opponent_pool_weights = list(opp_weights) if opp_weights else [1.0] * len(opp_pool)
     sim.live_players = live_players
     sim.disable_extreme_stacks = disable_extreme_stacks
+    sim.fixed_stack_bb = fixed_stack_bb
+    sim.disable_exploration = disable_exploration
 
     def _load_worker_model(path, required):
         """Load a self-describing checkpoint into a fresh model, FAIL-LOUD (P1).
@@ -492,7 +525,28 @@ def run_training(personality, num_hands=100000, batch_size=256, epochs_per_batch
                  mid_flight_diagnostics_interval=10000,
                  opp_pool=None, opp_weights=None, live_players=6,
                  disable_past_self=False, disable_focus_rounds=False,
-                 disable_extreme_stacks=False):
+                 disable_extreme_stacks=False, fixed_stack_bb=None, disable_exploration=False,
+                 disable_bootstrap=False, aux_loss_weight=10.0, disable_target_shaping=False,
+                 target_clip_bb=None, policy_target_temp=1.0, policy_entropy_penalty=0.0,
+                 policy_target_source='realized'):
+    # Overrides the module globals that vectorize_hand_samples reads at call time (it runs
+    # in THIS process, not the workers). Two SEPARATE concerns:
+    #  * target_clip_bb = VARIANCE control (load-bearing). Unclipped realized returns are
+    #    fat-tailed (+/-100bb when a stack goes in); the same state then gets wildly varying
+    #    targets each visit, the critic diverges, and the regret-matching actor collapses to
+    #    uniform. Keep this ON. Set to a large number only to deliberately test instability.
+    #  * disable_target_shaping = the BIAS PRIORS (tightness penalty + counterfactual EVs).
+    #    These are the anti-ratchet hacks under investigation; turning them off is safe for
+    #    the critic's stability, unlike removing the clip.
+    global TARGET_CLIP_BB, TIGHTNESS_PENALTY_BB, COUNTERFACTUAL_WEIGHT
+    global POLICY_TARGET_TEMP, POLICY_TARGET_SOURCE
+    if target_clip_bb is not None:
+        TARGET_CLIP_BB = target_clip_bb
+    if disable_target_shaping:
+        TIGHTNESS_PENALTY_BB = 0.0
+        COUNTERFACTUAL_WEIGHT = 0.0
+    POLICY_TARGET_TEMP = policy_target_temp      # actor-target sharpening (read by vectorize)
+    POLICY_TARGET_SOURCE = policy_target_source  # 'realized' | 'counterfactual'
     if save_name is None:
         save_name = f"expert_{personality}.pth"
         
@@ -627,8 +681,10 @@ def run_training(personality, num_hands=100000, batch_size=256, epochs_per_batch
                 run_training.last_diag = hands_done
                 
                 
-            # Decay bootstrap alpha
-            if hands_done < 10000:
+            # Decay bootstrap alpha (verify mode: no heuristic warmup -> pure model from hand 0)
+            if disable_bootstrap:
+                bootstrap_alpha = 0.0
+            elif hands_done < 10000:
                 bootstrap_alpha = 1.0
             elif hands_done < 30000:
                 bootstrap_alpha = 1.0 - (hands_done - 10000) / 20000.0
@@ -666,7 +722,8 @@ def run_training(personality, num_hands=100000, batch_size=256, epochs_per_batch
             args = [
                 (hands_done, 10.0, equity_sims, hands_per_worker, personality,
                  active_model_path, m_path, n_path, s_path, p_path, bootstrap_alpha, focus_archetype,
-                 opp_pool, opp_weights, live_players, disable_extreme_stacks)
+                 opp_pool, opp_weights, live_players, disable_extreme_stacks,
+                 fixed_stack_bb, disable_exploration)
                 for _ in range(num_workers)
             ]
             
@@ -831,6 +888,13 @@ def run_training(personality, num_hands=100000, batch_size=256, epochs_per_batch
                         loss_pi_step = -(b_pol * log_policy).sum(dim=-1) * b_m
                         final_loss_pi = loss_pi_step.sum() / b_m.sum().clamp(min=1.0)
 
+                        # Actor-sharpening lever: penalize predicted-policy entropy so the
+                        # actor commits to decisions instead of sitting at the near-uniform
+                        # regret-matching floor (adds +beta*H(pred); minimizing -> lower H).
+                        if policy_entropy_penalty > 0.0:
+                            ent_step = -(torch.softmax(pred_policy, dim=-1) * log_policy).sum(dim=-1) * b_m
+                            final_loss_pi = final_loss_pi + policy_entropy_penalty * (ent_step.sum() / b_m.sum().clamp(min=1.0))
+
                         # Interpretable Auxiliary Heads Loss
                         loss_bluff = nn.functional.mse_loss(pred_bluff, b_bluff, reduction='none') * b_m
                         loss_str = nn.functional.mse_loss(pred_str, b_str, reduction='none') * b_m
@@ -842,7 +906,7 @@ def run_training(personality, num_hands=100000, batch_size=256, epochs_per_batch
 
                         final_loss_aux = sc_bluff + sc_str + sc_eq
 
-                        final_loss = final_loss_q + POLICY_LOSS_WEIGHT * final_loss_pi + 10.0 * final_loss_aux
+                        final_loss = final_loss_q + POLICY_LOSS_WEIGHT * final_loss_pi + aux_loss_weight * final_loss_aux
 
                     scaler.scale(final_loss).backward()
                     scaler.unscale_(optimizer)
@@ -902,13 +966,16 @@ def run_training(personality, num_hands=100000, batch_size=256, epochs_per_batch
                         log_policy = nn.functional.log_softmax(pred_policy, dim=-1)
                         loss_pi_step = -(b_pol * log_policy).sum(dim=-1) * b_m
                         final_loss_pi = loss_pi_step.sum() / b_m.sum().clamp(min=1.0)
+                        if policy_entropy_penalty > 0.0:
+                            ent_step = -(torch.softmax(pred_policy, dim=-1) * log_policy).sum(dim=-1) * b_m
+                            final_loss_pi = final_loss_pi + policy_entropy_penalty * (ent_step.sum() / b_m.sum().clamp(min=1.0))
 
                         loss_bluff = nn.functional.mse_loss(pred_bluff, b_bluff, reduction='none') * b_m
                         loss_str = nn.functional.mse_loss(pred_str, b_str, reduction='none') * b_m
                         loss_eq = nn.functional.mse_loss(pred_eq, b_eq, reduction='none') * b_m
                         final_loss_aux = (loss_bluff + loss_str + loss_eq).sum() / b_m.sum().clamp(min=1.0)
 
-                        final_loss = final_loss_q + POLICY_LOSS_WEIGHT * final_loss_pi + 10.0 * final_loss_aux
+                        final_loss = final_loss_q + POLICY_LOSS_WEIGHT * final_loss_pi + aux_loss_weight * final_loss_aux
 
                     val_epoch_loss += final_loss.item() * len(b_h)
                     val_items += len(b_h)
@@ -991,6 +1058,17 @@ if __name__ == '__main__':
     target_hands = args.num_hands if args.num_hands is not None else t_cfg.get('target_hands', 100000)
 
     disable_extreme_stacks = bool(c_cfg.get('disable_extreme_stacks', False))
+    fixed_stack_bb = c_cfg.get('fixed_stack_bb', None)  # e.g. 100.0 -> flat 100bb all run
+
+    # Verify-mode training knobs (isolate the core learning loop).
+    disable_bootstrap = bool(t_cfg.get('disable_bootstrap', False))
+    disable_exploration = bool(t_cfg.get('disable_exploration', False))
+    disable_target_shaping = bool(t_cfg.get('disable_target_shaping', False))
+    aux_loss_weight = float(t_cfg.get('aux_loss_weight', 10.0))
+    target_clip_bb = float(t_cfg.get('target_clip_bb', 40.0))  # variance clip; keep ON
+    policy_target_temp = float(t_cfg.get('policy_target_temperature', 1.0))  # <1 sharpens actor target
+    policy_entropy_penalty = float(t_cfg.get('policy_entropy_penalty', 0.0))  # +beta*H(pred) in actor loss
+    policy_target_source = str(t_cfg.get('policy_target_source', 'realized'))  # 'realized' | 'counterfactual'
 
     # Opponent lineup: a mapping-style `opponents` block drives the config-driven pool.
     # A legacy list-style block (old per-seat entries) is ignored and falls back to the
@@ -1012,6 +1090,15 @@ if __name__ == '__main__':
         print(f"  Past-Self seat:  {'DISABLED' if disable_past_self else 'enabled'}")
         print(f"  Focus rounds:    {'DISABLED' if disable_focus_rounds else 'enabled'}")
     print(f"  Extreme stacks:  {'DISABLED (flat moderate band)' if disable_extreme_stacks else 'enabled (Phase 3: 10-300bb)'}")
+    if fixed_stack_bb is not None:
+        print(f"  Fixed stacks:    {fixed_stack_bb} bb (all curriculum stack sizing OFF)")
+    print(f"  Aux loss weight: {aux_loss_weight}{'  (aux heads OFF)' if aux_loss_weight == 0 else ''}")
+    print(f"  Target shaping:  {'priors OFF (tightness+counterfactual)' if disable_target_shaping else 'enabled'}")
+    print(f"  Target clip:     {target_clip_bb} bb")
+    print(f"  Actor sharpen:   target_temp={policy_target_temp}  entropy_penalty={policy_entropy_penalty}")
+    print(f"  Policy target:   {policy_target_source}  (actor regresses toward this action-value source)")
+    print(f"  Bootstrap:       {'DISABLED (pure model)' if disable_bootstrap else 'enabled'}   "
+          f"Exploration: {'DISABLED' if disable_exploration else 'enabled'}")
 
     run_training(
         personality=args.personality,
@@ -1027,5 +1114,9 @@ if __name__ == '__main__':
         mid_flight_diagnostics_interval=t_cfg.get('mid_flight_diagnostics_interval', 10000),
         opp_pool=opp_pool, opp_weights=opp_weights, live_players=live_players,
         disable_past_self=disable_past_self, disable_focus_rounds=disable_focus_rounds,
-        disable_extreme_stacks=disable_extreme_stacks
+        disable_extreme_stacks=disable_extreme_stacks, fixed_stack_bb=fixed_stack_bb,
+        disable_exploration=disable_exploration, disable_bootstrap=disable_bootstrap,
+        aux_loss_weight=aux_loss_weight, disable_target_shaping=disable_target_shaping,
+        target_clip_bb=target_clip_bb, policy_target_temp=policy_target_temp,
+        policy_entropy_penalty=policy_entropy_penalty, policy_target_source=policy_target_source
     )

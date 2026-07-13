@@ -137,6 +137,11 @@ class SixMaxSimulator:
         # moderate band for the whole run past 10k, removing the single violent stack-depth
         # discontinuity so any residual VPIP ratchet can't be blamed on deep-stack fat tails.
         self.disable_extreme_stacks = False
+        # Verify-mode knobs. fixed_stack_bb (when set) overrides ALL stack curriculum to a
+        # flat depth. disable_exploration removes the Hero's 5% pure-random + heuristic-anchor
+        # so the generated data reflects the model's TRUE policy (read alongside disable_bootstrap).
+        self.fixed_stack_bb = None
+        self.disable_exploration = False
 
         # Instantiate bots for heuristics fallback
         import copy
@@ -173,6 +178,9 @@ class SixMaxSimulator:
 
     def _get_starting_stack(self, current_hand):
         """Curriculum stack sizing logic based on hand count."""
+        # Verify mode: a flat fixed depth removes stack size as a variable entirely.
+        if self.fixed_stack_bb is not None:
+            return self.fixed_stack_bb * self.bb_size
         # Phase 3 (extreme stacks) can be disabled for diagnostics: past 30k the run then
         # stays in the Phase-2 moderate band instead of jumping to the 10-300bb regime.
         extreme = (current_hand >= 30000) and not self.disable_extreme_stacks
@@ -374,19 +382,23 @@ class SixMaxSimulator:
     def _hero_decide(self, equity, pot_size, call_amount, hero_stack, num_opponents, 
                      is_preflop, hand_cards=None, table_state_dict=None, model_state_history=None, hero_actions_history=None):
         """Decision logic for Hero (the active learning model) with hybrid exploration split."""
-        # 1. 5% Pure Random Exploration to prevent off-policy data gaps
+        # Verify mode: no epsilon-random and no heuristic anchor -> data is 100% the model's
+        # own policy (pair with disable_bootstrap so alpha=0 makes model_share fully engage).
+        eps = 0.0 if self.disable_exploration else 0.05
+        model_share = 1.0 if self.disable_exploration else 0.80
+        # 1. Pure Random Exploration to prevent off-policy data gaps
         roll = random.random()
-        if roll < 0.05:
+        if roll < eps:
             if equity > 0.70:
                 return random.choice(['call', 'raise'])
             return random.choice(['fold', 'call', 'raise'])
-            
+
         # 2. Dynamic model vs heuristic split
         # Early: 90% Heuristic
-        # RL Takeover: 80% Active Model, 10% Heuristic Anchor
-        model_prob = (1.0 - self.bootstrap_alpha) * 0.80
-        
-        if roll < 0.05 + model_prob and self.hero_model is not None:
+        # RL Takeover: 80% Active Model, 10% Heuristic Anchor (100% model in verify mode)
+        model_prob = (1.0 - self.bootstrap_alpha) * model_share
+
+        if roll < eps + model_prob and self.hero_model is not None:
             try:
                 decision = self._query_model_decide(self.hero_model, hand_cards, equity, pot_size, call_amount, hero_stack, num_opponents, table_state_dict, model_state_history, hero_actions_history)
                 
