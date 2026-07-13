@@ -1,5 +1,8 @@
 # Model Versioning & Cloning Standards
 
+> [!IMPORTANT]
+> **Expanded & superseded by [versioned-architecture-guardrails.md](file:///c:/REPO/Antigravity/AIPoker/.agents/skills/OFK/references/versioned-architecture-guardrails.md)** (2026-07-13), which is now the CANONICAL, agent-binding guide. It adds the enforcement machinery this doc lacked: a version manifest/registry as the single dispatch point, self-describing weights with fail-loud loading, live/training contract unification, a new-version checklist, and Golden Rules. Read that first; the SOP below is a subset kept for continuity.
+
 **Date Recorded**: 2026-07-12
 **Related Files**: 
 *   [core/models/poker_transformer.py](file:///c:/REPO/Antigravity/AIPoker/core/models/poker_transformer.py)
