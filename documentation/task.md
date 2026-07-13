@@ -1,9 +1,0 @@
-- [x] Remove `Opponents Range` slider from `PHPHelp.py`.
-- [x] Remove `Active Modules` checkboxes from `PHPHelp.py`.
-- [x] Remove `CARDS DETECTED` panel from `PHPHelp.py` left visual layout.
-- [x] Move `Community Cards` to center `POT` block.
-- [x] Move `Hero Hand` to bottom `Hero` seat block.
-- [x] Adjust `visual_frame` column spans to give table more space.
-- [x] Add `EV BREAKDOWN` UI section below recommended action.
-- [x] Update `MoE_PyTorch_Engine` to return `ev_dict` along with `action, reason, bet_size`.
-- [x] Update `PHPHelp.py` loops to update `EV BREAKDOWN` colors/text dynamically.

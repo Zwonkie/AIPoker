@@ -41,13 +41,27 @@ class PokerEVModelV4(nn.Module):
         )
         self.transformer = nn.TransformerEncoder(encoder_layer, num_layers=num_layers)
         
-        # 3. Output Head: predicts Q-values [Fold, Call, Raise] for each step
+        # 3. Critic Head: predicts per-action counterfactual values Q [Fold, Call, Raise].
+        # In V12 this is the CRITIC only — it is trained to regress the simulator's
+        # all-action Monte-Carlo counterfactual EVs, and it feeds the policy target during
+        # training. It is NO LONGER argmax'd to pick actions (that was the V11 failure mode).
         self.head = nn.Sequential(
             nn.Linear(d_model, 64),
             nn.ReLU(),
             nn.Linear(64, 3)
         )
-        
+
+        # 3b. Actor Head (V12): outputs an action DISTRIBUTION over [Fold, Call, Raise].
+        # Trained toward a regret-matching policy computed from the counterfactual action
+        # values, so decisions come from a normalized distribution instead of an argmax over
+        # one uncalibrated Q head. This structurally removes the raise-/call-everything
+        # degeneracy (a single over-estimated head can no longer capture every decision).
+        self.head_policy = nn.Sequential(
+            nn.Linear(d_model, 64),
+            nn.ReLU(),
+            nn.Linear(64, 3)
+        )
+
         # 4. Auxiliary Heads (Interpretable Subconscious)
         self.head_bluff = nn.Sequential(nn.Linear(d_model, 32), nn.ReLU(), nn.Linear(32, 1))
         self.head_strength = nn.Sequential(nn.Linear(d_model, 32), nn.ReLU(), nn.Linear(32, 1))
@@ -66,7 +80,8 @@ class PokerEVModelV4(nn.Module):
             actions: [batch, seq_len] (historical action indices)
             key_padding_mask: [batch, seq_len] (ignored/retained for compatibility)
         Returns:
-            Q-values: [batch, seq_len, 3]
+            dict with 'q_vals' [batch, seq_len, 3] (critic), 'policy_logits'
+            [batch, seq_len, 3] (actor), and the aux heads.
         """
         batch_size, seq_len, _ = context.shape
         device = context.device
@@ -97,11 +112,13 @@ class PokerEVModelV4(nn.Module):
         mask = self._generate_causal_mask(seq_len, device)
         transformer_out = self.transformer(x, mask=mask, src_key_padding_mask=key_padding_mask) # [batch, seq_len, 128]
         
-        # 7. Predict Q-Values and Auxiliaries
-        q_vals = self.head(transformer_out) # [batch, seq_len, 3]
-        
+        # 7. Predict critic Q-values, actor policy logits, and auxiliaries
+        q_vals = self.head(transformer_out)                 # [batch, seq_len, 3] critic
+        policy_logits = self.head_policy(transformer_out)   # [batch, seq_len, 3] actor
+
         return {
             'q_vals': q_vals,
+            'policy_logits': policy_logits,
             'bluff': self.head_bluff(transformer_out).squeeze(-1),
             'strength': self.head_strength(transformer_out).squeeze(-1),
             'equity': self.head_equity(transformer_out).squeeze(-1)

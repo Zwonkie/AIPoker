@@ -1,7 +1,7 @@
 # V12 Design Proposal — Root-Cause Fixes & Structural Improvements
 
 **Date Recorded**: 2026-07-13
-**Status**: 🟡 PROPOSED (planning; not yet implemented)
+**Status**: 🟢 IN PROGRESS — objective redesign + P1 hardening implemented in the `versions/v12/` slice (see "Implementation status" below); gameplay-eval harness and bet-sizing still pending.
 **Related Files**:
 - [train_selfplay.py](file:///c:/REPO/Antigravity/AIPoker/tools/self_play/v11/train_selfplay.py)
 - [six_max_simulator.py](file:///c:/REPO/Antigravity/AIPoker/tools/self_play/v11/six_max_simulator.py)
@@ -18,6 +18,34 @@ V11 shipped and trained, but a single debugging session surfaced a long chain of
 2. **A fragile learning objective** — regressing Q toward realized MC returns of the *taken* action, which has off-policy gaps and fat tails, then `argmax`-ing raw Q.
 3. **Silent failure everywhere** — `try/except: pass` and silent random-weight fallback hid disabling bugs for entire runs.
 4. **No checkpoint/contract versioning** — a 31→35 feature change (159→163 dims) silently loaded stale weights as garbage.
+
+---
+
+## Implementation status (`versions/v12/` slice)
+
+The V12 slice now carries a real objective redesign, not just a copy of v11. Built and smoke-verified (300-hand end-to-end train → self-describing save → registry reload):
+
+| Item | Status | Where |
+|:---|:---|:---|
+| **Actor-critic / regret-matching objective** (P0) | ✅ implemented | see below |
+| Policy head on the model | ✅ | `core/model.py` → `head_policy`, returns `policy_logits` |
+| Regret-matching policy targets + actor loss | ✅ | `self_play/train.py` → `regret_match_policy()`, `POLICY_LOSS_WEIGHT`, cross-entropy actor loss in train+val loops |
+| Decisions from the policy head (sample in self-play, argmax in eval; legacy Q-argmax fallback) | ✅ | `self_play/simulator.py` → `_query_model_decide(..., sample=True)` |
+| Fail-loud checkpoints + versioned loading (P1) | ✅ (from scaffold) | `shared/manifest.py`, `shared/registry.py` |
+| De-swallowed exceptions (P1) | ✅ | active-model load RAISES (`_load_worker_model(required=True)`); decision-path `except` now routes through `_note_query_error` (counted, traceback-printed) |
+| Diagnostics on the actor head | ✅ | sensitivity check prints `P(fold/call/raise)`; dashboard entropy = actor entropy |
+| Inference-contract unification + alignment test (P0) | ⏳ pending | `_query_model_decide` and the training vectorizer still tokenize separately |
+| Gameplay-based eval harness (P1) | ⏳ pending | grade BB/100 vs a fixed lineup through the unified path |
+| Bet-sizing head / NN league (P2) | ⏳ pending | |
+
+### The objective, concretely (the real fix for the raise-/call-everything oscillation)
+
+- The **critic** (`q_vals`) still regresses the simulator's all-action Monte-Carlo counterfactual EVs (fold pinned at 0, taken action = realized return, untaken = counterfactual EV at fractional weight).
+- The **actor** (`policy_logits`) is trained by cross-entropy toward a **one-step regret-matching policy** computed from those same per-action values: `regret(a) = max(value(a) − mean_a value, 0)`, target `π(a) ∝ regret(a)` (uniform if none positive). This is the CFR building block the proposal called "best-first."
+- **Play selects from `softmax(policy_logits)`** — sampled during self-play (natural exploration), argmax at eval — instead of `argmax(q_vals)`. Because the actor is a *normalized distribution over all three action values at once*, a single over-estimated head can no longer capture every decision, which is exactly what produced both V11 collapses. Fold (pinned at 0) wins for air; value hands win for strength.
+- **Consequence:** the tightness-prior / ±40 clip / `COUNTERFACTUAL_WEIGHT` hacks are retained for now (they still shape the critic targets that feed the actor) but should become largely unnecessary; revisit once trained-model behavior is measured on the gameplay-eval harness.
+
+> Smoke run (305 samples, bootstrap α=1.0 so still heuristic-dominated): actor loss finite (~1.06, near max-entropy ln 3 as expected after one batch), critic loss finite, checkpoint round-tripped through the registry **including the new policy head**. Behavioral grading awaits a real training run + the gameplay-eval harness.
 
 ---
 

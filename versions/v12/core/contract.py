@@ -19,9 +19,9 @@ def card_to_int(card_str: str) -> int:
     except ValueError:
         return 52
 
-class ContractV8V9(DataContract):
+class ContractV12(DataContract):
     """
-    Implements the 35-feature context extraction for Pluribus V8 and V9 models.
+    Implements the 35-feature context extraction for Pluribus V12 models.
     (PokerEVModelV4 architecture)
     """
     
@@ -33,7 +33,8 @@ class ContractV8V9(DataContract):
             states = [states]
             
         states = states[-self.max_seq_len:]
-        start_idx = 0
+        # Left-padding: start index is at the end of the array
+        start_idx = self.max_seq_len - len(states)
         
         # 1. Hole Cards (from final state)
         hole_ints = [card_to_int(c) for c in states[-1].hero_cards]
@@ -119,8 +120,8 @@ class ContractV8V9(DataContract):
                     agg_col = opp.hud.agg_color
                 else:
                     opp_stack = 0.0
-                    vpip_col = "Blue"
-                    agg_col = "Blue"
+                    vpip_col = "Yellow"
+                    agg_col = "Green"
                 
                 opp_pos = (j + 1 + state.hero_position) % 6
                 pos_val = float(opp_pos) / 5.0 if active_mask[j] == 1.0 else -1.0
@@ -128,12 +129,8 @@ class ContractV8V9(DataContract):
                 ctx.append(active_mask[j])
                 ctx.append(pos_val)
                 ctx.append((opp_stack / state.big_blind) / 400.0)
-                if active_mask[j] == 1.0:
-                    ctx.append(vpip_map.get(vpip_col, 0.3))
-                    ctx.append(agg_map.get(agg_col, 0.4))
-                else:
-                    ctx.append(0.0)
-                    ctx.append(0.0)
+                ctx.append(vpip_map.get(vpip_col, 0.3))
+                ctx.append(agg_map.get(agg_col, 0.4))
                 
             context_seq[idx] = ctx
             
@@ -142,7 +139,7 @@ class ContractV8V9(DataContract):
         if hero_actions is not None:
             # Transformer shifts actions by 1 internally. act_ints[i] should be the action taken AT states[i]
             for i in range(min(len(hero_actions), len(states))):
-                act_ints[i] = hero_actions[i]
+                act_ints[start_idx + i] = hero_actions[i]
         
         # Convert to batch-first tensors [1, ...]
         hole_tensor = torch.tensor([hole_ints], dtype=torch.long)

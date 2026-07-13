@@ -14,7 +14,7 @@ MANIFEST = VersionManifest(
     contract_version=2,             # inherited from v11's 35-feature contract (unchanged schema)
     action_space=("fold", "call", "raise"),
     model_class="versions.v12.core.model:PokerEVModelV4",
-    contract_class="versions.v12.core.contract:ContractV8V9",
+    contract_class="versions.v12.core.contract:ContractV12",
     weights_dir="versions/v12/weights",
     status="active",
 )

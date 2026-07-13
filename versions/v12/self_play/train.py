@@ -16,6 +16,17 @@ import torch.nn as nn
 from torch.utils.data import TensorDataset, DataLoader
 import yaml
 
+class Tee:
+    def __init__(self, name, mode):
+        self.file = open(name, mode)
+        self.stdout = sys.stdout
+        sys.stdout = self
+    def write(self, data):
+        self.file.write(data)
+        self.stdout.write(data)
+    def flush(self):
+        self.file.flush()
+        self.stdout.flush()
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', '..')))
 
 from versions.v12.core.model import PokerEVModelV4
@@ -67,6 +78,27 @@ ENTRY_EQUITY_MARGIN = 1.15   # required edge over the fair multiway share 1/(opp
 # truth. This supplies the "raising/calling air is -EV" signal that a taken-action-only
 # loss omits (which caused the 200k model to hallucinate positive Raise EV everywhere).
 COUNTERFACTUAL_WEIGHT = 0.5
+# Weight on the actor (policy) loss relative to the critic (Q) loss. The policy head is
+# what actually selects actions at play time, so it carries a full-strength gradient.
+POLICY_LOSS_WEIGHT = 1.0
+
+
+def regret_match_policy(action_values):
+    """One-step regret-matching policy target over [fold, call, raise] action values.
+
+    Regret of an action = how much its value beats the uniform-strategy value (the mean
+    of the action values). The target policy is proportional to POSITIVE regret; if no
+    action beats the mean (a degenerate tie) it falls back to uniform. This is the CFR
+    building block, and unlike argmax(Q) it yields a normalized distribution — the fix
+    for the V11 raise-/call-everything collapse.
+    """
+    mean_v = sum(action_values) / len(action_values)
+    regrets = [max(v - mean_v, 0.0) for v in action_values]
+    total = sum(regrets)
+    if total <= 1e-9:
+        n = len(action_values)
+        return [1.0 / n] * n
+    return [r / total for r in regrets]
 
 
 def vectorize_hand_samples(record, max_seq_len=20):
@@ -89,6 +121,9 @@ def vectorize_hand_samples(record, max_seq_len=20):
     # Per-action loss weights: which of [fold, call, raise] Q-heads get a gradient at
     # each step. We always train the fold baseline + the action actually taken (Fix 1).
     target_w_seq = [[0.0, 0.0, 0.0] for _ in range(max_seq_len)]
+    # V12 actor target: a regret-matching policy distribution over [fold, call, raise]
+    # derived from the all-action counterfactual values. Uniform by default.
+    policy_target_seq = [[1/3, 1/3, 1/3] for _ in range(max_seq_len)]
     loss_mask = [0.0] * max_seq_len
     
     # Aux labels
@@ -196,13 +231,23 @@ def vectorize_hand_samples(record, max_seq_len=20):
 
         target_evs_seq[idx] = t_evs
         target_w_seq[idx] = t_w
+
+        # --- V12 actor target: regret-matching policy over the counterfactual values ---
+        # One-step regret matching from the uniform strategy: the value of the uniform
+        # strategy is the mean action value; an action's regret is how much it beats that
+        # mean. The target policy is proportional to POSITIVE regret (uniform if none).
+        # Because this is a NORMALIZED distribution over ALL three action values at once,
+        # a single over-estimated head can no longer capture every decision the way
+        # argmax(Q) did -- fold (pinned at 0) wins for air, value hands win for strength.
+        policy_target_seq[idx] = regret_match_policy(t_evs)
+
         loss_mask[idx] = 1.0
         
         opp_bluff_seq[idx] = float(dp.get('opp_bluff_prob', 0.0))
         opp_strength_seq[idx] = float(dp.get('opp_strength', 0.0))
         self_equity_seq[idx] = float(dp['equity'])
         
-    return [(hole_ints, board_seq, context_seq, action_seq, action_taken_seq, target_evs_seq, loss_mask, opp_bluff_seq, opp_strength_seq, self_equity_seq, target_w_seq)]
+    return [(hole_ints, board_seq, context_seq, action_seq, action_taken_seq, target_evs_seq, loss_mask, opp_bluff_seq, opp_strength_seq, self_equity_seq, target_w_seq, policy_target_seq)]
 
 def simulate_worker(current_hand, bb_size, equity_sims, num_hands, hero_personality,
                     active_model_path=None, maniac_model_path=None,
@@ -214,53 +259,37 @@ def simulate_worker(current_hand, bb_size, equity_sims, num_hands, hero_personal
         bootstrap_alpha=bootstrap_alpha
     )
     sim.focus_archetype = focus_archetype
-    
-    # Load model weights on CPU inside worker to avoid serialisation issues
-    if active_model_path and os.path.exists(active_model_path):
+
+    def _load_worker_model(path, required):
+        """Load a self-describing checkpoint into a fresh model, FAIL-LOUD (P1).
+
+        `required=True` (the active hero model) RAISES on failure: training on random
+        weights was the exact silent bug that disabled the NN for whole V11 runs. Optional
+        league models surface a clear warning but let the sim fall back to heuristics.
+        """
+        if not (path and os.path.exists(path)):
+            if required:
+                raise FileNotFoundError(f"Active model weights not found at {path}")
+            return None
         try:
-            model = PokerEVModelV4()
-            model.load_state_dict(load_ckpt_state(active_model_path, MANIFEST))
-            model.eval()
-            sim.hero_model = model
-        except Exception:
-            pass
-            
-    if maniac_model_path and os.path.exists(maniac_model_path):
-        try:
-            model = PokerEVModelV4()
-            model.load_state_dict(load_ckpt_state(maniac_model_path, MANIFEST))
-            model.eval()
-            sim.maniac_model = model
-        except Exception:
-            pass
-            
-    if nit_model_path and os.path.exists(nit_model_path):
-        try:
-            model = PokerEVModelV4()
-            model.load_state_dict(load_ckpt_state(nit_model_path, MANIFEST))
-            model.eval()
-            sim.nit_model = model
-        except Exception:
-            pass
-            
-    if sticky_model_path and os.path.exists(sticky_model_path):
-        try:
-            model = PokerEVModelV4()
-            model.load_state_dict(load_ckpt_state(sticky_model_path, MANIFEST))
-            model.eval()
-            sim.sticky_model = model
-        except Exception:
-            pass
-            
-    if past_model_path and os.path.exists(past_model_path):
-        try:
-            model = PokerEVModelV4()
-            model.load_state_dict(load_ckpt_state(past_model_path, MANIFEST))
-            model.eval()
-            sim.past_model = model
-        except Exception:
-            pass
-            
+            m = PokerEVModelV4()
+            m.load_state_dict(load_ckpt_state(path, MANIFEST))
+            m.eval()
+            return m
+        except Exception as e:
+            if required:
+                raise RuntimeError(f"FATAL: could not load active model {path}: {e}") from e
+            print(f"WARNING: could not load league model {path}: {e}")
+            return None
+
+    # Active (hero) model MUST load — a failure here means training on garbage.
+    sim.hero_model = _load_worker_model(active_model_path, required=True)
+    # Optional league opponents — fall back to heuristics if absent/unloadable.
+    sim.maniac_model = _load_worker_model(maniac_model_path, required=False)
+    sim.nit_model = _load_worker_model(nit_model_path, required=False)
+    sim.sticky_model = _load_worker_model(sticky_model_path, required=False)
+    sim.past_model = _load_worker_model(past_model_path, required=False)
+
     records = []
     for i in range(num_hands):
         rec = sim.simulate_hand(current_hand=current_hand + i)
@@ -283,7 +312,7 @@ def print_dashboard(hands_done, total_hands, elapsed, hands_per_sec, train_loss,
                     seat_profits, seat_vpips, seat_aggs, epoch, personality, bootstrap_alpha,
                     training_samples, total_hands_simulated, seat_extra_stats, global_metrics, 
                     telemetry=None, global_exploitation_net=None,
-                    train_loss_q=0.0, train_loss_bluff=0.0, train_loss_str=0.0, train_loss_eq=0.0):
+                    train_loss_q=0.0, train_loss_pi=0.0, train_loss_bluff=0.0, train_loss_str=0.0, train_loss_eq=0.0):
     """Prints a clear, V8 multi-personality training dashboard with telemetry."""
     pct = (hands_done / max(1, total_hands)) * 100
     eta = ((total_hands - hands_done) / max(1, hands_per_sec)) if hands_per_sec > 0 else 0  # Calculate Phase
@@ -387,7 +416,7 @@ def print_dashboard(hands_done, total_hands, elapsed, hands_per_sec, train_loss,
         
     lines.extend([
         f"|  Train Loss:         {train_loss:>8.4f}  |  Val Loss: {val_loss:>8.4f}                                |",
-        f"|  Loss Q: {train_loss_q:>6.4f} | Bluff: {train_loss_bluff:>6.4f} | Str: {train_loss_str:>6.4f} | Eq: {train_loss_eq:>6.4f}                 |",
+        f"|  Loss Q: {train_loss_q:>6.4f} | Pi: {train_loss_pi:>6.4f} | Bluff: {train_loss_bluff:>6.4f} | Str: {train_loss_str:>6.4f} | Eq: {train_loss_eq:>6.4f}        |",
         "+========================================================================================+"
     ])
     
@@ -408,13 +437,13 @@ def run_intermediate_sensitivity_check(model, step_label, device):
     ]
     
     from core.board_state import BoardState, SeatState, HUDStats
-    from versions.v12.core.contract import ContractV8V9 as ContractV11
-    bridge = ContractV11()
+    from versions.v12.core.contract import ContractV12
+    bridge = ContractV12(max_seq_len=20)
     
     print(f"--- INTERMEDIATE SENSITIVITY CHECK AT {step_label} ---")
-    print(f"| Hand | Equity | Fold EV | Call EV | Raise EV | Action |")
+    print(f"| Hand | Equity | P(Fold) | P(Call) | P(Raise) | Action |")
     print(f"| :--- | :---: | :---: | :---: | :---: | :---: |")
-    
+
     for label, cards, equity in preflop_hands:
         state = BoardState(
             community_cards=[],
@@ -436,16 +465,15 @@ def run_intermediate_sensitivity_check(model, step_label, device):
         
         h_t, b_t, c_t, a_t = bridge.to_tensors(state, hero_actions=[6])
         
-        mask_array = [0.0 if i < 1 else 1.0 for i in range(bridge.max_seq_len)]
-        key_padding_mask = torch.tensor([mask_array], dtype=torch.bool, device=device)
-        
         with torch.no_grad():
-            preds = model(h_t.to(device), b_t.to(device), c_t.to(device), a_t.to(device), key_padding_mask=key_padding_mask)
-            q_vals = preds['q_vals'].squeeze(0)[0] if isinstance(preds, dict) else preds.squeeze(0)[0]
-            
-        f_ev, c_ev, r_ev = q_vals[0].item(), q_vals[1].item(), q_vals[2].item()
-        best_act = "RAISE" if r_ev > c_ev and r_ev > f_ev else "CALL" if c_ev > f_ev else "FOLD"
-        print(f"| {label:<20} | {equity:.2f} | {f_ev:>7.2f} | {c_ev:>7.2f} | {r_ev:>8.2f} | **{best_act}** |")
+            preds = model(h_t.to(device), b_t.to(device), c_t.to(device), a_t.to(device))
+            # V12: grade the ACTOR (policy) head — the head that actually chooses actions.
+            logits = preds['policy_logits'].squeeze(0)[0]
+            probs = torch.softmax(logits, dim=-1)
+
+        p_f, p_c, p_r = probs[0].item(), probs[1].item(), probs[2].item()
+        best_act = "RAISE" if p_r >= p_c and p_r >= p_f else "CALL" if p_c >= p_f else "FOLD"
+        print(f"| {label:<20} | {equity:.2f} | {p_f:>6.2f} | {p_c:>6.2f} | {p_r:>7.2f} | **{best_act}** |")
     print("==================================================\n")
     sys.stdout.flush()
 
@@ -533,6 +561,7 @@ def run_training(personality, num_hands=100000, batch_size=256, epochs_per_batch
     train_loss = 0.0
     val_loss = 0.0
     train_loss_q = 0.0
+    train_loss_pi = 0.0
     train_loss_bluff = 0.0
     train_loss_str = 0.0
     train_loss_eq = 0.0
@@ -676,7 +705,7 @@ def run_training(personality, num_hands=100000, batch_size=256, epochs_per_batch
                 
             # Vectorize simulated hands
             X_hole, X_board, X_ctx, X_act, X_sa, Y_mc, X_mask = [], [], [], [], [], [], []
-            Y_bluff, Y_strength, Y_equity, Y_w = [], [], [], []
+            Y_bluff, Y_strength, Y_equity, Y_w, Y_pol = [], [], [], [], []
             for rec in batch_records:
                 samples = vectorize_hand_samples(rec)
                 if rec.decision_points:
@@ -690,7 +719,7 @@ def run_training(personality, num_hands=100000, batch_size=256, epochs_per_batch
                     net_profit = rec.final_hero_profit
                     telemetry.record_hand_terminal_state(eq, street, action, call_amount, is_all_in, net_profit)
 
-                for h, b, c, a, sa, mc, mask, opp_b, opp_s, self_e, tw in samples:
+                for h, b, c, a, sa, mc, mask, opp_b, opp_s, self_e, tw, pol in samples:
                     X_hole.append(h)
                     X_board.append(b)
                     X_ctx.append(c)
@@ -702,6 +731,7 @@ def run_training(personality, num_hands=100000, batch_size=256, epochs_per_batch
                     Y_strength.append(opp_s)
                     Y_equity.append(self_e)
                     Y_w.append(tw)
+                    Y_pol.append(pol)
                     
             if not X_hole:
                 continue
@@ -717,11 +747,12 @@ def run_training(personality, num_hands=100000, batch_size=256, epochs_per_batch
             str_t = torch.tensor(Y_strength, dtype=torch.float32)
             eq_t = torch.tensor(Y_equity, dtype=torch.float32)
             w_t = torch.tensor(Y_w, dtype=torch.float32)
+            pol_t = torch.tensor(Y_pol, dtype=torch.float32)
 
             total_training_samples += len(X_hole)
-            
+
             # Split train/val
-            dataset = TensorDataset(hole_t, board_t, ctx_t, act_t, sa_t, mc_t, mask_t, bluff_t, str_t, eq_t, w_t)
+            dataset = TensorDataset(hole_t, board_t, ctx_t, act_t, sa_t, mc_t, mask_t, bluff_t, str_t, eq_t, w_t, pol_t)
             train_size = int(0.8 * len(dataset))
             val_size = len(dataset) - train_size
             if train_size == 0 or val_size == 0:
@@ -736,11 +767,12 @@ def run_training(personality, num_hands=100000, batch_size=256, epochs_per_batch
                 model.train()
                 epoch_loss = 0.0
                 epoch_loss_q = 0.0
+                epoch_loss_pi = 0.0
                 epoch_loss_bluff = 0.0
                 epoch_loss_str = 0.0
                 epoch_loss_eq = 0.0
                 total_items = 0
-                for b_h, b_b, b_c, b_a, b_sa, b_mc, b_m, b_bluff, b_str, b_eq, b_w in train_loader:
+                for b_h, b_b, b_c, b_a, b_sa, b_mc, b_m, b_bluff, b_str, b_eq, b_w, b_pol in train_loader:
                     b_h = b_h.to(device, non_blocking=True)
                     b_b = b_b.to(device, non_blocking=True)
                     b_c = b_c.to(device, non_blocking=True)
@@ -752,50 +784,51 @@ def run_training(personality, num_hands=100000, batch_size=256, epochs_per_batch
                     b_str = b_str.to(device, non_blocking=True)
                     b_eq = b_eq.to(device, non_blocking=True)
                     b_w = b_w.to(device, non_blocking=True)
-                    
+                    b_pol = b_pol.to(device, non_blocking=True)
+
                     optimizer.zero_grad()
-                    
+
                     with torch.cuda.amp.autocast():
                         out = model(b_h, b_b, b_c, b_a)
-                        if isinstance(out, dict):
-                            preds = out['q_vals']
-                            pred_bluff = out['bluff']
-                            pred_str = out['strength']
-                            pred_eq = out['equity']
-                        else:
-                            preds = out
-                        
+                        preds = out['q_vals']            # critic
+                        pred_policy = out['policy_logits']  # actor
+                        pred_bluff = out['bluff']
+                        pred_str = out['strength']
+                        pred_eq = out['equity']
+
                         with torch.no_grad():
-                            probs = torch.softmax(preds, dim=-1)
+                            # Entropy of the ACTOR (the head that actually chooses actions).
+                            probs = torch.softmax(pred_policy, dim=-1)
                             batch_entropy = -(probs * torch.log(probs + 1e-9)).sum(dim=-1).mean().item()
                             telemetry.record_entropy_value(batch_entropy)
-                        
-                        # Multi-Action Target EV Loss (Fix 1): per-action weights train the
-                        # fold baseline (target 0) plus the action actually taken, instead of
-                        # masking to only the taken action. b_w is [B, T, 3] of 0/1 weights.
+
+                        # Critic loss: per-action counterfactual EV regression. b_w is
+                        # [B, T, 3] weights (fold baseline + taken action full; untaken
+                        # counterfactuals fractional). This feeds the actor's regret target.
                         step_w = b_w * b_m.unsqueeze(-1)
                         loss_q = criterion(preds, b_mc) * step_w
                         final_loss_q = loss_q.sum() / step_w.sum().clamp(min=1.0)
-                        
+
+                        # Actor loss (V12): cross-entropy toward the regret-matching policy
+                        # target b_pol. This trains a normalized action distribution rather
+                        # than argmax(Q), removing the single-head-degeneracy collapse.
+                        log_policy = nn.functional.log_softmax(pred_policy, dim=-1)
+                        loss_pi_step = -(b_pol * log_policy).sum(dim=-1) * b_m
+                        final_loss_pi = loss_pi_step.sum() / b_m.sum().clamp(min=1.0)
+
                         # Interpretable Auxiliary Heads Loss
-                        if isinstance(out, dict):
-                            loss_bluff = nn.functional.mse_loss(pred_bluff, b_bluff, reduction='none') * b_m
-                            loss_str = nn.functional.mse_loss(pred_str, b_str, reduction='none') * b_m
-                            loss_eq = nn.functional.mse_loss(pred_eq, b_eq, reduction='none') * b_m
-                            
-                            sc_bluff = loss_bluff.sum() / b_m.sum().clamp(min=1.0)
-                            sc_str = loss_str.sum() / b_m.sum().clamp(min=1.0)
-                            sc_eq = loss_eq.sum() / b_m.sum().clamp(min=1.0)
-                            
-                            final_loss_aux = sc_bluff + sc_str + sc_eq
-                        else:
-                            final_loss_aux = 0.0
-                            sc_bluff = 0.0
-                            sc_str = 0.0
-                            sc_eq = 0.0
-                            
-                        final_loss = final_loss_q + 10.0 * final_loss_aux
-                        
+                        loss_bluff = nn.functional.mse_loss(pred_bluff, b_bluff, reduction='none') * b_m
+                        loss_str = nn.functional.mse_loss(pred_str, b_str, reduction='none') * b_m
+                        loss_eq = nn.functional.mse_loss(pred_eq, b_eq, reduction='none') * b_m
+
+                        sc_bluff = loss_bluff.sum() / b_m.sum().clamp(min=1.0)
+                        sc_str = loss_str.sum() / b_m.sum().clamp(min=1.0)
+                        sc_eq = loss_eq.sum() / b_m.sum().clamp(min=1.0)
+
+                        final_loss_aux = sc_bluff + sc_str + sc_eq
+
+                        final_loss = final_loss_q + POLICY_LOSS_WEIGHT * final_loss_pi + 10.0 * final_loss_aux
+
                     scaler.scale(final_loss).backward()
                     scaler.unscale_(optimizer)
                     nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)
@@ -804,14 +837,16 @@ def run_training(personality, num_hands=100000, batch_size=256, epochs_per_batch
                     
                     epoch_loss += float(final_loss) * len(b_h)
                     epoch_loss_q += float(final_loss_q) * len(b_h)
+                    epoch_loss_pi += float(final_loss_pi) * len(b_h)
                     epoch_loss_bluff += float(sc_bluff) * len(b_h)
                     epoch_loss_str += float(sc_str) * len(b_h)
                     epoch_loss_eq += float(sc_eq) * len(b_h)
                     total_items += len(b_h)
-                    
+
                 total_epochs_completed += 1
                 train_loss = epoch_loss / total_items if total_items > 0 else 0.0
                 train_loss_q = epoch_loss_q / total_items if total_items > 0 else 0.0
+                train_loss_pi = epoch_loss_pi / total_items if total_items > 0 else 0.0
                 train_loss_bluff = epoch_loss_bluff / total_items if total_items > 0 else 0.0
                 train_loss_str = epoch_loss_str / total_items if total_items > 0 else 0.0
                 train_loss_eq = epoch_loss_eq / total_items if total_items > 0 else 0.0
@@ -823,7 +858,7 @@ def run_training(personality, num_hands=100000, batch_size=256, epochs_per_batch
             val_epoch_loss = 0.0
             val_items = 0
             with torch.no_grad():
-                for b_h, b_b, b_c, b_a, b_sa, b_mc, b_m, b_bluff, b_str, b_eq, b_w in val_loader:
+                for b_h, b_b, b_c, b_a, b_sa, b_mc, b_m, b_bluff, b_str, b_eq, b_w, b_pol in val_loader:
                     b_h = b_h.to(device)
                     b_b = b_b.to(device)
                     b_c = b_c.to(device)
@@ -835,31 +870,31 @@ def run_training(personality, num_hands=100000, batch_size=256, epochs_per_batch
                     b_str = b_str.to(device)
                     b_eq = b_eq.to(device)
                     b_w = b_w.to(device)
-                    
+                    b_pol = b_pol.to(device)
+
                     with torch.cuda.amp.autocast():
                         out = model(b_h, b_b, b_c, b_a)
-                        if isinstance(out, dict):
-                            preds = out['q_vals']
-                            pred_bluff = out['bluff']
-                            pred_str = out['strength']
-                            pred_eq = out['equity']
-                        else:
-                            preds = out
-                            
+                        preds = out['q_vals']
+                        pred_policy = out['policy_logits']
+                        pred_bluff = out['bluff']
+                        pred_str = out['strength']
+                        pred_eq = out['equity']
+
                         step_w = b_w * b_m.unsqueeze(-1)
                         loss_q = criterion(preds, b_mc) * step_w
                         final_loss_q = loss_q.sum() / step_w.sum().clamp(min=1.0)
-                        
-                        if isinstance(out, dict):
-                            loss_bluff = nn.functional.mse_loss(pred_bluff, b_bluff, reduction='none') * b_m
-                            loss_str = nn.functional.mse_loss(pred_str, b_str, reduction='none') * b_m
-                            loss_eq = nn.functional.mse_loss(pred_eq, b_eq, reduction='none') * b_m
-                            final_loss_aux = (loss_bluff + loss_str + loss_eq).sum() / b_m.sum().clamp(min=1.0)
-                        else:
-                            final_loss_aux = 0.0
-                            
-                        final_loss = final_loss_q + 10.0 * final_loss_aux
-                        
+
+                        log_policy = nn.functional.log_softmax(pred_policy, dim=-1)
+                        loss_pi_step = -(b_pol * log_policy).sum(dim=-1) * b_m
+                        final_loss_pi = loss_pi_step.sum() / b_m.sum().clamp(min=1.0)
+
+                        loss_bluff = nn.functional.mse_loss(pred_bluff, b_bluff, reduction='none') * b_m
+                        loss_str = nn.functional.mse_loss(pred_str, b_str, reduction='none') * b_m
+                        loss_eq = nn.functional.mse_loss(pred_eq, b_eq, reduction='none') * b_m
+                        final_loss_aux = (loss_bluff + loss_str + loss_eq).sum() / b_m.sum().clamp(min=1.0)
+
+                        final_loss = final_loss_q + POLICY_LOSS_WEIGHT * final_loss_pi + 10.0 * final_loss_aux
+
                     val_epoch_loss += final_loss.item() * len(b_h)
                     val_items += len(b_h)
                     
@@ -889,7 +924,8 @@ def run_training(personality, num_hands=100000, batch_size=256, epochs_per_batch
                 total_hands_simulated=total_hands_simulated,
                 seat_extra_stats=seat_extra_stats, global_metrics=global_metrics,
                 telemetry=telemetry, global_exploitation_net=global_exploitation_net,
-                train_loss_q=train_loss_q, train_loss_bluff=train_loss_bluff,
+                train_loss_q=train_loss_q, train_loss_pi=train_loss_pi,
+                train_loss_bluff=train_loss_bluff,
                 train_loss_str=train_loss_str, train_loss_eq=train_loss_eq
             )
             
@@ -911,6 +947,10 @@ def run_training(personality, num_hands=100000, batch_size=256, epochs_per_batch
                 pass
 
 if __name__ == '__main__':
+    repo_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', '..'))
+    active_log_path = os.path.join(repo_root, 'active_training.log')
+    sys.stdout = Tee(active_log_path, 'w')
+
     parser = argparse.ArgumentParser(description="Herocules V11 self-play training loop.")
     parser.add_argument('--personality', type=str, default='main', choices=['main', 'maniac', 'nit', 'sticky'],
                         help="The playing personality to optimize (shapes the EV loss rewards).")

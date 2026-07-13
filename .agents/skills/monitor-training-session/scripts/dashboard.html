@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -110,7 +111,8 @@
             margin-bottom: 24px;
         }
 
-        th, td {
+        th,
+        td {
             padding: 12px 16px;
             text-align: left;
             border-bottom: 1px solid var(--border-color);
@@ -128,21 +130,34 @@
             border-bottom: none;
         }
 
-        .positive { color: var(--success); }
-        .negative { color: var(--danger); }
-        .warning { color: var(--warning); }
+        .positive {
+            color: var(--success);
+        }
 
+        .negative {
+            color: var(--danger);
+        }
+
+        .warning {
+            color: var(--warning);
+        }
     </style>
 </head>
+
 <body>
     <div class="container">
         <header>
-            <h1>AIPoker Training Telemetry <span id="val-personality" style="font-size: 16px; color: var(--text-muted); margin-left: 12px; border-left: 1px solid var(--border-color); padding-left: 12px;"></span></h1>
+            <h1>AIPoker Training Telemetry <span id="val-personality"
+                    style="font-size: 16px; color: var(--text-muted); margin-left: 12px; border-left: 1px solid var(--border-color); padding-left: 12px;"></span>
+            </h1>
             <div style="display: flex; gap: 16px; align-items: center;">
                 <div class="controls" style="display: flex; gap: 8px; align-items: center;">
-                    <button id="btn-prev" onclick="goBack()" disabled style="background: var(--panel-bg); color: var(--text-main); border: 1px solid var(--border-color); border-radius: 4px; padding: 4px 8px; cursor: pointer;">◄</button>
-                    <span id="history-status" style="font-size: 12px; color: var(--text-muted); width: 60px; text-align: center;">Live</span>
-                    <button id="btn-next" onclick="goForward()" disabled style="background: var(--panel-bg); color: var(--text-main); border: 1px solid var(--border-color); border-radius: 4px; padding: 4px 8px; cursor: pointer;">►</button>
+                    <button id="btn-prev" onclick="goBack()" disabled
+                        style="background: var(--panel-bg); color: var(--text-main); border: 1px solid var(--border-color); border-radius: 4px; padding: 4px 8px; cursor: pointer;">◄</button>
+                    <span id="history-status"
+                        style="font-size: 12px; color: var(--text-muted); width: 60px; text-align: center;">Live</span>
+                    <button id="btn-next" onclick="goForward()" disabled
+                        style="background: var(--panel-bg); color: var(--text-main); border: 1px solid var(--border-color); border-radius: 4px; padding: 4px 8px; cursor: pointer;">►</button>
                 </div>
                 <div class="status-badge" id="status-badge">Live Updates Active</div>
             </div>
@@ -241,23 +256,63 @@
         let historyBuffer = [];
         let historyIndex = -1;
 
-        function renderData(data) {
+        function getTrend(currentVal, extractFn, dataIndex) {
+            if (dataIndex <= 0) return '';
+            let sum = 0;
+            let count = 0;
+            for (let i = Math.max(0, dataIndex - 3); i < dataIndex; i++) {
+                let pastData = historyBuffer[i];
+                if (!pastData) continue;
+                let val = extractFn(pastData);
+                if (val !== undefined && val !== null) {
+                    let num = parseFloat(String(val).replace(/[^\d.-]/g, ''));
+                    if (!isNaN(num)) {
+                        sum += num;
+                        count++;
+                    }
+                }
+            }
+            if (count === 0) return '';
+            let avg = sum / count;
+            let curNum = parseFloat(String(currentVal).replace(/[^\d.-]/g, ''));
+            if (isNaN(curNum) || isNaN(avg)) return '';
+
+            let pctChange = 0;
+            if (Math.abs(avg) > 0.0001) {
+                pctChange = ((curNum - avg) / Math.abs(avg)) * 100;
+            } else {
+                if (curNum > 0.0001) pctChange = 100;
+                else if (curNum < -0.0001) pctChange = -100;
+            }
+
+            if (pctChange > 1) {
+                return ' <span style="color: var(--success); font-size: 0.8em;" title="+' + pctChange.toFixed(1) + '%">●</span>';
+            } else if (pctChange < -1) {
+                return ' <span style="color: var(--danger); font-size: 0.8em;" title="' + pctChange.toFixed(1) + '%">●</span>';
+            } else {
+                return ' <span style="color: var(--warning); font-size: 0.8em;" title="' + pctChange.toFixed(1) + '%">●</span>';
+            }
+        }
+
+        function renderData(data, currentDataIndex) {
+            const dataIndex = currentDataIndex !== undefined ? currentDataIndex : (historyIndex === -1 ? historyBuffer.length - 1 : historyIndex);
+
             if (data.personality) {
                 document.getElementById('val-personality').innerText = `TRAINING: ${data.personality.toUpperCase()}`;
             } else {
                 document.getElementById('val-personality').innerText = '';
             }
-            
+
             document.getElementById('val-progress').innerText = data.progress || '--';
             document.getElementById('val-progress-pct').innerText = (data.progress_percent || '--') + '%';
             document.getElementById('val-eta').innerText = data.eta || '--';
             document.getElementById('val-stage').innerText = data.stage || '--';
-            document.getElementById('val-train').innerText = data.train_loss || '--';
-            document.getElementById('val-val').innerText = data.val_loss || '--';
+            document.getElementById('val-train').innerHTML = (data.train_loss || '--') + getTrend(data.train_loss, d => d.train_loss, dataIndex);
+            document.getElementById('val-val').innerHTML = (data.val_loss || '--') + getTrend(data.val_loss, d => d.val_loss, dataIndex);
             document.getElementById('val-epoch').innerText = data.epoch || '--';
-            
+
             const entropy = document.getElementById('val-entropy');
-            entropy.innerText = data.entropy || '--';
+            entropy.innerHTML = (data.entropy || '--') + getTrend(data.entropy, d => d.entropy, dataIndex);
             if (data.entropy && parseFloat(data.entropy) < 0.1) {
                 entropy.className = 'card-value negative';
             } else {
@@ -267,42 +322,44 @@
             // Render Seats
             const seatsBody = document.getElementById('table-seats');
             seatsBody.innerHTML = '';
-            (data.seats || []).forEach(seat => {
+            (data.seats || []).forEach((seat, idx) => {
                 const bb100Class = seat.bb100 > 0 ? 'positive' : (seat.bb100 < 0 ? 'negative' : '');
                 seatsBody.innerHTML += `
                     <tr>
                         <td><strong>${seat.name}</strong></td>
-                        <td class="${bb100Class}">${seat.bb100 > 0 ? '+' : ''}${seat.bb100.toFixed(1)}</td>
-                        <td>${seat.vpip.toFixed(1)}%</td>
-                        <td>${seat.agg.toFixed(1)}%</td>
-                        <td>${seat.r}</td>
-                        <td>${seat.f}</td>
-                        <td>${seat.ai}</td>
+                        <td class="${bb100Class}">${seat.bb100 > 0 ? '+' : ''}${seat.bb100.toFixed(1)}${getTrend(seat.bb100, d => d.seats && d.seats[idx] ? d.seats[idx].bb100 : null, dataIndex)}</td>
+                        <td>${seat.vpip.toFixed(1)}%${getTrend(seat.vpip, d => d.seats && d.seats[idx] ? d.seats[idx].vpip : null, dataIndex)}</td>
+                        <td>${seat.agg.toFixed(1)}%${getTrend(seat.agg, d => d.seats && d.seats[idx] ? d.seats[idx].agg : null, dataIndex)}</td>
+                        <td>${seat.r}${getTrend(seat.r, d => d.seats && d.seats[idx] ? d.seats[idx].r : null, dataIndex)}</td>
+                        <td>${seat.f}${getTrend(seat.f, d => d.seats && d.seats[idx] ? d.seats[idx].f : null, dataIndex)}</td>
+                        <td>${seat.ai}${getTrend(seat.ai, d => d.seats && d.seats[idx] ? d.seats[idx].ai : null, dataIndex)}</td>
                     </tr>
                 `;
             });
-            
+
             // Render Exploitation Scoreboard (Matrix)
             const exploitationBody = document.getElementById('table-exploitation');
             if (exploitationBody) {
                 exploitationBody.innerHTML = '';
-                (data.exploitation_matrix || []).forEach(row => {
+                (data.exploitation_matrix || []).forEach((row, idx) => {
                     const hClass = row.hero > 0 ? 'positive' : (row.hero < 0 ? 'negative' : '');
                     const s1Class = row.s1 > 0 ? 'positive' : (row.s1 < 0 ? 'negative' : '');
                     const s2Class = row.s2 > 0 ? 'positive' : (row.s2 < 0 ? 'negative' : '');
                     const s3Class = row.s3 > 0 ? 'positive' : (row.s3 < 0 ? 'negative' : '');
                     const s4Class = row.s4 > 0 ? 'positive' : (row.s4 < 0 ? 'negative' : '');
                     const s5Class = row.s5 > 0 ? 'positive' : (row.s5 < 0 ? 'negative' : '');
-                    
+
+                    const t = (val, key) => getTrend(val, d => d.exploitation_matrix && d.exploitation_matrix[idx] ? d.exploitation_matrix[idx][key] : null, dataIndex);
+
                     exploitationBody.innerHTML += `
                         <tr>
                             <td><strong>${row.name}</strong></td>
-                            <td class="${hClass}">${row.hero === 0 ? '-' : (row.hero > 0 ? '+' : '') + row.hero.toFixed(1)}</td>
-                            <td class="${s1Class}">${row.s1 === 0 ? '-' : (row.s1 > 0 ? '+' : '') + row.s1.toFixed(1)}</td>
-                            <td class="${s2Class}">${row.s2 === 0 ? '-' : (row.s2 > 0 ? '+' : '') + row.s2.toFixed(1)}</td>
-                            <td class="${s3Class}">${row.s3 === 0 ? '-' : (row.s3 > 0 ? '+' : '') + row.s3.toFixed(1)}</td>
-                            <td class="${s4Class}">${row.s4 === 0 ? '-' : (row.s4 > 0 ? '+' : '') + row.s4.toFixed(1)}</td>
-                            <td class="${s5Class}">${row.s5 === 0 ? '-' : (row.s5 > 0 ? '+' : '') + row.s5.toFixed(1)}</td>
+                            <td class="${hClass}">${row.hero === 0 ? '-' : (row.hero > 0 ? '+' : '') + row.hero.toFixed(1)}${t(row.hero, 'hero')}</td>
+                            <td class="${s1Class}">${row.s1 === 0 ? '-' : (row.s1 > 0 ? '+' : '') + row.s1.toFixed(1)}${t(row.s1, 's1')}</td>
+                            <td class="${s2Class}">${row.s2 === 0 ? '-' : (row.s2 > 0 ? '+' : '') + row.s2.toFixed(1)}${t(row.s2, 's2')}</td>
+                            <td class="${s3Class}">${row.s3 === 0 ? '-' : (row.s3 > 0 ? '+' : '') + row.s3.toFixed(1)}${t(row.s3, 's3')}</td>
+                            <td class="${s4Class}">${row.s4 === 0 ? '-' : (row.s4 > 0 ? '+' : '') + row.s4.toFixed(1)}${t(row.s4, 's4')}</td>
+                            <td class="${s5Class}">${row.s5 === 0 ? '-' : (row.s5 > 0 ? '+' : '') + row.s5.toFixed(1)}${t(row.s5, 's5')}</td>
                         </tr>
                     `;
                 });
@@ -311,27 +368,29 @@
             // Render Equity Matrix
             const equityBody = document.getElementById('table-equity');
             equityBody.innerHTML = '';
-            (data.equity_matrix || []).forEach(row => {
+            (data.equity_matrix || []).forEach((row, idx) => {
                 const isAir = row.bracket.includes('<20%');
                 let rrClass = '';
                 if (isAir) {
-                    const rrVal = parseFloat(row.rr.replace('%',''));
+                    const rrVal = parseFloat(row.rr.replace('%', ''));
                     if (rrVal > 5.0) rrClass = 'negative';
                     else if (rrVal > 0.0) rrClass = 'warning';
                 }
 
+                const t = (val, key) => getTrend(val, d => d.equity_matrix && d.equity_matrix[idx] ? d.equity_matrix[idx][key] : null, dataIndex);
+
                 equityBody.innerHTML += `
                     <tr>
                         <td><strong>${row.bracket}</strong></td>
-                        <td>${row.fold}</td>
-                        <td>${row.call}</td>
-                        <td>${row.raise}</td>
-                        <td class="${rrClass}">${row.rr}</td>
-                        <td>${row.all_in}</td>
-                        <td>${row.avg_end_street}</td>
-                        <td>${colorizeValue(row.net_chips)}</td>
-                        <td class="positive">${row.won_chips || '--'}</td>
-                        <td class="negative">${row.lost_chips || '--'}</td>
+                        <td>${row.fold}${t(row.fold, 'fold')}</td>
+                        <td>${row.call}${t(row.call, 'call')}</td>
+                        <td>${row.raise}${t(row.raise, 'raise')}</td>
+                        <td class="${rrClass}">${row.rr}${t(row.rr, 'rr')}</td>
+                        <td>${row.all_in}${t(row.all_in, 'all_in')}</td>
+                        <td>${row.avg_end_street}${t(row.avg_end_street, 'avg_end_street')}</td>
+                        <td>${colorizeValue(row.net_chips)}${t(row.net_chips, 'net_chips')}</td>
+                        <td class="positive">${row.won_chips || '--'}${t(row.won_chips, 'won_chips')}</td>
+                        <td class="negative">${row.lost_chips || '--'}${t(row.lost_chips, 'lost_chips')}</td>
                     </tr>
                 `;
             });
@@ -342,7 +401,7 @@
             const btnNext = document.getElementById('btn-next');
             const status = document.getElementById('history-status');
             const badge = document.getElementById('status-badge');
-            
+
             if (historyBuffer.length <= 1) {
                 btnPrev.disabled = true;
                 btnNext.disabled = true;
@@ -352,7 +411,7 @@
                 badge.style.backgroundColor = 'rgba(34, 197, 94, 0.2)';
                 return;
             }
-            
+
             if (historyIndex === -1) {
                 btnPrev.disabled = false;
                 btnNext.disabled = true;
@@ -382,7 +441,7 @@
                 }
             }
             if (historyIndex >= 0) {
-                renderData(historyBuffer[historyIndex]);
+                renderData(historyBuffer[historyIndex], historyIndex);
             }
             updateControls();
         }
@@ -392,9 +451,9 @@
                 historyIndex++;
                 if (historyIndex >= historyBuffer.length - 1) {
                     historyIndex = -1; // Back to live
-                    renderData(historyBuffer[historyBuffer.length - 1]);
+                    renderData(historyBuffer[historyBuffer.length - 1], historyBuffer.length - 1);
                 } else {
-                    renderData(historyBuffer[historyIndex]);
+                    renderData(historyBuffer[historyIndex], historyIndex);
                 }
             }
             updateControls();
@@ -405,10 +464,10 @@
                 const res = await fetch('telemetry.json?' + new Date().getTime());
                 if (!res.ok) throw new Error("Failed to load");
                 const data = await res.json();
-                
+
                 const currentProgress = data.progress;
                 const lastEntry = historyBuffer[historyBuffer.length - 1];
-                
+
                 if (!lastEntry || lastEntry.progress !== currentProgress) {
                     historyBuffer.push(data);
                     if (historyBuffer.length > 20) {
@@ -421,12 +480,12 @@
                         }
                     }
                 }
-                
+
                 if (historyIndex === -1) {
-                    renderData(historyBuffer[historyBuffer.length - 1]);
+                    renderData(historyBuffer[historyBuffer.length - 1], historyBuffer.length - 1);
                 }
                 updateControls();
-                
+
             } catch (err) {
                 console.error(err);
                 if (historyIndex === -1) {
@@ -437,9 +496,21 @@
             }
         }
 
+        // Keyboard navigation
+        document.addEventListener('keydown', function (event) {
+            if (event.key === 'ArrowLeft') {
+                const btnPrev = document.getElementById('btn-prev');
+                if (!btnPrev.disabled) goBack();
+            } else if (event.key === 'ArrowRight') {
+                const btnNext = document.getElementById('btn-next');
+                if (!btnNext.disabled) goForward();
+            }
+        });
+
         // Initial fetch and poll every 5 seconds
         fetchTelemetry();
         setInterval(fetchTelemetry, 5000);
     </script>
 </body>
+
 </html>

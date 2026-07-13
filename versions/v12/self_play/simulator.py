@@ -142,6 +142,19 @@ class SixMaxSimulator:
         self.global_metrics = {'flop_players': 0, 'flop_count': 0}
         # Exploitation matrix is also indexed by personality slot on both axes.
         self.global_exploitation_net = {i: {j: 0.0 for j in range(6)} for i in range(6)}
+        # Surfaced (not swallowed) model-query error counter (P1). A swallowed KeyError
+        # once disabled the NN for entire V11 runs; here the first few are printed loudly
+        # with a traceback so a broken inference path can never hide behind a heuristic.
+        self._query_error_count = 0
+
+    def _note_query_error(self, where, exc):
+        """Surface a model-query failure instead of silently falling back to heuristics."""
+        self._query_error_count += 1
+        if self._query_error_count <= 5:
+            import traceback
+            print(f"WARNING: model query failed in {where} "
+                  f"(#{self._query_error_count}): {exc!r}")
+            traceback.print_exc()
 
     def _get_starting_stack(self, current_hand):
         """Curriculum stack sizing logic based on hand count."""
@@ -185,10 +198,17 @@ class SixMaxSimulator:
         )
         return round(eq * 100) / 100.0
 
-    def _query_model_decide(self, model, hand_cards, equity, pot_size, call_amount, hero_stack, num_opponents, table_state_dict=None, model_state_history=None, hero_actions_history=None):
-        """Decide action using a specified neural network model."""
+    def _query_model_decide(self, model, hand_cards, equity, pot_size, call_amount, hero_stack, num_opponents, table_state_dict=None, model_state_history=None, hero_actions_history=None, sample=True):
+        """Decide an action from the model's ACTOR (policy) head.
+
+        V12: the action is drawn from the policy distribution `softmax(policy_logits)`
+        (sampled during self-play for exploration; argmax when `sample=False` for
+        deterministic eval). This replaces the V11 `argmax(q_vals)`, which let one
+        over-estimated Q head capture every decision (raise-/call-everything collapse).
+        Falls back to Q-argmax only for a legacy checkpoint with no policy head.
+        """
         from core.board_state import BoardState, SeatState, HUDStats
-        from versions.v12.core.contract import ContractV8V9 as ContractV11
+        from versions.v12.core.contract import ContractV12
         
         board_cards = table_state_dict.get('board', []) if table_state_dict else []
         street_idx = table_state_dict.get('street', 0) if table_state_dict else 0
@@ -243,30 +263,38 @@ class SixMaxSimulator:
         else:
             states_to_pass = [board_state]
             
-        bridge = ContractV11()
+        bridge = ContractV12()
         h_t, b_t, c_t, a_t = bridge.to_tensors(states_to_pass, hero_actions=hero_actions_history)
         
         device = model.device if hasattr(model, 'device') else next(model.parameters()).device
         
-        seq_len = len(states_to_pass)
-        mask_array = [0.0 if i < seq_len else 1.0 for i in range(bridge.max_seq_len)]
-        key_padding_mask = torch.tensor([mask_array], dtype=torch.bool, device=device)
-        
         with torch.no_grad():
-            preds = model(h_t.to(device), b_t.to(device), c_t.to(device), a_t.to(device), key_padding_mask=key_padding_mask)
-            if isinstance(preds, dict):
-                q_vals = preds['q_vals'].squeeze(0)[seq_len - 1]
+            preds = model(h_t.to(device), b_t.to(device), c_t.to(device), a_t.to(device))
+
+        actions = ['fold', 'call', 'raise']
+
+        # V12 ACTOR path: choose from the policy distribution.
+        if isinstance(preds, dict) and 'policy_logits' in preds:
+            logits = preds['policy_logits'].squeeze(0)[-1]
+            probs = torch.softmax(logits, dim=-1)
+            # When checking is free (no bet to call) folding is never correct: zero its
+            # mass and renormalize so the model never folds a free option.
+            if call_amount == 0:
+                probs = probs.clone()
+                probs[0] = 0.0
+                total = probs.sum()
+                probs = probs / total if total > 0 else torch.tensor([0.0, 1.0, 0.0], device=probs.device)
+            if sample:
+                idx = int(torch.multinomial(probs, 1).item())
             else:
-                q_vals = preds.squeeze(0)[seq_len - 1]
-            
-        ev_fold = q_vals[0].item()
-        ev_call = q_vals[1].item()
-        ev_raise = q_vals[2].item()
-        
-        available_evs = {'fold': ev_fold, 'call': ev_call, 'raise': ev_raise}
+                idx = int(torch.argmax(probs).item())
+            return actions[idx]
+
+        # Legacy fallback (checkpoint without a policy head): argmax over the critic Q.
+        q_vals = preds['q_vals'].squeeze(0)[-1] if isinstance(preds, dict) else preds.squeeze(0)[-1]
+        available_evs = {'fold': q_vals[0].item(), 'call': q_vals[1].item(), 'raise': q_vals[2].item()}
         if call_amount == 0:
             available_evs['fold'] = -9999.0
-            
         return max(available_evs, key=available_evs.get)
 
     def _calculate_mc_target_evs(self, hero_cards, pot, to_call, hero_stack, street_idx, active_opponents, board_str):
@@ -363,9 +391,9 @@ class SixMaxSimulator:
                         return 'call'
                         
                 return decision
-            except Exception:
-                pass
-                
+            except Exception as e:
+                self._note_query_error("_hero_decide", e)
+
         # 3. Heuristic Chart Anchor fallback
         if is_preflop:
             if self.hero_personality == 'maniac':
@@ -415,7 +443,8 @@ class SixMaxSimulator:
             else:
                 try:
                     decision = self._query_model_decide(model, opponent['cards'], equity, pot_size, pot_odds * pot_size, stack, opponent['num_opps'], table_state_dict, model_state_history, hero_actions_history)
-                except Exception:
+                except Exception as e:
+                    self._note_query_error("_opponent_decide/preflop", e)
                     decision = heuristic_bot.decide_preflop(equity, pot_odds)
             
             # Action Forcing for Opponent personalities, NN or heuristic
@@ -443,7 +472,8 @@ class SixMaxSimulator:
             else:
                 try:
                     decision = self._query_model_decide(model, opponent['cards'], equity, pot_size, pot_odds * pot_size, stack, opponent['num_opps'], table_state_dict, model_state_history, hero_actions_history)
-                except Exception:
+                except Exception as e:
+                    self._note_query_error("_opponent_decide/postflop", e)
                     decision = heuristic_bot.decide_postflop(equity, pot_odds, pot_size, stack, street_idx)
             
             # Action Forcing for Opponent personalities, NN or heuristic
