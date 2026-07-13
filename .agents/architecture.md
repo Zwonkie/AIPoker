@@ -1,6 +1,6 @@
 # AIPoker Architecture
 
-This document provides a comprehensive overview of the architecture for the AIPoker training and simulation environment, covering high-level design, separation of concerns, styling choices, libraries, and access restrictions.
+This document provides a comprehensive & single source of truth, overview of the architecture for the AIPoker training and simulation environment, covering high-level design, separation of concerns, styling choices, libraries, and access restrictions.
 
 ## 1. High-Level Architecture
 
@@ -62,3 +62,38 @@ The following areas have strict access rules to prevent system instability or lo
 - **Computer Vision Bounding Boxes & Seat Centers**: **OFF-LIMITS.** Do not change bounding box coordinates or seat center templates (often found in `vision.py` or associated config files) unless explicitly granted permission by the user. 
 - **`decision_rules.json`**: Handle with care; modifications can drastically impact baseline heuristic bot behaviors.
 - **Simulation Source of Truth**: `.agents/skills/OFK/references/simulation_architecture.md`. If any simulation logic or environment conditions are modified outside of the simulation state, this document *must* be updated to reflect the new state. It is not to be edited casually without corresponding system changes.
+
+## 6. Dataflow Diagrams
+
+### Live Session Dataflow
+This diagram shows the execution flow during a real-time live poker session, bypassing headless simulation and interacting directly with the client.
+
+```mermaid
+flowchart TD
+    A[Live Poker Client Screen] -->|Screen Capture & OCR| B[core/vision.py]
+    B -->|Parsed Game Data| C[core/table_state.py & board_state.py]
+    C -->|State Vector| D["core/models/ (Transformer Model)"]
+    D -->|Action Q-Values| E[core/decision.py]
+    E -->|Chosen Action| F[core/action_executor.py]
+    F -->|Mouse/Keyboard Commands| G["Automation (pyautogui / pydirectinput)"]
+    G --> A
+```
+
+### Training (Headless Self-Play) Dataflow
+This diagram shows the multi-process simulation and training loop, where heuristic bots and the neural network compete to generate gradient updates.
+
+```mermaid
+flowchart TD
+    A[tools/train_selfplay.py] -->|Initializes| B[SixMaxSimulator Environment]
+    B -->|Generates State| C["core/table_state.py & board_state.py"]
+    C -->|"State Vector & Seat HUD Matrix"| D["core/models/ (Transformer) & Heuristic Bots"]
+    D -->|"Predicted EVs & Aux Heads"| E[Action Selection & Evaluation]
+    E -->|"MC Equity & True Ev"| F[core/cuda_evaluator]
+    F -->|"Loss Calculation"| G[Backpropagation & Weight Updates]
+    E -->|"Commit Hand Data"| H[JSON HandRecordV4]
+```
+
+
+## 7. Simulation artifacts
+[OFK reference](.agents\skills\OFK\references\simulation_architecture.md)
+
