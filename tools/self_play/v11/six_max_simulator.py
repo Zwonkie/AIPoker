@@ -156,7 +156,7 @@ class SixMaxSimulator:
         )
         return round(eq * 100) / 100.0
 
-    def _query_model_decide(self, model, hand_cards, equity, pot_size, call_amount, hero_stack, num_opponents, table_state_dict=None):
+    def _query_model_decide(self, model, hand_cards, equity, pot_size, call_amount, hero_stack, num_opponents, table_state_dict=None, model_state_history=None):
         """Decide action using a specified neural network model."""
         from core.board_state import BoardState, SeatState, HUDStats
         from core.bridge.v11.contract_v11 import ContractV8V9 as ContractV11
@@ -207,8 +207,14 @@ class SixMaxSimulator:
                 )
             )
             
+        if model_state_history is not None:
+            model_state_history.append(board_state)
+            states_to_pass = model_state_history
+        else:
+            states_to_pass = [board_state]
+            
         bridge = ContractV11()
-        h_t, b_t, c_t, a_t = bridge.to_tensors(board_state)
+        h_t, b_t, c_t, a_t = bridge.to_tensors(states_to_pass, action_history_raw=table_state_dict.get('action_history') if table_state_dict else None)
         
         device = model.device if hasattr(model, 'device') else next(model.parameters()).device
         
@@ -286,7 +292,7 @@ class SixMaxSimulator:
         return [ev_fold, ev_call, ev_raise], max_opp_equity, opp_bluff_prob
 
     def _hero_decide(self, equity, pot_size, call_amount, hero_stack, num_opponents, 
-                     is_preflop, hand_cards=None, table_state_dict=None):
+                     is_preflop, hand_cards=None, table_state_dict=None, model_state_history=None):
         """Decision logic for Hero (the active learning model) with hybrid exploration split."""
         # 1. 5% Pure Random Exploration to prevent off-policy data gaps
         roll = random.random()
@@ -300,7 +306,7 @@ class SixMaxSimulator:
         
         if roll < 0.05 + model_prob and self.hero_model is not None:
             try:
-                decision = self._query_model_decide(self.hero_model, hand_cards, equity, pot_size, call_amount, hero_stack, num_opponents, table_state_dict)
+                decision = self._query_model_decide(self.hero_model, hand_cards, equity, pot_size, call_amount, hero_stack, num_opponents, table_state_dict, model_state_history)
                 
                 # Action Forcing for Hero Personality Training
                 hero_vpip = sum(self.seat_histories[0]['vpip']) / max(1, len(self.seat_histories[0]['vpip']))
@@ -346,7 +352,7 @@ class SixMaxSimulator:
             else:
                 return self.tag_heuristic.decide_postflop(equity, pot_odds, pot_size, hero_stack, street_idx)
 
-    def _opponent_decide(self, seat_idx, opponent, equity, pot_odds, pot_size, stack, street_idx, table_state_dict=None):
+    def _opponent_decide(self, seat_idx, opponent, equity, pot_odds, pot_size, stack, street_idx, table_state_dict=None, model_state_history=None):
         """Decision logic for Seats 1 to 5, querying personality NNs or heuristics."""
         # 1. 5% Random Exploration for Opponent Bots
         if random.random() < 0.05:
@@ -382,7 +388,7 @@ class SixMaxSimulator:
                 decision = heuristic_bot.decide_preflop(equity, pot_odds)
             else:
                 try:
-                    decision = self._query_model_decide(model, opponent['cards'], equity, pot_size, pot_odds * pot_size, stack, opponent['num_opps'], table_state_dict)
+                    decision = self._query_model_decide(model, opponent['cards'], equity, pot_size, pot_odds * pot_size, stack, opponent['num_opps'], table_state_dict, model_state_history)
                 except Exception:
                     decision = heuristic_bot.decide_preflop(equity, pot_odds)
             
@@ -407,7 +413,7 @@ class SixMaxSimulator:
                 decision = heuristic_bot.decide_postflop(equity, pot_odds, pot_size, stack, street_idx)
             else:
                 try:
-                    decision = self._query_model_decide(model, opponent['cards'], equity, pot_size, pot_odds * pot_size, stack, opponent['num_opps'], table_state_dict)
+                    decision = self._query_model_decide(model, opponent['cards'], equity, pot_size, pot_odds * pot_size, stack, opponent['num_opps'], table_state_dict, model_state_history)
                 except Exception:
                     decision = heuristic_bot.decide_postflop(equity, pot_odds, pot_size, stack, street_idx)
             
@@ -445,6 +451,7 @@ class SixMaxSimulator:
         active = [True] * 6
         committed = [0.0] * 6
         folded = [False] * 6
+        model_state_histories = {s: [] for s in range(6)}
         
         # Phase 4: Dynamic Active Players (> 50,000 hands)
         if current_hand > 50000:
@@ -640,7 +647,8 @@ class SixMaxSimulator:
                         decision = self._hero_decide(
                             eq, pot, to_call, stacks[0], active_opps_count,
                             (street_idx == 0), hand_cards=hands_str[0],
-                            table_state_dict=table_state
+                            table_state_dict=table_state,
+                            model_state_history=model_state_histories[0]
                         )
                             
                         if decision == 'fold':
@@ -694,7 +702,7 @@ class SixMaxSimulator:
                         opp_bot_struct['num_opps'] = active_opps_count
                         
                         pot_odds = to_call / (pot + to_call) if (pot + to_call) > 0 else 0.0
-                        decision = self._opponent_decide(current_actor, opp_bot_struct, eq, pot_odds, pot, stacks[current_actor], street_idx, table_state)
+                        decision = self._opponent_decide(current_actor, opp_bot_struct, eq, pot_odds, pot, stacks[current_actor], street_idx, table_state, model_state_history=model_state_histories[current_actor])
                         
                         if decision == 'fold':
                             folded[current_actor] = True

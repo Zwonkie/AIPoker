@@ -79,11 +79,14 @@ def vectorize_hand_samples(record, max_seq_len=20):
     bb = dps[0]['big_blind'] if dps else 10.0
     final_profit = record.final_hero_profit
     
+    start_idx = max_seq_len - len(dps)
+    
     for i, dp in enumerate(dps):
+        idx = start_idx + i
         b_ints = [card_to_int(c) for c in dp['board']]
         while len(b_ints) < 5:
             b_ints.append(52)
-        board_seq[i] = b_ints
+        board_seq[idx] = b_ints
         
         pot_odds = dp['call_amount'] / (dp['pot_size'] + dp['call_amount']) if (dp['pot_size'] + dp['call_amount']) > 0 else 0.0
         
@@ -124,9 +127,9 @@ def vectorize_hand_samples(record, max_seq_len=20):
             ctx.append(map_vpip_to_midpoint(prof.get('vpip', 0.3)))
             ctx.append(map_agg_to_midpoint(prof.get('agg', 0.4)))
             
-        context_seq[i] = ctx
-        action_seq[i] = act_map.get(dp['action'], 0)
-        action_taken_seq[i] = dp['action']
+        context_seq[idx] = ctx
+        action_seq[idx] = act_map.get(dp['action'], 0)
+        action_taken_seq[idx] = dp['action']
         
         # Multi-Action Targets: [ev_fold, ev_call, ev_raise] from the simulator
         # These come back in RAW CHIPS. We must scale them to BIG BLINDS!
@@ -137,12 +140,12 @@ def vectorize_hand_samples(record, max_seq_len=20):
         if dp['action'] in [0, 1, 2]:
             t_evs[dp['action']] = mc_return
             
-        target_evs_seq[i] = t_evs
-        loss_mask[i] = 1.0
+        target_evs_seq[idx] = t_evs
+        loss_mask[idx] = 1.0
         
-        opp_bluff_seq[i] = float(dp.get('opp_bluff_prob', 0.0))
-        opp_strength_seq[i] = float(dp.get('opp_strength', 0.0))
-        self_equity_seq[i] = float(dp['equity'])
+        opp_bluff_seq[idx] = float(dp.get('opp_bluff_prob', 0.0))
+        opp_strength_seq[idx] = float(dp.get('opp_strength', 0.0))
+        self_equity_seq[idx] = float(dp['equity'])
         
     return [(hole_ints, board_seq, context_seq, action_seq, action_taken_seq, target_evs_seq, loss_mask, opp_bluff_seq, opp_strength_seq, self_equity_seq)]
 

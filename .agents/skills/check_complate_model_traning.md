@@ -8,7 +8,10 @@ description: A comprehensive deep-dive checklist to identify data misunderstandi
 > [!CAUTION]
 > **Zero Trust Mindset Required**: Before diving into the specifics below, adopt a "Zero Trust" mindset. Look at the entire codebase with a fresh, extremely critical eye. Assume that the existing code, mathematical logic, and architectural assumptions might be fundamentally flawed, broken, or misaligned, no matter how mature the project seems. Do not take variable names or docstrings at face value—verify exactly what the code is doing mechanically. Question everything.
 
-If tasked with finding the root cause of a model collapse (like the Nit folding the absolute nuts), hallucination, or learning plateau, I would conduct a forensic review across the following 4 domains.
+You are an expert ML/NN and poker engineer. Your task is to take a helicoptor view of the whole traning and data processing for our latest model trainings (latest model), and identify any potential issues or areas of improvement. 
+if asked to ignore "specific checks" ignore sections called **Specific Checks** and use generel knowledge as a ML/NN export on what to check for. 
+
+To do this systematic check I would conduct a forensic review across the following 4 domains.
 
 ## 1. Data Contract & Vectorization (The Input Alignment)
 **Goal:** Ensure the model sees exactly what we think it sees, and that training inputs perfectly match inference inputs.
@@ -54,3 +57,18 @@ If tasked with finding the root cause of a model collapse (like the Nit folding 
 *   **The "Monster-Under-The-Bed" Syndrome:** Why does the Nit model fold the nuts to a bet? I would check the variance in the training data. If the heuristic opponents *only* ever bet the river when they have the absolute nuts, the model learns `Opponent Bet = 100% Death`. We must check if the Maniacs/Fuzzy bots are actually bluffing the river often enough in the simulation data to teach the model to call.
 *   **Padding Token Attention:** If the maximum sequence length is 20, but a preflop hand ends in 2 steps, the remaining 18 steps are padding. Is the model's attention mechanism correctly ignoring padding? If it attends to padding zeros, it correlates "lots of zeros = safe to fold".
 *   **Temperature / Action Entropy:** Is the model's output distribution too sharp? If it predicts `[Fold: 10, Call: -50, Raise: -50]`, it has collapsed into a single state. We would need to inspect the action entropy telemetry.
+
+## 5. Reward System & Target Generation (The Feedback Loop)
+**Goal:** Verify that the rewards (EV targets) being backpropagated are mathematically sound, bounded, and correctly attributed.
+**Files to Check:**
+*   `core/cuda_evaluator.py`
+*   `tools/self_play/v11/train_selfplay.py`
+
+**Specific Checks:**
+*   **Reward Attribution (Credit Assignment):** If the Hero folds on the flop, does the environment mistakenly assign the final winner's pot to the Hero's sequence? A Fold must lock in exactly `0` additional reward (or minus the invested chips).
+*   **Reward Scaling/Clipping:** Are the rewards normalized? In a limit game, winning a 10BB pot is standard, but in No-Limit, an all-in could win 200BB. If the rewards are passed raw without clipping or scaling, massive outlier pots will completely destabilize the gradients and destroy the model's weights.
+*   **Multi-Action Targets vs. Single Action:** (If using Multi-Action targets) Does the evaluator compute precise counterfactual EV for unchosen actions, or is it assigning a heuristic reward? If we penalize raising with a static `-1.0` when it wasn't chosen, the model learns never to raise.
+*   **Rake / Cost of Action:** Is the simulation charging a rake? Does it account for the exact cost to call? If `Reward = Pot Won`, but it ignores the `Chips Invested`, the model will learn to overcall massively because it only sees the upside.
+
+## Output
+Present a report for the user and save it as "Expert_complete_model_[model_name]_check_YYYYMMDD.md" for latest model training.

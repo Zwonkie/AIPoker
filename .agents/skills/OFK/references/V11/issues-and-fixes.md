@@ -24,3 +24,23 @@ t_evs = [ev / bb for ev in list(dp.get('target_evs', [0.0, 0.0, 0.0]))]
 This forces all target EVs (Fold, Call, Raise) to exist in the same mathematical space (BBs), ensuring the neural network gradients are structurally sound.
 
 **Next Steps:** Retrain V11 from scratch, monitoring the raw EV outputs using `evaluate-model-health` directly after early epochs to ensure no runaway values.
+
+---
+
+# V11 Vectorization Misalignment (Monster-Under-The-Bed Collapse)
+
+**Date Recorded**: 2026-07-13
+**Related Files**: 
+- [train_selfplay.py](file:///c:/REPO/Antigravity/AIPoker/tools/self_play/v11/train_selfplay.py)
+- [contract_v11.py](file:///c:/REPO/Antigravity/AIPoker/core/bridge/v11/contract_v11.py)
+
+## Context
+During retraining, the model began exhibiting the "Monster-Under-The-Bed" syndrome (folding the absolute nuts). A forensic review revealed that the Target EV equations were 100% correct. However, there was a catastrophic mismatch between how sequence tensors were padded during training vs. inference.
+
+## Root Cause
+- **Training Side (`train_selfplay.py`)**: Data was being populated sequentially from index 0 (Right-Padding). Thus, valid data occupied indices `0, 1, 2`, while `3..19` were `[0.0]`.
+- **Inference Side (`contract_v11.py`)**: The data contract was placing the single current state at `context_seq[-1]` (index 19), leaving `0..18` as `[0.0]`.
+- **The Bug**: During live play, the model extracted the prediction from `q_vals[-1]`. However, during training, position embedding 19 was almost never populated (only for extremely long 20-action hands), meaning it consisted of untrained random noise. Additionally, the transformer was robbed of its state history because inference left indices `0..18` blank.
+
+## Resolution / Guidelines
+**Mandatory Fix**: Unify the padding direction. Left-padding is the standard for autoregressive transformers when extracting the final prediction. `train_selfplay.py` must offset decision points by `max_seq_len - len(dps)` to match the inference expectation, and the `ContractV11` must maintain a rolling history buffer rather than only populating index `-1`.
