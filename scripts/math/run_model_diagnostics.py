@@ -82,16 +82,16 @@ def run_diagnostics(model_name='Herocules (v9 Main)'):
     
     # 20% Equity Intervals
     eq_groups = [
-        ("<20% (Air)", 0.10),
-        ("20-40% (Weak)", 0.30),
-        ("40-60% (Marg)", 0.50),
-        ("60-80% (Strg)", 0.70),
-        (">80% (Nuts)", 0.90)
+        ("<20% (Air)", 0.10, ['7d', '2c']),
+        ("20-40% (Weak)", 0.30, ['Jc', '3d']),
+        ("40-60% (Marg)", 0.50, ['9s', '8s']),
+        ("60-80% (Strg)", 0.70, ['As', 'Qd']),
+        (">80% (Nuts)", 0.90, ['Ah', 'As'])
     ]
     
     for opps in [1, 3, 5]:
-        for label, eq in eq_groups:
-            bs = create_mock_board_state("Preflop", ['Ah', 'Kd'], [], 15.0, 10.0, 1000.0, eq, opps, "Standard")
+        for label, eq, hand in eq_groups:
+            bs = create_mock_board_state("Preflop", hand, [], 15.0, 10.0, 1000.0, eq, opps, "Standard")
             action, reason, bet_size, ev_dict = engine.make_decision(bs, use_math_engine=False)
             ev_f = ev_dict.get('FOLD', 0.0)
             ev_c = ev_dict.get('CALL', 0.0)

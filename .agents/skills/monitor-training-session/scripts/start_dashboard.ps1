@@ -5,11 +5,13 @@ Start-Process "http://localhost:8080/dashboard.html"
 $watcherScript = {
     $repoDir = "c:\REPO\Antigravity\AIPoker"
     while ($true) {
-        $targetLog = "$repoDir\active_training.log"
-        if (-Not (Test-Path $targetLog)) {
-            $latest = Get-ChildItem "$repoDir\training_*.log" -ErrorAction SilentlyContinue | Sort-Object LastWriteTime -Descending | Select-Object -First 1
-            if ($latest) { $targetLog = $latest.FullName }
+        $latest = Get-ChildItem -Path $repoDir -Filter "active_training.log" -Recurse -ErrorAction SilentlyContinue | Sort-Object LastWriteTime -Descending | Select-Object -First 1
+        if ($latest) {
+            $targetLog = $latest.FullName
+        } else {
+            $targetLog = "$repoDir\active_training.log"
         }
+        
         if (Test-Path $targetLog) {
             & "$repoDir\.venv\Scripts\python.exe" "$repoDir\.agents\skills\monitor-training-session\scripts\parse_training_log.py" $targetLog | Out-Null
         }

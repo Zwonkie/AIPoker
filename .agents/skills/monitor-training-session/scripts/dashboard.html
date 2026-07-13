@@ -138,7 +138,14 @@
     <div class="container">
         <header>
             <h1>AIPoker Training Telemetry <span id="val-personality" style="font-size: 16px; color: var(--text-muted); margin-left: 12px; border-left: 1px solid var(--border-color); padding-left: 12px;"></span></h1>
-            <div class="status-badge" id="status-badge">Live Updates Active</div>
+            <div style="display: flex; gap: 16px; align-items: center;">
+                <div class="controls" style="display: flex; gap: 8px; align-items: center;">
+                    <button id="btn-prev" onclick="goBack()" disabled style="background: var(--panel-bg); color: var(--text-main); border: 1px solid var(--border-color); border-radius: 4px; padding: 4px 8px; cursor: pointer;">◄</button>
+                    <span id="history-status" style="font-size: 12px; color: var(--text-muted); width: 60px; text-align: center;">Live</span>
+                    <button id="btn-next" onclick="goForward()" disabled style="background: var(--panel-bg); color: var(--text-main); border: 1px solid var(--border-color); border-radius: 4px; padding: 4px 8px; cursor: pointer;">►</button>
+                </div>
+                <div class="status-badge" id="status-badge">Live Updates Active</div>
+            </div>
         </header>
 
         <div class="grid-top">
@@ -182,12 +189,17 @@
             </tbody>
         </table>
 
-        <div class="section-title">Exploitation Scoreboard (Hero Net vs Opponents)</div>
+        <div class="section-title">Exploitation Scoreboard (Net BB/100 Matrix)</div>
         <table>
             <thead>
                 <tr>
-                    <th>Opponent Name</th>
-                    <th>Hero Net BB/100</th>
+                    <th>[Winner \ Loser]</th>
+                    <th>Hero</th>
+                    <th>S1 (Maniac)</th>
+                    <th>S2 (Nit)</th>
+                    <th>S3 (Sticky)</th>
+                    <th>S4 (Past)</th>
+                    <th>S5 (TAG)</th>
                 </tr>
             </thead>
             <tbody id="table-exploitation">
@@ -226,101 +238,202 @@
             return valStr;
         }
 
+        let historyBuffer = [];
+        let historyIndex = -1;
+
+        function renderData(data) {
+            if (data.personality) {
+                document.getElementById('val-personality').innerText = `TRAINING: ${data.personality.toUpperCase()}`;
+            } else {
+                document.getElementById('val-personality').innerText = '';
+            }
+            
+            document.getElementById('val-progress').innerText = data.progress || '--';
+            document.getElementById('val-progress-pct').innerText = (data.progress_percent || '--') + '%';
+            document.getElementById('val-eta').innerText = data.eta || '--';
+            document.getElementById('val-stage').innerText = data.stage || '--';
+            document.getElementById('val-train').innerText = data.train_loss || '--';
+            document.getElementById('val-val').innerText = data.val_loss || '--';
+            document.getElementById('val-epoch').innerText = data.epoch || '--';
+            
+            const entropy = document.getElementById('val-entropy');
+            entropy.innerText = data.entropy || '--';
+            if (data.entropy && parseFloat(data.entropy) < 0.1) {
+                entropy.className = 'card-value negative';
+            } else {
+                entropy.className = 'card-value positive';
+            }
+
+            // Render Seats
+            const seatsBody = document.getElementById('table-seats');
+            seatsBody.innerHTML = '';
+            (data.seats || []).forEach(seat => {
+                const bb100Class = seat.bb100 > 0 ? 'positive' : (seat.bb100 < 0 ? 'negative' : '');
+                seatsBody.innerHTML += `
+                    <tr>
+                        <td><strong>${seat.name}</strong></td>
+                        <td class="${bb100Class}">${seat.bb100 > 0 ? '+' : ''}${seat.bb100.toFixed(1)}</td>
+                        <td>${seat.vpip.toFixed(1)}%</td>
+                        <td>${seat.agg.toFixed(1)}%</td>
+                        <td>${seat.r}</td>
+                        <td>${seat.f}</td>
+                        <td>${seat.ai}</td>
+                    </tr>
+                `;
+            });
+            
+            // Render Exploitation Scoreboard (Matrix)
+            const exploitationBody = document.getElementById('table-exploitation');
+            if (exploitationBody) {
+                exploitationBody.innerHTML = '';
+                (data.exploitation_matrix || []).forEach(row => {
+                    const hClass = row.hero > 0 ? 'positive' : (row.hero < 0 ? 'negative' : '');
+                    const s1Class = row.s1 > 0 ? 'positive' : (row.s1 < 0 ? 'negative' : '');
+                    const s2Class = row.s2 > 0 ? 'positive' : (row.s2 < 0 ? 'negative' : '');
+                    const s3Class = row.s3 > 0 ? 'positive' : (row.s3 < 0 ? 'negative' : '');
+                    const s4Class = row.s4 > 0 ? 'positive' : (row.s4 < 0 ? 'negative' : '');
+                    const s5Class = row.s5 > 0 ? 'positive' : (row.s5 < 0 ? 'negative' : '');
+                    
+                    exploitationBody.innerHTML += `
+                        <tr>
+                            <td><strong>${row.name}</strong></td>
+                            <td class="${hClass}">${row.hero === 0 ? '-' : (row.hero > 0 ? '+' : '') + row.hero.toFixed(1)}</td>
+                            <td class="${s1Class}">${row.s1 === 0 ? '-' : (row.s1 > 0 ? '+' : '') + row.s1.toFixed(1)}</td>
+                            <td class="${s2Class}">${row.s2 === 0 ? '-' : (row.s2 > 0 ? '+' : '') + row.s2.toFixed(1)}</td>
+                            <td class="${s3Class}">${row.s3 === 0 ? '-' : (row.s3 > 0 ? '+' : '') + row.s3.toFixed(1)}</td>
+                            <td class="${s4Class}">${row.s4 === 0 ? '-' : (row.s4 > 0 ? '+' : '') + row.s4.toFixed(1)}</td>
+                            <td class="${s5Class}">${row.s5 === 0 ? '-' : (row.s5 > 0 ? '+' : '') + row.s5.toFixed(1)}</td>
+                        </tr>
+                    `;
+                });
+            }
+
+            // Render Equity Matrix
+            const equityBody = document.getElementById('table-equity');
+            equityBody.innerHTML = '';
+            (data.equity_matrix || []).forEach(row => {
+                const isAir = row.bracket.includes('<20%');
+                let rrClass = '';
+                if (isAir) {
+                    const rrVal = parseFloat(row.rr.replace('%',''));
+                    if (rrVal > 5.0) rrClass = 'negative';
+                    else if (rrVal > 0.0) rrClass = 'warning';
+                }
+
+                equityBody.innerHTML += `
+                    <tr>
+                        <td><strong>${row.bracket}</strong></td>
+                        <td>${row.fold}</td>
+                        <td>${row.call}</td>
+                        <td>${row.raise}</td>
+                        <td class="${rrClass}">${row.rr}</td>
+                        <td>${row.all_in}</td>
+                        <td>${row.avg_end_street}</td>
+                        <td>${colorizeValue(row.net_chips)}</td>
+                        <td class="positive">${row.won_chips || '--'}</td>
+                        <td class="negative">${row.lost_chips || '--'}</td>
+                    </tr>
+                `;
+            });
+        }
+
+        function updateControls() {
+            const btnPrev = document.getElementById('btn-prev');
+            const btnNext = document.getElementById('btn-next');
+            const status = document.getElementById('history-status');
+            const badge = document.getElementById('status-badge');
+            
+            if (historyBuffer.length <= 1) {
+                btnPrev.disabled = true;
+                btnNext.disabled = true;
+                status.innerText = "Live";
+                badge.innerText = 'Live Updates Active';
+                badge.style.color = 'var(--success)';
+                badge.style.backgroundColor = 'rgba(34, 197, 94, 0.2)';
+                return;
+            }
+            
+            if (historyIndex === -1) {
+                btnPrev.disabled = false;
+                btnNext.disabled = true;
+                status.innerText = "Live";
+                badge.innerText = 'Live Updates Active';
+                badge.style.color = 'var(--success)';
+                badge.style.backgroundColor = 'rgba(34, 197, 94, 0.2)';
+            } else {
+                btnPrev.disabled = (historyIndex === 0);
+                btnNext.disabled = false;
+                const offset = historyBuffer.length - 1 - historyIndex;
+                status.innerText = `-${offset} ticks`;
+                badge.innerText = 'Viewing History (Paused)';
+                badge.style.color = 'var(--warning)';
+                badge.style.backgroundColor = 'rgba(245, 158, 11, 0.2)';
+            }
+        }
+
+        function goBack() {
+            if (historyIndex === -1) {
+                if (historyBuffer.length >= 2) {
+                    historyIndex = historyBuffer.length - 2;
+                }
+            } else {
+                if (historyIndex > 0) {
+                    historyIndex--;
+                }
+            }
+            if (historyIndex >= 0) {
+                renderData(historyBuffer[historyIndex]);
+            }
+            updateControls();
+        }
+
+        function goForward() {
+            if (historyIndex !== -1) {
+                historyIndex++;
+                if (historyIndex >= historyBuffer.length - 1) {
+                    historyIndex = -1; // Back to live
+                    renderData(historyBuffer[historyBuffer.length - 1]);
+                } else {
+                    renderData(historyBuffer[historyIndex]);
+                }
+            }
+            updateControls();
+        }
+
         async function fetchTelemetry() {
             try {
                 const res = await fetch('telemetry.json?' + new Date().getTime());
                 if (!res.ok) throw new Error("Failed to load");
                 const data = await res.json();
                 
-                if (data.personality) {
-                    document.getElementById('val-personality').innerText = `TRAINING: ${data.personality.toUpperCase()}`;
-                } else {
-                    document.getElementById('val-personality').innerText = '';
-                }
+                const currentProgress = data.progress;
+                const lastEntry = historyBuffer[historyBuffer.length - 1];
                 
-                document.getElementById('val-progress').innerText = data.progress || '--';
-                document.getElementById('val-progress-pct').innerText = (data.progress_percent || '--') + '%';
-                document.getElementById('val-eta').innerText = data.eta || '--';
-                document.getElementById('val-stage').innerText = data.stage || '--';
-                document.getElementById('val-train').innerText = data.train_loss || '--';
-                document.getElementById('val-val').innerText = data.val_loss || '--';
-                document.getElementById('val-epoch').innerText = data.epoch || '--';
-                
-                const entropy = document.getElementById('val-entropy');
-                entropy.innerText = data.entropy || '--';
-                if (data.entropy && parseFloat(data.entropy) < 0.1) {
-                    entropy.className = 'card-value negative';
-                } else {
-                    entropy.className = 'card-value positive';
-                }
-
-                // Render Seats
-                const seatsBody = document.getElementById('table-seats');
-                seatsBody.innerHTML = '';
-                (data.seats || []).forEach(seat => {
-                    const bb100Class = seat.bb100 > 0 ? 'positive' : (seat.bb100 < 0 ? 'negative' : '');
-                    seatsBody.innerHTML += `
-                        <tr>
-                            <td><strong>${seat.name}</strong></td>
-                            <td class="${bb100Class}">${seat.bb100 > 0 ? '+' : ''}${seat.bb100.toFixed(1)}</td>
-                            <td>${seat.vpip.toFixed(1)}%</td>
-                            <td>${seat.agg.toFixed(1)}%</td>
-                            <td>${seat.r}</td>
-                            <td>${seat.f}</td>
-                            <td>${seat.ai}</td>
-                        </tr>
-                    `;
-                });
-                
-                // Render Exploitation Scoreboard
-                const exploitationBody = document.getElementById('table-exploitation');
-                if (exploitationBody) {
-                    exploitationBody.innerHTML = '';
-                    (data.exploitation || []).forEach(row => {
-                        const bb100Class = row.bb100 > 0 ? 'positive' : (row.bb100 < 0 ? 'negative' : '');
-                        exploitationBody.innerHTML += `
-                            <tr>
-                                <td><strong>${row.name}</strong></td>
-                                <td class="${bb100Class}">${row.bb100 > 0 ? '+' : ''}${row.bb100.toFixed(1)}</td>
-                            </tr>
-                        `;
-                    });
-                }
-
-                // Render Equity Matrix
-                const equityBody = document.getElementById('table-equity');
-                equityBody.innerHTML = '';
-                (data.equity_matrix || []).forEach(row => {
-                    const isAir = row.bracket.includes('<20%');
-                    let rrClass = '';
-                    if (isAir) {
-                        const rrVal = parseFloat(row.rr.replace('%',''));
-                        if (rrVal > 5.0) rrClass = 'negative';
-                        else if (rrVal > 0.0) rrClass = 'warning';
+                if (!lastEntry || lastEntry.progress !== currentProgress) {
+                    historyBuffer.push(data);
+                    if (historyBuffer.length > 20) {
+                        historyBuffer.shift();
+                        if (historyIndex > -1) {
+                            historyIndex--;
+                            if (historyIndex < 0) {
+                                historyIndex = -1; // Fell off the end, jump to live
+                            }
+                        }
                     }
-
-                    equityBody.innerHTML += `
-                        <tr>
-                            <td><strong>${row.bracket}</strong></td>
-                            <td>${row.fold}</td>
-                            <td>${row.call}</td>
-                            <td>${row.raise}</td>
-                            <td class="${rrClass}">${row.rr}</td>
-                            <td>${row.all_in}</td>
-                            <td>${row.avg_end_street}</td>
-                            <td>${colorizeValue(row.net_chips)}</td>
-                            <td class="positive">${row.won_chips || '--'}</td>
-                            <td class="negative">${row.lost_chips || '--'}</td>
-                        </tr>
-                    `;
-                });
-
-                document.getElementById('status-badge').innerText = 'Live Updates Active';
-                document.getElementById('status-badge').style.color = 'var(--success)';
+                }
+                
+                if (historyIndex === -1) {
+                    renderData(historyBuffer[historyBuffer.length - 1]);
+                }
+                updateControls();
+                
             } catch (err) {
                 console.error(err);
-                document.getElementById('status-badge').innerText = 'Connection Lost';
-                document.getElementById('status-badge').style.color = 'var(--danger)';
+                if (historyIndex === -1) {
+                    document.getElementById('status-badge').innerText = 'Connection Lost';
+                    document.getElementById('status-badge').style.color = 'var(--danger)';
+                    document.getElementById('status-badge').style.backgroundColor = 'rgba(239, 68, 68, 0.2)';
+                }
             }
         }
 

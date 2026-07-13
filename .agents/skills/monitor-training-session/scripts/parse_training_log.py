@@ -85,14 +85,27 @@ def parse_training_log(logfile):
                         "f": int(m.group(6)),
                         "ai": int(m.group(7))
                     })
-            elif "Hero vs Seat " in line and "BB/100" in line:
-                if "exploitation" not in telemetry:
-                    telemetry["exploitation"] = []
-                m = re.search(r"Hero vs (Seat\s+\d+\s+[^:]+):\s+([\+\-]?[\d.]+)\s+BB/100", line)
-                if m:
-                    telemetry["exploitation"].append({
-                        "name": m.group(1).strip(),
-                        "bb100": float(m.group(2))
+            elif "|  EXPLOITATION SCOREBOARD (Net BB/100 Matrix):" in line:
+                if "exploitation_matrix" not in telemetry:
+                    telemetry["exploitation_matrix"] = []
+            elif "exploitation_matrix" in telemetry and line.startswith("|") and ("Hero " in line or "Seat " in line or "Opp " in line) and "Winner" not in line:
+                parts = [p.strip() for p in line.split("|") if p.strip()]
+                if len(parts) >= 7:
+                    row_name = parts[0]
+                    # Handle cell values (some might be '-')
+                    def parse_val(v):
+                        if v == '-': return 0.0
+                        try: return float(v)
+                        except: return 0.0
+                    
+                    telemetry["exploitation_matrix"].append({
+                        "name": row_name,
+                        "hero": parse_val(parts[1]),
+                        "s1": parse_val(parts[2]),
+                        "s2": parse_val(parts[3]),
+                        "s3": parse_val(parts[4]),
+                        "s4": parse_val(parts[5]),
+                        "s5": parse_val(parts[6])
                     })
             elif "%" in line and ("<20%" in line or "20-40%" in line or "40-60%" in line or "60-80%" in line or ">80%" in line):
                 parts = [p.strip() for p in line.split("|") if p.strip()]

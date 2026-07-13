@@ -1,129 +1,185 @@
 {
-  "progress": "89,199",
-  "progress_percent": "89.2",
-  "epoch": "141",
+  "progress": "150,007",
+  "progress_percent": "100.0",
+  "epoch": "255",
   "stage": "Phase 5: Focus Rounds",
-  "eta": "10m 0s",
-  "train_loss": "43.8088",
-  "val_loss": "44.4914",
-  "entropy": "0.4238",
+  "eta": "59m 59s",
+  "train_loss": "7.1877",
+  "val_loss": "0.1547",
+  "entropy": "1.0155",
   "seats": [
     {
       "name": "Seat 0 Hero (Main)",
-      "bb100": 23.1,
-      "vpip": 54.0,
-      "agg": 23.2,
-      "r": 32841,
-      "f": 44882,
-      "ai": 6368
+      "bb100": -10.5,
+      "vpip": 75.0,
+      "agg": 35.7,
+      "r": 13887,
+      "f": 130708,
+      "ai": 838
     },
     {
       "name": "Seat 1 Opp 1 (Maniac)",
-      "bb100": -94.0,
-      "vpip": 75.5,
-      "agg": 46.0,
-      "r": 62296,
-      "f": 39552,
-      "ai": 7808
+      "bb100": -45.8,
+      "vpip": 60.0,
+      "agg": 50.0,
+      "r": 95384,
+      "f": 49261,
+      "ai": 6052
     },
     {
       "name": "Seat 2 Opp 2 (Nit)",
-      "bb100": -17.5,
-      "vpip": 18.2,
-      "agg": 11.8,
-      "r": 6390,
-      "f": 70392,
-      "ai": 1202
+      "bb100": -12.0,
+      "vpip": 12.5,
+      "agg": 0.0,
+      "r": 11494,
+      "f": 113045,
+      "ai": 1124
     },
     {
       "name": "Seat 3 Opp 3 (Sticky)",
-      "bb100": -27.8,
-      "vpip": 61.3,
-      "agg": 19.8,
-      "r": 34192,
-      "f": 34387,
-      "ai": 8040
+      "bb100": 20.6,
+      "vpip": 14.3,
+      "agg": 8.3,
+      "r": 21334,
+      "f": 84575,
+      "ai": 1928
     },
     {
       "name": "Seat 4 Opp 4 (Past Self)",
-      "bb100": 40.6,
-      "vpip": 47.0,
-      "agg": 54.5,
-      "r": 63154,
-      "f": 40167,
-      "ai": 10718
+      "bb100": 8.3,
+      "vpip": 71.4,
+      "agg": 28.6,
+      "r": 27742,
+      "f": 77505,
+      "ai": 3289
     },
     {
       "name": "Seat 5 Opp 5 (TAG Bot)",
-      "bb100": 75.6,
-      "vpip": 15.0,
-      "agg": 49.0,
-      "r": 14372,
-      "f": 73082,
-      "ai": 1783
+      "bb100": 39.3,
+      "vpip": 0.0,
+      "agg": 50.0,
+      "r": 26178,
+      "f": 109326,
+      "ai": 2580
     }
   ],
   "equity_matrix": [
     {
       "bracket": "<20% (Pure Air)",
-      "fold": "75.6%",
-      "call": "21.9%",
-      "raise": "0.3%",
-      "rr": "0.8%",
-      "all_in": "1.5%",
-      "avg_end_street": "0.4",
-      "net_chips": "-512599.6",
-      "won_chips": "+121239",
-      "lost_chips": "-633838"
+      "fold": "94.0%",
+      "call": "5.2%",
+      "raise": "0.1%",
+      "rr": "0.7%",
+      "all_in": "0.0%",
+      "avg_end_street": "0.1",
+      "net_chips": "-51830.0",
+      "won_chips": "+13226",
+      "lost_chips": "-65056"
     },
     {
       "bracket": "20-40% (Draws)",
-      "fold": "54.0%",
-      "call": "35.4%",
-      "raise": "0.4%",
-      "rr": "4.7%",
-      "all_in": "5.6%",
-      "avg_end_street": "0.3",
-      "net_chips": "-625022.8",
-      "won_chips": "+1136678",
-      "lost_chips": "-1761701"
+      "fold": "91.5%",
+      "call": "7.4%",
+      "raise": "0.1%",
+      "rr": "0.9%",
+      "all_in": "0.1%",
+      "avg_end_street": "0.1",
+      "net_chips": "-187856.6",
+      "won_chips": "+78355",
+      "lost_chips": "-266212"
     },
     {
       "bracket": "40-60% (Marginal)",
-      "fold": "9.0%",
-      "call": "60.9%",
-      "raise": "1.6%",
-      "rr": "11.7%",
-      "all_in": "16.8%",
-      "avg_end_street": "0.6",
-      "net_chips": "+382.8",
-      "won_chips": "+1501562",
-      "lost_chips": "-1501179"
+      "fold": "78.9%",
+      "call": "16.6%",
+      "raise": "0.6%",
+      "rr": "3.2%",
+      "all_in": "0.7%",
+      "avg_end_street": "0.2",
+      "net_chips": "-161924.4",
+      "won_chips": "+165864",
+      "lost_chips": "-327789"
     },
     {
       "bracket": "60-80% (Strong)",
-      "fold": "6.6%",
-      "call": "56.7%",
-      "raise": "3.7%",
-      "rr": "12.9%",
-      "all_in": "20.0%",
-      "avg_end_street": "1.3",
-      "net_chips": "+584563.5",
-      "won_chips": "+1168168",
-      "lost_chips": "-583605"
+      "fold": "58.8%",
+      "call": "26.3%",
+      "raise": "2.5%",
+      "rr": "8.7%",
+      "all_in": "3.7%",
+      "avg_end_street": "0.6",
+      "net_chips": "+10085.4",
+      "won_chips": "+209380",
+      "lost_chips": "-199294"
     },
     {
       "bracket": ">80% (Nuts)",
-      "fold": "5.9%",
-      "call": "58.6%",
-      "raise": "8.2%",
-      "rr": "7.9%",
-      "all_in": "19.4%",
-      "avg_end_street": "2.4",
-      "net_chips": "+745669.5",
-      "won_chips": "+929697",
-      "lost_chips": "-184027"
+      "fold": "27.4%",
+      "call": "40.3%",
+      "raise": "12.8%",
+      "rr": "8.5%",
+      "all_in": "10.9%",
+      "avg_end_street": "2.0",
+      "net_chips": "+203412.4",
+      "won_chips": "+323525",
+      "lost_chips": "-120113"
     }
   ],
-  "personality": "STICKY"
+  "personality": "NIT",
+  "exploitation_matrix": [
+    {
+      "name": "Hero (Main)",
+      "hero": 0.0,
+      "s1": -4.0,
+      "s2": 0.0,
+      "s3": -2.0,
+      "s4": -1.7,
+      "s5": -2.9
+    },
+    {
+      "name": "Opp 1 (Maniac)",
+      "hero": 4.0,
+      "s1": 0.0,
+      "s2": 6.3,
+      "s3": -16.8,
+      "s4": -7.9,
+      "s5": -31.4
+    },
+    {
+      "name": "Opp 2 (Nit)",
+      "hero": -0.0,
+      "s1": -6.3,
+      "s2": 0.0,
+      "s3": -2.0,
+      "s4": -3.4,
+      "s5": -0.4
+    },
+    {
+      "name": "Opp 3 (Sticky)",
+      "hero": 2.0,
+      "s1": 16.8,
+      "s2": 2.0,
+      "s3": 0.0,
+      "s4": 0.7,
+      "s5": -0.7
+    },
+    {
+      "name": "Opp 4 (Past Self)",
+      "hero": 1.7,
+      "s1": 7.9,
+      "s2": 3.4,
+      "s3": -0.7,
+      "s4": 0.0,
+      "s5": -4.0
+    },
+    {
+      "name": "Opp 5 (TAG Bot)",
+      "hero": 2.9,
+      "s1": 31.4,
+      "s2": 0.4,
+      "s3": 0.7,
+      "s4": 4.0,
+      "s5": 0.0
+    }
+  ]
 }

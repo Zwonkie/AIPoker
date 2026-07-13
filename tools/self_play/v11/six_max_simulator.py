@@ -112,7 +112,7 @@ class SixMaxSimulator:
             'raises': 0, 'folds': 0, 'all_ins': 0
         } for s in range(6)}
         self.global_metrics = {'flop_players': 0, 'flop_count': 0}
-        self.hero_exploitation_net = {i: 0.0 for i in range(1, 6)}
+        self.global_exploitation_net = {i: {j: 0.0 for j in range(6)} for i in range(6)}
 
     def _get_starting_stack(self, current_hand):
         """Curriculum stack sizing logic based on hand count."""
@@ -134,9 +134,9 @@ class SixMaxSimulator:
             
         return round(stack_bb) * self.bb_size
         
-    def _calculate_equity(self, hero_cards_str, board_str, num_opponents):
+    def _calculate_equity(self, hero_cards_str, board_str, num_opponents, specific_opponents=None):
         """Calculate Hero's equity using MC simulations."""
-        if _cuda_evaluator is not None:
+        if _cuda_evaluator is not None and specific_opponents is None:
             try:
                 eq = _cuda_evaluator.calculate_equity_batched(
                     [hero_cards_str], 
@@ -151,7 +151,8 @@ class SixMaxSimulator:
         eq, _ = _poker_evaluator.calculate_equity(
             board_str, hero_cards_str,
             num_opponents=num_opponents,
-            num_simulations=self.equity_sims
+            num_simulations=self.equity_sims,
+            specific_opponents=specific_opponents
         )
         return round(eq * 100) / 100.0
 
@@ -178,13 +179,31 @@ class SixMaxSimulator:
         for idx in range(5):
             seat_key = f"seat_{idx+1}"
             is_active = (idx < num_opponents)
+            
+            vpip_col = "Blue"
+            agg_col = "Blue"
+            
+            if is_active and hasattr(self, 'seat_histories') and (idx+1) in self.seat_histories:
+                v_hist = self.seat_histories[idx+1]['vpip']
+                a_hist = self.seat_histories[idx+1]['agg']
+                v_val = sum(v_hist) / len(v_hist) if len(v_hist) > 0 else 0.30
+                a_val = sum(a_hist) / len(a_hist) if len(a_hist) > 0 else 0.40
+                
+                if v_val >= 0.35: vpip_col = "Red"
+                elif v_val >= 0.26: vpip_col = "Yellow"
+                elif v_val >= 0.18: vpip_col = "Green"
+                
+                if a_val >= 0.71: agg_col = "Red"
+                elif a_val >= 0.56: agg_col = "Yellow"
+                elif a_val >= 0.36: agg_col = "Green"
+            
             board_state.seats[seat_key] = SeatState(
                 name=f"Opponent {idx+1}",
                 is_active=is_active,
                 stack=hero_stack if is_active else 0.0,
                 hud=HUDStats(
-                    vpip_color="Green" if is_active else "Blue",
-                    agg_color="Green" if is_active else "Blue"
+                    vpip_color=vpip_col,
+                    agg_color=agg_col
                 )
             )
             
@@ -210,13 +229,21 @@ class SixMaxSimulator:
             
         return max(available_evs, key=available_evs.get)
 
-    def _calculate_mc_target_evs(self, equity, pot, to_call, hero_stack, street_idx, active_opponents, board_str):
-        """Monte Carlo Target EV evaluation using exact opponent profile simulations."""
+    def _calculate_mc_target_evs(self, hero_cards, pot, to_call, hero_stack, street_idx, active_opponents, board_str):
+        """Monte Carlo Target EV evaluation using exact opponent profile simulations and True Equity."""
+        
+        # Calculate True Equity using the actual hole cards of the opponents
+        opp_hands = [opp['cards'] for opp in active_opponents]
+        if opp_hands:
+            true_equity = self._calculate_equity(hero_cards, board_str, len(active_opponents), specific_opponents=opp_hands)
+        else:
+            true_equity = 1.0 # If no opponents left, equity is 100%
+            
         ev_fold = 0.0
         
         # Call EV calculation
         pot_after_call = pot + to_call
-        ev_call = equity * pot_after_call - to_call
+        ev_call = true_equity * pot_after_call - to_call
         
         # Raise EV calculation
         raise_size = min(pot * 0.75, hero_stack)
@@ -253,7 +280,7 @@ class SixMaxSimulator:
         opp_bluff_prob = 1.0 if max_opp_equity < 0.33 and len(active_opponents) > 0 else 0.0
             
         # Showdown EV if called
-        ev_raise_if_called = equity * (pot + 2.0 * raise_size - to_call) - raise_size
+        ev_raise_if_called = true_equity * (pot + 2.0 * raise_size - to_call) - raise_size
         ev_raise = p_all_fold * pot + (1.0 - p_all_fold) * ev_raise_if_called
         
         return [ev_fold, ev_call, ev_raise], max_opp_equity, opp_bluff_prob
@@ -586,7 +613,7 @@ class SixMaxSimulator:
                                 })
                                 
                         target_evs, opp_strength, opp_bluff_prob = self._calculate_mc_target_evs(
-                            equity=eq, pot=pot, to_call=to_call, hero_stack=stacks[0],
+                            hero_cards=hands_str[0], pot=pot, to_call=to_call, hero_stack=stacks[0],
                             street_idx=street_idx, active_opponents=active_opps_list, board_str=board_str
                         )
                         
@@ -764,10 +791,8 @@ class SixMaxSimulator:
                     for p_win in range(6):
                         if net_profits[p_win] > 0:
                             transfer = abs(net_profits[p_lose]) * (net_profits[p_win] / total_gains)
-                            if p_lose == 0 and p_win != 0:
-                                self.hero_exploitation_net[p_win] -= transfer
-                            elif p_win == 0 and p_lose != 0:
-                                self.hero_exploitation_net[p_lose] += transfer
+                            self.global_exploitation_net[p_win][p_lose] += transfer
+                            self.global_exploitation_net[p_lose][p_win] -= transfer
                                 
         record.final_hero_profit = win_shares[0] - committed[0]
         return record

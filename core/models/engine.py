@@ -40,8 +40,14 @@ class ModelEngine:
         Returns the EVs for Fold, Call, Raise for the final sequence step.
         """
         with torch.no_grad():
-            q_vals = self.model(hole.to(self.device), board.to(self.device), ctx.to(self.device), act.to(self.device))
+            out = self.model(hole.to(self.device), board.to(self.device), ctx.to(self.device), act.to(self.device))
         
+        # Handle V11 dict output vs V8/V9 raw tensor output
+        if isinstance(out, dict):
+            q_vals = out['q_vals']
+        else:
+            q_vals = out
+            
         # Q-values shape: [batch, seq_len, 3]
         # We only care about the Q-values of the final state step
         final_q = q_vals[0, -1, :].cpu().numpy()

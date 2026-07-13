@@ -87,15 +87,31 @@ def vectorize_hand_samples(record, max_seq_len=20):
         
         pot_odds = dp['call_amount'] / (dp['pot_size'] + dp['call_amount']) if (dp['pot_size'] + dp['call_amount']) > 0 else 0.0
         
+        active_opps_count = sum(dp['active_opponents_mask'])
+        if active_opps_count > 0:
+            sum_vpip = 0.0
+            sum_agg = 0.0
+            for idx in range(5):
+                if dp['active_opponents_mask'][idx] == 1.0:
+                    seat_key = f"seat_{idx+1}"
+                    prof = record.opponents_profiles.get(seat_key, {'vpip': 0.3, 'agg': 0.4})
+                    sum_vpip += map_vpip_to_midpoint(prof.get('vpip', 0.3))
+                    sum_agg += map_agg_to_midpoint(prof.get('agg', 0.4))
+            global_vpip = sum_vpip / active_opps_count
+            global_agg = sum_agg / active_opps_count
+        else:
+            global_vpip = 0.3
+            global_agg = 0.4
+
         ctx = [
             dp['hero_position'] / 5.0,
             (dp['hero_stack'] / bb) / 400.0,
             (dp['pot_size'] / bb) / 1000.0,
             dp['equity'],
             pot_odds,
-            sum(dp['active_opponents_mask']) / 10.0,
+            active_opps_count / 10.0,
             dp['street'] / 3.0,
-            0.3, 0.4,
+            global_vpip, global_agg,
             dp['pot_size'] / bb,
             dp['call_amount'] / bb
         ]
@@ -113,7 +129,8 @@ def vectorize_hand_samples(record, max_seq_len=20):
         action_taken_seq[i] = dp['action']
         
         # Multi-Action Targets: [ev_fold, ev_call, ev_raise] from the simulator
-        t_evs = list(dp.get('target_evs', [0.0, 0.0, 0.0]))
+        # These come back in RAW CHIPS. We must scale them to BIG BLINDS!
+        t_evs = [ev / bb for ev in list(dp.get('target_evs', [0.0, 0.0, 0.0]))]
         
         # Override the true MC return for the action actually taken
         mc_return = (final_profit + dp['committed_before']) / bb
@@ -192,7 +209,7 @@ def simulate_worker(current_hand, bb_size, equity_sims, num_hands, hero_personal
         if rec and rec.decision_points:
             records.append(rec)
             
-    return records, sim.seat_histories, sim.global_metrics, sim.hero_exploitation_net
+    return records, sim.seat_histories, sim.global_metrics, sim.global_exploitation_net
 
 def format_time(seconds):
     h = int(seconds // 3600)
@@ -261,12 +278,19 @@ def print_dashboard(hands_done, total_hands, elapsed, hands_per_sec, train_loss,
     
     if global_exploitation_net is not None:
         lines.extend([
-            "|  EXPLOITATION SCOREBOARD (Hero Net vs Opponent):                                       |",
+            "|  EXPLOITATION SCOREBOARD (Net BB/100 Matrix):                                          |",
+            "|  [Winner \\ Loser] | Hero  | S1    | S2    | S3    | S4    | S5    |                    |",
         ])
-        for s in range(1, 6):
-            net = global_exploitation_net.get(s, 0.0)
-            bb100_net = (net / max(1.0, total_hands_simulated)) * 10.0
-            lines.append(f"|  - Hero vs Seat {s} {seat_labels[s]:<16}: {bb100_net:>+8.1f} BB/100                                     |")
+        for i in range(6):
+            row_str = f"|  {seat_labels[i]:<16} |"
+            for j in range(6):
+                if i == j:
+                    row_str += "   -   |"
+                else:
+                    net = global_exploitation_net.get(i, {}).get(j, 0.0)
+                    bb100_net = (net / max(1.0, total_hands_simulated)) * 10.0
+                    row_str += f" {bb100_net:>+5.1f} |"
+            lines.append(row_str + "                    |")
         lines.append("+----------------------------------------------------------------------------------------+")
     
     if telemetry is not None:
@@ -416,11 +440,11 @@ def run_training(personality, num_hands=100000, batch_size=256, epochs_per_batch
     maniac_path = os.path.join(weights_dir, 'expert_v11_maniac.pth')
     nit_path = os.path.join(weights_dir, 'expert_v11_nit.pth')
     sticky_path = os.path.join(weights_dir, 'expert_v11_sticky.pth')
-    past_path = os.path.join(weights_dir, 'v8_past_checkpoint.pth')
+    past_path = os.path.join(weights_dir, 'v11_past_checkpoint.pth')
     
     # CSV logger
     global_metrics = {'flop_players': 0, 'flop_count': 0}
-    global_exploitation_net = {i: 0.0 for i in range(1, 6)}
+    global_exploitation_net = {i: {j: 0.0 for j in range(6)} for i in range(6)}
     
     log_dir = os.path.dirname(__file__)
     log_path = os.path.join(log_dir, f'training_log_{personality}.csv')
@@ -538,8 +562,9 @@ def run_training(personality, num_hands=100000, batch_size=256, epochs_per_batch
                 batch_records.extend(res)
                 global_metrics['flop_players'] += worker_extra.get('flop_players', 0)
                 global_metrics['flop_count'] += worker_extra.get('flop_count', 0)
-                for s in range(1, 6):
-                    global_exploitation_net[s] += worker_exploitation.get(s, 0.0)
+                for i in range(6):
+                    for j in range(6):
+                        global_exploitation_net[i][j] += worker_exploitation.get(i, {}).get(j, 0.0)
                 for s in range(6):
                     seat_cumulative_profits[s] += worker_hist[s]['profit']
                     recent_vpip[s].extend(worker_hist[s]['vpip'])

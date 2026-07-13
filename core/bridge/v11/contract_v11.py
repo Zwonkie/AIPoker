@@ -65,9 +65,24 @@ class ContractV8V9(DataContract):
             else:
                 active_mask.append(0.0)
             
-        # Assuming defaults for overall opp VPIP/AGG if not tracking it globally
-        opp_vpip_norm = 0.3 
-        opp_agg_norm = 0.4
+        # Dynamically calculate global VPIP/AGG norms from active opponents
+        total_active = sum(active_mask)
+        if total_active > 0:
+            sum_vpip = 0.0
+            sum_agg = 0.0
+            for idx in range(5):
+                if active_mask[idx] == 1.0:
+                    seat_key = f"seat_{idx+1}"
+                    opp = state.seats[seat_key]
+                    vpip_col = opp.hud.vpip_color
+                    agg_col = opp.hud.agg_color
+                    sum_vpip += vpip_map.get(vpip_col, 0.3)
+                    sum_agg += agg_map.get(agg_col, 0.4)
+            opp_vpip_norm = sum_vpip / total_active
+            opp_agg_norm = sum_agg / total_active
+        else:
+            opp_vpip_norm = 0.3 
+            opp_agg_norm = 0.4
         
         ctx = [
             float(state.hero_position) / 5.0,

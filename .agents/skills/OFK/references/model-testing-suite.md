@@ -30,20 +30,23 @@ During model training and iteration (V4, V5, V6), standard sensitivity analysis 
 ### Scenario B: Opponent Personality Exploitation Test (Profile Sensitivity)
 *   **State Configuration**:
     *   **Street**: Flop
-    *   **Hero Hand**: `Ks Kd` (Strong Overpair)
     *   **Board**: `Th 7c 2d` (Slightly dry texture)
     *   **Pot Size**: 50 chips (5 BB)
     *   **Call Amount**: 10 chips (Facing a small bet)
     *   **Hero Stack**: 1000 chips (100 BB)
+*   **Hero Hands to Test**:
+    *   `Ks Kd` (Strong Overpair)
+    *   `9s 8s` (Medium Draw/Air)
+    *   `Jc 3d` (Weak Air)
 *   **Evaluated Opponent Personalities**:
     1.  **Nit** (VPIP: ~12%, AGG: ~18% / Blue/Blue):
-        *   *Expected Model Output*: Low `Raise` and `Call` EV. A Nit's bet indicates a very strong range, so Hero's hand has lower relative strength.
+        *   *Expected Model Output*: Low `Raise` and `Call` EV for all hands. A Nit's bet indicates a very strong range, so Hero's hand has lower relative strength.
     2.  **TAG (Tight-Aggressive)** (VPIP: ~22%, AGG: ~46% / Green/Green):
         *   *Expected Model Output*: Balanced EV profile. Standard GTO-aligned outputs.
     3.  **Fish (Loose-Passive)** (VPIP: ~42%, AGG: ~25% / Yellow/Blue):
-        *   *Expected Model Output*: Highly positive `Call` EV. Fish over-call with weak holdings, so Hero wants to keep them in the pot.
+        *   *Expected Model Output*: Highly positive `Call` EV for strong hands. Fish over-call with weak holdings, so Hero wants to keep them in the pot. Weak/Medium hands might fold.
     4.  **Maniac (Loose-Aggressive)** (VPIP: ~62%, AGG: ~85% / Red/Red):
-        *   *Expected Model Output*: Highly positive `Raise` or `Call` (trapping) EV. Maniacs bet wide ranges with high bluff frequencies, maximizing Hero's showdown value.
+        *   *Expected Model Output*: Highly positive `Raise` or `Call` (trapping) EV for strong hands. Maniacs bet wide ranges with high bluff frequencies. For medium/weak hands, the model might find profitable floats or bluff raises depending on fold equity.
 
 ### Scenario C: Pot & Stack Size Scaling Test (Geometry Check)
 *   **State Configuration**:
@@ -113,3 +116,7 @@ During model training and iteration (V4, V5, V6), standard sensitivity analysis 
     *   **Opponent**: Calling Station
 *   **Expected Behavior**:
     *   `Raise EV` should overwhelmingly dominate `Call EV`. If the model is checking or flat-calling the absolute nuts on the river against a loose player, it is missing massive value.
+
+
+## Presenting
+Show all test scenario output data and give general comments on each scenario.

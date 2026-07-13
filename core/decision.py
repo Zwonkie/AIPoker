@@ -23,6 +23,7 @@ class PokerDecisionEngine:
             'V11 Nit': ModelEngine(expert_name="expert_v11_nit.pth", is_v11=True),
             'V11 Sticky': ModelEngine(expert_name="expert_v11_sticky.pth", is_v11=True),
             'Herocules (v11 Main)': ModelEngine(expert_name="expert_v11_main.pth", is_v11=True),
+            'herocules_v11_fuzzyHeuristicsOpp.pth': ModelEngine(expert_name="herocules_v11_fuzzyHeuristicsOpp.pth", is_v11=True),
         }
         self.active_model_name = 'Herocules (v11 Main)'
         self.bridge_v9 = ContractV8V9()

@@ -34,18 +34,27 @@ class PokerEvaluator:
         
         return score, class_str, percentage
 
-    def calculate_equity(self, board: list, hand: list, num_opponents: int = 1, num_simulations: int = 2000):
+    def calculate_equity(self, board: list, hand: list, num_opponents: int = 1, num_simulations: int = 2000, specific_opponents: list = None):
         """
         Calculates hand equity using Monte Carlo simulations.
+        If specific_opponents is provided (list of 2-card lists), it evaluates exactly against those hands.
         """
         try:
             board_ints = [self.parse_card(c) if isinstance(c, str) else c for c in board]
             hand_ints = [self.parse_card(c) if isinstance(c, str) else c for c in hand]
+            
+            specific_opp_ints = []
+            if specific_opponents is not None:
+                for opp_hand in specific_opponents:
+                    specific_opp_ints.append([self.parse_card(c) if isinstance(c, str) else c for c in opp_hand])
         except Exception as e:
             return 0.0, f"Error parsing cards: {e}"
 
         known_cards = board_ints + hand_ints
-        
+        if specific_opp_ints:
+            for opp_hand in specific_opp_ints:
+                known_cards.extend(opp_hand)
+                
         # Build the deck, excluding known cards
         full_deck = Deck.GetFullDeck()
         remaining_deck = [c for c in full_deck if c not in known_cards]
@@ -55,7 +64,13 @@ class PokerEvaluator:
         losses = 0
         
         needed_board = 5 - len(board_ints)
-        needed_opponents_cards = 2 * num_opponents
+        
+        if specific_opp_ints:
+            num_opponents = len(specific_opp_ints)
+            needed_opponents_cards = 0
+        else:
+            needed_opponents_cards = 2 * num_opponents
+            
         total_needed = needed_board + needed_opponents_cards
         
         if len(remaining_deck) < total_needed:
@@ -68,11 +83,15 @@ class PokerEvaluator:
             
             # Distribute cards
             sim_board = board_ints + sim_cards[:needed_board]
-            opponents_hands = []
-            idx = needed_board
-            for _ in range(num_opponents):
-                opponents_hands.append(sim_cards[idx:idx+2])
-                idx += 2
+            
+            if specific_opp_ints:
+                opponents_hands = specific_opp_ints
+            else:
+                opponents_hands = []
+                idx = needed_board
+                for _ in range(num_opponents):
+                    opponents_hands.append(sim_cards[idx:idx+2])
+                    idx += 2
                 
             # Evaluate hero score
             hero_score = self.evaluator.evaluate(sim_board, hand_ints)
