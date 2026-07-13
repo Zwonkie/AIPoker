@@ -152,6 +152,9 @@
             </h1>
             <div style="display: flex; gap: 16px; align-items: center;">
                 <div class="controls" style="display: flex; gap: 8px; align-items: center;">
+                    <label style="font-size: 12px; color: var(--text-muted); display: flex; align-items: center; gap: 4px; border-right: 1px solid var(--border-color); padding-right: 12px;">
+                        <input type="checkbox" id="toggle-trends" checked onchange="toggleTrends()"> Show Trends
+                    </label>
                     <button id="btn-prev" onclick="goBack()" disabled
                         style="background: var(--panel-bg); color: var(--text-main); border: 1px solid var(--border-color); border-radius: 4px; padding: 4px 8px; cursor: pointer;">◄</button>
                     <span id="history-status"
@@ -255,8 +258,19 @@
 
         let historyBuffer = [];
         let historyIndex = -1;
+        let showTrends = true;
+
+        function toggleTrends() {
+            showTrends = document.getElementById('toggle-trends').checked;
+            if (historyIndex === -1 && historyBuffer.length > 0) {
+                renderData(historyBuffer[historyBuffer.length - 1], historyBuffer.length - 1);
+            } else if (historyIndex >= 0) {
+                renderData(historyBuffer[historyIndex], historyIndex);
+            }
+        }
 
         function getTrend(currentVal, extractFn, dataIndex) {
+            if (!showTrends) return '';
             if (dataIndex <= 0) return '';
             let sum = 0;
             let count = 0;

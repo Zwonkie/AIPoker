@@ -1,0 +1,40 @@
+version: "v12d"
+training:
+  target_hands: 100000
+  batch_size: 256
+  epochs_per_batch: 3
+  sim_batch_size: 2000
+  learning_rate: 0.001
+  equity_sims: 2000
+  mid_flight_diagnostics_interval: 10000
+
+curriculum:
+  phase_1_max_hands: 10000
+  phase_1_stacks: [100.0]
+  phase_5_focus_rounds: true
+  # Phase 3 = "extreme stacks": at hand 30k the starting stack jumps from the 80-120bb
+  # moderate band to 10-300bb (sigma=90). That abrupt jump manufactures fat-tailed deep-stack
+  # pots that bias the "enter" EV targets upward (the same fat tail TARGET_CLIP_BB fights).
+  # Set true to hold stacks in the moderate band the whole run and isolate that effect.
+  # V12-D: Phase 3 OFF — stacks stay in the 80-120bb moderate band for the whole run.
+  disable_extreme_stacks: true
+
+# --- Opponent lineup ---------------------------------------------------------
+# V12-D DIAGNOSTIC: isolate the VPIP ratchet. The field is a tight, STATIC set of
+# heuristic bots for which the game-theoretically correct response is unambiguously
+# to TIGHTEN. If VPIP still inflates here, the bug is in the learning signal (EV
+# targets / regret-matching policy), not in opponent modelling or a co-evolving
+# mirror. See simulator.SixMaxSimulator and train.run_training.
+opponents:
+  pool: ["nit", "tag"]         # styles that populate opponent seats (both tight & static)
+  weights: [0.5, 0.5]          # sampling weights, aligned index-for-index with `pool`
+  live_players: 3              # players dealt in per hand INCLUDING Hero (Hero + Nit + TAG)
+  disable_past_self: true      # remove the co-evolving Past-Self seat (kills the mirror)
+  disable_focus_rounds: true   # no Phase-5 focus swarms — field stays constant end-to-end
+#
+# To restore the full multi-personality league, use instead:
+#   pool: ["tag", "past", "nit", "maniac", "fish"]
+#   weights: [0.30, 0.25, 0.20, 0.15, 0.10]
+#   live_players: 6
+#   disable_past_self: false
+#   disable_focus_rounds: false
