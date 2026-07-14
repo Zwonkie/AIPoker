@@ -97,6 +97,13 @@ POLICY_TARGET_TEMP = 1.0
 # NOTE: the CRITIC always keeps the realized return on its taken-action head; this only
 # changes what the ACTOR regresses toward.
 POLICY_TARGET_SOURCE = 'realized'
+# Realization discount on the counterfactual POLICY target. The counterfactual EVs use all-in
+# equity (no multi-street realization), so they overvalue speculative entries -> the model
+# learns a structurally loose style (loses to tight fields, VPIP 60%+). This penalizes the
+# call/raise policy-target values for sub-pivot-equity hands, folding edges that won't be
+# realized. bb units; 0 disables. Only affects the ACTOR target, not the critic.
+POLICY_TIGHTNESS_BB = 0.0
+POLICY_TIGHTNESS_PIVOT = 0.45
 
 
 def sharpen_distribution(probs, temp):
@@ -268,6 +275,13 @@ def vectorize_hand_samples(record, max_seq_len=20):
         # (legacy) or the counterfactual EV (removes the fold-equity survivorship ratchet).
         if POLICY_TARGET_SOURCE == 'counterfactual':
             p_evs = [0.0, mc_evs[1], mc_evs[2]]
+            # Realization discount: the all-in-equity counterfactual overvalues speculative
+            # entries. Penalize call/raise for sub-pivot equity so the ACTOR folds edges that
+            # won't be realized multi-street (fixes the structurally-loose baseline).
+            if POLICY_TIGHTNESS_BB > 0.0 and dp['equity'] < POLICY_TIGHTNESS_PIVOT:
+                pen = POLICY_TIGHTNESS_BB * (POLICY_TIGHTNESS_PIVOT - dp['equity']) / POLICY_TIGHTNESS_PIVOT
+                p_evs[1] -= pen
+                p_evs[2] -= pen
         else:
             p_evs = t_evs
         policy_target_seq[idx] = sharpen_distribution(regret_match_policy(p_evs), POLICY_TARGET_TEMP)
@@ -285,7 +299,8 @@ def simulate_worker(current_hand, bb_size, equity_sims, num_hands, hero_personal
                     nit_model_path=None, sticky_model_path=None, past_model_path=None,
                     bootstrap_alpha=0.0, focus_archetype=None,
                     opp_pool=None, opp_weights=None, live_players=6,
-                    disable_extreme_stacks=False, fixed_stack_bb=None, disable_exploration=False):
+                    disable_extreme_stacks=False, fixed_stack_bb=None, disable_exploration=False,
+                    ablate_hole_cards=False):
     """Headless simulation worker process for V8."""
     sim = SixMaxSimulator(
         bb_size=bb_size, equity_sims=equity_sims, hero_personality=hero_personality,
@@ -315,6 +330,7 @@ def simulate_worker(current_hand, bb_size, equity_sims, num_hands, hero_personal
             return None
         try:
             m = PokerEVModelV4()
+            m.ablate_hole_cards = ablate_hole_cards
             m.load_state_dict(load_ckpt_state(path, MANIFEST))
             m.eval()
             return m
@@ -528,7 +544,8 @@ def run_training(personality, num_hands=100000, batch_size=256, epochs_per_batch
                  disable_extreme_stacks=False, fixed_stack_bb=None, disable_exploration=False,
                  disable_bootstrap=False, aux_loss_weight=10.0, disable_target_shaping=False,
                  target_clip_bb=None, policy_target_temp=1.0, policy_entropy_penalty=0.0,
-                 policy_target_source='realized'):
+                 policy_target_source='realized', ablate_hole_cards=False,
+                 policy_tightness_bb=0.0):
     # Overrides the module globals that vectorize_hand_samples reads at call time (it runs
     # in THIS process, not the workers). Two SEPARATE concerns:
     #  * target_clip_bb = VARIANCE control (load-bearing). Unclipped realized returns are
@@ -547,6 +564,8 @@ def run_training(personality, num_hands=100000, batch_size=256, epochs_per_batch
         COUNTERFACTUAL_WEIGHT = 0.0
     POLICY_TARGET_TEMP = policy_target_temp      # actor-target sharpening (read by vectorize)
     POLICY_TARGET_SOURCE = policy_target_source  # 'realized' | 'counterfactual'
+    global POLICY_TIGHTNESS_BB
+    POLICY_TIGHTNESS_BB = policy_tightness_bb     # realization discount on counterfactual actor target
     if save_name is None:
         save_name = f"expert_{personality}.pth"
         
@@ -564,6 +583,7 @@ def run_training(personality, num_hands=100000, batch_size=256, epochs_per_batch
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     
     model = PokerEVModelV4().to(device)
+    model.ablate_hole_cards = ablate_hole_cards
     optimizer = torch.optim.Adam(model.parameters(), lr=lr)
     criterion = nn.HuberLoss(reduction='none', delta=2.0)
     scaler = torch.cuda.amp.GradScaler()
@@ -723,7 +743,7 @@ def run_training(personality, num_hands=100000, batch_size=256, epochs_per_batch
                 (hands_done, 10.0, equity_sims, hands_per_worker, personality,
                  active_model_path, m_path, n_path, s_path, p_path, bootstrap_alpha, focus_archetype,
                  opp_pool, opp_weights, live_players, disable_extreme_stacks,
-                 fixed_stack_bb, disable_exploration)
+                 fixed_stack_bb, disable_exploration, ablate_hole_cards)
                 for _ in range(num_workers)
             ]
             
@@ -1069,6 +1089,8 @@ if __name__ == '__main__':
     policy_target_temp = float(t_cfg.get('policy_target_temperature', 1.0))  # <1 sharpens actor target
     policy_entropy_penalty = float(t_cfg.get('policy_entropy_penalty', 0.0))  # +beta*H(pred) in actor loss
     policy_target_source = str(t_cfg.get('policy_target_source', 'realized'))  # 'realized' | 'counterfactual'
+    ablate_hole_cards = bool(t_cfg.get('ablate_hole_cards', False))  # zero hole embed -> force equity use
+    policy_tightness_bb = float(t_cfg.get('policy_tightness_bb', 0.0))  # realization discount on actor target
 
     # Opponent lineup: a mapping-style `opponents` block drives the config-driven pool.
     # A legacy list-style block (old per-seat entries) is ignored and falls back to the
@@ -1097,6 +1119,9 @@ if __name__ == '__main__':
     print(f"  Target clip:     {target_clip_bb} bb")
     print(f"  Actor sharpen:   target_temp={policy_target_temp}  entropy_penalty={policy_entropy_penalty}")
     print(f"  Policy target:   {policy_target_source}  (actor regresses toward this action-value source)")
+    print(f"  Policy tightness:{policy_tightness_bb} bb (realization discount below eq {POLICY_TIGHTNESS_PIVOT})")
+    if ablate_hole_cards:
+        print(f"  Hole cards:      ABLATED (zeroed) -- forcing equity/board reliance")
     print(f"  Bootstrap:       {'DISABLED (pure model)' if disable_bootstrap else 'enabled'}   "
           f"Exploration: {'DISABLED' if disable_exploration else 'enabled'}")
 
@@ -1118,5 +1143,6 @@ if __name__ == '__main__':
         disable_exploration=disable_exploration, disable_bootstrap=disable_bootstrap,
         aux_loss_weight=aux_loss_weight, disable_target_shaping=disable_target_shaping,
         target_clip_bb=target_clip_bb, policy_target_temp=policy_target_temp,
-        policy_entropy_penalty=policy_entropy_penalty, policy_target_source=policy_target_source
+        policy_entropy_penalty=policy_entropy_penalty, policy_target_source=policy_target_source,
+        ablate_hole_cards=ablate_hole_cards, policy_tightness_bb=policy_tightness_bb
     )

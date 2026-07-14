@@ -7,10 +7,15 @@ class PokerEVModelV4(nn.Module):
     Decision Transformer model for Pluribus V4.
     Processes sequences of (State, Action) inputs using Multi-Head Self-Attention.
     """
-    def __init__(self, card_embed_dim=64, context_dim=35, d_model=128, nhead=4, num_layers=3, dim_feedforward=512, max_seq_len=20):
+    def __init__(self, card_embed_dim=16, context_dim=35, d_model=128, nhead=4, num_layers=3, dim_feedforward=512, max_seq_len=20):
         super().__init__()
         self.d_model = d_model
         self.max_seq_len = max_seq_len
+        # Diagnostic: when True the hole-card embedding is zeroed, forcing the model to
+        # derive hand strength from equity+board+context instead of memorizing hole ranks.
+        # Used to test whether equity can be made load-bearing (no tensor-shape change, so
+        # checkpoints stay compatible). Default False = normal behavior.
+        self.ablate_hole_cards = False
         
         # 1. Embeddings
         self.card_embedding = nn.Embedding(num_embeddings=53, embedding_dim=card_embed_dim, padding_idx=52)
@@ -66,6 +71,23 @@ class PokerEVModelV4(nn.Module):
         self.head_bluff = nn.Sequential(nn.Linear(d_model, 32), nn.ReLU(), nn.Linear(32, 1))
         self.head_strength = nn.Sequential(nn.Linear(d_model, 32), nn.ReLU(), nn.Linear(32, 1))
         self.head_equity = nn.Sequential(nn.Linear(d_model, 32), nn.ReLU(), nn.Linear(32, 1))
+
+        # 5. EQUITY-PRIMARY base heads. Q and policy are structured as
+        #        value = base(equity, price) + residual(transformer over cards/board).
+        # The base path sees ONLY strength+price scalars (equity, pot_odds, pot, call, street),
+        # so hand strength MUST flow through equity -- it cannot be replaced by a hole-card
+        # lookup. The card/board transformer is bottlenecked (card_embed_dim=16) and only adds
+        # a refinement (draws, blockers, texture). Combined with the zero-init of the residual
+        # heads below, the model STARTS as a pure-equity player and learns cards as corrections.
+        # context indices for the base head: equity, pot_odds, pot, call, street.
+        # (Opponent-tendency features 7,8 were tried here but HURT — the model needs adaptation
+        # via range-aware equity, not raw HUD scalars bolted onto the base head.)
+        self.SP_IDX = [3, 4, 2, 9, 6]
+        self.equity_base_q = nn.Sequential(nn.Linear(len(self.SP_IDX), 32), nn.ReLU(), nn.Linear(32, 3))
+        self.equity_base_pi = nn.Sequential(nn.Linear(len(self.SP_IDX), 32), nn.ReLU(), nn.Linear(32, 3))
+        # Zero-init the residual heads' final layer so value == base at init (equity-primary).
+        nn.init.zeros_(self.head[-1].weight); nn.init.zeros_(self.head[-1].bias)
+        nn.init.zeros_(self.head_policy[-1].weight); nn.init.zeros_(self.head_policy[-1].bias)
         
     def _generate_causal_mask(self, sz, device):
         """Generate a standard causal mask (future states are True, which means masked out)."""
@@ -89,6 +111,8 @@ class PokerEVModelV4(nn.Module):
         # 1. Embed Hole Cards
         # hole_emb: [batch, 2, 64] -> sum to [batch, 64] -> expand to [batch, seq_len, 64]
         hole_emb = self.card_embedding(hole).sum(dim=1).unsqueeze(1).expand(-1, seq_len, -1)
+        if self.ablate_hole_cards:
+            hole_emb = torch.zeros_like(hole_emb)
         
         # 2. Embed Board Cards at each step
         # board_emb: [batch, seq_len, 5, 64] -> sum to [batch, seq_len, 64]
@@ -112,9 +136,12 @@ class PokerEVModelV4(nn.Module):
         mask = self._generate_causal_mask(seq_len, device)
         transformer_out = self.transformer(x, mask=mask, src_key_padding_mask=key_padding_mask) # [batch, seq_len, 128]
         
-        # 7. Predict critic Q-values, actor policy logits, and auxiliaries
-        q_vals = self.head(transformer_out)                 # [batch, seq_len, 3] critic
-        policy_logits = self.head_policy(transformer_out)   # [batch, seq_len, 3] actor
+        # 7. Predict critic Q-values and actor policy logits as EQUITY-PRIMARY base + residual.
+        # Base sees only strength+price scalars (so equity is load-bearing); the transformer
+        # residual refines with card/board detail.
+        sp = context[:, :, self.SP_IDX]                     # [batch, seq_len, 5]
+        q_vals = self.equity_base_q(sp) + self.head(transformer_out)             # critic
+        policy_logits = self.equity_base_pi(sp) + self.head_policy(transformer_out)  # actor
 
         return {
             'q_vals': q_vals,

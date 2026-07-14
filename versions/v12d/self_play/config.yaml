@@ -15,18 +15,26 @@ training:
   disable_target_shaping: true  # BIAS PRIORS off (tightness penalty + counterfactual EVs)
   target_clip_bb: 40.0          # VARIANCE clip -- KEEP ON. Removing it diverged the critic
                                 # (Q-loss 10-20, policy -> uniform, VPIP 73%). Not a bias hack.
-  disable_bootstrap: true       # pure-model play from hand 0 (no heuristic warmup)
-  disable_exploration: true     # no 5% random / heuristic anchor -> data = model's true policy
+  # PRONG 2: re-enabled. Isolation phase is over; now we need DIVERSE, good-quality data.
+  disable_bootstrap: false      # heuristic warmup generates good-play postflop examples (decays by 30k)
+  disable_exploration: false    # 5% random + heuristic anchor -> model visits diverse states
   # --- Policy target source (THE fix under test) -------------------------------
   # inspect_ev_targets proved the counterfactual EVs are well-calibrated (fold weak hands)
   # but the realized-return override reinforces weak entries that won uncontested vs folders.
   # 'counterfactual' feeds regret-matching the correct EVs and removes that ratchet.
   policy_target_source: counterfactual  # 'realized' (legacy) | 'counterfactual'
+  # Realization discount: the counterfactual uses all-in equity (no multi-street realization),
+  # overvaluing speculative entries -> structurally loose (VPIP 60%+, loses to tight fields).
+  # This folds sub-pivot-equity edges in the ACTOR target. Tune to land VPIP ~30-40%.
+  policy_tightness_bb: 5.0
+  # Hole-card ablation probe -- now OFF: the equity-primary base + bottlenecked (16-dim) card
+  # residual architecture keeps cards as a refinement structurally, so we want them present.
+  ablate_hole_cards: false
   # --- Actor sharpening: NOW attacks Cause 2 (regret softness) on a CORRECT fold-first
   # target. Unlike the earlier attempt (which sharpened a realized/loose target), sharpening
   # the counterfactual target should TIGHTEN: regret([0,-0.07,-0.53])=[.61,.39,0] entry 39%
   # -> temp 0.4 -> ~[.82,.18] entry ~18%.
-  policy_target_temperature: 0.4
+  policy_target_temperature: 1.0
   policy_entropy_penalty: 0.0
 
 curriculum:
@@ -49,12 +57,18 @@ curriculum:
 # to TIGHTEN. If VPIP still inflates here, the bug is in the learning signal (EV
 # targets / regret-matching policy), not in opponent modelling or a co-evolving
 # mirror. See simulator.SixMaxSimulator and train.run_training.
+# PRONG 2 (postflop-data generation): the tight Nit+TAG field folded preflop, so hands
+# rarely saw a flop -> postflop data was starved. A loose CALLING-STATION-heavy field with a
+# fuller table sees far more flops/turns/rivers, giving the equity-primary model the varied
+# postflop spots it needs to learn a steep Q(equity) mapping.
 opponents:
-  pool: ["nit", "tag"]         # styles that populate opponent seats (both tight & static)
-  weights: [0.5, 0.5]          # sampling weights, aligned index-for-index with `pool`
-  live_players: 3              # players dealt in per hand INCLUDING Hero (Hero + Nit + TAG)
-  disable_past_self: true      # remove the co-evolving Past-Self seat (kills the mirror)
-  disable_focus_rounds: true   # no Phase-5 focus swarms — field stays constant end-to-end
+  pool: ["fish", "tag", "nit"]   # fish = calling station (calls wide -> flops go to showdown)
+  weights: [0.45, 0.30, 0.25]    # station-heavy: best postflop/value data (this field's model
+                                 # beat stations +51). The loose style it induced is now
+                                 # countered by policy_tightness_bb, not by starving the data.
+  live_players: 4                # fuller table -> more multiway postflop volume
+  disable_past_self: true        # keep the co-evolving mirror off (one variable at a time)
+  disable_focus_rounds: true
 #
 # To restore the full multi-personality league, use instead:
 #   pool: ["tag", "past", "nit", "maniac", "fish"]
