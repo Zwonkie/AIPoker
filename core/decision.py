@@ -1,33 +1,29 @@
 import os
 from core.models.engine import ModelEngine
+from core.models.v13_engine import V13ModelEngine
 from core.bridge.contract_v8_v9 import ContractV8V9
 from core.bridge.v11.contract_v11 import ContractV8V9 as ContractV11
+from versions.v13.core.contract import ContractV12
 from core.board_state import BoardState
 from core.action import PokerAction
 
 class PokerDecisionEngine:
     def __init__(self, game_type="limit"):
         self.game_type = game_type
-        # Only loading V8/V9 supported architectures
+        # LIVE MODEL REGISTRY. Only models that actually LOAD belong here — a model that fails
+        # to load outputs random actions, which is dangerous at a real table. The legacy
+        # v8/v9/v10 weights are missing from core/weights/ and the v11 checkpoints are the old
+        # 159-feature contract (mismatch vs the 163-feature architecture), so all of them were
+        # loading garbage. They are pruned; their weight files remain on disk for reproducibility.
+        # To re-enable a legacy model, first fix its weights/contract, THEN re-add it here.
         self.models = {
-            'Herocules (v8 Self-Play)': ModelEngine(expert_name="expert_v8_selfplay.pth"),
-            'Herocules (v11 Nit)': ModelEngine(expert_name="expert_v11_nit.pth", is_v11=True),
-            'Herocules (v11 Maniac)': ModelEngine(expert_name="expert_v11_maniac.pth", is_v11=True),
-            'Herocules (v11 Sticky)': ModelEngine(expert_name="expert_v11_sticky.pth", is_v11=True),
-            'Herocules (v9 Main)': ModelEngine(expert_name="expert_v9_main.pth"),
-            'Herocules (v10 Main)': ModelEngine(expert_name="v10_100k_main.pt"),
-            'v10_100k_main.pt': ModelEngine(expert_name="v10_100k_main.pt"),
-            'v10_50k_main.pt': ModelEngine(expert_name="v10_50k_main.pt"),
-            'V10 100k Final': ModelEngine(expert_name="expert_v8_main.pth"),
-            'V11 Maniac': ModelEngine(expert_name="expert_v11_maniac.pth", is_v11=True),
-            'V11 Nit': ModelEngine(expert_name="expert_v11_nit.pth", is_v11=True),
-            'V11 Sticky': ModelEngine(expert_name="expert_v11_sticky.pth", is_v11=True),
-            'Herocules (v11 Main)': ModelEngine(expert_name="expert_v11_main.pth", is_v11=True),
-            'herocules_v11_fuzzyHeuristicsOpp.pth': ModelEngine(expert_name="herocules_v11_fuzzyHeuristicsOpp.pth", is_v11=True),
+            # V13: equity-primary architecture + range-aware equity (opponent adaptation).
+            'Herocules (v13 Range-Aware)': V13ModelEngine(weight_name="expert_main.pth"),
         }
-        self.active_model_name = 'Herocules (v11 Main)'
+        self.active_model_name = 'Herocules (v13 Range-Aware)'
         self.bridge_v9 = ContractV8V9()
         self.bridge_v11 = ContractV11()
+        self.bridge_v13 = ContractV12(max_seq_len=20)
         self.hand_history_buffer = []
         self._last_street = None
         self._last_hole_cards = None
@@ -36,8 +32,8 @@ class PokerDecisionEngine:
         if model_name in self.models:
             self.active_model_name = model_name
         else:
-            print(f"Warning: {model_name} is not loaded or supported. Falling back to V9 Main.")
-            self.active_model_name = 'Herocules (v9 Main)'
+            print(f"Warning: {model_name} is not loaded or supported. Falling back to V13.")
+            self.active_model_name = 'Herocules (v13 Range-Aware)'
 
     def make_decision(self, board_state: BoardState, 
                       use_preflop_chart: bool = True,
@@ -67,8 +63,12 @@ class PokerDecisionEngine:
         
         self.hand_history_buffer.append(board_state)
 
+        is_v13_model = getattr(active_model, 'is_v13', False) or 'v13' in self.active_model_name.lower()
         try:
-            if getattr(active_model, 'is_v11', False) or 'v11' in self.active_model_name.lower():
+            if is_v13_model:
+                # V13 uses the sequence contract (ContractV12) and the ACTOR policy head.
+                hole, board, ctx, act = self.bridge_v13.to_tensors(self.hand_history_buffer, action_history_raw)
+            elif getattr(active_model, 'is_v11', False) or 'v11' in self.active_model_name.lower():
                 hole, board, ctx, act = self.bridge_v11.to_tensors(self.hand_history_buffer, action_history_raw)
             else:
                 hole, board, ctx, act = self.bridge_v9.to_tensors(board_state, action_history_raw)
@@ -99,9 +99,10 @@ class PokerDecisionEngine:
         # 3. Apply Post-flop Math Engine Guardrail (Pot Odds Check)
         math_engine_status = "Passed"
         math_engine_details = "Math checks out OK"
-        # Bypass math engine for V11 models to prevent masking their true behavior
+        # Bypass math engine for V11 AND V13 models to preserve their trained-policy behavior
+        # (V13 already reasons about pot odds + opponent range via range-aware equity).
         is_v11_model = getattr(active_model, 'is_v11', False) or 'v11' in self.active_model_name.lower()
-        if use_math_engine and board_state.street != 'Preflop' and board_state.call_amount > 0 and not is_v11_model:
+        if use_math_engine and board_state.street != 'Preflop' and board_state.call_amount > 0 and not is_v11_model and not is_v13_model:
             pot_odds = board_state.call_amount / (board_state.pot_size + board_state.call_amount)
             
             buffer_offset = -0.05

@@ -7,6 +7,34 @@
 
 ---
 
+## 0. CURRENT CANONICAL FOUNDATION (added 2026-07-14)
+
+- **`versions/v13/`** is the CURRENT best foundation — it inherits every v12_validated fix and
+  adds **range-aware equity** (opponent adaptation): it dominates v12_validated on every field
+  (Loose −0.9→**+29.4**, Tight −48.3→**−15.0**, Stations +2.7→**+7.5**). See
+  [`versions/v13/VALIDATED_FINDINGS.md`](file:///c:/REPO/Antigravity/AIPoker/versions/v13/VALIDATED_FINDINGS.md).
+  **Start new versions from v13.** Note the train/serve rule: range-aware equity must be computed
+  the same way in training, eval, AND any live-play bridge, or the model silently mismatches.
+- **`versions/v12_validated/`** remains the documented, frozen baseline for the *training-loop and
+  architecture* fixes (target clip, counterfactual policy target, equity-primary architecture,
+  realization discount, postflop-data field).
+
+Both are test-verified and **must not be changed except through the testing workflow** documented in
+[`versions/v12_validated/VALIDATED_FINDINGS.md`](file:///c:/REPO/Antigravity/AIPoker/versions/v12_validated/VALIDATED_FINDINGS.md) §4.
+
+- **Start new versions from it:** `cp -r versions/v12_validated versions/vN` (per §6 checklist).
+- **Locked fixes (see FINDINGS §1):** target clip = 40 (critic stability); counterfactual policy
+  target (no fold-equity ratchet); equity-primary architecture (equity base + bottlenecked 16-dim
+  card residual — cures postflop-blindness); realization discount `policy_tightness_bb`; postflop
+  data via a loose calling-station field + exploration/bootstrap.
+- **Validators (run before/after any change):** `overfit_sanity.py` (loop wiring),
+  `inspect_policy_vs_target.py` (behavior), `eval_pure_policy.py` (the ONLY honest winrate —
+  training-time BB/100 & VPIP are masked by the exploration anchor and must not be trusted).
+- **Known open limitation → [`versions/v13/SPECS.md`](file:///c:/REPO/Antigravity/AIPoker/versions/v13/SPECS.md):** no opponent adaptation (loses to pure-nit fields); fix is range-aware equity.
+- `versions/v12d/` is the DEPRECATED scratch copy that produced these findings — do not build on it.
+
+---
+
 ## 1. Why this exists
 
 The repo already partitions into 4 layers and clones some files per version, yet versions still got mixed and caused real failures this cycle:

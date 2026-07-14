@@ -1,20 +1,21 @@
-"""V12 version manifest — the single source of truth for what "v12" is.
+"""V12D — DEPRECATED scratch/diagnostic version.
 
-The runtime loads v12 ONLY through this. To start v13: copy versions/v12 -> versions/v13,
-clear versions/v13/weights, and edit the fields below (bump contract_version only if the
-tensor schema changes).
+This was the working copy used to diagnose and fix the V12 training foundation. Its
+validated result has been promoted to `versions/v12_validated/` (the canonical foundation).
+Kept only for its diagnostic history; do NOT build on it. Given a distinct version_id so it
+no longer collides with the real "v12" in shared.registry.
 
-See: .agents/skills/OFK/references/versioned-architecture-guardrails.md
+See: versions/v12_validated/VALIDATED_FINDINGS.md
 """
 from shared.manifest import VersionManifest
 
 MANIFEST = VersionManifest(
-    version_id="v12",
-    context_dim=35,                 # matches ContractV8V9 (v12) / model state_proj input
-    contract_version=2,             # inherited from v11's 35-feature contract (unchanged schema)
+    version_id="v12d",
+    context_dim=35,
+    contract_version=2,
     action_space=("fold", "call", "raise"),
     model_class="versions.v12d.core.model:PokerEVModelV4",
     contract_class="versions.v12d.core.contract:ContractV12",
-    weights_dir="versions/v12/weights",
-    status="active",
+    weights_dir="versions/v12d/weights",
+    status="deprecated",
 )

@@ -190,25 +190,17 @@ class PHPHelpApp(ctk.CTk):
         self.mode_dropdown.grid(row=4, column=0, padx=20, pady=5, sticky="ew")
         
         # Model Selection
-        self.model_var = ctk.StringVar(value="Pluribus (v8 Self-Play 200k)")
+        self.model_var = ctk.StringVar(value="Herocules (v13 Range-Aware)")
         self.model_label = ctk.CTkLabel(self.sidebar, text="Decision Model:", anchor="w")
         self.model_label.grid(row=5, column=0, padx=20, pady=(10, 0), sticky="w")
         self.model_dropdown = ctk.CTkOptionMenu(
             self.sidebar, 
+            # Only models that actually load are listed (see core/decision.py registry). The
+            # legacy Pluribus/v8-v11 entries were pruned — their weights are missing or use the
+            # old 159-feature contract, so selecting them would output random actions live.
             values=[
-                "Pluribus (Standalone)", 
-                "Pluribus (Policy Classifier)", 
-                "Pluribus (EV v2 7-Feature)", 
-                "Pluribus (v3 Self-Play)", 
-                "Pluribus (v4 Self-Play)",
-                "Pluribus (v5 Self-Play)",
-                "Pluribus (v8 Self-Play)",
-                "Pluribus (v8 Self-Play 50k)",
-                "Pluribus (v8 Self-Play 200k)",
-                "Pluribus (v8 Nit)",
-                "Pluribus (v8 Maniac)",
-                "Pluribus (v8 Sticky)"
-            ], 
+                "Herocules (v13 Range-Aware)",
+            ],
             variable=self.model_var,
             command=self.on_model_changed
         )
@@ -931,13 +923,35 @@ class PHPHelpApp(ctk.CTk):
                         num_opponents = self.opponents_var.get()
                     num_sims = self.simulations_var.get()
                     
-                    equity, sim_msg = self.evaluator.calculate_equity(
-                        stabilized_state['community_cards'],
-                        stabilized_state['hero_cards'],
-                        num_opponents=num_opponents,
-                        num_simulations=num_sims
-                    )
-                    
+                    # V13 requires RANGE-AWARE equity (hero equity vs each opponent's VPIP-color
+                    # range) to match how it was trained — using vs-random equity here would be a
+                    # silent train/serve mismatch. Falls back to vs-random if v13 isn't active or
+                    # the range-aware calc can't run.
+                    equity = None
+                    sim_msg = None
+                    if 'v13' in self.decision_engine.active_model_name.lower():
+                        try:
+                            from versions.v13.self_play.simulator import compute_range_aware_equity
+                            opp_colors = [o.get('vpip_color') for o in active_opps if o.get('vpip_color')]
+                            ra = compute_range_aware_equity(
+                                stabilized_state['hero_cards'],
+                                stabilized_state['community_cards'],
+                                opp_colors,
+                            )
+                            if ra is not None:
+                                equity = ra
+                                sim_msg = f"Range-aware equity vs {opp_colors or 'random'}: {equity:.2f}"
+                        except Exception as e:
+                            self.append_log(f"[Equity] range-aware failed ({e}); vs-random fallback")
+
+                    if equity is None:
+                        equity, sim_msg = self.evaluator.calculate_equity(
+                            stabilized_state['community_cards'],
+                            stabilized_state['hero_cards'],
+                            num_opponents=num_opponents,
+                            num_simulations=num_sims
+                        )
+
                     self.append_log(f"[Decision] {sim_msg}")
                     self.after(0, self.update_equity_ui, equity, sim_msg)
                     
