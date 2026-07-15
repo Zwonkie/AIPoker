@@ -1,0 +1,61 @@
+version: "v17"
+training:
+  # --- Discretized bet-size action space (inherited from V14, UNCHANGED) --------------
+  # The raise buckets the hero (and per-size EV targets) use, as pot fractions; `null` = ALL-IN.
+  raise_pot_fractions: [0.33, 0.66, 1.0, null]   # 0.33/0.66/1.0 pot + all-in
+  # V17 test run: 100k (not the main line's 200k) -- a directional check of the actor-critic
+  # routing before committing to full budget, matching v16_foldregret's precedent. The cutover
+  # (ACTOR_CRITIC_CUTOVER_HANDS=30000, train.py) fires at the same milestone bootstrap_alpha
+  # already decays to 0 at, so this budget gives ~70k hands under the new critic-routed regime.
+  target_hands: 100000
+  batch_size: 256
+  epochs_per_batch: 3
+  sim_batch_size: 2000
+  learning_rate: 0.001
+  equity_sims: 5000       # bumped from 2000 (round 2) -- CUDA MC rollouts, negligible time cost,
+                          # lowers per-hand equity/EV noise (orthogonal to the baseline-formula
+                          # change above: a measurement-precision knob, not a competing hypothesis)
+  mid_flight_diagnostics_interval: 10000
+  checkpoint_dump_interval: 25000   # distinct restore-point checkpoint every N hands (weights/checkpoints/)
+  # --- Training knobs: IDENTICAL to the validated V14 run (do NOT change for V15) ------
+  # V15 = same proven recipe, fresh; only the sim-table setup (stacks + opponents) + budget
+  # differ. Changing these would confound whether a regression is the recipe or the new field.
+  aux_loss_weight: 0.0          # 0 = bluff/strength/equity heads OFF
+  disable_target_shaping: true  # bias priors off
+  target_clip_bb: 40.0          # VARIANCE clip -- KEEP ON (removing it diverged the critic)
+  disable_bootstrap: false      # heuristic warmup generates good-play examples (decays by 30k)
+  disable_exploration: false    # 5% random + heuristic anchor -> model visits diverse states
+  policy_target_source: counterfactual  # 'realized' (legacy) | 'counterfactual'
+  range_aware_equity: true      # hero equity vs each opp's VPIP-color range (opponent adaptation)
+  policy_tightness_bb: 2.0      # realization discount on the actor target
+  ablate_hole_cards: false
+  policy_target_temperature: 1.0
+  policy_entropy_penalty: 0.0
+
+curriculum:
+  phase_1_max_hands: 10000
+  phase_1_stacks: [100.0]
+  phase_5_focus_rounds: true
+  disable_extreme_stacks: true  # the old 10-300bb fat-tail curriculum stays OFF
+  # V15 DoN-SHAPED depth MIXTURE (replaces V14's flat fixed_stack_bb: [5,14]). Per hand, pick a
+  # band by weight then sample a uniform depth within it — short-weighted with a real deep tail so
+  # ONE model covers the whole DoN arc (fixes the deep-stack OOD that jammed K9o for 20bb live).
+  #   [lo_bb, hi_bb, weight]
+  stack_depth_mix:
+    - [5, 14, 0.55]     # late-game short (v14's proven zone — kept dense)
+    - [14, 30, 0.30]    # mid-game
+    - [30, 50, 0.15]    # early-game deep tail (the missing OOD coverage)
+  # fixed_stack_bb intentionally UNSET so stack_depth_mix takes over.
+
+# --- Opponent lineup (V17: stations + FROZEN V16 expert, UNCHANGED from V16's own recipe) ----
+# Keep the station-heavy heuristic base (best postflop/value data) and add a STATIC frozen-V16
+# expert in the "past" seat so the hero learns sizing/shove dynamics vs a competent, adaptive
+# opponent (not just heuristics) — and gives a benchmark (V17 must beat frozen-V16).
+opponents:
+  pool: ["fish", "tag", "nit", "past"]   # 'past' = frozen_v16 (static expert, NOT a lagged mirror)
+  weights: [0.40, 0.20, 0.20, 0.20]      # station-heavy base + 20% competent expert
+  live_players: 6                        # 6-max to match live tables
+  disable_past_self: false               # ENABLE the past seat...
+  freeze_past_self: true                 # ...pinned to versions/v17/weights/frozen_v16.pth (no lagged snapshot)
+  frozen_past_filename: frozen_v16.pth   # generalized past-self filename
+  disable_focus_rounds: true

@@ -9,6 +9,7 @@ import cv2
 from PIL import Image
 import mss
 import pygetwindow as gw
+import tkinter as tk
 import customtkinter as ctk
 import numpy as np
 import ctypes
@@ -20,6 +21,27 @@ sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 # Canonical action ordering for diagnostics. Covers the v13 3-way {FOLD,CALL,RAISE} and the
 # v14 6-way {FOLD,CALL,RAISE_33,RAISE_66,RAISE_POT,ALLIN} policies. F12 shows whichever keys exist.
 ACTION_DIAG_ORDER = ("FOLD", "CALL", "RAISE", "RAISE_33", "RAISE_66", "RAISE_POT", "ALLIN")
+
+# Short display labels for the live Action Distribution panel.
+ACTION_DISPLAY_NAMES = {
+    "FOLD": "Fold", "CALL": "Call", "RAISE": "Raise",
+    "RAISE_33": "Raise 33%", "RAISE_66": "Raise 66%", "RAISE_POT": "Raise Pot", "ALLIN": "All-In",
+}
+
+# Action Distribution bar colors: RAW = the actor's untouched softmax output; SAMPLED = the same
+# distribution after live temperature-sharpening (core/decision.py), which is what the sampler
+# ("dice roll") actually draws from. The two can diverge -- sharpening pulls weight away from
+# already-unlikely actions toward the favorite. Where their bars overlap we blend the colors.
+_DIST_RAW_RGB = (51, 153, 255)      # blue,  matches #3399ff
+_DIST_SAMPLED_RGB = (255, 196, 0)   # gold,  matches #ffd700 (slightly deeper for contrast vs blend)
+
+
+def _rgb_hex(rgb):
+    return "#%02x%02x%02x" % rgb
+
+
+def _blend_hex(rgb_a, rgb_b):
+    return _rgb_hex(tuple((a + b) // 2 for a, b in zip(rgb_a, rgb_b)))
 
 from core.vision import PokerVision
 from core.table_state import TableState
@@ -148,6 +170,11 @@ class PHPHelpApp(ctk.CTk):
         self.last_ev_dict = None       # full model output (policy probs + Q-values + decision path)
         self.last_equity_meta = None   # how equity was computed (range-aware vs random, opp colors)
         self.last_window_title = None  # source window title -> board id for the history session
+        # Hold the last real decision on screen for a few seconds (or until the next real decision,
+        # whichever comes first) instead of snapping back to "WAITING..." the moment it's no longer
+        # Hero's turn -- gives enough time to actually read the equity/action/distribution panel.
+        self.last_decision_ts = 0.0
+        self.MIN_DECISION_DISPLAY_SECONDS = 5.0
 
         # --- Continuous turn history (live-bot recorder) ------------------------------------
         # While the bot runs, EVERY decided turn is appended to history/<board_id>/turns.jsonl
@@ -171,17 +198,20 @@ class PHPHelpApp(ctk.CTk):
         self.poll_keyboard_shortcuts()
         
     def create_widgets(self):
-        # Grid Configuration (1 row, 2 columns: Sidebar + Main Content)
+        # Grid Configuration (1 row, 2 columns: Sidebar + Main Content). Sidebar gets weight=0 --
+        # it's sized to its own content's natural minimum (the longest dropdown entry) and none of
+        # the window's surplus width; Main area (weight=1, the only nonzero column) absorbs
+        # everything else, so shrinking the sidebar's content directly grows the dashboard.
         self.grid_rowconfigure(0, weight=1)
-        self.grid_columnconfigure(0, weight=1) # Sidebar
-        self.grid_columnconfigure(1, weight=3) # Main area
+        self.grid_columnconfigure(0, weight=0) # Sidebar
+        self.grid_columnconfigure(1, weight=1) # Main area
         
         # ==========================================
         # SIDEBAR (Control & Configuration)
         # ==========================================
         self.sidebar = ctk.CTkFrame(self, width=240, corner_radius=0)
         self.sidebar.grid(row=0, column=0, sticky="nsew", padx=0, pady=0)
-        self.sidebar.grid_rowconfigure(11, weight=1) # spacer
+        self.sidebar.grid_rowconfigure(16, weight=1) # spacer
         
         # App Title
         self.title_label = ctk.CTkLabel(self.sidebar, text="PHP HELP", font=ctk.CTkFont(size=22, weight="bold", family="Outfit"))
@@ -207,10 +237,10 @@ class PHPHelpApp(ctk.CTk):
         self.mode_dropdown = ctk.CTkOptionMenu(self.sidebar, values=["Recommendation Only", "Automatic Play"], variable=self.mode_var)
         self.mode_dropdown.grid(row=4, column=0, padx=20, pady=5, sticky="ew")
         
-        # Model Selection. Default MUST match core/decision.py's active model (v15) so the UI
-        # label reflects what actually runs — the engine defaults to v15 regardless, but a stale
+        # Model Selection. Default MUST match core/decision.py's active model (v17) so the UI
+        # label reflects what actually runs — the engine defaults to v17 regardless, but a stale
         # label here would be misleading.
-        self.model_var = ctk.StringVar(value="Herocules (v15 DoN)")
+        self.model_var = ctk.StringVar(value="Herocules (v17 Actor-Critic)")
         self.model_label = ctk.CTkLabel(self.sidebar, text="Decision Model:", anchor="w")
         self.model_label.grid(row=5, column=0, padx=20, pady=(10, 0), sticky="w")
         self.model_dropdown = ctk.CTkOptionMenu(
@@ -218,8 +248,9 @@ class PHPHelpApp(ctk.CTk):
             # Only models that actually load are listed (see core/decision.py registry). The
             # legacy Pluribus/v8-v11 entries were pruned — their weights are missing or use the
             # old 159-feature contract, so selecting them would output random actions live.
-            # v15/v14 = discretized bet-size action space (raises-to-X / all-in); v13 kept as fallback.
+            # v17/v15/v14 = discretized bet-size action space (raises-to-X / all-in); v13 kept as fallback.
             values=[
+                "Herocules (v17 Actor-Critic)",
                 "Herocules (v15 DoN)",
                 "Herocules (v14 Sized)",
                 "Herocules (v13 Range-Aware)",
@@ -275,19 +306,15 @@ class PHPHelpApp(ctk.CTk):
         self.looseness_slider = ctk.CTkSlider(self.sidebar, from_=-0.20, to=0.20, number_of_steps=40, variable=self.looseness_var, command=self.update_looseness_label)
         self.looseness_slider.grid(row=14, column=0, padx=20, pady=5, sticky="ew")
         
-        # Checkboxes to toggle heuristics (defaults to False)
-        self.preflop_chk = ctk.CTkCheckBox(self.sidebar, text="Use Pre-flop Chart", variable=self.layer_preflop_var)
-        self.preflop_chk.grid(row=15, column=0, padx=20, pady=5, sticky="w")
-        
-        self.math_chk = ctk.CTkCheckBox(self.sidebar, text="Use Math Engine", variable=self.layer_math_var)
-        self.math_chk.grid(row=16, column=0, padx=20, pady=5, sticky="w")
-        
-        self.bluff_chk = ctk.CTkCheckBox(self.sidebar, text="Use Bluff Engine", variable=self.layer_bluff_var)
-        self.bluff_chk.grid(row=17, column=0, padx=20, pady=5, sticky="w")
-        
+        # NOTE: the preflop-chart/math-engine/bluff-engine toggle checkboxes were removed from the
+        # UI (2026-07-15) -- they're no-ops for every currently loaded model (v13/v14/v15 all
+        # bypass them; see core/decision.py's is_v13_model/is_sized_model guards), so the sidebar
+        # showed live controls with no live effect. The underlying vars stay False (their pre-existing
+        # default, "see true model actions") and are still threaded through make_decision() below for
+        # forward compatibility with a future model that does use them.
         # State Machine indicator at bottom of sidebar
         self.state_frame = ctk.CTkFrame(self.sidebar, height=45, fg_color="#1e2129", corner_radius=8)
-        self.state_frame.grid(row=18, column=0, padx=20, pady=20, sticky="ew")
+        self.state_frame.grid(row=15, column=0, padx=20, pady=20, sticky="ew")
         self.state_frame.grid_propagate(False)
         self.state_frame.grid_columnconfigure(0, weight=1)
         self.state_frame.grid_rowconfigure(0, weight=1)
@@ -315,14 +342,19 @@ class PHPHelpApp(ctk.CTk):
         self.setup_logs()
 
     def setup_visuals(self):
-        # Dividers inside visual frame (extending columns from 3 to 4)
-        self.visual_frame.grid_columnconfigure((0, 1, 2, 3), weight=1)
+        # 3 columns: table view (0,1) is weight=0 with an explicit minsize pinning it at its
+        # previous rendered width (its own content minimum alone is much narrower, which would
+        # otherwise shrink the board overview -- kept intentionally unchanged per earlier request).
+        # The equity/action-distribution panel (2) is the only weighted column, so ALL surplus width
+        # in this row (including whatever the sidebar frees up) flows into it instead.
+        self.visual_frame.grid_columnconfigure((0, 1), weight=0, minsize=220)
+        self.visual_frame.grid_columnconfigure(2, weight=1)
         self.visual_frame.grid_rowconfigure((0, 1), weight=1)
-        
+
         # Title of telemetry
         self.telemetry_title = ctk.CTkLabel(self.visual_frame, text="Live Table Telemetry", font=ctk.CTkFont(size=15, weight="bold"))
-        self.telemetry_title.grid(row=0, column=0, columnspan=4, pady=(10, 5))
-        
+        self.telemetry_title.grid(row=0, column=0, columnspan=3, pady=(10, 5))
+
         # Center Panel: Seating Table Layout (Visual Grid) spanning columns 0 and 1
         self.table_panel = ctk.CTkFrame(self.visual_frame, fg_color="#14161d", corner_radius=10)
         self.table_panel.grid(row=1, column=0, columnspan=2, padx=10, pady=10, sticky="nsew")
@@ -372,10 +404,16 @@ class PHPHelpApp(ctk.CTk):
                 
                 vpip_agg_frame = ctk.CTkFrame(frame, fg_color="transparent")
                 vpip_agg_frame.pack(pady=(0, 2))
-                
+
+                # "V ●" / "A ●" HUD dots -- labeled so the color coding (Blue/Green/Yellow/Red =
+                # Tight->Maniac VPIP, Passive->Maniac AGG) is legible without prior context.
+                lbl_vpip_tag = ctk.CTkLabel(vpip_agg_frame, text="V", font=ctk.CTkFont(size=7, weight="bold"), text_color="#5a6070")
+                lbl_vpip_tag.pack(side="left", padx=(0, 1))
                 lbl_vpip = ctk.CTkLabel(vpip_agg_frame, text="●", font=ctk.CTkFont(size=8), text_color="#1f222a")
-                lbl_vpip.pack(side="left", padx=2)
-                
+                lbl_vpip.pack(side="left", padx=(0, 5))
+
+                lbl_agg_tag = ctk.CTkLabel(vpip_agg_frame, text="A", font=ctk.CTkFont(size=7, weight="bold"), text_color="#5a6070")
+                lbl_agg_tag.pack(side="left", padx=(0, 1))
                 lbl_agg = ctk.CTkLabel(vpip_agg_frame, text="●", font=ctk.CTkFont(size=8), text_color="#1f222a")
                 lbl_agg.pack(side="left", padx=2)
                 
@@ -397,42 +435,86 @@ class PHPHelpApp(ctk.CTk):
         self.equity_panel.grid(row=1, column=2, padx=15, pady=15, sticky="nsew")
         self.equity_panel.grid_columnconfigure(0, weight=1)
         
+        # Compact vertical rhythm through this whole panel (title/value/desc font sizes + pady) --
+        # the panel's real height is fixed by the grid row, and content beyond it just gets clipped
+        # (no scrolling), so trimming space here is what keeps ACTION DISTRIBUTION / MODEL CONTEXT
+        # FEATURES below actually visible.
         self.equity_lbl_title = ctk.CTkLabel(self.equity_panel, text="WIN PROBABILITY", font=ctk.CTkFont(weight="bold", size=12))
-        self.equity_lbl_title.pack(pady=(10, 2))
-        
-        self.equity_val = ctk.CTkLabel(self.equity_panel, text="0.0%", text_color="#3399ff", font=ctk.CTkFont(size=28, weight="bold"))
-        self.equity_val.pack(pady=2)
-        
+        self.equity_lbl_title.pack(pady=(4, 0))
+
+        self.equity_val = ctk.CTkLabel(self.equity_panel, text="0.0%", text_color="#3399ff", font=ctk.CTkFont(size=22, weight="bold"))
+        self.equity_val.pack(pady=0)
+
         self.equity_desc = ctk.CTkLabel(self.equity_panel, text="W: 0.0%, D: 0.0%, L: 0.0%", font=ctk.CTkFont(size=11), text_color="#a0a0a0")
-        self.equity_desc.pack(pady=2)
+        self.equity_desc.pack(pady=0)
 
         # Recommended Action
         self.action_title_lbl = ctk.CTkLabel(self.equity_panel, text="RECOMMENDED ACTION", font=ctk.CTkFont(weight="bold", size=11), text_color="#8a90a0")
-        self.action_title_lbl.pack(pady=(15, 2))
+        self.action_title_lbl.pack(pady=(6, 0))
 
-        self.action_val = ctk.CTkLabel(self.equity_panel, text="WAITING...", text_color="#ffd700", font=ctk.CTkFont(size=20, weight="bold"))
-        self.action_val.pack(pady=5)
-        
-        self.action_reason_lbl = ctk.CTkLabel(self.equity_panel, text="-", font=ctk.CTkFont(size=10), text_color="#8a90a0", wraplength=180)
-        self.action_reason_lbl.pack(pady=2)
+        self.action_val = ctk.CTkLabel(self.equity_panel, text="WAITING...", text_color="#ffd700", font=ctk.CTkFont(size=18, weight="bold"))
+        self.action_val.pack(pady=2)
 
-        self.thinking_lbl = ctk.CTkLabel(self.equity_panel, text="", font=ctk.CTkFont(size=10, slant="italic"), text_color="#5fa8d3", wraplength=180)
-        self.thinking_lbl.pack(pady=(0, 2))
+        # Locked height (2 lines' worth): text length varies turn to turn (a short "-" vs a full
+        # policy dict / thinking sentence), and CTkLabel grows/shrinks to fit its wrapped line count
+        # -- left unlocked, everything below (Action Distribution, Model Context Features) shifts
+        # position every turn depending on how many lines this turn's text happened to wrap to.
+        self.action_reason_lbl = ctk.CTkLabel(self.equity_panel, text="-", font=ctk.CTkFont(size=10), text_color="#8a90a0", wraplength=300, height=34)
+        self.action_reason_lbl.pack(pady=1)
 
+        self.thinking_lbl = ctk.CTkLabel(self.equity_panel, text="", font=ctk.CTkFont(size=13, weight="bold", slant="italic"), text_color="#5fa8d3", wraplength=300, height=48)
+        self.thinking_lbl.pack(pady=(0, 1))
+
+        # Action Distribution: overlaid raw (blue) vs temperature-sampled (gold) P(action) bars, one
+        # per legal action this turn -- see _update_action_distribution/_redraw_dist_bar for the
+        # blend logic. The action the sampler ("dice roll") actually picked gets a white bar outline
+        # + gold ">" name/pct text. Row count covers the widest supported policy (V14/V15's 6-way
+        # sized action space); unused rows are hidden for 3-way models (V13).
         self.ev_breakdown_frame = ctk.CTkFrame(self.equity_panel, fg_color="#181a20", corner_radius=6)
-        self.ev_breakdown_frame.pack(fill="x", padx=10, pady=(15, 5))
-        
-        self.ev_title_lbl = ctk.CTkLabel(self.ev_breakdown_frame, text="EV BREAKDOWN", font=ctk.CTkFont(weight="bold", size=10), text_color="#8a90a0")
-        self.ev_title_lbl.pack(pady=(5, 2))
-        
-        self.ev_fold_lbl = ctk.CTkLabel(self.ev_breakdown_frame, text="EV(Fold): -", font=ctk.CTkFont(size=11), text_color="#8a90a0")
-        self.ev_fold_lbl.pack(pady=1)
-        
-        self.ev_call_lbl = ctk.CTkLabel(self.ev_breakdown_frame, text="EV(Call): -", font=ctk.CTkFont(size=11), text_color="#8a90a0")
-        self.ev_call_lbl.pack(pady=1)
-        
-        self.ev_raise_lbl = ctk.CTkLabel(self.ev_breakdown_frame, text="EV(Raise): -", font=ctk.CTkFont(size=11), text_color="#8a90a0")
-        self.ev_raise_lbl.pack(pady=(1, 5))
+        self.ev_breakdown_frame.pack(fill="x", padx=10, pady=(8, 4))
+
+        self.ev_title_lbl = ctk.CTkLabel(self.ev_breakdown_frame, text="ACTION DISTRIBUTION", font=ctk.CTkFont(weight="bold", size=10), text_color="#8a90a0")
+        self.ev_title_lbl.pack(pady=(4, 0))
+
+        self.dist_legend_lbl = ctk.CTkLabel(
+            self.ev_breakdown_frame,
+            text="blue = raw %   |   yellow = adjusted %  (what the dice used)",
+            font=ctk.CTkFont(size=8), text_color="#6a7080")
+        self.dist_legend_lbl.pack(pady=(0, 2))
+
+        self.dist_empty_lbl = ctk.CTkLabel(self.ev_breakdown_frame, text="Waiting for decision...", font=ctk.CTkFont(size=10), text_color="#8a90a0")
+        self.dist_empty_lbl.pack(pady=(2, 6))
+
+        # Locked height, sized for all 6 rows -- CTkFrame defaults to a fixed 200px height when
+        # unset, and once grown to fit real rows it does NOT shrink back down when they're
+        # grid_remove()'d (they don't shrink it), so letting height float produced a layout jump
+        # between "waiting" and "populated" states (and a stale oversized gap after the first real
+        # decision). Locking it to the real 6-row height keeps the panel a constant size always.
+        self.dist_rows_container = ctk.CTkFrame(self.ev_breakdown_frame, fg_color="transparent", height=180)
+        self.dist_rows_container.pack(fill="x", padx=8, pady=(0, 4))
+        self.dist_rows_container.grid_columnconfigure(1, weight=1)
+
+        self.action_dist_rows = []
+        for i in range(6):  # max width across supported policies: V14/V15's 6-way sized actions
+            name_lbl = ctk.CTkLabel(self.dist_rows_container, text="-", font=ctk.CTkFont(size=10, weight="bold"), width=58, anchor="w")
+            name_lbl.grid(row=i, column=0, sticky="w", pady=1)
+
+            # Raw tkinter Canvas (not a CTkProgressBar) so we can draw two overlaid, alpha-blended
+            # bars: raw actor probability vs the post-temperature sampling probability.
+            bar = tk.Canvas(self.dist_rows_container, height=14, bg="#3a3f4b", highlightthickness=0)
+            bar.grid(row=i, column=1, sticky="ew", padx=6, pady=1)
+            bar.bind("<Configure>", lambda e, idx=i: self._redraw_dist_bar(idx))
+
+            pct_lbl = ctk.CTkLabel(self.dist_rows_container, text="0%", font=ctk.CTkFont(size=10), width=58, anchor="e")
+            pct_lbl.grid(row=i, column=2, sticky="e", pady=1)
+
+            ev_lbl = ctk.CTkLabel(self.dist_rows_container, text="", font=ctk.CTkFont(size=9), text_color="#8a90a0", width=48, anchor="e")
+            ev_lbl.grid(row=i, column=3, sticky="e", pady=1)
+
+            row = {'name': name_lbl, 'bar': bar, 'pct': pct_lbl, 'ev': ev_lbl, 'raw': 0.0, 'sampled': None, 'chosen': False}
+            for w in (name_lbl, bar, pct_lbl, ev_lbl):
+                w.grid_remove()  # hidden until the first real decision arrives
+            self.action_dist_rows.append(row)
         
         # Context Features Frame
         self.context_tensor_frame = ctk.CTkFrame(self.equity_panel, fg_color="#181a20", corner_radius=6)
@@ -449,52 +531,6 @@ class PHPHelpApp(ctk.CTk):
         
         self.ctx_row3_lbl = ctk.CTkLabel(self.context_tensor_frame, text="VPIP: - | AGG: -", font=ctk.CTkFont(size=11), text_color="#8a90a0")
         self.ctx_row3_lbl.pack(pady=(1, 5))
-
-        # Column 3: Decision Flow Pipeline Tree Panel
-        self.tree_panel = ctk.CTkFrame(self.visual_frame, fg_color="#1f222a", corner_radius=8)
-        self.tree_panel.grid(row=1, column=3, padx=15, pady=15, sticky="nsew")
-        self.tree_panel.grid_columnconfigure(0, weight=1)
-        
-        self.tree_lbl_title = ctk.CTkLabel(self.tree_panel, text="DECISION FLOW PIPELINE", font=ctk.CTkFont(weight="bold", size=12))
-        self.tree_lbl_title.pack(pady=(10, 15))
-        
-        self.pipeline_widgets = {}
-        stages = [
-            ('preflop_chart', '1. Pre-flop Chart'),
-            ('active_model', '2. Active Neural Net'),
-            ('bluff_engine', '3. Post-flop Bluff Engine'),
-            ('math_engine', '4. Math Engine Guardrail')
-        ]
-        
-        for idx, (key, label_text) in enumerate(stages):
-            stage_frame = ctk.CTkFrame(self.tree_panel, fg_color="#181a20", corner_radius=6)
-            stage_frame.pack(fill="x", padx=10, pady=5)
-            
-            lbl_title = ctk.CTkLabel(stage_frame, text=label_text, font=ctk.CTkFont(weight="bold", size=10), text_color="#ffd700")
-            lbl_title.pack(anchor="w", padx=10, pady=(5, 0))
-            
-            status_frame = ctk.CTkFrame(stage_frame, fg_color="transparent")
-            status_frame.pack(fill="x", padx=10, pady=(2, 5))
-            
-            status_dot = ctk.CTkLabel(status_frame, text="●", font=ctk.CTkFont(size=12), text_color="#a0a0a0")
-            status_dot.pack(side="left", padx=(0, 5))
-            
-            status_lbl = ctk.CTkLabel(status_frame, text="Waiting...", font=ctk.CTkFont(size=11, weight="bold"), text_color="#a0a0a0")
-            status_lbl.pack(side="left")
-            
-            details_lbl = ctk.CTkLabel(stage_frame, text="-", font=ctk.CTkFont(size=9), text_color="#8a90a0", wraplength=160, justify="left")
-            details_lbl.pack(anchor="w", padx=10, pady=(0, 5))
-            
-            self.pipeline_widgets[key] = {
-                'dot': status_dot,
-                'status': status_lbl,
-                'details': details_lbl,
-                'frame': stage_frame
-            }
-            
-            if idx < len(stages) - 1:
-                arrow_lbl = ctk.CTkLabel(self.tree_panel, text="↓", font=ctk.CTkFont(size=14, weight="bold"), text_color="#4f5d75")
-                arrow_lbl.pack(pady=2)
 
     def setup_logs(self):
         self.log_frame.grid_columnconfigure(0, weight=1)
@@ -553,25 +589,17 @@ class PHPHelpApp(ctk.CTk):
     def on_source_changed(self, val):
         if val == "Live Capture":
             self.refresh_window_list()
-            # show target window field in sidebar below looseness controls
+            # show target window field in sidebar below looseness controls, shift state down
             self.window_label.grid(row=15, column=0, padx=20, pady=(10, 0), sticky="w")
             self.window_combo.grid(row=16, column=0, padx=20, pady=5, sticky="ew")
-            # shift checkboxes and state down
-            self.preflop_chk.grid(row=17, column=0, padx=20, pady=5, sticky="w")
-            self.math_chk.grid(row=18, column=0, padx=20, pady=5, sticky="w")
-            self.bluff_chk.grid(row=19, column=0, padx=20, pady=5, sticky="w")
-            self.state_frame.grid(row=20, column=0, padx=20, pady=20, sticky="ew")
-            self.sidebar.grid_rowconfigure(21, weight=1) # set new spacer
+            self.state_frame.grid(row=17, column=0, padx=20, pady=20, sticky="ew")
+            self.sidebar.grid_rowconfigure(18, weight=1) # set new spacer
         else:
-            # hide target window field
+            # hide target window field, restore state position
             self.window_label.grid_forget()
             self.window_combo.grid_forget()
-            # restore positions
-            self.preflop_chk.grid(row=15, column=0, padx=20, pady=5, sticky="w")
-            self.math_chk.grid(row=16, column=0, padx=20, pady=5, sticky="w")
-            self.bluff_chk.grid(row=17, column=0, padx=20, pady=5, sticky="w")
-            self.state_frame.grid(row=18, column=0, padx=20, pady=20, sticky="ew")
-            self.sidebar.grid_rowconfigure(19, weight=1) # restore spacer
+            self.state_frame.grid(row=15, column=0, padx=20, pady=20, sticky="ew")
+            self.sidebar.grid_rowconfigure(16, weight=1) # restore spacer
 
     def on_model_changed(self, val):
         self.decision_engine.set_active_model(val)
@@ -875,13 +903,18 @@ class PHPHelpApp(ctk.CTk):
                 )
                 
                 if not button_matches:
-                    # Not our turn. 
+                    # Not our turn.
                     # If we were in a mid-state (e.g. DECIDING), we safely reset to WAITING_FOR_TURN
                     if self.state_machine.state not in ['IDLE', 'WAITING_FOR_TURN']:
                         self.state_machine.error_occurred()
-                        
-                    self.after(0, self.update_action_ui, "WAITING...", "Not Hero's turn", 0)
-                    
+
+                    # Keep the last real decision's equity/action/distribution on screen for a
+                    # minimum hold time instead of blanking it the instant it's not Hero's turn --
+                    # this loop iterates every ~1s, so without this the display reset almost
+                    # immediately after each decision, giving no real time to read it.
+                    if time.time() - self.last_decision_ts >= self.MIN_DECISION_DISPLAY_SECONDS:
+                        self.after(0, self.update_action_ui, "WAITING...", "Not Hero's turn", 0)
+
                     # Sleep before next continuous tracking frame
                     time.sleep(1.0 if not source.startswith("Mock:") else 5.0)
                     continue
@@ -958,13 +991,15 @@ class PHPHelpApp(ctk.CTk):
                     equity = None
                     sim_msg = None
                     equity_meta = {"method": "vs-random", "opp_colors": None, "num_opponents": num_opponents}
-                    # V13/V14/V15 were all trained with RANGE-AWARE equity (hero equity vs each
+                    # V13/V14/V15/V17 were all trained with RANGE-AWARE equity (hero equity vs each
                     # opponent's VPIP-color range); feeding vs-random here would be a silent
                     # train/serve mismatch. Use the matching version's identical impl.
                     _active_lower = self.decision_engine.active_model_name.lower()
-                    if 'v15' in _active_lower or 'v14' in _active_lower or 'v13' in _active_lower:
+                    if 'v17' in _active_lower or 'v15' in _active_lower or 'v14' in _active_lower or 'v13' in _active_lower:
                         try:
-                            if 'v15' in _active_lower:
+                            if 'v17' in _active_lower:
+                                from versions.v17.self_play.simulator import compute_range_aware_equity
+                            elif 'v15' in _active_lower:
                                 from versions.v15.self_play.simulator import compute_range_aware_equity
                             elif 'v14' in _active_lower:
                                 from versions.v14.self_play.simulator import compute_range_aware_equity
@@ -1135,6 +1170,7 @@ class PHPHelpApp(ctk.CTk):
                     self.append_log(f"[Decision] Size Allocation: {bet_size} units")
                     
                 self.after(0, self.update_action_ui, action, reason, bet_size, ev_dict)
+                self.last_decision_ts = time.time()   # starts the min-display-time hold (see __init__)
                 self._record_turn_history()   # append this decided turn to history/<board_id>/turns.jsonl
                 self.state_machine.decision_made()
                 
@@ -1302,10 +1338,11 @@ class PHPHelpApp(ctk.CTk):
             self.equity_desc.configure(text=desc_text)
 
     def update_action_ui(self, action, reason, bet_size, ev_dict=None):
-        # Format action text nicely
+        # Format action text nicely (bet_size is chip-fraction math -> round for display, e.g.
+        # avoid "26.400000000000002")
         text = action
         if bet_size > 0:
-            text = f"{action} ({bet_size})"
+            text = f"{action} ({bet_size:.0f})"
             
         self.action_val.configure(text=text)
         
@@ -1333,38 +1370,10 @@ class PHPHelpApp(ctk.CTk):
         thinking = (ev_dict or {}).get('thinking')
         self.thinking_lbl.configure(text=thinking or "")
 
-        # Update EV Breakdown if available
-        if ev_dict:
-            raw_f, pen_f = ev_dict.get('raw_fold', 0), ev_dict.get('pen_fold', 0)
-            raw_c, pen_c = ev_dict.get('raw_call', 0), ev_dict.get('pen_call', 0)
-            raw_r, pen_r = ev_dict.get('raw_raise', 0), ev_dict.get('pen_raise', 0)
-            
-            prob_f = ev_dict.get('prob_fold', 0)
-            prob_c = ev_dict.get('prob_call', 0)
-            prob_r = ev_dict.get('prob_raise', 0)
-            chosen = ev_dict.get('chosen_action', '')
-            
-            fold_arrow = " <----" if "FOLD" in chosen else ""
-            call_arrow = " <----" if "CALL" in chosen or "CHECK" in chosen else ""
-            raise_arrow = " <----" if "RAISE" in chosen else ""
-            
-            self.ev_fold_lbl.configure(
-                text=f"EV(Fold): {raw_f:.2f} | {prob_f*100:.0f}%{fold_arrow}",
-                text_color="#2eb85c" if pen_f > 0 else "#e55353"
-            )
-            self.ev_call_lbl.configure(
-                text=f"EV(Call): {raw_c:.2f} | {prob_c*100:.0f}%{call_arrow}",
-                text_color="#2eb85c" if pen_c > 0 else "#e55353"
-            )
-            self.ev_raise_lbl.configure(
-                text=f"EV(Raise): {raw_r:.2f} | {prob_r*100:.0f}%{raise_arrow}",
-                text_color="#2eb85c" if pen_r > 0 else "#e55353"
-            )
-        else:
-            self.ev_fold_lbl.configure(text="EV(Fold): -", text_color="#8a90a0")
-            self.ev_call_lbl.configure(text="EV(Call): -", text_color="#8a90a0")
-            self.ev_raise_lbl.configure(text="EV(Raise): -", text_color="#8a90a0")
-            
+        # Update the Action Distribution bars (P(action) per legal action + the sampled pick)
+        self._update_action_distribution(ev_dict)
+
+
         # Update Context Tensors display
         if hasattr(self, 'last_table_state') and self.last_table_state:
             try:
@@ -1406,40 +1415,99 @@ class PHPHelpApp(ctk.CTk):
             except Exception as e:
                 pass
 
-        # Update Decision Flow Pipeline widgets
-        if ev_dict and 'decision_path' in ev_dict:
-            path = ev_dict['decision_path']
-            for key, info in path.items():
-                if key in self.pipeline_widgets:
-                    status = info.get('status', 'Bypassed')
-                    details = info.get('details', '')
-                    
-                    widgets = self.pipeline_widgets[key]
-                    widgets['status'].configure(text=status.upper())
-                    widgets['details'].configure(text=details)
-                    
-                    if "triggered" in status.lower() or "active" in status.lower() or "overridden" in status.lower():
-                        if status == "Overridden":
-                            widgets['dot'].configure(text_color="#e55353") # Red
-                            widgets['status'].configure(text_color="#e55353")
-                        else:
-                            widgets['dot'].configure(text_color="#2eb85c") # Green
-                            widgets['status'].configure(text_color="#2eb85c")
-                        widgets['frame'].configure(fg_color="#1c251f" if status != "Overridden" else "#2b1b1b")
-                    elif "passed" in status.lower():
-                        widgets['dot'].configure(text_color="#3399ff") # Blue (Active / Checked out OK)
-                        widgets['status'].configure(text_color="#3399ff")
-                        widgets['frame'].configure(fg_color="#181a20")
-                    else: # Bypassed / Disabled
-                        widgets['dot'].configure(text_color="#4f5d75") # Gray
-                        widgets['status'].configure(text_color="#4f5d75")
-                        widgets['frame'].configure(fg_color="#13151b")
+    def _update_action_distribution(self, ev_dict):
+        """Render P(action), one row per legal action this turn, as an overlaid bar: the actor's
+        RAW probability (blue) vs the same distribution after live temperature-sharpening (gold) --
+        `core/decision.py` SAMPLES the executed action from the sharpened distribution, not the raw
+        one, so the two can genuinely disagree (sharpening pulls weight off already-unlikely
+        actions toward the favorite). Where both bars cover the same ground we blend the colors so
+        the overlap reads as agreement; a solid tail in either color shows which distribution
+        the temperature scaling pushed that action's weight *from* or *to*.
+
+        `ev_dict` keys directly ARE the raw action probabilities (see core/decision.py:
+        `ev_dict = evs.copy()`); ACTION_DIAG_ORDER picks those out from the diagnostic/bookkeeping
+        keys (decision_path, thinking, q_vals, sampled_probs, ...) mixed into the same dict.
+        `chosen_key` is the raw policy bucket the sampler picked -- it can differ from the final
+        executed `action` (e.g. a sized raise gets translated to RAISE_SLIDER_x, or a safeguard
+        overrides it), so highlighting it shows what the model's dice actually rolled.
+        """
+        # Force the row container back to its locked height on every call. CTkFrame only ever
+        # grows to fit content and never shrinks back on its own -- and dist_empty_lbl must stay
+        # PACKED at all times (never pack_forget()'d) because forget-then-pack() re-inserts it at
+        # the END of the pack stack, after dist_rows_container, which silently reordered it below
+        # the (locked-height, now-empty-looking) row container the first time this toggled.
+        self.dist_rows_container.configure(height=180)
+        rows = self.action_dist_rows
+        keys = [k for k in ACTION_DIAG_ORDER if k in (ev_dict or {})]
+
+        if not keys:
+            for row in rows:
+                for w in (row['name'], row['bar'], row['pct'], row['ev']):
+                    w.grid_remove()
+            self.dist_empty_lbl.configure(text="Waiting for decision..." if not ev_dict else "(no action distribution for this model)")
+            return
+
+        self.dist_empty_lbl.configure(text="")
+        q_vals = ev_dict.get('q_vals') or {}
+        sampled_all = ev_dict.get('sampled_probs')   # None for the legacy argmax path
+        chosen_key = ev_dict.get('chosen_key')
+
+        for i, row in enumerate(rows):
+            if i >= len(keys):
+                for w in (row['name'], row['bar'], row['pct'], row['ev']):
+                    w.grid_remove()
+                continue
+
+            k = keys[i]
+            raw = max(0.0, min(1.0, float(ev_dict.get(k) or 0.0)))
+            samp = max(0.0, min(1.0, float(sampled_all[k]))) if sampled_all and k in sampled_all else None
+            is_chosen = (k == chosen_key)
+            text_color = "#ffd700" if is_chosen else "#c9cdd6"
+
+            row['name'].configure(text=(">" if is_chosen else " ") + ACTION_DISPLAY_NAMES.get(k, k), text_color=text_color)
+            if samp is None:
+                row['pct'].configure(text=f"{raw*100:.0f}%", text_color=text_color)
+            else:
+                row['pct'].configure(text=f"{raw*100:.0f}%→{samp*100:.0f}%", text_color=text_color)
+            ev_val = q_vals.get(k)
+            row['ev'].configure(text=f"{ev_val:+.2f}bb" if ev_val is not None else "")
+
+            row['raw'], row['sampled'], row['chosen'] = raw, samp, is_chosen
+            for w in (row['name'], row['bar'], row['pct'], row['ev']):
+                w.grid()
+            self._redraw_dist_bar(i)
+
+    def _redraw_dist_bar(self, idx):
+        """Draw one Action Distribution row's overlaid raw/sampled bar onto its Canvas. Split into
+        [0, min] blended, (min, max] in the color of whichever distribution is larger there -- so a
+        solid blue tail means temperature-sharpening REDUCED that action's share, a solid gold tail
+        means it INCREASED it, and pure blend means the two agree. Bound to <Configure> (not just
+        called on data updates) so it redraws correctly once the canvas gets its real pixel width
+        from the grid manager, and again if the window is ever resized."""
+        row = self.action_dist_rows[idx]
+        canvas = row['bar']
+        w = canvas.winfo_width()
+        h = canvas.winfo_height()
+        canvas.delete("all")
+        if w <= 1 or h <= 1:
+            return
+
+        raw, samp = row.get('raw', 0.0), row.get('sampled')
+        if samp is None:
+            bw = int(w * raw)
+            if bw > 0:
+                canvas.create_rectangle(0, 0, bw, h, fill=_rgb_hex(_DIST_RAW_RGB), outline="")
         else:
-            for key, widgets in self.pipeline_widgets.items():
-                widgets['status'].configure(text="WAITING...", text_color="#a0a0a0")
-                widgets['details'].configure(text="-")
-                widgets['dot'].configure(text_color="#a0a0a0")
-                widgets['frame'].configure(fg_color="#181a20")
+            lo, hi = min(raw, samp), max(raw, samp)
+            lo_px, hi_px = int(w * lo), int(w * hi)
+            if lo_px > 0:
+                canvas.create_rectangle(0, 0, lo_px, h, fill=_blend_hex(_DIST_RAW_RGB, _DIST_SAMPLED_RGB), outline="")
+            if hi_px > lo_px:
+                owner = _DIST_RAW_RGB if raw > samp else _DIST_SAMPLED_RGB
+                canvas.create_rectangle(lo_px, 0, hi_px, h, fill=_rgb_hex(owner), outline="")
+
+        if row.get('chosen'):
+            canvas.create_rectangle(0, 0, w - 1, h - 1, outline="#ffffff", width=1)
 
     def poll_keyboard_shortcuts(self):
         try:

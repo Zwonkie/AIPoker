@@ -444,7 +444,7 @@
                 const labels = (em[0].action_cols || []).map(a => a[0]);
                 equityHead.innerHTML = '<th>Equity Bracket</th>'
                     + labels.map(l => `<th>${l}</th>`).join('')
-                    + '<th>N Hands</th><th>Avg End Street</th><th>Net Chips</th><th>Won Chips</th><th>Lost Chips</th>';
+                    + '<th>N Hands (facing bet)</th><th>Free Checks</th><th>Avg End Street</th><th>Net Chips</th><th>Won Chips</th><th>Lost Chips</th>';
             }
             em.forEach((row, idx) => {
                 const isAir = row.bracket.includes('<20%');
@@ -464,6 +464,7 @@
                         <td><strong>${row.bracket}</strong></td>
                         ${actionCells}
                         <td>${row.n_hands || '--'}</td>
+                        <td>${row.free_checks || '--'}</td>
                         <td>${row.avg_end_street}</td>
                         <td>${colorizeValue(row.net_chips)}${t(row.net_chips, 'net_chips')}</td>
                         <td class="positive">${row.won_chips || '--'}</td>

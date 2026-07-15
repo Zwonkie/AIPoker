@@ -188,6 +188,112 @@ synthetic set (well under the 30k cutover) -- the FAIL run doesn't implicate thi
 whether the deep-stack/style-adaptation regression `v16_foldregret` showed reappears (the risk this
 round is testing is whether it doesn't, now that fold-anchoring applies to a denoised value).
 
+### 50k-ish sanity check, round 2 (2026-07-15) — working, opposite trend from round 1
+
+| Hands | Fold% Pure Air | Fold% Draws | Hero VPIP | Action Entropy |
+|---|---:|---:|---:|---:|
+| 29,378 (pre-cutover) | 64.5% | 84.6% | 48.5% | 1.60 |
+| 40,509 (+11k post) | 64.1% | 84.7% | 39.3% | 1.26 |
+| 53,465 (+23k post) | 64.6% | 86.1% | 34.9% | 1.03 |
+
+VPIP declining and Draws-fold improving post-cutover -- the opposite of round 1's runaway
+widening. Hero BB/100 also climbing (+18.2 -> +22.7). No NaN/crash, no sign yet of foldregret's
+style-flip.
+
+### Telemetry gap found + fixed while investigating a user question (2026-07-15)
+
+User asked why the live dashboard's `<20%` bucket still showed ~23% Call / ~7% All-In despite the
+fold-relative fix. Direct offline probe of the LIVE checkpoint (`temp_active_model_main.pth`) at
+true air equity (0.03-0.18) facing a real bet: **folds 100% of the time, every scenario tested,
+both loose and tight opponents.** So the mechanism itself is clean when actually facing money --
+the dashboard number was measuring something else.
+
+Root cause: `telemetry.py`'s `record_hand_terminal_state(equity, street, action, call_amount, ...)`
+took `call_amount` as a parameter but never used it -- every decision landed in the equity bucket's
+Fold/Call/raise tally regardless of whether the hero was actually facing a bet or just checking for
+free. This contract has no separate CHECK action (checking with air when nothing is asked -- correct
+and mandatory -- and calling a real bet with air both show up as "Call"), so a large, unknown
+fraction of every bucket's "Call%" was free checks, not paid continuations. The chart could not
+previously distinguish "hero is making a bad continuation decision" from "hero is doing the
+required, zero-risk thing."
+
+**Fixed:** `record_hand_terminal_state` now tallies `call_amount<=0` decisions into a separate
+`free_checks` counter, excluded from `total`/`actions`/`net_chips`/`won_chips`/`lost_chips` -- the
+existing Fold%/Call%/raise/All-In/Net-Chips columns now mean "given the hero FACED A BET", which is
+what actually answers the continue-vs-fold quality question. Dashboard print header relabeled
+"Equity Matrix (FACING A BET ONLY)" with a new `Free` column showing the excluded count per bucket.
+`tools/training_monitor/parse_training_log.py` + `dashboard.html` updated to parse/render the new
+column, backward-compatible with both older log formats (no N-Hands column at all, and N-Hands-but-
+no-Free) via the same positional integer-cell detection used for the earlier N-Hands addition.
+Unit-tested (telemetry split logic + all 3 parser format generations).
+
+**Not retroactive to the currently-running round-2 job**: same caveat as every mid-run source edit
+this session -- Python doesn't hot-reload into an already-running process, so the live dashboard
+keeps showing the OLD conflated Call% until the next launch. Round 2's own remaining sanity checks
+should be read with that in mind (the visible Call% still overstates paid continuations); the
+All-In% column is unaffected by this bug (bluffing/shoving is never a free action) and remains a
+reliable read.
+
+### Round 2 COMPLETED + DEPLOYED LIVE (2026-07-15/16)
+
+Trained to completion: 100,000 hands, 2h26m, zero NaN/crash. Terminal telemetry note: the very
+last dashboard tick's VPIP (28.1%) is a tail-batch artifact (`batch_hands = min(sim_batch_size,
+num_hands - hands_done)` shrinks the last few batches to 40/6/8 hands to land exactly on
+`num_hands`, and VPIP is EMA-tracked at alpha=0.2 -- a 6-8 hand batch has huge single-batch
+variance). The real converged number, read from the full 50k->99k trajectory, is **VPIP stable at
+~36-40%** from ~80k hands onward -- moderate and plausible, not the runaway 64% of round 1 nor an
+implausible over-tightened 28%. Action Entropy's decline (1.60->0.63) is genuine, not an artifact
+(smooth and monotonic through the tail, no jump).
+
+**`tools/model_verify --full`: 10 PASS, 1 WARN, 1 FAIL** (`results/v17__expert_main.pth.json`):
+- `deep_stack_ood_guard` FAIL — same pre-existing carried defect every version in this line fails
+  (V15/V16/foldregret/V17 all show the same eq≈0.55, 15-40bb, single-bet -> ALL-IN argmax
+  signature). NOT a V17 regression; tracked as V18 [P0].
+- `vpip_adapts_to_style` PASS: short +9.7pt / deep +5.8pt (both clear the 5pt bar; V16 was
+  +8.7/+8.4, foldregret FAILED deep at +2.0pt). **No style-flip regression.**
+- `bb100_vs_standard_fields`: loose_short +28.9, **loose_deep +90.3** (V16 +62.1, foldregret
+  collapsed to -11.6 — V17 has NO collapse, in fact the best loose_deep number in the whole line),
+  tight_short +18.4 (down from V16's +38.7 — the one real give-back), tight_deep +32.6 (V16 -7.7,
+  fixed, matching foldregret's fix).
+- `air_folds_mostly`: 1.00 (V16 was 0.62 — the original problem, cleanly fixed).
+- `beats_frozen_predecessor`: +87.5 BB/100 vs frozen-V16 over 4000 hands — convincingly beats its
+  own immediate parent.
+
+**Verdict: confirms the round-1/round-2 diagnosis.** Fold-relative regret-matching was the right
+fix for the air/draws overcontinuation problem all along -- it just needed to be anchored to a
+DENOISED critic Q instead of a noisy single-hand `mc_evs` sample to avoid `v16_foldregret`'s
+overcorrection. V17 gets the original fix's benefit (air_folds_mostly, draws-fold) without the
+side effect (loose_deep collapse), and even improves on V16's own numbers in most fields.
+
+**DEPLOYED LIVE** (user request): `core/models/v17_engine.py` (`V17ModelEngine`, `is_v17=True`) is
+the ACTIVE model in `core/decision.py` as `Herocules (v17 Actor-Critic)`; V15/V14/V13 kept as
+fallbacks. `is_sized_model` bridge condition extended to include `is_v17_model` (shares the
+identical V14/V15 6-action contract, slider-sizing, and math-engine-bypass paths unchanged).
+`PHPHelp.py` dropdown default -> V17, range-aware equity import extended to
+`versions.v17.self_play.simulator.compute_range_aware_equity`. Smoke-tested clean (air at 6% eq
+facing a bet -> FOLD 100%; 97% eq -> ALL-IN, slider 1.00; "Thinking" narrative renders correctly
+for both).
+
+**Remaining backlog pushed to `versions/v18/SPECS.md`** per user request: [P0] deep-stack OOD (now
+elevated -- 4 versions running unaddressed), [P5]/[P6] input-contract gaps, [P7] opponent-pool NN
+personalities, and the `equity_sims` budget analysis (see below).
+
+### equity_sims 2000->5000 — analyzed, recommend reverting for V18
+
+User asked whether the mid-experiment bump (justified as "CUDA, should be cheap") had a real
+impact, and offered either a comparison training run or a direct performance analysis. Did the
+direct analysis (cheaper and more conclusive than another training run) — full numbers and
+verdict in `versions/v18/SPECS.md` ("MC equity_sims budget"). Short version: the assumption was
+wrong for the path that matters (`_calculate_equity` with `specific_opponents` set — the ONLY path
+`_mc_target_evs_sized` uses for every decision's target — explicitly skips the CUDA evaluator and
+runs a pure-Python per-simulation loop). Measured 2.46x wall-clock cost per call at 5000 vs 2000
+sims (matches training's observed ~20-50 -> ~11-12 hands/sec slowdown, compounded by 3-5+
+`_calculate_equity` calls per decision in multi-way spots), for a measured ~0.3-percentage-point
+reduction in equity-estimate noise (0.87%->0.55%, matching theoretical `1/sqrt(n)` scaling exactly).
+Given the critic gets its own, much more powerful denoising for free via regression across
+thousands of hands (the actual mechanism V17 validated), this modest per-hand noise reduction is
+unlikely to have been load-bearing for the result. Recommend V18 revert to 2000.
+
 ---
 
 ## [P0] Deep-stack OOD trash-jam — highest-priority carried defect

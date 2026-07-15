@@ -4,10 +4,19 @@ from core.models.engine import ModelEngine
 from core.models.v13_engine import V13ModelEngine
 from core.models.v14_engine import V14ModelEngine, V14_ACTION_KEYS
 from core.models.v15_engine import V15ModelEngine
+from core.models.v17_engine import V17ModelEngine
 
 # Live action selection: SAMPLE from the actor policy (matching training/eval, which sample rather
 # than argmax) but SHARPEN with a temperature < 1 so genuine mixing survives on close spots while
 # rare low-probability actions ("spew") are suppressed. Lower = closer to argmax. Tune here.
+# REVERTED (2026-07-16): briefly tried 0.4 after a user request to sharpen "a bit" following a live
+# board review. Live data straddling that change showed a much bigger, one-sided effect than
+# intended -- rough VPIP dropped from ~23% to ~8% across the boards immediately before/after
+# (sharpening pushes any already-fold-leaning marginal spot much more decisively to fold; it isn't
+# symmetric, and only one example -- where CALL was the argmax -- was checked before shipping it).
+# Reverted to the value `tools/model_verify --full` actually validated. Any future retune should be
+# checked against model_verify AT the candidate temperature before going live again, not iterated
+# blind on live tables.
 LIVE_POLICY_TEMPERATURE = 0.5
 
 # Stack-scaled sampling temperature [V16 P2]: at short stacks (<= SHORT_STACK_BB) the correct
@@ -17,7 +26,7 @@ LIVE_POLICY_TEMPERATURE = 0.5
 # genuine mixing has real value.
 SHORT_STACK_BB = 8.0
 DEEP_STACK_BB = 20.0
-SHORT_STACK_TEMPERATURE = 0.2
+SHORT_STACK_TEMPERATURE = 0.2  # reverted alongside LIVE_POLICY_TEMPERATURE above
 
 
 def _stack_scaled_temperature(board_state):
@@ -101,16 +110,24 @@ class PokerDecisionEngine:
         # loading garbage. They are pruned; their weight files remain on disk for reproducibility.
         # To re-enable a legacy model, first fix its weights/contract, THEN re-add it here.
         self.models = {
+            # V17: same 6-action sized contract as V14/V15, actor regret-matching routed through
+            # the critic's own (detached) Q-values past 30k hands with a fold-relative baseline.
+            # Fixes the air/draws overcontinuation V16 had (air_folds_mostly 0.62->1.00) WITHOUT
+            # v16_foldregret's style-flip regression (loose_deep BB/100 +62.1->+90.3, not a
+            # collapse). model_verify: 10 PASS/1 WARN/1 FAIL (the FAIL is the pre-existing
+            # deep-stack OOD defect every version in this line carries, tracked as V18 [P0]).
+            # Beats frozen-V16 by +87.5 BB/100. ACTIVE.
+            'Herocules (v17 Actor-Critic)': V17ModelEngine(weight_name="expert_main.pth"),
             # V15: same 6-action sized contract as V14, retrained on a DoN-shaped stack mixture
             # (5-50bb) + a frozen-V14 expert opponent. Fixes v14's deep-stack OOD; loose-aggressive
-            # style that crushes loose/station fields (the live population). ACTIVE.
+            # style that crushes loose/station fields (the live population). Kept as fallback.
             'Herocules (v15 DoN)': V15ModelEngine(weight_name="expert_main.pth"),
             # V14: discretized bet-size action space; short-stack winner. Kept as fallback.
             'Herocules (v14 Sized)': V14ModelEngine(weight_name="expert_main.pth"),
             # V13: equity-primary + range-aware equity. Kept as the tagged MILESTONE fallback.
             'Herocules (v13 Range-Aware)': V13ModelEngine(weight_name="expert_main.pth"),
         }
-        self.active_model_name = 'Herocules (v15 DoN)'
+        self.active_model_name = 'Herocules (v17 Actor-Critic)'
         self.bridge_v9 = ContractV8V9()
         self.bridge_v11 = ContractV11()
         self.bridge_v13 = ContractV12(max_seq_len=20)
@@ -122,8 +139,8 @@ class PokerDecisionEngine:
         if model_name in self.models:
             self.active_model_name = model_name
         else:
-            print(f"Warning: {model_name} is not loaded or supported. Falling back to V15.")
-            self.active_model_name = 'Herocules (v15 DoN)'
+            print(f"Warning: {model_name} is not loaded or supported. Falling back to V17.")
+            self.active_model_name = 'Herocules (v17 Actor-Critic)'
 
     def _v14_size_to_slider(self, frac, board_state):
         """Translate a V14 pot-fraction raise bucket into (raise_size_chips, slider_fraction).
@@ -185,14 +202,16 @@ class PokerDecisionEngine:
         is_v13_model = getattr(active_model, 'is_v13', False) or 'v13' in self.active_model_name.lower()
         is_v14_model = getattr(active_model, 'is_v14', False) or 'v14' in self.active_model_name.lower()
         is_v15_model = getattr(active_model, 'is_v15', False) or 'v15' in self.active_model_name.lower()
+        is_v17_model = getattr(active_model, 'is_v17', False) or 'v17' in self.active_model_name.lower()
         is_v11_model = getattr(active_model, 'is_v11', False) or 'v11' in self.active_model_name.lower()
-        # V14 and V15 share the IDENTICAL 6-action sized contract -> one live path (selection +
+        # V14/V15/V17 share the IDENTICAL 6-action sized contract -> one live path (selection +
         # slider sizing). Anything gated on "the sized model" uses this combined flag.
-        is_sized_model = is_v14_model or is_v15_model
+        is_sized_model = is_v14_model or is_v15_model or is_v17_model
         try:
             if is_v13_model or is_sized_model:
-                # V13/V14/V15 share the sequence contract (ContractV12, 35-dim ctx) and the ACTOR
-                # policy head; V14/V15 only differ in head WIDTH (6 vs 3), applied after inference.
+                # V13/V14/V15/V17 share the sequence contract (ContractV12, 35-dim ctx) and the
+                # ACTOR policy head; V14/V15/V17 only differ in head WIDTH (6 vs 3), applied after
+                # inference.
                 hole, board, ctx, act = self.bridge_v13.to_tensors(self.hand_history_buffer, action_history_raw)
             elif getattr(active_model, 'is_v11', False) or 'v11' in self.active_model_name.lower():
                 hole, board, ctx, act = self.bridge_v11.to_tensors(self.hand_history_buffer, action_history_raw)
@@ -218,6 +237,7 @@ class PokerDecisionEngine:
         free_fold_overridden = free_check and argmax_action == 'FOLD'
 
         bet_size = 0.0
+        sampled_probs = None   # normalized post-temperature distribution the sampler actually drew from
         temp = _stack_scaled_temperature(board_state)
         if is_sized_model:
             # V14/V15 6-way policy {FOLD,CALL,RAISE_33,RAISE_66,RAISE_POT,ALLIN}. Sharpen+sample as
@@ -232,9 +252,12 @@ class PokerDecisionEngine:
                     probs[rk] = 0.0
             sharp = {a: (v ** (1.0 / temp)) for a, v in probs.items()}
             names = [a for a in keys if sharp[a] > 0.0]
+            sharp_total = sum(sharp[a] for a in names) or 1.0
+            sampled_probs = {a: (sharp[a] / sharp_total if a in names else 0.0) for a in keys}
             choice = random.choices(names, weights=[sharp[a] for a in names], k=1)[0] if names \
                 else ('CALL' if free_check or not bet_raise_available else 'FOLD')
 
+            chosen_key = choice   # the raw policy bucket the sampler picked, e.g. RAISE_66 or ALLIN
             if choice in V14_RAISE_FRAC:
                 raise_size, slider = self._v14_size_to_slider(V14_RAISE_FRAC[choice], board_state)
                 action = f"RAISE_SLIDER_{slider:.2f}"
@@ -243,7 +266,7 @@ class PokerDecisionEngine:
             else:
                 action = choice   # FOLD / CALL
                 size_note = choice
-            _tag = "V15" if is_v15_model else "V14"
+            _tag = "V17" if is_v17_model else ("V15" if is_v15_model else "V14")
             reason = (f"{_tag} sampled (temp={temp:.2f}"
                       + (", free-check fold-masked" if free_check else "")
                       + (", raise-unavail" if not bet_raise_available else "")
@@ -254,10 +277,13 @@ class PokerDecisionEngine:
                 probs['FOLD'] = 0.0   # never fold a free option
             sharp = {a: (v ** (1.0 / temp)) for a, v in probs.items()}
             names = [a for a in ('FOLD', 'CALL', 'RAISE') if sharp[a] > 0.0]
+            sharp_total = sum(sharp[a] for a in names) or 1.0
+            sampled_probs = {a: (sharp[a] / sharp_total if a in names else 0.0) for a in ('FOLD', 'CALL', 'RAISE')}
             if names:
                 action = random.choices(names, weights=[sharp[a] for a in names], k=1)[0]
             else:
                 action = 'CALL' if free_check else 'FOLD'   # degenerate safety net
+            chosen_key = action
             reason = (f"Sampled policy (temp={temp:.2f}"
                       + (", free-check fold-masked" if free_fold_overridden else "")
                       + f") -> {action}: {_fmt_dist(evs)}")
@@ -266,6 +292,7 @@ class PokerDecisionEngine:
             if free_fold_overridden:
                 non_fold = {k: v for k, v in evs.items() if k in ('CALL', 'RAISE')}
                 action = max(non_fold, key=non_fold.get) if non_fold else action
+            chosen_key = action
             reason = f"Model Output: {_fmt_dist(evs)}"
 
         # Determine basic bet size (legacy 3-way RAISE only; V14/V15 already sized their raise above).
@@ -333,6 +360,17 @@ class PokerDecisionEngine:
         ev_dict = evs.copy()
         ev_dict['decision_path'] = decision_path
         ev_dict['thinking'] = _narrate_thinking(action, board_state, evs)
+        # The raw policy bucket the sampler ("dice roll") actually picked, e.g. RAISE_66 or ALLIN --
+        # distinct from `action`, which may be a translated slider string (RAISE_SLIDER_x) or later
+        # overridden by a safety guardrail. Lets the UI highlight the sampled bar even when the
+        # executed action differs. Read by PHPHelp.py's action-distribution panel.
+        ev_dict['chosen_key'] = chosen_key
+        # The temperature-sharpened, RENORMALIZED distribution the sampler actually drew `chosen_key`
+        # from -- distinct from the raw actor probabilities already at the top level of ev_dict.
+        # None for the legacy argmax/non-actor-critic path (no sampling happens there). Lets the UI
+        # show both the model's raw output and what the live temperature scaling actually did to it.
+        ev_dict['sampled_probs'] = sampled_probs
+        ev_dict['temperature'] = temp
         # Diagnostics only (added AFTER argmax so it can't affect the chosen action): the critic's
         # per-action Q (EV vs fold, ~BB). None for non-actor-critic models. Read by F12 diagnostics.
         ev_dict['q_vals'] = getattr(active_model, 'last_q_vals', None)

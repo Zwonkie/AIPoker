@@ -216,27 +216,35 @@ def parse_training_log(logfile):
                     while j < len(parts) and parts[j].endswith('%'):
                         pct.append(parts[j])
                         j += 1
-                    rest = parts[j:]  # [n_hands], avg_end_street, net_chips, [won], [lost]
+                    rest = parts[j:]  # [n_hands], [free], avg_end_street, net_chips, [won], [lost]
                     if len(pct) == 6:
                         labels = ['Fold', 'Call', 'r33', 'r66', 'rPot', 'All-In']
                     elif len(pct) == 5:
                         labels = ['Fold', 'Call', 'Raise', 'RR', 'All-In']
                     else:
                         labels = [f'A{k}' for k in range(len(pct))]
-                    # N Hands is a plain integer (possibly comma-grouped, e.g. "1,234"), unlike
-                    # every other `rest` cell which contains a '.' or '%' -- detect it that way so
-                    # this stays backward-compatible with older logs that never had this column.
-                    has_n_hands = len(rest) > 0 and re.fullmatch(r"[\d,]+", rest[0] or "") is not None
+                    # N Hands and Free are both plain integers (possibly comma-grouped, e.g.
+                    # "1,234"), unlike avg_end_street/net_chips/won/lost which always contain a '.'
+                    # (printed with .1f/+7.1f/+6.0f -- +6.0f still has no '.', but is signed, so the
+                    # plain-unsigned-integer check below still tells them apart) -- detect each
+                    # positionally so this stays backward-compatible with logs from any prior format
+                    # (no N Hands column, N Hands but no Free, or both).
+                    is_int_cell = lambda v: re.fullmatch(r"[\d,]+", v or "") is not None
+                    has_n_hands = len(rest) > 0 and is_int_cell(rest[0])
                     n_hands = rest[0] if has_n_hands else ""
                     rest2 = rest[1:] if has_n_hands else rest
+                    has_free = len(rest2) > 0 and is_int_cell(rest2[0])
+                    free_checks = rest2[0] if has_free else ""
+                    rest3 = rest2[1:] if has_free else rest2
                     telemetry["equity_matrix"].append({
                         "bracket": bracket,
                         "action_cols": [[lab, val] for lab, val in zip(labels, pct)],
                         "n_hands": n_hands,
-                        "avg_end_street": rest2[0] if len(rest2) > 0 else "",
-                        "net_chips": rest2[1] if len(rest2) > 1 else "",
-                        "won_chips": rest2[2] if len(rest2) > 2 else "",
-                        "lost_chips": rest2[3] if len(rest2) > 3 else ""
+                        "free_checks": free_checks,
+                        "avg_end_street": rest3[0] if len(rest3) > 0 else "",
+                        "net_chips": rest3[1] if len(rest3) > 1 else "",
+                        "won_chips": rest3[2] if len(rest3) > 2 else "",
+                        "lost_chips": rest3[3] if len(rest3) > 3 else ""
                     })
             elif "ACTION USAGE (all decisions)" in line:
                 # V14 size-selection histogram over all hero decisions.
