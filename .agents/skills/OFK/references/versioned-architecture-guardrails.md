@@ -7,14 +7,28 @@
 
 ---
 
-## 0. CURRENT CANONICAL FOUNDATION (added 2026-07-14)
+## 0. CURRENT CANONICAL FOUNDATION (updated 2026-07-15)
 
-- **`versions/v13/`** is the CURRENT best foundation — it inherits every v12_validated fix and
-  adds **range-aware equity** (opponent adaptation): it dominates v12_validated on every field
-  (Loose −0.9→**+29.4**, Tight −48.3→**−15.0**, Stations +2.7→**+7.5**). See
-  [`versions/v13/VALIDATED_FINDINGS.md`](file:///c:/REPO/Antigravity/AIPoker/versions/v13/VALIDATED_FINDINGS.md).
-  **Start new versions from v13.** Note the train/serve rule: range-aware equity must be computed
-  the same way in training, eval, AND any live-play bridge, or the model silently mismatches.
+- **`versions/v15/` is the CURRENT foundation and is LIVE** (`Herocules (v15 DoN)` active in
+  `core/decision.py`; v14 + v13 kept as fallbacks). **Start new versions from v15.** Lineage:
+  v13 (equity-primary + range-aware equity) → v14 (discretized 6-action bet-size space
+  {fold,call,raise_33/66/pot,allin} — the model LEARNS sizing) → v15 (same 6-action contract,
+  contract_version 3, retrained on a **DoN-shaped stack mixture 5–50bb** + a **frozen-V14** expert
+  opponent — fixes v14's deep-stack OOD). v14 and v15 share the SAME contract (v13's ContractV12),
+  so their weights are load-compatible and the shared live sized-path (`is_sized_model`) serves both.
+  Per-version details now mirrored into OFK: [V13](file:///c:/REPO/Antigravity/AIPoker/.agents/skills/OFK/references/V13/specs.md) ·
+  [V14](file:///c:/REPO/Antigravity/AIPoker/.agents/skills/OFK/references/V14/specs.md) ·
+  [V15](file:///c:/REPO/Antigravity/AIPoker/.agents/skills/OFK/references/V15/specs.md) ·
+  [V16 roadmap](file:///c:/REPO/Antigravity/AIPoker/.agents/skills/OFK/references/V16/specs.md).
+- **Train/serve rule (still binding):** range-aware equity, sampling temperature, fold-when-free
+  mask, and raise sizing must match across training, eval, AND the live bridge (see the invariants
+  list in [pipeline-flow.md](file:///c:/REPO/Antigravity/AIPoker/.agents/skills/OFK/references/pipeline-flow.md)).
+- **KNOWN LAYOUT DEVIATION (pre-existing, §9 migration still pending):** the live runtime still
+  branches on version (`is_v13/14/15_model`, `is_sized_model` in `decision.py`) and selects the
+  active model via a hardcoded registry default + GUI dropdown rather than manifest-registry dispatch
+  + an `active_version` config value (Golden Rules §5.5 / §5.8). New versions currently ADD to this
+  branching. Not dangerous (self-describing fail-loud weights + one shared contract keep numeric
+  behavior safe), but it's debt to clear at the §9 consolidation.
 - **`versions/v12_validated/`** remains the documented, frozen baseline for the *training-loop and
   architecture* fixes (target clip, counterfactual policy target, equity-primary architecture,
   realization discount, postflop-data field).

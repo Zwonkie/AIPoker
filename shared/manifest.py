@@ -28,6 +28,8 @@ class VersionManifest:
     contract_class: str                   # "versions.v12.core.contract:ContractV8V9"
     weights_dir: str                      # "versions/v12/weights"
     status: str = "active"                # active | frozen | deprecated
+    milestone: bool = False               # True = a kept reference/fallback version (a known-good
+                                          # checkpoint to roll back to); never delete its weights
 
 
 def _robust_save(obj, path: str, retries: int = 6, delay: float = 0.4) -> bool:

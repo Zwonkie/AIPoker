@@ -3,6 +3,8 @@ import sys
 import time
 import threading
 import queue
+import json
+import datetime
 import cv2
 from PIL import Image
 import mss
@@ -14,6 +16,10 @@ import re
 
 # Add workspace path to system path to ensure imports work
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+
+# Canonical action ordering for diagnostics. Covers the v13 3-way {FOLD,CALL,RAISE} and the
+# v14 6-way {FOLD,CALL,RAISE_33,RAISE_66,RAISE_POT,ALLIN} policies. F12 shows whichever keys exist.
+ACTION_DIAG_ORDER = ("FOLD", "CALL", "RAISE", "RAISE_33", "RAISE_66", "RAISE_POT", "ALLIN")
 
 from core.vision import PokerVision
 from core.table_state import TableState
@@ -139,6 +145,18 @@ class PHPHelpApp(ctk.CTk):
         self.last_table_state = None
         self.last_equity = None
         self.last_decision = None
+        self.last_ev_dict = None       # full model output (policy probs + Q-values + decision path)
+        self.last_equity_meta = None   # how equity was computed (range-aware vs random, opp colors)
+        self.last_window_title = None  # source window title -> board id for the history session
+
+        # --- Continuous turn history (live-bot recorder) ------------------------------------
+        # While the bot runs, EVERY decided turn is appended to history/<board_id>/turns.jsonl
+        # (replay-ready). F12 flags a specific turn: it also saves the heavy screenshot + layered
+        # summary under history/<board_id>/flagged/ and marks it in flags.jsonl. board_id is
+        # derived from the window title (stakes stripped so blind changes don't fork the folder).
+        self.session_board_id = None
+        self.session_history_dir = None
+        self.session_turn_count = 0
         self.recent_logs = []
         self.last_valid_hero_stack = 760  # Tracks last valid stack to tolerate timer overlays
         self.table_state = TableState()
@@ -177,7 +195,7 @@ class PHPHelpApp(ctk.CTk):
         self.btn_frame.grid_columnconfigure(0, weight=3) # Start Bot (larger)
         self.btn_frame.grid_columnconfigure(1, weight=2) # Auto-Live (smaller)
         
-        self.start_btn = ctk.CTkButton(self.btn_frame, text="START BOT", fg_color="#2eb85c", hover_color="#229647", font=ctk.CTkFont(weight="bold"), command=self.toggle_bot)
+        self.start_btn = ctk.CTkButton(self.btn_frame, text="START BOT (F5)", fg_color="#2eb85c", hover_color="#229647", font=ctk.CTkFont(weight="bold"), command=self.toggle_bot)
         self.start_btn.grid(row=0, column=0, padx=(0, 5), sticky="ew")
         
         self.auto_live_btn = ctk.CTkButton(self.btn_frame, text="⚡ LIVE", fg_color="#3399ff", hover_color="#2277cc", font=ctk.CTkFont(weight="bold"), command=self.quick_start_live)
@@ -189,16 +207,21 @@ class PHPHelpApp(ctk.CTk):
         self.mode_dropdown = ctk.CTkOptionMenu(self.sidebar, values=["Recommendation Only", "Automatic Play"], variable=self.mode_var)
         self.mode_dropdown.grid(row=4, column=0, padx=20, pady=5, sticky="ew")
         
-        # Model Selection
-        self.model_var = ctk.StringVar(value="Herocules (v13 Range-Aware)")
+        # Model Selection. Default MUST match core/decision.py's active model (v15) so the UI
+        # label reflects what actually runs — the engine defaults to v15 regardless, but a stale
+        # label here would be misleading.
+        self.model_var = ctk.StringVar(value="Herocules (v15 DoN)")
         self.model_label = ctk.CTkLabel(self.sidebar, text="Decision Model:", anchor="w")
         self.model_label.grid(row=5, column=0, padx=20, pady=(10, 0), sticky="w")
         self.model_dropdown = ctk.CTkOptionMenu(
-            self.sidebar, 
+            self.sidebar,
             # Only models that actually load are listed (see core/decision.py registry). The
             # legacy Pluribus/v8-v11 entries were pruned — their weights are missing or use the
             # old 159-feature contract, so selecting them would output random actions live.
+            # v15/v14 = discretized bet-size action space (raises-to-X / all-in); v13 kept as fallback.
             values=[
+                "Herocules (v15 DoN)",
+                "Herocules (v14 Sized)",
                 "Herocules (v13 Range-Aware)",
             ],
             variable=self.model_var,
@@ -679,7 +702,7 @@ class PHPHelpApp(ctk.CTk):
         if not self.bot_running:
             # Start the Bot
             self.bot_running = True
-            self.start_btn.configure(text="STOP BOT", fg_color="#dc3545", hover_color="#bd2130")
+            self.start_btn.configure(text="STOP BOT (F5)", fg_color="#dc3545", hover_color="#bd2130")
             self.append_log("[SYSTEM] Starting PHPHelp engine...")
             
             # Start background worker thread
@@ -689,7 +712,7 @@ class PHPHelpApp(ctk.CTk):
         else:
             # Stop the Bot
             self.bot_running = False
-            self.start_btn.configure(text="START BOT", fg_color="#2eb85c", hover_color="#229647")
+            self.start_btn.configure(text="START BOT (F5)", fg_color="#2eb85c", hover_color="#229647")
             self.append_log("[SYSTEM] Stopping PHPHelp engine...")
             self.state_machine.stop()
 
@@ -714,6 +737,7 @@ class PHPHelpApp(ctk.CTk):
                 if source.startswith("Mock:"):
                     # Load mock image from disk
                     filename = source.replace("Mock: ", "").strip()
+                    self.last_window_title = f"Mock_{filename}"   # board id source for history
                     path = os.path.join("board_samples", filename)
                     if not os.path.exists(path):
                         path = filename # root fallback
@@ -768,6 +792,7 @@ class PHPHelpApp(ctk.CTk):
                                 buf = ctypes.create_unicode_buffer(length + 1)
                                 ctypes.windll.user32.GetWindowTextW(hwnd, buf, length + 1)
                                 win_title = buf.value
+                                self.last_window_title = win_title   # board id source for history
                                 # Try matching decimal stakes first: e.g. "0.10/0.20" or "€0.10/€0.20"
                                 blind_match = re.search(r'(?:€|\$|£)?(\d+\.\d+)/(?:€|\$|£)?(\d+\.\d+)', win_title)
                                 if blind_match:
@@ -929,10 +954,21 @@ class PHPHelpApp(ctk.CTk):
                     # the range-aware calc can't run.
                     equity = None
                     sim_msg = None
-                    if 'v13' in self.decision_engine.active_model_name.lower():
+                    equity_meta = {"method": "vs-random", "opp_colors": None, "num_opponents": num_opponents}
+                    # V13/V14/V15 were all trained with RANGE-AWARE equity (hero equity vs each
+                    # opponent's VPIP-color range); feeding vs-random here would be a silent
+                    # train/serve mismatch. Use the matching version's identical impl.
+                    _active_lower = self.decision_engine.active_model_name.lower()
+                    if 'v15' in _active_lower or 'v14' in _active_lower or 'v13' in _active_lower:
                         try:
-                            from versions.v13.self_play.simulator import compute_range_aware_equity
+                            if 'v15' in _active_lower:
+                                from versions.v15.self_play.simulator import compute_range_aware_equity
+                            elif 'v14' in _active_lower:
+                                from versions.v14.self_play.simulator import compute_range_aware_equity
+                            else:
+                                from versions.v13.self_play.simulator import compute_range_aware_equity
                             opp_colors = [o.get('vpip_color') for o in active_opps if o.get('vpip_color')]
+                            equity_meta["opp_colors"] = opp_colors
                             ra = compute_range_aware_equity(
                                 stabilized_state['hero_cards'],
                                 stabilized_state['community_cards'],
@@ -940,8 +976,12 @@ class PHPHelpApp(ctk.CTk):
                             )
                             if ra is not None:
                                 equity = ra
+                                equity_meta["method"] = "range-aware"
                                 sim_msg = f"Range-aware equity vs {opp_colors or 'random'}: {equity:.2f}"
+                            else:
+                                equity_meta["fallback_reason"] = "range-aware returned None (no HUD colors?)"
                         except Exception as e:
+                            equity_meta["fallback_reason"] = f"range-aware raised: {e}"
                             self.append_log(f"[Equity] range-aware failed ({e}); vs-random fallback")
 
                     if equity is None:
@@ -951,6 +991,8 @@ class PHPHelpApp(ctk.CTk):
                             num_opponents=num_opponents,
                             num_simulations=num_sims
                         )
+                    equity_meta["value"] = equity
+                    self.last_equity_meta = equity_meta
 
                     self.append_log(f"[Decision] {sim_msg}")
                     self.after(0, self.update_equity_ui, equity, sim_msg)
@@ -1059,6 +1101,7 @@ class PHPHelpApp(ctk.CTk):
                 self.last_table_state = stabilized_state
                 self.last_equity = equity
                 self.last_decision = (action, reason, bet_size)
+                self.last_ev_dict = ev_dict   # full model output (policy + Q-values + decision path)
                 
                 # Safeguard: If decided action is CHECK, but we detected the middle button as KALD/CALL or it's unavailable,
                 # override to FOLD to prevent accidental calling.
@@ -1084,6 +1127,7 @@ class PHPHelpApp(ctk.CTk):
                     self.append_log(f"[Decision] Size Allocation: {bet_size} units")
                     
                 self.after(0, self.update_action_ui, action, reason, bet_size, ev_dict)
+                self._record_turn_history()   # append this decided turn to history/<board_id>/turns.jsonl
                 self.state_machine.decision_made()
                 
                 # 5. State Machine: EXECUTING_ACTION
@@ -1115,7 +1159,7 @@ class PHPHelpApp(ctk.CTk):
             except EmergencyAbortException:
                 # Caught during mouse movements
                 self.bot_running = False
-                self.after(0, lambda: self.start_btn.configure(text="START BOT", fg_color="#2eb85c", hover_color="#229647"))
+                self.after(0, lambda: self.start_btn.configure(text="START BOT (F5)", fg_color="#2eb85c", hover_color="#229647"))
                 self.append_log("[SYSTEM] Emergency Abort: Escape key pressed! Releasing mouse control.")
                 self.state_machine.stop()
                 time.sleep(1.0)
@@ -1394,10 +1438,18 @@ class PHPHelpApp(ctk.CTk):
             if ctypes.windll.user32.GetAsyncKeyState(0x1B) & 0x8000:
                 if self.bot_running:
                     self.bot_running = False
-                    self.after(0, lambda: self.start_btn.configure(text="START BOT", fg_color="#2eb85c", hover_color="#229647"))
+                    self.after(0, lambda: self.start_btn.configure(text="START BOT (F5)", fg_color="#2eb85c", hover_color="#229647"))
                     self.append_log("[SYSTEM] Emergency Abort: Escape key pressed. Stopping bot.")
                     self.state_machine.stop()
                     
+            # Virtual key code for F5 is 0x74 -> toggle live bot ON/OFF (edge-triggered).
+            if ctypes.windll.user32.GetAsyncKeyState(0x74) & 0x8000:
+                if not getattr(self, '_f5_was_down', False):
+                    self._f5_was_down = True
+                    self.toggle_bot()
+            else:
+                self._f5_was_down = False
+
             # Virtual key code for F12 is 0x7B
             state_f12 = ctypes.windll.user32.GetAsyncKeyState(0x7B)
             # If the most significant bit is set, the key is currently down
@@ -1411,75 +1463,331 @@ class PHPHelpApp(ctk.CTk):
             pass
         self.after(100, self.poll_keyboard_shortcuts)
 
+    def _board_id_from_title(self, title):
+        """Derive a STABLE, filesystem-safe board id from the window title. A single match/table
+        keeps one long numeric id across the whole game (e.g. 1170780915), while the rest of the
+        title changes hand-to-hand — stakes (0.10), tournament LEVEL (Niveau 1 -> Niveau 2), and
+        client version (v.26.1). Those must NOT fork the folder, so the id is anchored on that long
+        number, prefixed with the stable game-type words that precede it for readability, e.g.
+        'Double Or Nothing 0.10 1170780915 NL Holdem Niveau 2 v.26.1' -> 'Double_Or_Nothing_1170780915'."""
+        if not title:
+            return "unknown"
+        # Long digit run (>=6) = the table/tournament id. Blinds/levels/versions are <=4-5 digits,
+        # so the real id is unambiguously the longest such run.
+        nums = re.findall(r'\d{6,}', title)
+        if nums:
+            match_id = max(nums, key=len)
+            prefix = re.sub(r'[^A-Za-z]+', '_', re.match(r'\D*', title).group(0)).strip('_')[:30]
+            return f"{prefix}_{match_id}".strip('_') if prefix else match_id
+        # Fallback (mock images / clients with no id): strip stakes, then sanitize the whole title.
+        s = re.sub(r'(?:€|\$|£)?\d+(?:\.\d+)?\s*/\s*(?:€|\$|£)?\d+(?:\.\d+)?', '', title)
+        s = re.sub(r'[^A-Za-z0-9._-]+', '_', s).strip('_')
+        return (s[:60] or "table")
+
+    def _ensure_history_session(self):
+        """Point the recorder at history/<board_id>/ for the current window title, starting a new
+        session folder whenever the board id changes. Returns the session dir (or None on failure)."""
+        try:
+            board_id = self._board_id_from_title(self.last_window_title)
+            if board_id != self.session_board_id:
+                self.session_board_id = board_id
+                self.session_history_dir = os.path.join("history", board_id)
+                os.makedirs(os.path.join(self.session_history_dir, "flagged"), exist_ok=True)
+                self.session_turn_count = 0
+                self.append_log(f"[History] Recording turns -> {self.session_history_dir}/turns.jsonl")
+            return self.session_history_dir
+        except Exception as e:
+            self.append_log(f"[History] Could not open session dir: {e}")
+            return None
+
+    def _decode_model_input(self, ev):
+        """Decode the ACTUAL scalars the model consumed from its recorded input tensor (final step
+        of the 35-dim ContractV12 context). Ground truth — unlike re-deriving from the raw vision
+        state, which can diverge (a bridge bug). Indices per versions/v13/core/contract.py.
+        Returns {} if no tensor was captured."""
+        try:
+            last = (ev or {}).get("model_input", {}).get("ctx")[0][-1]
+            street = {0: "Preflop", 1: "Flop", 2: "Turn", 3: "River"}.get(round(last[6] * 3.0), "?")
+            return {
+                "position": round(last[0] * 5.0, 2),
+                "hero_stack_bb": round(last[1] * 400.0, 1),
+                "pot_bb": round(last[2] * 1000.0, 2),
+                "equity": round(last[3], 3),
+                "pot_odds": round(last[4], 3),
+                "num_active": round(last[5] * 10.0),
+                "street": street,
+                "to_call_bb": round(last[9] * 400.0, 2),
+            }
+        except Exception:
+            return {}
+
+    def _curate_opponents(self, state):
+        """Per-seat opponent snapshot for the board-state layer (objective read from vision)."""
+        opps = []
+        for seat_key, opp in (state.get("opponents") or {}).items():
+            if not isinstance(opp, dict):
+                continue
+            opps.append({
+                "seat": seat_key,
+                "is_active": opp.get("is_active", True),
+                "vpip_color": opp.get("vpip_color"),
+                "agg_color": opp.get("agg_color"),
+                "stack": opp.get("stack"),
+            })
+        return opps
+
+    def _build_turn_record(self):
+        """Two-layer, replay-ready snapshot of the latest turn (shared by the recorder + F12):
+          board_state -> the OBJECTIVE table read; collect these across turns = the match array.
+          evaluation  -> the MODEL's read of that state (equity, actor policy, critic Q, input tensors).
+          action      -> the decision taken from the two layers above.
+        """
+        state = self.last_table_state or {}
+        ev = self.last_ev_dict or {}
+        em = self.last_equity_meta or {}
+        action, reason, bet_size = (self.last_decision or ("?", "?", 0.0))
+
+        bb = float(state.get("big_blind") or 0) or None
+        def _bb(x):
+            try:
+                return round(float(x) / bb, 2) if bb else None
+            except Exception:
+                return None
+        board = state.get("community_cards") or []
+        street = {0: "Preflop", 3: "Flop", 4: "Turn", 5: "River"}.get(len(board), f"{len(board)}cards")
+        pot = state.get("pot_size")
+        # to_call is NOT stored in stabilized_state (it's computed downstream in the decision loop
+        # and passed straight to the board_state), so state.get('call_amount') was always None ->
+        # to_call/to_call_bb/pot_odds logged as null. Source the AUTHORITATIVE price the model
+        # actually consumed from its input tensor (ctx[9]*400 = to_call BB; ctx[4] = pot_odds),
+        # falling back to the raw state only if no tensor was captured.
+        seen = self._decode_model_input(ev)
+        to_call_bb = seen.get("to_call_bb")
+        if to_call_bb is not None:
+            to_call = round(to_call_bb * bb, 2) if bb else None
+        else:
+            to_call = state.get("call_amount")
+            to_call_bb = _bb(to_call)
+        pot_odds = seen.get("pot_odds")
+        if pot_odds is None:
+            try:
+                denom = float(pot or 0) + float(to_call or 0)
+                pot_odds = round(float(to_call or 0) / denom, 3) if denom > 0 else 0.0
+            except Exception:
+                pot_odds = None
+
+        return {
+            "format": 2,
+            "turn": self.session_turn_count,
+            "ts": datetime.datetime.now().isoformat(timespec="seconds"),
+            "board_id": self.session_board_id,
+            "window_title": self.last_window_title,
+            "flagged": False,
+            # LAYER 1 — objective board state. Accumulate board_state across a match's turns = the match.
+            "board_state": {
+                "street": street,
+                "hero_cards": state.get("hero_cards"),
+                "board": board,
+                "hero_position": state.get("hero_position"),
+                "hero_stack": state.get("hero_stack"),
+                "hero_stack_bb": _bb(state.get("hero_stack")),
+                "pot": pot,
+                "pot_bb": _bb(pot),
+                "to_call": to_call,
+                "to_call_bb": to_call_bb,
+                "pot_odds": pot_odds,
+                "big_blind": state.get("big_blind"),
+                "num_opponents": em.get("num_opponents"),
+                "opponents": self._curate_opponents(state),
+            },
+            # LAYER 2 — the model's evaluation of that board state.
+            "evaluation": {
+                "model": getattr(self.decision_engine, "active_model_name", None),
+                "equity": self.last_equity,
+                "equity_method": em.get("method"),
+                "equity_opp_colors": em.get("opp_colors"),
+                "actor_policy": {k: ev.get(k) for k in ACTION_DIAG_ORDER if k in ev},
+                "critic_q": ev.get("q_vals"),
+                "model_input": ev.get("model_input"),   # exact input tensors -> faithful replay
+            },
+            # The decision derived from the two layers above.
+            "action": {"chosen": action, "bet_size": bet_size, "reason": reason},
+        }
+
+    def _record_turn_history(self):
+        """Append the just-decided turn to history/<board_id>/turns.jsonl. Runs every live turn."""
+        if self.last_ev_dict is None and self.last_decision is None:
+            return
+        hist_dir = self._ensure_history_session()
+        if not hist_dir:
+            return
+        try:
+            self.session_turn_count += 1
+            record = self._build_turn_record()
+            with open(os.path.join(hist_dir, "turns.jsonl"), "a", encoding="utf-8") as f:
+                f.write(json.dumps(record, default=str) + "\n")
+        except Exception as e:
+            self.append_log(f"[History] Failed to record turn: {e}")
+
     def save_diagnostics(self):
+        """F12: MARK the current turn as worth investigating. Saves the heavy artifacts (screenshot
+        + layered summary) under history/<board_id>/flagged/ and records a pointer in flags.jsonl,
+        so it's a bookmark into the continuous turn history rather than a separate capture."""
         if self.last_raw_img is None:
             self.append_log("[SYSTEM] Warning: No active turn data to save.")
             return
-            
-        import datetime
-        import json
-        
+
         try:
-            # Create timestamped directory in workspace root
             timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
-            dir_name = f"diagnostics/turn_{timestamp}"
+            # Anchor the flag inside the current board's history session (fallback to diagnostics/).
+            hist_dir = self._ensure_history_session()
+            if hist_dir:
+                dir_name = os.path.join(hist_dir, "flagged", f"turn_{self.session_turn_count}_{timestamp}")
+            else:
+                dir_name = os.path.join("diagnostics", f"turn_{timestamp}")
             os.makedirs(dir_name, exist_ok=True)
-            
+
+            # Record the flag pointer so replay/analysis knows which turns were marked.
+            if hist_dir:
+                try:
+                    with open(os.path.join(hist_dir, "flags.jsonl"), "a", encoding="utf-8") as f:
+                        f.write(json.dumps({"turn": self.session_turn_count, "ts": timestamp,
+                                            "dir": dir_name, "action": (self.last_decision or ["?"])[0]},
+                                           default=str) + "\n")
+                except Exception:
+                    pass
+
             # Save screenshot
             screenshot_path = os.path.join(dir_name, "screenshot.png")
             cv2.imwrite(screenshot_path, self.last_raw_img)
-            
-            # Save telemetry metadata & decision output
-            diag_data = {
-                "timestamp": timestamp,
-                "table_state": self.last_table_state,
-                "equity": self.last_equity,
-                "decision": self.last_decision
-            }
-            
-            # Reconstruct the exact 9D context vector for model telemetry
+
+            # ---- Gather the full decision trace: INPUT (perception) -> FEATURES -> MODEL OUTPUT ----
+            state = self.last_table_state or {}
+            ev = self.last_ev_dict or {}
+            eqm = self.last_equity_meta or {}
+            # Ground truth: what the model ACTUALLY consumed (decoded from its input tensor). Preferred
+            # over re-deriving from the raw vision state, which can diverge (a bridge bug) and mislead.
+            seen = self._decode_model_input(ev)
+            action, reason, bet_size = (self.last_decision or ("?", "?", 0.0))
+            policy = {k: ev.get(k) for k in ACTION_DIAG_ORDER if k in ev}   # actor
+            q_vals = ev.get("q_vals")                                                # critic EV/action
+            decision_path = ev.get("decision_path")
+
+            # Reconstruct an APPROXIMATE labeled 9D vector from the raw vision state. NOTE: this is
+            # NOT authoritative — `seen` (decoded from the actual input tensor) is what the model got.
+            ctx_labeled = {}
+            context_vector = None
             try:
-                state = self.last_table_state or {}
-                big_blind = state.get('big_blind', 25.0)
-                
+                big_blind = float(state.get('big_blind', 25.0)) or 25.0
                 position = float(state.get('hero_position', 0)) / 10.0
                 bankroll = (float(state.get('hero_stack', 0)) / big_blind) / 500.0
                 pot = (float(state.get('pot_size', 0)) / big_blind) / 500.0
                 equity = float(self.last_equity)
-                
                 call_amount = float(state.get('call_amount', 0))
                 pot_size = float(state.get('pot_size', 0))
                 pot_odds = (call_amount / (pot_size + call_amount)) if (pot_size + call_amount) > 0 else 0.0
-                
                 num_opponents = float(self.opponents_var.get()) / 10.0
-                
                 board_len = len(state.get('community_cards', []))
-                if board_len == 0:
-                    street_val = 0.0
-                elif board_len == 3:
-                    street_val = 1.0
-                elif board_len == 4:
-                    street_val = 2.0
-                else:
-                    street_val = 3.0
-                street_level = street_val / 3.0
-                
+                street_level = {0: 0.0, 3: 1.0, 4: 2.0}.get(board_len, 3.0) / 3.0
                 opp_vpip_norm = state.get('opp_vpip_norm', 0.3)
                 opp_agg_norm = state.get('opp_agg_norm', 0.4)
-                
                 context_vector = [position, bankroll, pot, equity, pot_odds, num_opponents, street_level, opp_vpip_norm, opp_agg_norm]
-                diag_data["context_vector"] = context_vector
-            except Exception as ex:
+                ctx_labeled = {"position": position, "bankroll": bankroll, "pot": pot, "equity": equity,
+                               "pot_odds": pot_odds, "num_opponents": num_opponents, "street_level": street_level,
+                               "opp_vpip_norm": opp_vpip_norm, "opp_agg_norm": opp_agg_norm}
+            except Exception:
                 pass
-                
+
+            diag_data = {
+                "timestamp": timestamp,
+                "chosen_action": action, "bet_size": bet_size, "reason": reason,
+                "actor_policy": policy, "critic_q_vals": q_vals,
+                "equity": self.last_equity, "equity_meta": eqm,
+                "context_vector": context_vector, "context_labeled": ctx_labeled,
+                "model_seen": seen,   # authoritative: decoded from the actual model input tensor
+                "decision_path": decision_path, "table_state": self.last_table_state,
+                "hand_history_len": len(getattr(self.decision_engine, 'hand_history_buffer', []) or []),
+            }
             with open(os.path.join(dir_name, "telemetry.json"), "w", encoding="utf-8") as f:
                 json.dump(diag_data, f, indent=4, default=str)
-                
+
+            # ---- Human-readable, layered summary: localizes WHERE a bad decision came from ----
+            street_name = {0: "Preflop", 3: "Flop", 4: "Turn", 5: "River"}.get(len(state.get('community_cards', [])), "?")
+            bb = float(state.get('big_blind', 25.0)) or 25.0
+            def _bb(x):
+                try: return f"{float(x)/bb:.1f}BB"
+                except Exception: return "?"
+            def _dist(d, fmt):
+                if not d: return "  (n/a — not an actor-critic model)"
+                ks = [k for k in ACTION_DIAG_ORDER if k in d]
+                return "  " + "  ".join(f"{k} {format(d.get(k, float('nan')), fmt)}" for k in ks)
+
+            L = []
+            L.append(f"=== TURN DIAGNOSTIC — {timestamp} ===")
+            L.append(f"Model : {self.decision_engine.active_model_name}")
+            L.append(f"CHOSE : {action}   bet={bet_size}   reason={reason}")
+            L.append("")
+            L.append("--- LAYER 1: PERCEPTION  (RAW vision read — cross-check vs screenshot.png) ---")
+            L.append(f"  Hero cards : {state.get('hero_cards')}")
+            L.append(f"  Board      : {state.get('community_cards')}   ({street_name})")
+            L.append(f"  Position   : {state.get('hero_position')}")
+            L.append(f"  Hero stack : {state.get('hero_stack')}  ({_bb(state.get('hero_stack'))})")
+            L.append(f"  Pot        : {state.get('pot_size')}  ({_bb(state.get('pot_size'))})")
+            L.append(f"  To call    : {state.get('call_amount')}  ({_bb(state.get('call_amount'))})")
+            L.append(f"  Opp colors : {eqm.get('opp_colors')}   (num_opponents={eqm.get('num_opponents')})")
+            L.append("  >> If any disagree with the screenshot -> OCR / PARSE bug (Layer 1).")
+            L.append("")
+            L.append("--- LAYER 2: FEATURES  (what the model ACTUALLY consumed — decoded from its input tensor) ---")
+            if seen:
+                L.append(f"  street     : {seen.get('street')}     equity : {seen.get('equity')}   [method: {eqm.get('method')}]")
+                L.append(f"  pot        : {seen.get('pot_bb')}BB    to_call : {seen.get('to_call_bb')}BB    pot_odds : {seen.get('pot_odds')}")
+                L.append(f"  hero_stack : {seen.get('hero_stack_bb')}BB    position : {seen.get('position')}    num_active : {seen.get('num_active')}")
+                # Bridge check: does what the model consumed match the raw vision read?
+                raw_street = {0: 'Preflop', 3: 'Flop', 4: 'Turn', 5: 'River'}.get(len(state.get('community_cards', [])), '?')
+                mism = []
+                if seen.get('street') != raw_street:
+                    mism.append(f"street model={seen.get('street')} vs OCR={raw_street}")
+                rc = state.get('call_amount')
+                if rc is None and seen.get('to_call_bb'):
+                    mism.append(f"to_call OCR=None but model saw {seen.get('to_call_bb')}BB (bridge filled it)")
+                if mism:
+                    L.append(f"  (!) MODEL-INPUT vs RAW-OCR MISMATCH -> BRIDGE issue: {mism}")
+            else:
+                L.append(f"  (no input tensor captured; approx from vision) equity {self.last_equity}, pot_odds {ctx_labeled.get('pot_odds')}")
+            if eqm.get("fallback_reason"):
+                L.append(f"  (!) equity fell back to vs-random: {eqm.get('fallback_reason')}")
+            L.append("  >> These are the model's TRUE inputs. Wrong equity -> range/color bug;")
+            L.append("     wrong price/street here but right in Layer 1 -> BRIDGE bug (not OCR, not the model).")
+            L.append("")
+            L.append("--- LAYER 3: POLICY  (given correct inputs, did the model choose right?) ---")
+            L.append("  Actor policy P(action):")
+            L.append(_dist(policy, ".2f"))
+            L.append("  Critic Q (EV vs fold, ~BB):")
+            L.append(_dist(q_vals, "+.2f"))
+            L.append(f"  Chosen action : {action}")
+            if policy and q_vals:
+                try:
+                    pol_pick, q_pick = max(policy, key=policy.get), max(q_vals, key=q_vals.get)
+                    if pol_pick != q_pick:
+                        L.append(f"  (!) ACTOR/CRITIC DISAGREE: actor prefers {pol_pick}, critic values {q_pick} highest")
+                        L.append("      -> policy possibly miscalibrated vs the model's own value estimate.")
+                except Exception:
+                    pass
+            L.append("  >> If Layers 1-2 are correct but this action is wrong -> MODEL / POLICY issue (Layer 3).")
+            L.append("")
+            L.append("Files: screenshot.png | telemetry.json | logs.txt | expected.txt")
+            with open(os.path.join(dir_name, "summary.txt"), "w", encoding="utf-8") as f:
+                f.write("\n".join(L))
+
+            # Template so the user can label the intended action -> each flag becomes a case we can study.
+            with open(os.path.join(dir_name, "expected.txt"), "w", encoding="utf-8") as f:
+                f.write("EXPECTED ACTION (FOLD/CALL/RAISE/ALLIN): \nWHY (what did the model miss?): \n")
+
             # Save recent log history
             with open(os.path.join(dir_name, "logs.txt"), "w", encoding="utf-8") as f:
                 f.write("\n".join(self.recent_logs))
-                
-            self.append_log(f"[SYSTEM] Turn flagged! Saved diagnostics to: {dir_name}/")
+
+            self.append_log(f"[SYSTEM] Turn #{self.session_turn_count} FLAGGED -> {dir_name}/ (open summary.txt)")
         except Exception as e:
             self.append_log(f"[ERROR] Failed to save diagnostics: {e}")
 

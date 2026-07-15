@@ -181,6 +181,7 @@
                 <div class="card-label">Train / Val Loss</div>
                 <div class="card-value"><span id="val-train">--</span> / <span id="val-val">--</span></div>
                 <div class="card-sub">Epoch: <span id="val-epoch">--</span></div>
+                <div class="card-sub" id="val-loss-breakdown" style="font-size:0.82em">Q -- · Pi -- · Bluff -- · Str -- · Eq --</div>
             </div>
             <div class="card">
                 <div class="card-label">Action Entropy</div>
@@ -228,23 +229,20 @@
         <div class="section-title">Equity Action Matrix</div>
         <table>
             <thead>
-                <tr>
-                    <th>Equity Bracket</th>
-                    <th>Fold</th>
-                    <th>Call</th>
-                    <th>Raise</th>
-                    <th>Re-Raise</th>
-                    <th>All-In</th>
-                    <th>Avg End Street</th>
-                    <th>Net Chips</th>
-                    <th>Won Chips</th>
-                    <th>Lost Chips</th>
+                <tr id="head-equity">
+                    <!-- Action columns rendered dynamically by JS (5-action legacy or 6-action V14) -->
                 </tr>
             </thead>
             <tbody id="table-equity">
                 <!-- Rendered by JS -->
             </tbody>
         </table>
+    </div>
+
+    <div class="section-title">Action Usage &amp; Opponent Adaptation</div>
+    <div style="padding: 4px 2px 14px 2px; line-height: 2.0;">
+        <div id="action-usage"></div>
+        <div id="allin-jam" style="margin-top: 6px;"></div>
     </div>
 
     <script>
@@ -254,6 +252,19 @@
             if (valStr.includes('+')) return `<span class="positive">${valStr}</span>`;
             if (valStr.includes('-') && num < 0) return `<span class="negative">${valStr}</span>`;
             return valStr;
+        }
+
+        // Poker HUD colour bands (same thresholds the live model reads):
+        //   VPIP: Blue<18  Green 18-26  Yellow 26-35  Red>35
+        //   AGG : Blue<36  Green 36-56  Yellow 56-71  Red>71
+        const BAND_HEX = { Blue: '#4a9eff', Green: '#2eb85c', Yellow: '#f0b429', Red: '#e55353' };
+        function vpipBand(v) { return v < 18 ? 'Blue' : v < 26 ? 'Green' : v < 35 ? 'Yellow' : 'Red'; }
+        function aggBand(v)  { return v < 36 ? 'Blue' : v < 56 ? 'Green' : v < 71 ? 'Yellow' : 'Red'; }
+        function bandChip(v, band) {
+            const c = BAND_HEX[band];
+            // a coloured dot + coloured value so the band reads at a glance (matches the HUD)
+            return `<span style="color:${c};font-weight:600">${v.toFixed(1)}%</span>`
+                 + ` <span style="color:${c}">●</span>`;
         }
 
         let historyBuffer = [];
@@ -325,6 +336,21 @@
             document.getElementById('val-val').innerHTML = (data.val_loss || '--') + getTrend(data.val_loss, d => d.val_loss, dataIndex);
             document.getElementById('val-epoch').innerText = data.epoch || '--';
 
+            // Loss breakdown (Q critic / Pi actor / aux heads). Q & Pi are the decision-relevant ones.
+            const lbEl = document.getElementById('val-loss-breakdown');
+            if (lbEl) {
+                const lb = data.loss_breakdown;
+                if (lb) {
+                    const tb = (val, key) => getTrend(val, d => d.loss_breakdown ? d.loss_breakdown[key] : null, dataIndex);
+                    lbEl.innerHTML =
+                        `<span style="color:#4a9eff">Q</span> <strong>${lb.q}</strong>${tb(lb.q,'q')} · `
+                      + `<span style="color:#2eb85c">Pi</span> <strong>${lb.pi}</strong>${tb(lb.pi,'pi')} · `
+                      + `<span style="opacity:.7">Bluff ${lb.bluff} · Str ${lb.str} · Eq ${lb.eq}</span>`;
+                } else {
+                    lbEl.innerHTML = 'Q -- · Pi -- · Bluff -- · Str -- · Eq --';
+                }
+            }
+
             const entropy = document.getElementById('val-entropy');
             entropy.innerHTML = (data.entropy || '--') + getTrend(data.entropy, d => d.entropy, dataIndex);
             if (data.entropy && parseFloat(data.entropy) < 0.1) {
@@ -337,13 +363,19 @@
             const seatsBody = document.getElementById('table-seats');
             seatsBody.innerHTML = '';
             (data.seats || []).forEach((seat, idx) => {
+                // Hide UNUSED style-slots: an opponent style not in the current pool (e.g. Maniac,
+                // Past Self when the pool is fish/tag/nit) has zero activity. Hero (idx 0) and any
+                // active opponent always have actions. Avoids the "only 4 seats / missing opponents"
+                // confusion -- the table IS 6-max, the physical opponents just aggregate into the
+                // populated style-rows. (Full data still lives in telemetry.json.)
+                if (idx !== 0 && (seat.r + seat.f + seat.ai) === 0) return;
                 const bb100Class = seat.bb100 > 0 ? 'positive' : (seat.bb100 < 0 ? 'negative' : '');
                 seatsBody.innerHTML += `
                     <tr>
                         <td><strong>${seat.name}</strong></td>
                         <td class="${bb100Class}">${seat.bb100 > 0 ? '+' : ''}${seat.bb100.toFixed(1)}${getTrend(seat.bb100, d => d.seats && d.seats[idx] ? d.seats[idx].bb100 : null, dataIndex)}</td>
-                        <td>${seat.vpip.toFixed(1)}%${getTrend(seat.vpip, d => d.seats && d.seats[idx] ? d.seats[idx].vpip : null, dataIndex)}</td>
-                        <td>${seat.agg.toFixed(1)}%${getTrend(seat.agg, d => d.seats && d.seats[idx] ? d.seats[idx].agg : null, dataIndex)}</td>
+                        <td>${bandChip(seat.vpip, vpipBand(seat.vpip))}${getTrend(seat.vpip, d => d.seats && d.seats[idx] ? d.seats[idx].vpip : null, dataIndex)}</td>
+                        <td>${bandChip(seat.agg, aggBand(seat.agg))}${getTrend(seat.agg, d => d.seats && d.seats[idx] ? d.seats[idx].agg : null, dataIndex)}</td>
                         <td>${seat.r}${getTrend(seat.r, d => d.seats && d.seats[idx] ? d.seats[idx].r : null, dataIndex)}</td>
                         <td>${seat.f}${getTrend(seat.f, d => d.seats && d.seats[idx] ? d.seats[idx].f : null, dataIndex)}</td>
                         <td>${seat.ai}${getTrend(seat.ai, d => d.seats && d.seats[idx] ? d.seats[idx].ai : null, dataIndex)}</td>
@@ -356,6 +388,8 @@
             if (exploitationBody) {
                 exploitationBody.innerHTML = '';
                 (data.exploitation_matrix || []).forEach((row, idx) => {
+                    // Hide unused style-slot rows (all-zero) for the same reason as the seats table.
+                    if (idx !== 0 && [row.hero, row.s1, row.s2, row.s3, row.s4, row.s5].every(v => v === 0)) return;
                     const hClass = row.hero > 0 ? 'positive' : (row.hero < 0 ? 'negative' : '');
                     const s1Class = row.s1 > 0 ? 'positive' : (row.s1 < 0 ? 'negative' : '');
                     const s2Class = row.s2 > 0 ? 'positive' : (row.s2 < 0 ? 'negative' : '');
@@ -379,35 +413,69 @@
                 });
             }
 
-            // Render Equity Matrix
+            // Render Equity Matrix -- DYNAMIC action columns (old 5-action Fold/Call/Raise/RR/All-In
+            // OR V14 6-action Fold/Call/r33/r66/rPot/All-In), driven by row.action_cols from the parser.
             const equityBody = document.getElementById('table-equity');
+            const equityHead = document.getElementById('head-equity');
             equityBody.innerHTML = '';
-            (data.equity_matrix || []).forEach((row, idx) => {
+            const em = data.equity_matrix || [];
+            if (em.length && equityHead) {
+                const labels = (em[0].action_cols || []).map(a => a[0]);
+                equityHead.innerHTML = '<th>Equity Bracket</th>'
+                    + labels.map(l => `<th>${l}</th>`).join('')
+                    + '<th>Avg End Street</th><th>Net Chips</th><th>Won Chips</th><th>Lost Chips</th>';
+            }
+            em.forEach((row, idx) => {
                 const isAir = row.bracket.includes('<20%');
-                let rrClass = '';
-                if (isAir) {
-                    const rrVal = parseFloat(row.rr.replace('%', ''));
-                    if (rrVal > 5.0) rrClass = 'negative';
-                    else if (rrVal > 0.0) rrClass = 'warning';
-                }
-
                 const t = (val, key) => getTrend(val, d => d.equity_matrix && d.equity_matrix[idx] ? d.equity_matrix[idx][key] : null, dataIndex);
-
+                // Flag heavy air aggression (bluff-shoving/raising trash) on the <20% row.
+                const actionCells = (row.action_cols || []).map(([label, val]) => {
+                    let cls = '';
+                    if (isAir && label !== 'Fold' && label !== 'Call') {
+                        const v = parseFloat(String(val).replace('%', ''));
+                        if (v > 8.0) cls = 'negative';
+                        else if (v > 3.0) cls = 'warning';
+                    }
+                    return `<td class="${cls}">${val}</td>`;
+                }).join('');
                 equityBody.innerHTML += `
                     <tr>
                         <td><strong>${row.bracket}</strong></td>
-                        <td>${row.fold}${t(row.fold, 'fold')}</td>
-                        <td>${row.call}${t(row.call, 'call')}</td>
-                        <td>${row.raise}${t(row.raise, 'raise')}</td>
-                        <td class="${rrClass}">${row.rr}${t(row.rr, 'rr')}</td>
-                        <td>${row.all_in}${t(row.all_in, 'all_in')}</td>
-                        <td>${row.avg_end_street}${t(row.avg_end_street, 'avg_end_street')}</td>
+                        ${actionCells}
+                        <td>${row.avg_end_street}</td>
                         <td>${colorizeValue(row.net_chips)}${t(row.net_chips, 'net_chips')}</td>
-                        <td class="positive">${row.won_chips || '--'}${t(row.won_chips, 'won_chips')}</td>
-                        <td class="negative">${row.lost_chips || '--'}${t(row.lost_chips, 'lost_chips')}</td>
+                        <td class="positive">${row.won_chips || '--'}</td>
+                        <td class="negative">${row.lost_chips || '--'}</td>
                     </tr>
                 `;
             });
+
+            // --- Action Usage & Opponent Adaptation (V14) ---
+            const usageEl = document.getElementById('action-usage');
+            if (usageEl) {
+                const usage = data.action_usage || [];
+                if (usage.length) {
+                    const chips = usage.map(([lab, val]) => {
+                        const isRaise = lab !== 'Fold' && lab !== 'Call';
+                        const col = lab === 'All-In' ? '#e55353' : (isRaise ? '#f0b429' : '#9aa4b2');
+                        return `<span style="display:inline-block;min-width:96px">
+                                  <span style="color:#9aa4b2">${lab}</span>
+                                  <strong style="color:${col}">${val}</strong></span>`;
+                    }).join('');
+                    usageEl.innerHTML = `<span style="color:#6b7280">Size selection (all decisions): </span>${chips}`;
+                } else {
+                    usageEl.innerHTML = '<span style="color:#6b7280">Size selection: (awaiting next run — 6-action telemetry)</span>';
+                }
+            }
+            const jamEl = document.getElementById('allin-jam');
+            if (jamEl) {
+                const jam = data.jam_by_color || [];
+                const jamStr = jam.map(([c, v]) =>
+                    `<span style="color:${BAND_HEX[c] || '#fff'}">${c} <strong>${v}</strong></span>`).join('&nbsp;&nbsp;');
+                const wr = data.allin_winrate ? `${data.allin_winrate} (n=${data.allin_n || '?'})` : '--';
+                jamEl.innerHTML = `<span style="color:#6b7280">All-in win rate: </span><strong>${wr}</strong>`
+                    + (jamStr ? `&nbsp;&nbsp;&nbsp;<span style="color:#6b7280">Jam% by tightest opp: </span>${jamStr}` : '');
+            }
         }
 
         function updateControls() {

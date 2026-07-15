@@ -24,4 +24,7 @@ MANIFEST = VersionManifest(
     contract_class="versions.v13.core.contract:ContractV12",
     weights_dir="versions/v13/weights",
     status="active",
+    milestone=True,                 # MILESTONE (2026-07-14): first version that plays reasonably
+                                    # well live — the sound foundation. Keep as a reference/fallback;
+                                    # do NOT delete versions/v13/weights. V14 builds from here.
 )

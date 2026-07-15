@@ -1,0 +1,32 @@
+=== TURN DIAGNOSTIC — 20260714_191817 ===
+Model : Herocules (v13 Range-Aware)
+CHOSE : RAISE   bet=90.0   reason=Sampled policy (temp=0.5) -> RAISE: {'FOLD': 0.09680765867233276, 'CALL': 0.3335556983947754, 'RAISE': 0.5696366429328918}
+
+--- LAYER 1: PERCEPTION  (did we read the table right? cross-check vs screenshot.png) ---
+  Hero cards : ['Qd', 'Kh']
+  Board      : ['Qs', 'Td', '4d', '5h', '5c']   (River)
+  Position   : 2
+  Hero stack : 770  (25.7BB)
+  Pot        : 150  (5.0BB)
+  To call    : None  (?)
+  Opp colors : ['Red', 'Red', 'Red', 'Blue']   (num_opponents=4)
+  >> If any disagree with the screenshot -> OCR / PARSE bug (Layer 1).
+
+--- LAYER 2: FEATURES  (given a correct read, are the model inputs right?) ---
+  Equity     : 0.53   [method: range-aware]
+  Pot odds   : 0.0
+  9D context : {'position': 0.2, 'bankroll': 0.051333333333333335, 'pot': 0.01, 'equity': 0.53, 'pot_odds': 0.0, 'num_opponents': 0.4, 'street_level': 1.0, 'opp_vpip_norm': 0.45, 'opp_agg_norm': 0.46}
+  >> Sanity-check equity vs the hand (top pair dry board ~0.70-0.80, air ~0.05).
+     Wrong equity -> range-aware / opponent-color bug (Layer 2), NOT the model.
+
+--- LAYER 3: POLICY  (given correct inputs, did the model choose right?) ---
+  Actor policy P(action):
+  FOLD 0.10  CALL 0.33  RAISE 0.57
+  Critic Q (EV vs fold, ~BB):
+  FOLD -0.00  CALL +1.74  RAISE +0.77
+  Chosen action : RAISE
+  (!) ACTOR/CRITIC DISAGREE: actor prefers RAISE, critic values CALL highest
+      -> policy possibly miscalibrated vs the model's own value estimate.
+  >> If Layers 1-2 are correct but this action is wrong -> MODEL / POLICY issue (Layer 3).
+
+Files: screenshot.png | telemetry.json | logs.txt | expected.txt

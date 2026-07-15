@@ -26,6 +26,9 @@ class V13ModelEngine:
     def __init__(self, weight_name: str = "expert_main.pth", device: str = "cpu"):
         self.device = torch.device(device)
         self.model = V13Model().to(self.device)
+        # Diagnostics: last decision's critic Q-values and raw actor policy (set in predict_ev).
+        self.last_q_vals = None
+        self.last_policy = None
         repo_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
         weight_path = os.path.join(repo_root, "versions", "v13", "weights", weight_name)
         try:
@@ -44,4 +47,10 @@ class V13ModelEngine:
                              ctx.to(self.device), act.to(self.device))
         logits = out["policy_logits"][0, -1, :]
         probs = torch.softmax(logits, dim=-1).cpu().numpy()
+        # Diagnostics: stash the critic's per-action EV (Q, ~BB vs fold) and the raw actor
+        # policy for the final step. Kept as attributes (NOT added to the returned dict) so the
+        # decision engine's argmax over {FOLD,CALL,RAISE} is untouched. F12 turn-diagnostics reads these.
+        q = out["q_vals"][0, -1, :].cpu().numpy()
+        self.last_q_vals = {"FOLD": float(q[0]), "CALL": float(q[1]), "RAISE": float(q[2])}
+        self.last_policy = {"FOLD": float(probs[0]), "CALL": float(probs[1]), "RAISE": float(probs[2])}
         return {"FOLD": float(probs[0]), "CALL": float(probs[1]), "RAISE": float(probs[2])}

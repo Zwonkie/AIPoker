@@ -1,0 +1,108 @@
+[Decision] Reason: V15 sampled (temp=0.5, raise-unavail) -> FOLD: {FOLD 0.35, CALL 0.21, RAISE_33 0.13, RAISE_66 0.10, RAISE_POT 0.08, ALLIN 0.14}
+[Automation] Invoking native call for FOLD...
+[Automation] Thread interrupt completed successfully.
+[SYSTEM] Parsing loop complete. Monitoring stream...
+[SYSTEM] New hand detected. Resetting table state history.
+[XML Tracker] Loaded baseline stacks: {'Zwonkie': 1345, 'Caifan': 2335, 'mrfeng888': 1460, 'Preben14': 1970, 'aceruby36': 1840} (Hero: Zwonkie, Dealer: )
+
+--- HERO TURN DETECTED ---
+[Decision] Parsing thread execution path...
+[Decision] Range-aware equity vs ['Yellow']: 0.10
+[Vision] Facing bet! Parsed Call Amount: 100.0
+[Decision] DECIDED BRANCH: **FOLD**
+[Decision] Reason: V15 sampled (temp=0.5) -> FOLD: {FOLD 0.57, CALL 0.18, RAISE_33 0.08, RAISE_66 0.06, RAISE_POT 0.05, ALLIN 0.05}
+[Automation] Invoking native call for FOLD...
+[Automation] Thread interrupt completed successfully.
+[SYSTEM] Parsing loop complete. Monitoring stream...
+[SYSTEM] New hand detected. Resetting table state history.
+[XML Tracker] Loaded baseline stacks: {'Zwonkie': 1145, 'Caifan': 2310, 'mrfeng888': 1410, 'Preben14': 2195, 'aceruby36': 1840} (Hero: Zwonkie, Dealer: )
+
+--- HERO TURN DETECTED ---
+[Decision] Parsing thread execution path...
+[Decision] Range-aware equity vs ['Red', 'Red', 'Yellow']: 0.60
+[Vision] Facing bet! Parsed Call Amount: 50.0
+[Decision] DECIDED BRANCH: **CALL**
+[Decision] Reason: V15 sampled (temp=0.5) -> CALL: {FOLD 0.21, CALL 0.23, RAISE_33 0.16, RAISE_66 0.17, RAISE_POT 0.17, ALLIN 0.07}
+[Automation] Invoking native call for CALL...
+[Automation] Thread interrupt completed successfully.
+[SYSTEM] Parsing loop complete. Monitoring stream...
+[SYSTEM] New hand detected. Resetting table state history.
+[XML Tracker] Loaded baseline stacks: {'Zwonkie': 1145, 'Caifan': 2310, 'mrfeng888': 1410, 'Preben14': 2195, 'aceruby36': 1840} (Hero: Zwonkie, Dealer: )
+
+--- HERO TURN DETECTED ---
+[Decision] Parsing thread execution path...
+[Decision] Range-aware equity vs ['Red', 'Yellow']: 0.35
+[Vision] No bet detected on Check/Call button. Text: 'TJEK'
+[Decision] DECIDED BRANCH: **CALL**
+[Decision] Reason: V15 sampled (temp=0.5, free-check fold-masked) -> CALL: {FOLD 0.26, CALL 0.33, RAISE_33 0.17, RAISE_66 0.13, RAISE_POT 0.09, ALLIN 0.03}
+[Automation] Invoking native call for CALL...
+[Automation] Thread interrupt completed successfully.
+[SYSTEM] Parsing loop complete. Monitoring stream...
+
+--- HERO TURN DETECTED ---
+[Decision] Parsing thread execution path...
+[Decision] Range-aware equity vs ['Red']: 0.50
+[Vision] Facing bet! Parsed Call Amount: 50.0
+[Decision] DECIDED BRANCH: **RAISE_SLIDER_1.00**
+[Decision] Reason: V15 sampled (temp=0.5) -> ALLIN -> raise-to 1095 (slider 1.00): {FOLD 0.09, CALL 0.12, RAISE_33 0.10, RAISE_66 0.11, RAISE_POT 0.11, ALLIN 0.48}
+[Decision] Size Allocation: 1095.0 units
+[Automation] Invoking native call for RAISE_SLIDER_1.00...
+[Automation] Thread interrupt completed successfully.
+[SYSTEM] Parsing loop complete. Monitoring stream...
+[SYSTEM] Auto-parsed blinds from window title: SB=40, BB=80
+[SYSTEM] New hand detected. Resetting table state history.
+[XML Tracker] Loaded baseline stacks: {'Zwonkie': 0.0, 'Caifan': 3530, 'mrfeng888': 1385, 'Preben14': 2245, 'aceruby36': 1840} (Hero: Zwonkie, Dealer: )
+[SYSTEM] New hand detected. Resetting table state history.
+[XML Tracker] Loaded baseline stacks: {'Zwonkie': 0.0, 'Caifan': 3530, 'mrfeng888': 1385, 'Preben14': 2245, 'aceruby36': 1840} (Hero: Zwonkie, Dealer: )
+[SYSTEM] New hand detected. Resetting table state history.
+[XML Tracker] Loaded baseline stacks: {'Zwonkie': 0.0, 'Caifan': 3530, 'mrfeng888': 1385, 'Preben14': 2245, 'aceruby36': 1840} (Hero: Zwonkie, Dealer: )
+[SYSTEM] New hand detected. Resetting table state history.
+[XML Tracker] Loaded baseline stacks: {'Zwonkie': 0.0, 'Caifan': 3530, 'mrfeng888': 1385, 'Preben14': 2245, 'aceruby36': 1840} (Hero: Zwonkie, Dealer: )
+[SYSTEM] New hand detected. Resetting table state history.
+[XML Tracker] Loaded baseline stacks: {'Zwonkie': 0.0, 'Caifan': 3530, 'mrfeng888': 1385, 'Preben14': 2245, 'aceruby36': 1840} (Hero: Zwonkie, Dealer: )
+[SYSTEM] Auto-parsed blinds from window title: SB=10, BB=20
+
+--- HERO TURN DETECTED ---
+[Decision] Parsing thread execution path...
+[Decision] Simulated 2000 hands: W=20.3%, D=3.7%, L=75.9%
+[Vision] Facing bet! Parsed Call Amount: 20.0
+[Decision] DECIDED BRANCH: **FOLD**
+[Decision] Reason: V15 sampled (temp=0.5) -> FOLD: {FOLD 0.51, CALL 0.20, RAISE_33 0.11, RAISE_66 0.10, RAISE_POT 0.08, ALLIN 0.01}
+[History] Recording turns -> history\Double_Or_Nothing_1170853084/turns.jsonl
+[Automation] Invoking native call for FOLD...
+[Automation] Thread interrupt completed successfully.
+[SYSTEM] Parsing loop complete. Monitoring stream...
+[SYSTEM] New hand detected. Resetting table state history.
+[XML Tracker] Loaded baseline stacks: {'Zwonkie': 1500, 'Jimmk': 1490, 'boklok74': 1500, 'Crazylord19': 1500, 'TimberL123': 1500, 'Cleverdream98': 1500} (Hero: Zwonkie, Dealer: )
+[SYSTEM] New hand detected. Resetting table state history.
+[XML Tracker] Loaded baseline stacks: {'Zwonkie': 1500, 'Jimmk': 1490, 'boklok74': 1500, 'Crazylord19': 1500, 'TimberL123': 1500, 'Cleverdream98': 1500} (Hero: Zwonkie, Dealer: )
+
+--- HERO TURN DETECTED ---
+[Decision] Parsing thread execution path...
+[Decision] Simulated 2000 hands: W=7.3%, D=0.7%, L=92.0%
+[Vision] No bet detected on Check/Call button. Text: 'TJEK'
+[Decision] DECIDED BRANCH: **CALL**
+[Decision] Reason: V15 sampled (temp=0.5, free-check fold-masked) -> CALL: {FOLD 0.48, CALL 0.28, RAISE_33 0.11, RAISE_66 0.07, RAISE_POT 0.05, ALLIN 0.00}
+[Automation] Invoking native call for CALL...
+[Automation] Thread interrupt completed successfully.
+[SYSTEM] Parsing loop complete. Monitoring stream...
+
+--- HERO TURN DETECTED ---
+[Decision] Parsing thread execution path...
+[Decision] Simulated 2000 hands: W=13.8%, D=0.5%, L=85.7%
+[Vision] No bet detected on Check/Call button. Text: 'TJEK'
+[Decision] DECIDED BRANCH: **CALL**
+[Decision] Reason: V15 sampled (temp=0.5, free-check fold-masked) -> CALL: {FOLD 0.54, CALL 0.26, RAISE_33 0.09, RAISE_66 0.06, RAISE_POT 0.04, ALLIN 0.00}
+[Automation] Invoking native call for CALL...
+[Automation] Thread interrupt completed successfully.
+[SYSTEM] Parsing loop complete. Monitoring stream...
+
+--- HERO TURN DETECTED ---
+[Decision] Parsing thread execution path...
+[Decision] Simulated 2000 hands: W=21.3%, D=2.6%, L=76.0%
+[Vision] Facing bet! Parsed Call Amount: 100.0
+[Decision] DECIDED BRANCH: **FOLD**
+[Decision] Reason: V15 sampled (temp=0.5) -> FOLD: {FOLD 0.70, CALL 0.13, RAISE_33 0.05, RAISE_66 0.05, RAISE_POT 0.06, ALLIN 0.03}
+[Automation] Invoking native call for FOLD...
+[Automation] Thread interrupt completed successfully.
+[SYSTEM] Parsing loop complete. Monitoring stream...

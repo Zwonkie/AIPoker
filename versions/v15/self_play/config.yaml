@@ -1,0 +1,53 @@
+version: "v15"
+training:
+  # --- Discretized bet-size action space (inherited from V14, UNCHANGED) --------------
+  # The raise buckets the hero (and per-size EV targets) use, as pot fractions; `null` = ALL-IN.
+  raise_pot_fractions: [0.33, 0.66, 1.0, null]   # 0.33/0.66/1.0 pot + all-in
+  target_hands: 200000          # V15: up from 100k — wider depth range + stronger opponent
+  batch_size: 256
+  epochs_per_batch: 3
+  sim_batch_size: 2000
+  learning_rate: 0.001
+  equity_sims: 2000
+  mid_flight_diagnostics_interval: 10000
+  # --- Training knobs: IDENTICAL to the validated V14 run (do NOT change for V15) ------
+  # V15 = same proven recipe, fresh; only the sim-table setup (stacks + opponents) + budget
+  # differ. Changing these would confound whether a regression is the recipe or the new field.
+  aux_loss_weight: 0.0          # 0 = bluff/strength/equity heads OFF
+  disable_target_shaping: true  # bias priors off
+  target_clip_bb: 40.0          # VARIANCE clip -- KEEP ON (removing it diverged the critic)
+  disable_bootstrap: false      # heuristic warmup generates good-play examples (decays by 30k)
+  disable_exploration: false    # 5% random + heuristic anchor -> model visits diverse states
+  policy_target_source: counterfactual  # 'realized' (legacy) | 'counterfactual'
+  range_aware_equity: true      # hero equity vs each opp's VPIP-color range (opponent adaptation)
+  policy_tightness_bb: 2.0      # realization discount on the actor target
+  ablate_hole_cards: false
+  policy_target_temperature: 1.0
+  policy_entropy_penalty: 0.0
+
+curriculum:
+  phase_1_max_hands: 10000
+  phase_1_stacks: [100.0]
+  phase_5_focus_rounds: true
+  disable_extreme_stacks: true  # the old 10-300bb fat-tail curriculum stays OFF
+  # V15 DoN-SHAPED depth MIXTURE (replaces V14's flat fixed_stack_bb: [5,14]). Per hand, pick a
+  # band by weight then sample a uniform depth within it — short-weighted with a real deep tail so
+  # ONE model covers the whole DoN arc (fixes the deep-stack OOD that jammed K9o for 20bb live).
+  #   [lo_bb, hi_bb, weight]
+  stack_depth_mix:
+    - [5, 14, 0.55]     # late-game short (v14's proven zone — kept dense)
+    - [14, 30, 0.30]    # mid-game
+    - [30, 50, 0.15]    # early-game deep tail (the missing OOD coverage)
+  # fixed_stack_bb intentionally UNSET so stack_depth_mix takes over.
+
+# --- Opponent lineup (V15: stations + FROZEN V14 expert) ---------------------
+# Keep the station-heavy heuristic base (best postflop/value data) and add a STATIC frozen-V14
+# expert in the "past" seat so the hero learns sizing/shove dynamics vs a competent, adaptive
+# opponent (not just heuristics) — and gives a benchmark (V15 must beat frozen-V14).
+opponents:
+  pool: ["fish", "tag", "nit", "past"]   # 'past' = frozen_v14 (static expert, NOT a lagged mirror)
+  weights: [0.40, 0.20, 0.20, 0.20]      # station-heavy base + 20% competent expert
+  live_players: 6                        # 6-max to match live tables
+  disable_past_self: false               # ENABLE the past seat...
+  freeze_past_self: true                 # ...pinned to versions/v15/weights/frozen_v14.pth (no lagged snapshot)
+  disable_focus_rounds: true

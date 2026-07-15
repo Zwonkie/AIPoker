@@ -1,0 +1,153 @@
+{
+    "timestamp": "20260715_095617",
+    "chosen_action": "FOLD",
+    "bet_size": 0.0,
+    "reason": "V15 sampled (temp=0.5) -> FOLD: {FOLD 0.70, CALL 0.13, RAISE_33 0.05, RAISE_66 0.05, RAISE_POT 0.06, ALLIN 0.03}",
+    "actor_policy": {
+        "FOLD": 0.6950295567512512,
+        "CALL": 0.12559698522090912,
+        "RAISE_33": 0.050803422927856445,
+        "RAISE_66": 0.04636845365166664,
+        "RAISE_POT": 0.0558282844722271,
+        "ALLIN": 0.026373283937573433
+    },
+    "critic_q_vals": {
+        "FOLD": 0.002681497484445572,
+        "CALL": 0.6940156817436218,
+        "RAISE_33": 0.14781033992767334,
+        "RAISE_66": 0.4019318222999573,
+        "RAISE_POT": 0.3923494815826416,
+        "ALLIN": -2.711378574371338
+    },
+    "equity": 0.22216666666666665,
+    "equity_meta": {
+        "method": "vs-random",
+        "opp_colors": [],
+        "num_opponents": 2,
+        "fallback_reason": "range-aware returned None (no HUD colors?)",
+        "value": 0.22216666666666665
+    },
+    "context_vector": [
+        0.5,
+        0.002,
+        0.02,
+        0.22216666666666665,
+        0.0,
+        0.2,
+        1.0,
+        0.3,
+        0.4
+    ],
+    "context_labeled": {
+        "position": 0.5,
+        "bankroll": 0.002,
+        "pot": 0.02,
+        "equity": 0.22216666666666665,
+        "pot_odds": 0.0,
+        "num_opponents": 0.2,
+        "street_level": 1.0,
+        "opp_vpip_norm": 0.3,
+        "opp_agg_norm": 0.4
+    },
+    "model_seen": {
+        "position": 5.0,
+        "hero_stack_bb": 1.0,
+        "pot_bb": 10.0,
+        "equity": 0.222,
+        "pot_odds": 0.333,
+        "num_active": 2,
+        "street": "River",
+        "to_call_bb": 5.0
+    },
+    "decision_path": {
+        "preflop_chart": {
+            "status": "Bypassed",
+            "details": "Deprecated in V8/V9"
+        },
+        "active_model": {
+            "status": "Active",
+            "details": "Loaded Herocules (v15 DoN)"
+        },
+        "bluff_engine": {
+            "status": "Passed",
+            "details": "Handled natively by V8/V9"
+        },
+        "math_engine": {
+            "status": "Passed",
+            "details": "Math checks out OK"
+        }
+    },
+    "table_state": {
+        "community_cards": [
+            "5s",
+            "Qd",
+            "Jd",
+            "8c",
+            "7d"
+        ],
+        "hero_cards": [
+            "6s",
+            "7h"
+        ],
+        "pot_size": 200,
+        "hero_stack": 20,
+        "opponents": {
+            "seat_4": {
+                "name": "A",
+                "stack": 1480,
+                "is_active": false,
+                "state": "Folded",
+                "vpip_color": null,
+                "agg_color": null
+            },
+            "seat_5": {
+                "name": "Nace OF O& I Onne",
+                "stack": 0,
+                "is_active": false,
+                "state": "Folded",
+                "vpip_color": null,
+                "agg_color": null
+            },
+            "seat_1": {
+                "name": "Pinas siela",
+                "stack": 1470,
+                "is_active": true,
+                "state": "Active",
+                "vpip_color": null,
+                "agg_color": null
+            },
+            "seat_2": {
+                "name": "boklok74",
+                "stack": 1390,
+                "is_active": true,
+                "state": "Active",
+                "vpip_color": null,
+                "agg_color": null
+            },
+            "seat_3": {
+                "name": "Crazylord19",
+                "stack": 0,
+                "is_active": false,
+                "state": "Folded",
+                "vpip_color": null,
+                "agg_color": null
+            }
+        },
+        "num_active_players": 2,
+        "active_buttons": [
+            "button_fold"
+        ],
+        "street": "River",
+        "dealer_name": "Jimmk",
+        "dealer_idx": 1,
+        "hero_position": 5,
+        "action_history": [
+            "c",
+            "c"
+        ],
+        "opp_vpip_norm": 0.3,
+        "opp_agg_norm": 0.4,
+        "big_blind": 20.0
+    },
+    "hand_history_len": 3
+}
