@@ -1,0 +1,61 @@
+version: "v16_vsNN"
+training:
+  # --- Discretized bet-size action space (inherited from V14, UNCHANGED) --------------
+  # The raise buckets the hero (and per-size EV targets) use, as pot fractions; `null` = ALL-IN.
+  raise_pot_fractions: [0.33, 0.66, 1.0, null]   # 0.33/0.66/1.0 pot + all-in
+  # EXPLORATORY (see SPECS.md): warm-started from v16's 110,057-hand checkpoint, continuing the
+  # hand-count numbering (not resetting to 0) so it skips straight past the bootstrap-anchor
+  # decay window (hands_done < 30000) -- launch with --resume_path/--hands_done/--num_hands on
+  # the CLI (110057 -> 185057 = 75k new hands); target_hands here is informational only.
+  target_hands: 185000
+  batch_size: 256
+  epochs_per_batch: 3
+  sim_batch_size: 2000
+  learning_rate: 0.001
+  equity_sims: 2000
+  mid_flight_diagnostics_interval: 10000
+  checkpoint_dump_interval: 25000   # distinct restore-point checkpoint every N hands (weights/checkpoints/)
+  # --- Training knobs: IDENTICAL to the validated V14 run (do NOT change for V15) ------
+  # V15 = same proven recipe, fresh; only the sim-table setup (stacks + opponents) + budget
+  # differ. Changing these would confound whether a regression is the recipe or the new field.
+  aux_loss_weight: 0.0          # 0 = bluff/strength/equity heads OFF
+  disable_target_shaping: true  # bias priors off
+  target_clip_bb: 40.0          # VARIANCE clip -- KEEP ON (removing it diverged the critic)
+  disable_bootstrap: false      # heuristic warmup generates good-play examples (decays by 30k)
+  disable_exploration: false    # 5% random + heuristic anchor -> model visits diverse states
+  policy_target_source: counterfactual  # 'realized' (legacy) | 'counterfactual'
+  range_aware_equity: true      # hero equity vs each opp's VPIP-color range (opponent adaptation)
+  policy_tightness_bb: 2.0      # realization discount on the actor target
+  ablate_hole_cards: false
+  policy_target_temperature: 1.0
+  policy_entropy_penalty: 0.0
+
+curriculum:
+  phase_1_max_hands: 10000
+  phase_1_stacks: [100.0]
+  phase_5_focus_rounds: true
+  disable_extreme_stacks: true  # the old 10-300bb fat-tail curriculum stays OFF
+  # V15 DoN-SHAPED depth MIXTURE (replaces V14's flat fixed_stack_bb: [5,14]). Per hand, pick a
+  # band by weight then sample a uniform depth within it — short-weighted with a real deep tail so
+  # ONE model covers the whole DoN arc (fixes the deep-stack OOD that jammed K9o for 20bb live).
+  #   [lo_bb, hi_bb, weight]
+  stack_depth_mix:
+    - [5, 14, 0.55]     # late-game short (v14's proven zone — kept dense)
+    - [14, 30, 0.30]    # mid-game
+    - [30, 50, 0.15]    # early-game deep tail (the missing OOD coverage)
+  # fixed_stack_bb intentionally UNSET so stack_depth_mix takes over.
+
+# --- Opponent lineup (v16_vsNN: PURE NN-vs-NN-vs-NN, no heuristic bots at all) ----------------
+# EXPLORATORY (see SPECS.md): 3-seat table, hero + 2 opponents, BOTH real neural nets --
+# 'past' = a TRUE self-play lagged mirror (freeze_past_self:false -- "itself"), 'nit' = repurposed
+# (was a dormant/unused NN-opponent slot) to a STATIC frozen V15 checkpoint -- "V15". Deliberately
+# no fish/tag/maniac heuristic bots, to isolate the "does training vs skilled NNs instead of
+# closed-form heuristics change behavior" question raised in discussion.
+opponents:
+  pool: ["past", "nit"]
+  weights: [0.5, 0.5]
+  live_players: 3                        # hero + 2 opponents (randomly-selected seats, see simulator.py)
+  disable_past_self: false               # ENABLE the past seat...
+  freeze_past_self: false                # ...as a TRUE lagged self-play mirror (not a static pin)
+  nit_model_filename: frozen_v15.pth     # repurpose the Nit seat -> static frozen V15 (versions/v16_vsNN/weights/)
+  disable_focus_rounds: true

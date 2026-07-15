@@ -2,6 +2,95 @@ import sys
 import os
 import json
 import re
+import time
+import ast
+
+HISTORY_FILENAME = "telemetry_history.json"
+MAX_HISTORY_TICKS = 50
+
+
+def _acquire_lock(lock_path, timeout=5.0, poll=0.05):
+    """Exclusive-create lockfile mutex. The watcher's background poll and any manual
+    invocation of this script both write telemetry_history.json -- without this, two
+    concurrent read-modify-write cycles can race and silently drop ticks (lost update)."""
+    deadline = time.time() + timeout
+    while True:
+        try:
+            fd = os.open(lock_path, os.O_CREAT | os.O_EXCL | os.O_WRONLY)
+            os.close(fd)
+            return True
+        except FileExistsError:
+            if time.time() > deadline:
+                return False
+            time.sleep(poll)
+
+
+def _release_lock(lock_path):
+    try:
+        os.remove(lock_path)
+    except OSError:
+        pass
+
+
+def append_history(script_dir, telemetry):
+    """Persist telemetry ticks to disk (FIFO, capped) so the dashboard's history
+    survives a browser refresh or a server restart -- it is no longer rebuilt
+    purely in-memory in the client JS."""
+    history_path = os.path.join(script_dir, HISTORY_FILENAME)
+    lock_path = history_path + ".lock"
+
+    if not _acquire_lock(lock_path):
+        return  # another writer is mid-update; skip this tick rather than risk a race
+
+    try:
+        history = []
+        if os.path.exists(history_path):
+            try:
+                with open(history_path, 'r', encoding='utf-8') as hf:
+                    loaded = json.load(hf)
+                if isinstance(loaded, list):
+                    history = loaded
+            except (json.JSONDecodeError, OSError):
+                history = []
+
+        # Dedup: only append if progress actually advanced since the last recorded tick
+        # (the watcher polls every 5s regardless of whether the log advanced).
+        if not history or history[-1].get("progress") != telemetry.get("progress"):
+            history.append(telemetry)
+            if len(history) > MAX_HISTORY_TICKS:
+                history = history[-MAX_HISTORY_TICKS:]
+            # Write-then-rename so a concurrent dashboard fetch never sees a half-written file.
+            tmp_path = history_path + ".tmp"
+            with open(tmp_path, 'w', encoding='utf-8') as hf:
+                json.dump(history, hf, indent=2)
+            os.replace(tmp_path, history_path)
+    finally:
+        _release_lock(lock_path)
+
+def parse_run_header(lines):
+    """The opponent pool / live-player-count banner is printed once per run (before the
+    repeating dashboard blocks), identically across versions v12-v16:
+        Opponent Pool:   ['fish', 'tag', 'nit', 'past']  weights=[0.4, 0.2, 0.2, 0.2]
+        Live Players:    6  (Hero + 5 opponents)
+    Scan the FULL file (not just the latest dashboard block) and take the LAST match, so a
+    log that got appended across multiple launches reflects the currently-running config."""
+    header = {}
+    for line in lines:
+        if "Opponent Pool:" in line:
+            m = re.search(r"Opponent Pool:\s*(\[.*?\])\s*weights=(\[.*?\])", line)
+            if m:
+                try:
+                    header["opponent_pool"] = ast.literal_eval(m.group(1))
+                    header["opponent_pool_weights"] = ast.literal_eval(m.group(2))
+                except (ValueError, SyntaxError):
+                    pass
+        elif "Live Players:" in line:
+            m = re.search(r"Live Players:\s*(\d+)\s*\(Hero \+ (\d+) opponents\)", line)
+            if m:
+                header["configured_seats"] = int(m.group(1))
+                header["configured_opponents"] = int(m.group(2))
+    return header
+
 
 def parse_training_log(logfile):
     if not os.path.exists(logfile):
@@ -127,20 +216,27 @@ def parse_training_log(logfile):
                     while j < len(parts) and parts[j].endswith('%'):
                         pct.append(parts[j])
                         j += 1
-                    rest = parts[j:]  # avg_end_street, net_chips, [won], [lost]
+                    rest = parts[j:]  # [n_hands], avg_end_street, net_chips, [won], [lost]
                     if len(pct) == 6:
                         labels = ['Fold', 'Call', 'r33', 'r66', 'rPot', 'All-In']
                     elif len(pct) == 5:
                         labels = ['Fold', 'Call', 'Raise', 'RR', 'All-In']
                     else:
                         labels = [f'A{k}' for k in range(len(pct))]
+                    # N Hands is a plain integer (possibly comma-grouped, e.g. "1,234"), unlike
+                    # every other `rest` cell which contains a '.' or '%' -- detect it that way so
+                    # this stays backward-compatible with older logs that never had this column.
+                    has_n_hands = len(rest) > 0 and re.fullmatch(r"[\d,]+", rest[0] or "") is not None
+                    n_hands = rest[0] if has_n_hands else ""
+                    rest2 = rest[1:] if has_n_hands else rest
                     telemetry["equity_matrix"].append({
                         "bracket": bracket,
                         "action_cols": [[lab, val] for lab, val in zip(labels, pct)],
-                        "avg_end_street": rest[0] if len(rest) > 0 else "",
-                        "net_chips": rest[1] if len(rest) > 1 else "",
-                        "won_chips": rest[2] if len(rest) > 2 else "",
-                        "lost_chips": rest[3] if len(rest) > 3 else ""
+                        "n_hands": n_hands,
+                        "avg_end_street": rest2[0] if len(rest2) > 0 else "",
+                        "net_chips": rest2[1] if len(rest2) > 1 else "",
+                        "won_chips": rest2[2] if len(rest2) > 2 else "",
+                        "lost_chips": rest2[3] if len(rest2) > 3 else ""
                     })
             elif "ACTION USAGE (all decisions)" in line:
                 # V14 size-selection histogram over all hero decisions.
@@ -157,12 +253,26 @@ def parse_training_log(logfile):
                 if jm:
                     telemetry["jam_by_color"] = [[c, v + '%'] for c, v in jm]
 
+        # Seat activity: a "Live Players: 6" run still prints a fixed 6-row seat table even when
+        # the sampled Opponent Pool excludes some archetypes (e.g. no 'maniac') -- those rows stay
+        # at all-zero R/F/AI for the whole run. Flag per-seat + summarize how many are actually
+        # playing, rather than leaving it to be re-derived ad hoc by the dashboard.
+        for idx, seat in enumerate(telemetry["seats"]):
+            seat["active"] = (idx == 0) or (seat["r"] + seat["f"] + seat["ai"] > 0)
+        telemetry["active_seat_count"] = sum(1 for s in telemetry["seats"] if s["active"])
+
+        # configured_seats/configured_opponents (below) come from the run-header banner and are
+        # the run's designed table size; may be absent on very old logs without that banner.
+        telemetry.update(parse_run_header(lines))
+
         # Write JSON to same directory as this script
         script_dir = os.path.dirname(os.path.abspath(__file__))
         json_path = os.path.join(script_dir, "telemetry.json")
         with open(json_path, "w", encoding="utf-8") as jf:
             json.dump(telemetry, jf, indent=2)
-            
+
+        append_history(script_dir, telemetry)
+
     else:
         print("Could not find a complete dashboard block in the log.")
 

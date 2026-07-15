@@ -79,3 +79,33 @@ Previously, the `hero_position` feature passed to the ML models was not dynamica
     *   `3`: Under the Gun (UTG)
     *   `4`: Middle Position (MP)
     *   `5`: Cut Off (CO)
+
+### 7. Live "Thinking" narrative (2026-07-15)
+
+Request was to surface the model's `bluff`/`strength`/`equity` aux heads (`versions/*/core/model.py`
+`head_bluff`/`head_strength`/`head_equity`) as a human-readable "what is it thinking" line. Checked
+first and found that request doesn't map onto what those heads actually are: they train against
+`opp_bluff_prob`/`opp_strength` labels (an OPPONENT read, not a hero self-assessment), and every
+active config (v15, v16, v16_foldregret) ships `aux_loss_weight: 0.0` — zero gradient, so their live
+outputs are untrained noise. Wiring a display straight to them would look meaningful but be garbage.
+
+Built the same intent from signal that IS real and trained: `_narrate_thinking(action, board_state,
+evs)` in `core/decision.py`, banding the model's own equity **input** feature (`board_state.equity`
+— real, computed via Monte Carlo/range-aware equity, not a model prediction) against the chosen
+action type (fold / aggressive raise-or-allin / call-or-check) into equity-tier bands (<30% air,
+30-45% marginal, 45-60% showdown-value, 60-80% strong, ≥80% nuts). Produces lines like `"Thinking:
+weak hand (14% equity) -- bluffing, betting on fold equity rather than hand strength."` Version-
+agnostic (only reads `board_state.equity` + the already-chosen action string) — works for whichever
+model is active with zero per-version wiring.
+
+Wired into: `ev_dict['thinking']` (set at the end of `make_decision`, after any math-engine/
+guardrail override so it reflects the FINAL action, not the pre-override one — also patched into
+the CHECK→FOLD safeguard branch in `PHPHelp.py` so it doesn't go stale when that fires); a new
+`self.thinking_lbl` (italic, under the action-reason label) in the equity panel; the
+`append_log`/`[Decision]` log line; and the turn-history recorder picks it up for free since it
+reads the same `ev_dict`.
+
+**Not done (bigger, deferred):** genuine self-reflective introspection would need `aux_loss_weight`
+turned back on AND a new self-referential label (e.g. hero's own realized bluff-rate) — the existing
+heads' opponent-read semantics don't fit even once trained. Worth doing later as its own retrain,
+not blocking this display feature.

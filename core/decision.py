@@ -43,6 +43,48 @@ def _fmt_dist(d):
     except Exception:
         return str(d)
 
+
+# Equity bands used to narrate the model's own "thinking" for the live HUD/log. Not model
+# outputs -- these read the SAME real, trained-on numbers the decision already used (equity
+# fed into the model as an input feature, plus the chosen action) rather than the model's
+# 'bluff'/'strength'/'equity' aux heads, which currently train against OPPONENT read labels
+# (opp_bluff_prob/opp_strength), not a hero self-assessment, and have aux_loss_weight=0.0 in
+# every active config (v15/v16*) -- untrained, so their live outputs would be pure noise.
+_THINKING_BANDS = (0.30, 0.45, 0.60, 0.80)
+
+
+def _narrate_thinking(action, board_state, evs):
+    """Human-readable read of WHY, built from equity (real input feature) + the chosen action.
+    Deliberately not sourced from the aux heads -- see comment above _THINKING_BANDS."""
+    try:
+        eq = float(getattr(board_state, 'equity', 0.0) or 0.0)
+    except Exception:
+        return None
+    act = (action or '').upper()
+    is_aggro = act.startswith('RAISE') or act == 'ALLIN' or act == 'ALL_IN' or act == 'BET'
+    is_fold = act == 'FOLD'
+    is_call = act in ('CALL', 'CHECK')
+
+    if is_fold:
+        return f"Thinking: equity too low ({eq:.0%}) to continue profitably -- folding."
+    if is_aggro:
+        if eq < _THINKING_BANDS[0]:
+            return f"Thinking: weak hand ({eq:.0%} equity) -- bluffing, betting on fold equity rather than hand strength."
+        if eq < _THINKING_BANDS[1]:
+            return f"Thinking: marginal hand ({eq:.0%} equity) -- semi-bluffing, betting for fold equity plus backup outs."
+        if eq < _THINKING_BANDS[2]:
+            return f"Thinking: showdown-value hand ({eq:.0%} equity) -- betting for value/protection while ahead or close."
+        if eq < _THINKING_BANDS[3]:
+            return f"Thinking: strong hand ({eq:.0%} equity) -- value betting to get called by worse."
+        return f"Thinking: near-nuts ({eq:.0%} equity) -- betting big for maximum value."
+    if is_call:
+        if eq < _THINKING_BANDS[1]:
+            return f"Thinking: {eq:.0%} equity -- speculative call, playing for draws/implied odds rather than a made hand."
+        if eq < _THINKING_BANDS[2]:
+            return f"Thinking: {eq:.0%} equity -- calling to see the next card, not strong enough to raise."
+        return f"Thinking: {eq:.0%} equity -- flat-calling for value/deception, keeping weaker hands in."
+    return None
+
 from core.bridge.contract_v8_v9 import ContractV8V9
 from core.bridge.v11.contract_v11 import ContractV8V9 as ContractV11
 from versions.v13.core.contract import ContractV12
@@ -290,6 +332,7 @@ class PokerDecisionEngine:
         
         ev_dict = evs.copy()
         ev_dict['decision_path'] = decision_path
+        ev_dict['thinking'] = _narrate_thinking(action, board_state, evs)
         # Diagnostics only (added AFTER argmax so it can't affect the chosen action): the critic's
         # per-action Q (EV vs fold, ~BB). None for non-actor-critic models. Read by F12 diagnostics.
         ev_dict['q_vals'] = getattr(active_model, 'last_q_vals', None)

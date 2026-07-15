@@ -415,7 +415,10 @@ class PHPHelpApp(ctk.CTk):
         
         self.action_reason_lbl = ctk.CTkLabel(self.equity_panel, text="-", font=ctk.CTkFont(size=10), text_color="#8a90a0", wraplength=180)
         self.action_reason_lbl.pack(pady=2)
-        
+
+        self.thinking_lbl = ctk.CTkLabel(self.equity_panel, text="", font=ctk.CTkFont(size=10, slant="italic"), text_color="#5fa8d3", wraplength=180)
+        self.thinking_lbl.pack(pady=(0, 2))
+
         self.ev_breakdown_frame = ctk.CTkFrame(self.equity_panel, fg_color="#181a20", corner_radius=6)
         self.ev_breakdown_frame.pack(fill="x", padx=10, pady=(15, 5))
         
@@ -1110,6 +1113,8 @@ class PHPHelpApp(ctk.CTk):
                         self.append_log("[Safeguard] WARNING: Decided CHECK but Check/Call button is KALD or unavailable! Overriding to FOLD.")
                         action = 'FOLD'
                         reason = f"Safeguard: Blocked accidental call on CHECK decision. (OCR: '{cc_text}', Avail: {check_call_available})"
+                        if ev_dict is not None:
+                            ev_dict['thinking'] = "Thinking: Check/Call unavailable -- folding rather than risk an accidental call."
                         # Re-save decision with safeguard applied
                         self.last_decision = (action, reason, bet_size)
                 
@@ -1123,6 +1128,9 @@ class PHPHelpApp(ctk.CTk):
                 
                 self.append_log(f"[Decision] DECIDED BRANCH: **{action}**")
                 self.append_log(f"[Decision] Reason: {reason}")
+                _thinking = (ev_dict or {}).get('thinking')
+                if _thinking:
+                    self.append_log(f"[Decision] {_thinking}")
                 if bet_size > 0:
                     self.append_log(f"[Decision] Size Allocation: {bet_size} units")
                     
@@ -1321,7 +1329,10 @@ class PHPHelpApp(ctk.CTk):
         elif ":" in clean_reason:
             clean_reason = clean_reason.split(":")[-1].strip()
         self.action_reason_lbl.configure(text=clean_reason)
-        
+
+        thinking = (ev_dict or {}).get('thinking')
+        self.thinking_lbl.configure(text=thinking or "")
+
         # Update EV Breakdown if available
         if ev_dict:
             raw_f, pen_f = ev_dict.get('raw_fold', 0), ev_dict.get('pen_fold', 0)

@@ -455,7 +455,7 @@ def print_dashboard(hands_done, total_hands, elapsed, hands_per_sec, train_loss,
         lines.extend([
             f"|  Action Entropy:     {ent:>8.4f}                                                        |",
             "+------------------------------------------------------------------------------------------------------------------------+",
-            "|  Equity Matrix     | Fold  | Call  | r33   | r66   | rPot  | All-In | Avg End Street | Net Chips | Won    | Lost  |",
+            "|  Equity Matrix     | Fold  | Call  | r33   | r66   | rPot  | All-In | N Hands | Avg End Street | Net Chips | Won    | Lost  |",
             "+------------------------------------------------------------------------------------------------------------------------+"
         ])
         labels = {
@@ -477,8 +477,9 @@ def print_dashboard(hands_done, total_hands, elapsed, hands_per_sec, train_loss,
             net = s['total_chips']
             won = s.get('won_chips', 0.0)
             lost = s.get('lost_chips', 0.0)
+            n_hands = s.get('total_hands', 0)
 
-            lines.append(f"|  {labels[b]:<17} | {f:>4.1f}% | {c:>4.1f}% | {r33:>4.1f}% | {r66:>4.1f}% | {rpot:>4.1f}% | {ai:>4.1f}%  |      {avg_st:<4.1f}      | {net:>+7.1f}   | {won:>+6.0f} | {lost:>+6.0f} |")
+            lines.append(f"|  {labels[b]:<17} | {f:>4.1f}% | {c:>4.1f}% | {r33:>4.1f}% | {r66:>4.1f}% | {rpot:>4.1f}% | {ai:>4.1f}%  | {n_hands:>7,} |      {avg_st:<4.1f}      | {net:>+7.1f}   | {won:>+6.0f} | {lost:>+6.0f} |")
 
         lines.append("+------------------------------------------------------------------------------------------------------------------------+")
 
@@ -559,6 +560,7 @@ def run_training(personality, num_hands=100000, batch_size=256, epochs_per_batch
                  sim_batch_size=2000, lr=1e-3, equity_sims=200,
                  save_name=None, resume_path=None, initial_hands_done=0,
                  mid_flight_diagnostics_interval=10000,
+                 checkpoint_dump_interval=25000,
                  opp_pool=None, opp_weights=None, live_players=6,
                  disable_past_self=False, disable_focus_rounds=False,
                  disable_extreme_stacks=False, fixed_stack_bb=None, disable_exploration=False,
@@ -566,7 +568,7 @@ def run_training(personality, num_hands=100000, batch_size=256, epochs_per_batch
                  target_clip_bb=None, policy_target_temp=1.0, policy_entropy_penalty=0.0,
                  policy_target_source='realized', ablate_hole_cards=False,
                  policy_tightness_bb=0.0, range_aware_equity=False,
-                 stack_depth_mix=None, freeze_past_self=False):
+                 stack_depth_mix=None, freeze_past_self=False, frozen_past_filename='frozen_v14.pth'):
     # Overrides the module globals that vectorize_hand_samples reads at call time (it runs
     # in THIS process, not the workers). Two SEPARATE concerns:
     #  * target_clip_bb = VARIANCE control (load-bearing). Unclipped realized returns are
@@ -640,12 +642,14 @@ def run_training(personality, num_hands=100000, batch_size=256, epochs_per_batch
     maniac_path = os.path.join(weights_dir, 'expert_maniac.pth')
     nit_path = os.path.join(weights_dir, 'expert_nit.pth')
     sticky_path = os.path.join(weights_dir, 'expert_sticky.pth')
-    # V15: freeze_past_self pins the "Past Self" seat to a STATIC frozen_v14.pth expert (never
+    # freeze_past_self pins the "Past Self" seat to a STATIC frozen expert checkpoint (never
     # overwritten) instead of a lagged snapshot of the current run. Otherwise = normal lagged mirror.
-    frozen_v14_path = os.path.join(weights_dir, 'frozen_v14.pth')
-    past_path = frozen_v14_path if freeze_past_self else os.path.join(weights_dir, 'past_checkpoint.pth')
-    if freeze_past_self and not os.path.exists(frozen_v14_path):
-        print(f"WARNING: freeze_past_self set but {frozen_v14_path} missing — Past-Self seat falls back to TAG heuristic.")
+    # frozen_past_filename generalizes what was a hardcoded 'frozen_v14.pth' (V15) so each new
+    # version can pin its own predecessor without another code edit.
+    frozen_past_path = os.path.join(weights_dir, frozen_past_filename)
+    past_path = frozen_past_path if freeze_past_self else os.path.join(weights_dir, 'past_checkpoint.pth')
+    if freeze_past_self and not os.path.exists(frozen_past_path):
+        print(f"WARNING: freeze_past_self set but {frozen_past_path} missing — Past-Self seat falls back to TAG heuristic.")
     # Fresh run: drop any stale LAGGED past-self checkpoint (not the frozen file) so "Past Self"
     # only ever plays a snapshot of the CURRENT run (not leftovers from a previous training).
     if (not freeze_past_self) and initial_hands_done == 0 and os.path.exists(past_path):
@@ -732,8 +736,23 @@ def run_training(personality, num_hands=100000, batch_size=256, epochs_per_batch
                 checkpoint_path = os.path.join(weights_dir, save_name)
                 save_checkpoint(model.state_dict(), checkpoint_path, MANIFEST, hands_trained=hands_done)
                 run_training.last_diag = hands_done
-                
-                
+
+            # Periodic restore-point dump: a DISTINCT, never-overwritten checkpoint every
+            # checkpoint_dump_interval hands (default 25k), so there is always some earlier
+            # model to fall back to or evaluate -- unlike the rolling checkpoints above
+            # (checkpoint_path / active_model_path), which get overwritten each time.
+            if hasattr(run_training, "last_dump") is False:
+                run_training.last_dump = initial_hands_done
+
+            if hands_done - run_training.last_dump >= checkpoint_dump_interval:
+                dump_dir = os.path.join(weights_dir, "checkpoints")
+                os.makedirs(dump_dir, exist_ok=True)
+                dump_path = os.path.join(dump_dir, f"{personality}_hands{hands_done}.pth")
+                save_checkpoint(model.state_dict(), dump_path, MANIFEST, hands_trained=hands_done)
+                print(f"\n[CHECKPOINT] Restore-point dump saved: {dump_path}")
+                run_training.last_dump = hands_done
+
+
             # Decay bootstrap alpha (verify mode: no heuristic warmup -> pure model from hand 0)
             if disable_bootstrap:
                 bootstrap_alpha = 0.0
@@ -1142,17 +1161,19 @@ if __name__ == '__main__':
         live_players = o_cfg.get('live_players', 6)
         disable_past_self = bool(o_cfg.get('disable_past_self', False))
         disable_focus_rounds = bool(o_cfg.get('disable_focus_rounds', False))
-        freeze_past_self = bool(o_cfg.get('freeze_past_self', False))  # V15: pin frozen_v14 in Past-Self seat
+        freeze_past_self = bool(o_cfg.get('freeze_past_self', False))  # pin a frozen expert in Past-Self seat
+        frozen_past_filename = str(o_cfg.get('frozen_past_filename', 'frozen_v14.pth'))
     else:
         opp_pool = opp_weights = None
         live_players = 6
         disable_past_self = disable_focus_rounds = False
         freeze_past_self = False
+        frozen_past_filename = 'frozen_v14.pth'
 
     if opp_pool:
         print(f"  Opponent Pool:   {opp_pool}  weights={opp_weights}")
         print(f"  Live Players:    {live_players}  (Hero + {max(0, live_players - 1)} opponents)")
-        print(f"  Past-Self seat:  {'DISABLED' if disable_past_self else ('FROZEN v14 (static expert)' if freeze_past_self else 'enabled (lagged mirror)')}")
+        print(f"  Past-Self seat:  {'DISABLED' if disable_past_self else (f'FROZEN {frozen_past_filename} (static expert)' if freeze_past_self else 'enabled (lagged mirror)')}")
         print(f"  Focus rounds:    {'DISABLED' if disable_focus_rounds else 'enabled'}")
     print(f"  Extreme stacks:  {'DISABLED (flat moderate band)' if disable_extreme_stacks else 'enabled (Phase 3: 10-300bb)'}")
     if stack_depth_mix is not None:
@@ -1170,6 +1191,8 @@ if __name__ == '__main__':
         print(f"  Hole cards:      ABLATED (zeroed) -- forcing equity/board reliance")
     print(f"  Bootstrap:       {'DISABLED (pure model)' if disable_bootstrap else 'enabled'}   "
           f"Exploration: {'DISABLED' if disable_exploration else 'enabled'}")
+    print(f"  Checkpoint dump: every {t_cfg.get('checkpoint_dump_interval', 25000):,} hands "
+          f"(restore points in weights/checkpoints/)")
 
     run_training(
         personality=args.personality,
@@ -1183,6 +1206,7 @@ if __name__ == '__main__':
         resume_path=args.resume_path,
         initial_hands_done=args.hands_done,
         mid_flight_diagnostics_interval=t_cfg.get('mid_flight_diagnostics_interval', 10000),
+        checkpoint_dump_interval=t_cfg.get('checkpoint_dump_interval', 25000),
         opp_pool=opp_pool, opp_weights=opp_weights, live_players=live_players,
         disable_past_self=disable_past_self, disable_focus_rounds=disable_focus_rounds,
         disable_extreme_stacks=disable_extreme_stacks, fixed_stack_bb=fixed_stack_bb,
@@ -1192,5 +1216,6 @@ if __name__ == '__main__':
         policy_entropy_penalty=policy_entropy_penalty, policy_target_source=policy_target_source,
         ablate_hole_cards=ablate_hole_cards, policy_tightness_bb=policy_tightness_bb,
         range_aware_equity=range_aware_equity,
-        stack_depth_mix=stack_depth_mix, freeze_past_self=freeze_past_self
+        stack_depth_mix=stack_depth_mix, freeze_past_self=freeze_past_self,
+        frozen_past_filename=frozen_past_filename,
     )

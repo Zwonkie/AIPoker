@@ -10,6 +10,7 @@ training:
   learning_rate: 0.001
   equity_sims: 2000
   mid_flight_diagnostics_interval: 10000
+  checkpoint_dump_interval: 25000   # distinct restore-point checkpoint every N hands (weights/checkpoints/)
   # --- Training knobs: IDENTICAL to the validated V14 run (do NOT change for V15) ------
   # V15 = same proven recipe, fresh; only the sim-table setup (stacks + opponents) + budget
   # differ. Changing these would confound whether a regression is the recipe or the new field.

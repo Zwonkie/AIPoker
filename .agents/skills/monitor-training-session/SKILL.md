@@ -14,11 +14,11 @@ When a training session is actively running in the background, use the schedule 
 ## 2. Execution Workflow
 
 ### Step 1: Retrieve the Active Log
-Find the active background training task. Run a command like `Get-Content <logfile> -Tail 50` to pull the latest output block from the training dashboard.
+Every version's `train.py` tees stdout to the single fixed path `active_training.log` in the repo root (contract documented in `.agents/AGENTS.md`, enforced by `tools\training_monitor\check_telemetry_contract.py`). Run a command like `Get-Content active_training.log -Tail 50` to pull the latest output block from the training dashboard.
 
 ### Step 2: Parse Telemetry
 Run the parsing script to extract the dashboard output and generate the `telemetry.json` data:
-`.venv\Scripts\python.exe .agents\skills\monitor-training-session\scripts\parse_training_log.py <logfile>`
+`.venv\Scripts\python.exe tools\training_monitor\parse_training_log.py active_training.log`
 Carefully write the parsed dashboard output in the chat and extract the following essential metrics into your context:
 1. **Progress**: Hands Simulated and ETA.
 2. **Loss Metrics**: Train Loss and Val Loss.
@@ -40,4 +40,4 @@ Create a clean, well-formatted markdown response for the user containing:
 3. The **Overall Boardstate** formatted clearly (using a markdown table or bulleted list).
 4. Any **Alerts/Warnings** triggered by the health checks.
 5. A brief 1-2 sentence analysis of how the model is behaving (e.g. "Hero is heavily exploiting the Sticky bot" or "The model is becoming rigid").
-6. **Remind the user** that they can view a live UI version of this data by running `.\.agents\skills\monitor-training-session\scripts\start_dashboard.ps1`.
+6. **Remind the user** that they can view a live UI version of this data by running `.\tools\training_monitor\start_dashboard.ps1`.

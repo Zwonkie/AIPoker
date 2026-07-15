@@ -586,16 +586,29 @@ class SixMaxSimulator:
         return min(rs, hero_stack)
 
     def _mc_target_evs_sized(self, hero_cards, pot, to_call, hero_stack, street_idx,
-                             active_opponents, board_str, raise_fracs):
+                             active_opponents, board_str, raise_fracs, range_aware_eq=None):
         """V14 P1a — PER-SIZE counterfactual EV target: EV of [fold, call, raise(frac_0), ...] for
         every raise size in `raise_fracs` (None = all-in). Each size's opponent fold-out is sampled
         from the SAME size-aware bot.decide_* used in play (so the target matches the data), so a
         bigger bet earns more folds (P1b). Computed for EVERY size at EVERY decision regardless of
         what was played -> the counterfactual signal that lets the hero learn WHICH size to use
-        (and to value overbet/all-in) without having to stumble into it. See SPECS.md P1/P1a."""
+        (and to value overbet/all-in) without having to stumble into it. See SPECS.md P1/P1a.
+
+        V16 [P4]: `true_equity` normally comes from the opponents' LITERAL dealt cards (oracle,
+        via `specific_opponents=opp_hands`) -- correct postflop, where a still-active opponent's
+        real cards already carry a true selection skew toward their style (they survived their
+        own decide_postflop this hand). But at the PREFLOP entry decision (street_idx==0), no
+        opponent has acted yet, so that oracle equity is statistically independent of opponent
+        style -- a nit and a maniac holding the same real cards score identically, which is why
+        the preflop CALL/FOLD target carried no tightness signal even though RAISE already did
+        (via `p_all_fold` below). Fix: at street_idx==0, use the caller-supplied `range_aware_eq`
+        (hero equity vs each opponent's VPIP-implied continuing RANGE, already computed once for
+        the input features -- see `_calculate_range_aware_equity`) instead. Postflop is untouched.
+        """
         opp_hands = [opp['cards'] for opp in active_opponents]
-        true_equity = (self._calculate_equity(hero_cards, board_str, len(active_opponents),
+        oracle_equity = (self._calculate_equity(hero_cards, board_str, len(active_opponents),
                                               specific_opponents=opp_hands) if opp_hands else 1.0)
+        true_equity = range_aware_eq if (street_idx == 0 and range_aware_eq is not None) else oracle_equity
         opp_base_eq = [self._calculate_equity(opp['cards'], board_str, 1) for opp in active_opponents]
         max_opp_equity = max(opp_base_eq) if opp_base_eq else 0.0
 
@@ -662,7 +675,7 @@ class SixMaxSimulator:
                 elif self.hero_personality == 'sticky':
                     if hero_vpip < 0.50 and is_preflop and random.random() < 0.60:
                         return 'call'
-                    if hero_agg > 0.20 and random.random() < 0.80 and decision == 'raise':
+                    if hero_agg > 0.20 and random.random() < 0.80 and decision.startswith('raise'):
                         return 'call'
                         
                 return decision
@@ -737,7 +750,7 @@ class SixMaxSimulator:
                     if opp_vpip > 0.15 and random.random() < 0.80: decision = 'fold'
                 elif style == 'fish':
                     if opp_vpip < 0.50 and random.random() < 0.60: decision = 'call'
-                    if opp_agg > 0.20 and random.random() < 0.80 and decision == 'raise': decision = 'call'
+                    if opp_agg > 0.20 and random.random() < 0.80 and decision.startswith('raise'): decision = 'call'
             
             # Record VPIP stats on temporary bot profiles for HUD mapping
             opponent['bot'].record_preflop(decision)
@@ -761,7 +774,7 @@ class SixMaxSimulator:
             if style == 'maniac':
                 if opp_agg < 0.60 and random.random() < 0.50: decision = 'raise'
             elif style == 'fish':
-                if opp_agg > 0.20 and random.random() < 0.80 and decision == 'raise': decision = 'call'
+                if opp_agg > 0.20 and random.random() < 0.80 and decision.startswith('raise'): decision = 'call'
             
             opponent['bot'].record_postflop(decision)
             
@@ -1014,7 +1027,12 @@ class SixMaxSimulator:
                         target_evs, opp_strength, opp_bluff_prob = self._mc_target_evs_sized(
                             hero_cards=hands_str[0], pot=pot, to_call=to_call, hero_stack=stacks[0],
                             street_idx=street_idx, active_opponents=active_opps_list, board_str=board_str,
-                            raise_fracs=self.raise_fracs
+                            raise_fracs=self.raise_fracs,
+                            # V16 [P4]: reuse the range-aware `eq` already computed just above for
+                            # the input features (zero extra MC cost) as the preflop CALL/FOLD
+                            # target basis. Only valid when range_aware_equity is actually on --
+                            # otherwise `eq` is the plain vs-random fallback, not style-aware.
+                            range_aware_eq=(eq if self.range_aware_equity else None),
                         )
                         # Tightest active opponent's VPIP colour -> jam-by-color adaptation telemetry.
                         _tv = min((o['bot'].base_vpip for o in active_opps_list), default=None)
@@ -1141,10 +1159,15 @@ class SixMaxSimulator:
                             last_raiser = current_actor
                             hero_actions_histories[current_actor].append(6)
                         
-                        # Track Opponent AGG
+                        # Track Opponent AGG. Exact '== raise' misses sized-model bucket strings
+                        # ('raise_0'..'raise_3') -- a real NN opponent (e.g. the frozen 'past'
+                        # seat) would show near-zero AGG despite raising constantly (the 'raises'
+                        # counter above uses a catch-all else so it's unaffected -- that mismatch,
+                        # large raise count vs ~0 AGG, is what exposed this). Match the hero's own
+                        # tracking (line ~1114), which already uses startswith('raise').
                         if street_idx > 0:
                             self.seat_histories[cur_slot]['agg_ops'] += 1
-                            if decision == 'raise':
+                            if decision.startswith('raise'):
                                 self.seat_histories[cur_slot]['agg_acts'] += 1
                 
                 current_actor = (current_actor + 1) % 6
