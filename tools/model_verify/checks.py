@@ -69,7 +69,8 @@ def check_equity_ablation_monotonic(rc):
     equities = [0.05, 0.20, 0.35, 0.50, 0.65, 0.80, 0.95]
     fold_probs, aggr_probs, data = [], [], []
     for eq in equities:
-        ctx = build_ctx(equity=eq, stack_bb=40, pot_bb=10, call_bb=5, num_active_opp=2)
+        ctx = build_ctx(equity=eq, stack_bb=40, pot_bb=10, call_bb=5, num_active_opp=2,
+                        contract_version=rc.manifest.contract_version)
         policy, _ = run_policy(rc.model, ctx, rc.action_keys, device=rc.device)
         fold_probs.append(policy[rc.action_keys[fold_i]])
         aggr_probs.append(sum(policy[rc.action_keys[i]] for i in aggr_idx))
@@ -96,7 +97,8 @@ def check_free_check_low_fold(rc):
     data = []
     for eq in (0.1, 0.3, 0.5, 0.7, 0.9):
         for stack in (8, 40, 100):
-            ctx = build_ctx(equity=eq, stack_bb=stack, pot_bb=3, call_bb=0, num_active_opp=2)
+            ctx = build_ctx(equity=eq, stack_bb=stack, pot_bb=3, call_bb=0, num_active_opp=2,
+                            contract_version=rc.manifest.contract_version)
             policy, _ = run_policy(rc.model, ctx, rc.action_keys, device=rc.device)
             worst = max(worst, policy[rc.action_keys[fold_i]])
             data.append({"equity": eq, "stack_bb": stack, "policy": policy})
@@ -113,7 +115,8 @@ def check_air_folds_mostly(rc):
         return CheckResult('SKIP', 'no fold action')
     probs, data = [], []
     for stack in (8, 20, 40, 80):
-        ctx = build_ctx(equity=0.12, stack_bb=stack, pot_bb=12, call_bb=8, num_active_opp=2)
+        ctx = build_ctx(equity=0.12, stack_bb=stack, pot_bb=12, call_bb=8, num_active_opp=2,
+                        contract_version=rc.manifest.contract_version)
         policy, _ = run_policy(rc.model, ctx, rc.action_keys, device=rc.device)
         probs.append(policy[rc.action_keys[fold_i]])
         data.append({"stack_bb": stack, "policy": policy})
@@ -131,7 +134,8 @@ def check_nuts_aggressive_mostly(rc):
         return CheckResult('SKIP', 'no raise/allin actions')
     probs, data = [], []
     for stack in (8, 20, 40, 80):
-        ctx = build_ctx(equity=0.92, stack_bb=stack, pot_bb=12, call_bb=8, num_active_opp=2)
+        ctx = build_ctx(equity=0.92, stack_bb=stack, pot_bb=12, call_bb=8, num_active_opp=2,
+                        contract_version=rc.manifest.contract_version)
         policy, _ = run_policy(rc.model, ctx, rc.action_keys, device=rc.device)
         probs.append(sum(policy[rc.action_keys[i]] for i in aggr_idx))
         data.append({"stack_bb": stack, "policy": policy})
@@ -155,7 +159,8 @@ def check_deep_stack_ood_guard(rc):
     data = []
     for eq in (0.35, 0.40, 0.43, 0.48, 0.55):
         for stack in (15, 20, 25, 30, 40):
-            ctx = build_ctx(equity=eq, stack_bb=stack, pot_bb=2.5, call_bb=1.0, num_active_opp=1)
+            ctx = build_ctx(equity=eq, stack_bb=stack, pot_bb=2.5, call_bb=1.0, num_active_opp=1,
+                            contract_version=rc.manifest.contract_version)
             policy, _ = run_policy(rc.model, ctx, rc.action_keys, device=rc.device)
             p_allin = policy[rc.action_keys[allin_i]]
             argmax = max(policy, key=policy.get)
@@ -180,7 +185,8 @@ def check_short_stack_polarization(rc):
     probs, data = [], []
     for eq in (0.50, 0.55, 0.60, 0.65):
         for stack in (6, 8, 10):
-            ctx = build_ctx(equity=eq, stack_bb=stack, pot_bb=stack * 0.9, call_bb=stack * 0.85, num_active_opp=1)
+            ctx = build_ctx(equity=eq, stack_bb=stack, pot_bb=stack * 0.9, call_bb=stack * 0.85, num_active_opp=1,
+                            contract_version=rc.manifest.contract_version)
             policy, _ = run_policy(rc.model, ctx, rc.action_keys, device=rc.device)
             probs.append(policy[rc.action_keys[call_i]])
             data.append({"equity": eq, "stack_bb": stack, "policy": policy})
@@ -206,7 +212,8 @@ def check_action_diversity(rc):
     data = []
     for eq in (0.05, 0.2, 0.35, 0.5, 0.65, 0.8, 0.95):
         for stack in (8, 25, 60):
-            ctx = build_ctx(equity=eq, stack_bb=stack, pot_bb=10, call_bb=4, num_active_opp=2)
+            ctx = build_ctx(equity=eq, stack_bb=stack, pot_bb=10, call_bb=4, num_active_opp=2,
+                            contract_version=rc.manifest.contract_version)
             policy, _ = run_policy(rc.model, ctx, rc.action_keys, device=rc.device)
             argmax = max(policy, key=policy.get)
             counter[argmax] += 1
@@ -230,16 +237,86 @@ def check_no_nan_or_crash(rc):
         dict(equity=1.0, stack_bb=400, pot_bb=999, call_bb=399, num_active_opp=5, opp_vpip=0.45, opp_agg=0.85),
         dict(equity=0.5, stack_bb=5, pot_bb=5, call_bb=5, num_active_opp=1, street=3),
     ]
+    data = []
     for i, kw in enumerate(edge_cases):
         try:
-            ctx = build_ctx(**kw)
+            ctx = build_ctx(**kw, contract_version=rc.manifest.contract_version)
             policy, q = run_policy(rc.model, ctx, rc.action_keys, device=rc.device)
         except Exception as e:
-            return CheckResult('FAIL', f"edge case {i} raised {type(e).__name__}: {e}")
+            data.append({"case": i, **kw, "outcome": f"{type(e).__name__}: {e}", "ok": False})
+            return CheckResult('FAIL', f"edge case {i} raised {type(e).__name__}: {e}", data)
         vals = list(policy.values()) + list(q.values())
-        if any(v != v for v in vals):  # NaN != NaN
-            return CheckResult('FAIL', f"edge case {i} produced NaN output")
-    return CheckResult('PASS', f"{len(edge_cases)} edge cases: no NaN/crash")
+        is_nan = any(v != v for v in vals)  # NaN != NaN
+        data.append({"case": i, **kw, "policy": policy, "outcome": "NaN" if is_nan else "clean", "ok": not is_nan})
+        if is_nan:
+            return CheckResult('FAIL', f"edge case {i} produced NaN output", data)
+    return CheckResult('PASS', f"{len(edge_cases)} edge cases: no NaN/crash", data)
+
+
+def check_hand_strength_sensitivity(rc):
+    """[V20_preflopEq] Is the model actually USING the `hand_strength` context feature (ctx[36]),
+    or did it land in the tensor with zero effective weight? Holds equity/stack/pot/field FIXED
+    and swings only hand_strength (0.15 "weak card shape at this equity" vs 0.85 "strong card
+    shape") -- a synthetic ablation: in real play hand_strength is never this decoupled from
+    equity, but perturbing it alone here isolates whether the network reads that slot at all.
+    WARN-only / diagnostic (no established expected magnitude yet -- this is the first version
+    to carry this feature), not a pass/fail gate."""
+    if getattr(rc.manifest, 'context_dim', 35) < 37:
+        return CheckResult('SKIP', 'model context has no hand_strength feature (context_dim<37)')
+    diffs, data = [], []
+    for eq in (0.35, 0.50, 0.65, 0.80):
+        for stack in (15, 40):
+            ctx_lo = build_ctx(equity=eq, stack_bb=stack, pot_bb=10, call_bb=4, num_active_opp=2,
+                                contract_version=rc.manifest.contract_version, hand_strength=0.15)
+            ctx_hi = build_ctx(equity=eq, stack_bb=stack, pot_bb=10, call_bb=4, num_active_opp=2,
+                                contract_version=rc.manifest.contract_version, hand_strength=0.85)
+            policy_lo, _ = run_policy(rc.model, ctx_lo, rc.action_keys, device=rc.device)
+            policy_hi, _ = run_policy(rc.model, ctx_hi, rc.action_keys, device=rc.device)
+            tv_dist = 0.5 * sum(abs(policy_hi[k] - policy_lo[k]) for k in rc.action_keys)
+            diffs.append(tv_dist)
+            data.append({"equity": eq, "stack_bb": stack, "policy_lo_hs": policy_lo,
+                         "policy_hi_hs": policy_hi, "total_variation": round(tv_dist, 4)})
+    avg = sum(diffs) / len(diffs)
+    detail = f"avg policy shift (total variation) between hand_strength=0.15 vs 0.85 at fixed equity: {avg:.3f}"
+    status = 'PASS' if avg > 0.03 else 'WARN'
+    if status == 'WARN':
+        detail += " -- negligible response; hand_strength may not be contributing (or was absorbed elsewhere)"
+    return CheckResult(status, detail, data)
+
+
+def check_equity_edge_sensitivity(rc):
+    """[V20_preflopEq] Same idea as check_hand_strength_sensitivity but for `equity_edge`
+    (ctx[35], real-play value = equity*(num_active+1)). Holds equity/stack/pot/field FIXED and
+    swings only equity_edge to a value well below vs well above what the real formula would give
+    for that (equity, num_active) pair -- probing whether the network reads this ctx slot as
+    informative beyond what it could already derive from equity + the existing active-opponent
+    count feature. WARN-only / diagnostic, not a pass/fail gate (first version to carry this
+    feature -- no established expected magnitude yet)."""
+    if getattr(rc.manifest, 'context_dim', 35) < 37:
+        return CheckResult('SKIP', 'model context has no equity_edge feature (context_dim<37)')
+    diffs, data = [], []
+    for eq in (0.35, 0.50, 0.65, 0.80):
+        for num_active in (1, 3):
+            real_value = eq * (num_active + 1)
+            ctx_lo = build_ctx(equity=eq, stack_bb=30, pot_bb=10, call_bb=4, num_active_opp=num_active,
+                                contract_version=rc.manifest.contract_version,
+                                equity_edge=max(0.0, real_value - 0.8))
+            ctx_hi = build_ctx(equity=eq, stack_bb=30, pot_bb=10, call_bb=4, num_active_opp=num_active,
+                                contract_version=rc.manifest.contract_version,
+                                equity_edge=real_value + 0.8)
+            policy_lo, _ = run_policy(rc.model, ctx_lo, rc.action_keys, device=rc.device)
+            policy_hi, _ = run_policy(rc.model, ctx_hi, rc.action_keys, device=rc.device)
+            tv_dist = 0.5 * sum(abs(policy_hi[k] - policy_lo[k]) for k in rc.action_keys)
+            diffs.append(tv_dist)
+            data.append({"equity": eq, "num_active_opp": num_active, "real_value": round(real_value, 2),
+                         "policy_lo_edge": policy_lo, "policy_hi_edge": policy_hi,
+                         "total_variation": round(tv_dist, 4)})
+    avg = sum(diffs) / len(diffs)
+    detail = f"avg policy shift (total variation) between low vs high equity_edge at fixed equity/field: {avg:.3f}"
+    status = 'PASS' if avg > 0.03 else 'WARN'
+    if status == 'WARN':
+        detail += " -- negligible response; equity_edge may be redundant with equity+active_opp_count"
+    return CheckResult(status, detail, data)
 
 
 FAST_CHECKS = [
@@ -259,6 +336,10 @@ FAST_CHECKS = [
      "V11 raise-/call-everything collapse", check_action_diversity),
     ("no_nan_or_crash", "edge-case seat/stack/street combos never NaN or throw",
      "commit 55a1bc9 -- NaN inference crashes", check_no_nan_or_crash),
+    ("hand_strength_sensitivity", "policy responds to hand_strength at fixed equity (SKIP if context_dim<37)",
+     "V20_preflopEq -- is the new feature actually load-bearing", check_hand_strength_sensitivity),
+    ("equity_edge_sensitivity", "policy responds to equity_edge at fixed equity/field (SKIP if context_dim<37)",
+     "V20_preflopEq -- is the new feature actually load-bearing", check_equity_edge_sensitivity),
 ]
 
 
@@ -297,17 +378,21 @@ def check_vpip_adapts_to_style(rc):
     test that originally caught the flat-VPIP bug (versions/v16/SPECS.md [P4])."""
     if rc.sim_module is None:
         return CheckResult('SKIP', 'requires --full (simulator not loaded)')
-    parts, ok = [], True
+    parts, data, ok = [], [], True
     for depth_label, stack_range in (('short', [5, 14]), ('deep', [30, 50])):
-        _, vpip_tight = _run_field(rc, ['nit'], [1.0], stack_range, rc.n_hands_style)
-        _, vpip_loose = _run_field(rc, ['fish'], [1.0], stack_range, rc.n_hands_style)
+        bb100_tight, vpip_tight = _run_field(rc, ['nit'], [1.0], stack_range, rc.n_hands_style)
+        bb100_loose, vpip_loose = _run_field(rc, ['fish'], [1.0], stack_range, rc.n_hands_style)
         delta = vpip_loose - vpip_tight
         ok = ok and delta >= 5.0
         parts.append(f"{depth_label}: tight={vpip_tight:.1f}% loose={vpip_loose:.1f}% (delta {delta:+.1f}pts)")
+        data.append({"depth": depth_label, "stack_range": stack_range,
+                     "vpip_tight": round(vpip_tight, 1), "vpip_loose": round(vpip_loose, 1),
+                     "delta": round(delta, 1), "bb100_tight": round(bb100_tight, 1),
+                     "bb100_loose": round(bb100_loose, 1), "pass": delta >= 5.0})
     detail = "; ".join(parts)
     if ok:
-        return CheckResult('PASS', detail)
-    return CheckResult('FAIL', detail + " -- [P4] VPIP not conforming to opponent tightness (need >=5pt delta)")
+        return CheckResult('PASS', detail, data)
+    return CheckResult('FAIL', detail + " -- [P4] VPIP not conforming to opponent tightness (need >=5pt delta)", data)
 
 
 def check_bb100_vs_standard_fields(rc):
@@ -324,20 +409,24 @@ def check_bb100_vs_standard_fields(rc):
     ]
     baseline = (rc.baselines.get(rc.version_id) or {}).get('bb100', {})
     measured = {}
-    lines, warn = [], False
+    lines, data, warn = [], [], False
     for key, pool, weights, stack_range in fields:
         bb100, vpip = _run_field(rc, pool, weights, stack_range, rc.n_hands_field)
         measured[key] = round(bb100, 1)
         prior = baseline.get(key)
-        if prior is not None and (bb100 - prior) < -15.0:
+        regressed = prior is not None and (bb100 - prior) < -15.0
+        if regressed:
             warn = True
             lines.append(f"{key}: {bb100:+.1f} BB/100 (baseline {prior:+.1f}, DOWN {prior - bb100:.1f}) VPIP {vpip:.0f}%")
         else:
             note = f", baseline {prior:+.1f}" if prior is not None else ", no baseline recorded yet"
             lines.append(f"{key}: {bb100:+.1f} BB/100{note} VPIP {vpip:.0f}%")
+        data.append({"field": key, "pool": pool, "stack_range": stack_range,
+                     "bb100": round(bb100, 1), "vpip": round(vpip, 1), "baseline": prior,
+                     "regressed": regressed})
     rc.collected['bb100'] = measured   # available to run.py for --update-baseline
     detail = " | ".join(lines)
-    return CheckResult('WARN' if warn else 'PASS', detail)
+    return CheckResult('WARN' if warn else 'PASS', detail, data)
 
 
 def check_beats_frozen_predecessor(rc):
@@ -377,9 +466,11 @@ def check_beats_frozen_predecessor(rc):
     h = sim.seat_histories[0]
     bb100 = (h['profit'] / 10.0) / max(1, n_hands) * 100.0
     detail = f"vs field incl. frozen predecessor ({rc.frozen_predecessor_filename}): {bb100:+.1f} BB/100 over {n_hands} hands"
+    data = [{"opponent": rc.frozen_predecessor_filename, "bb100": round(bb100, 1),
+             "n_hands": n_hands, "field": "fish/tag/nit/past(frozen)"}]
     if bb100 > 0:
-        return CheckResult('PASS', detail)
-    return CheckResult('FAIL', detail + " -- must beat the frozen predecessor benchmark")
+        return CheckResult('PASS', detail, data)
+    return CheckResult('FAIL', detail + " -- must beat the frozen predecessor benchmark", data)
 
 
 def check_beats_offformula_stress(rc):
@@ -415,12 +506,13 @@ def check_beats_offformula_stress(rc):
         vpip = (h['vpip_acts'] / h['vpip_ops'] * 100.0) if h.get('vpip_ops') else 0.0
         results[depth_label] = (bb100, vpip)
     detail = "; ".join(f"{d}: {bb100:+.1f} BB/100 (VPIP {vpip:.0f}%)" for d, (bb100, vpip) in results.items())
+    data = [{"depth": d, "bb100": round(bb100, 1), "vpip": round(vpip, 1)} for d, (bb100, vpip) in results.items()]
     worst = min(bb100 for bb100, _ in results.values())
     if worst > -10.0:
-        return CheckResult('PASS', detail)
+        return CheckResult('PASS', detail, data)
     if worst > -30.0:
-        return CheckResult('WARN', detail + " -- notable dropoff vs an off-formula opponent, possible overfit to the training pool's specific shape")
-    return CheckResult('FAIL', detail + " -- large dropoff vs an off-formula opponent, strong overfit signal")
+        return CheckResult('WARN', detail + " -- notable dropoff vs an off-formula opponent, possible overfit to the training pool's specific shape", data)
+    return CheckResult('FAIL', detail + " -- large dropoff vs an off-formula opponent, strong overfit signal", data)
 
 
 SLOW_CHECKS = [

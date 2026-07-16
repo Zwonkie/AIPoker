@@ -1,0 +1,147 @@
+{
+    "timestamp": "20260716_230851",
+    "chosen_action": "RAISE_SLIDER_1.00",
+    "bet_size": 830.0,
+    "reason": "V20_preflopEq sampled (temp=0.20) -> ALLIN -> raise-to 830 (slider 1.00): {FOLD 0.00, CALL 0.14, RAISE_33 0.13, RAISE_66 0.15, RAISE_POT 0.21, ALLIN 0.37}",
+    "actor_policy": {
+        "FOLD": 0.00019905871886294335,
+        "CALL": 0.13892939686775208,
+        "RAISE_33": 0.13489028811454773,
+        "RAISE_66": 0.15208527445793152,
+        "RAISE_POT": 0.20726719498634338,
+        "ALLIN": 0.3666287362575531
+    },
+    "critic_q_vals": {
+        "FOLD": -0.0023827217519283295,
+        "CALL": 1.016752004623413,
+        "RAISE_33": 1.1746644973754883,
+        "RAISE_66": 1.3215446472167969,
+        "RAISE_POT": 1.6665984392166138,
+        "ALLIN": 3.0746219158172607
+    },
+    "equity": 0.56,
+    "equity_meta": {
+        "method": "range-aware",
+        "opp_colors": [
+            "Blue",
+            "Yellow",
+            "Yellow"
+        ],
+        "num_opponents": 3,
+        "opp_colors_in_pot": [
+            "Yellow"
+        ],
+        "opp_colors_still_to_act": [
+            "Blue",
+            "Yellow"
+        ],
+        "hand_strength": 0.6433,
+        "value": 0.56
+    },
+    "context_vector": [
+        0.0,
+        0.00332,
+        0.0038,
+        0.56,
+        0.0,
+        0.3,
+        0.0,
+        0.3,
+        0.63
+    ],
+    "context_labeled": {
+        "position": 0.0,
+        "bankroll": 0.00332,
+        "pot": 0.0038,
+        "equity": 0.56,
+        "pot_odds": 0.0,
+        "num_opponents": 0.3,
+        "street_level": 0.0,
+        "opp_vpip_norm": 0.3,
+        "opp_agg_norm": 0.63
+    },
+    "model_seen": {
+        "position": 0.0,
+        "hero_stack_bb": 6.6,
+        "pot_bb": 7.6,
+        "equity": 0.56,
+        "pot_odds": 0.345,
+        "num_active": 3,
+        "street": "Preflop",
+        "to_call_bb": 4.0
+    },
+    "decision_path": {
+        "preflop_chart": {
+            "status": "Bypassed",
+            "details": "Deprecated in V8/V9"
+        },
+        "active_model": {
+            "status": "Active",
+            "details": "Loaded Herocules (v20_preflopEq)"
+        },
+        "bluff_engine": {
+            "status": "Passed",
+            "details": "Handled natively by V8/V9"
+        },
+        "math_engine": {
+            "status": "Passed",
+            "details": "Math checks out OK"
+        }
+    },
+    "table_state": {
+        "community_cards": [],
+        "hero_cards": [
+            "As",
+            "Qd"
+        ],
+        "pot_size": 950,
+        "hero_stack": 830,
+        "opponents": {
+            "seat_1": {
+                "name": "depor197",
+                "stack": 1650,
+                "is_active": false,
+                "state": "Folded",
+                "vpip_color": "Blue",
+                "agg_color": "Green"
+            },
+            "seat_2": {
+                "name": "Shrewdsong763",
+                "stack": 200,
+                "is_active": false,
+                "state": "Folded",
+                "vpip_color": "Yellow",
+                "agg_color": "Green"
+            },
+            "seat_3": {
+                "name": "Xioalin69",
+                "stack": 890,
+                "is_active": true,
+                "state": "Active",
+                "vpip_color": "Yellow",
+                "agg_color": "Yellow"
+            },
+            "seat_5": {
+                "name": "4\n4",
+                "stack": 0,
+                "is_active": false,
+                "state": "Folded",
+                "vpip_color": null,
+                "agg_color": null
+            }
+        },
+        "num_active_players": 3,
+        "active_buttons": [
+            "button_fold"
+        ],
+        "street": "Preflop",
+        "dealer_name": "",
+        "dealer_idx": 0,
+        "hero_position": 0,
+        "action_history": [],
+        "opp_vpip_norm": 0.3,
+        "opp_agg_norm": 0.63,
+        "big_blind": 500.0
+    },
+    "hand_history_len": 1
+}

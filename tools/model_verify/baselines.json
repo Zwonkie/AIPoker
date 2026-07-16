@@ -1,1 +1,10 @@
-{}
+{
+  "v20_preflopEq": {
+    "bb100": {
+      "loose_short": 16.8,
+      "loose_deep": 36.2,
+      "tight_short": 22.8,
+      "tight_deep": 61.1
+    }
+  }
+}

@@ -435,7 +435,17 @@ class SixMaxSimulator:
         opp_profiles = table_state_dict.get('opponents_profiles', {}) if table_state_dict else {}
         street_map = {0: "Preflop", 1: "Flop", 2: "Turn", 3: "River"}
         street_str = street_map.get(street_idx, "Preflop")
-        
+
+        # V19 [hero_position fix]: BoardState.hero_position previously always defaulted to 0
+        # (Button) here -- it was never set for ANY query, hero's own turn or any opponent's.
+        # `table_state_dict` now carries the current actor's own seat + the button seat (set
+        # once per actor's turn in simulate_hand), so every query -- hero's and each opponent
+        # NN's -- gets ITS OWN real button-relative position, matching the live-serve path
+        # (core/table_state.py's `to_board_state`, the only other call site that ever set this).
+        actor_seat = table_state_dict.get('actor_seat', 0) if table_state_dict else 0
+        button_seat = table_state_dict.get('button_seat', 0) if table_state_dict else 0
+        actor_position = (actor_seat - button_seat) % 6
+
         board_state = BoardState(
             community_cards=board_cards,
             hero_cards=hand_cards,
@@ -444,7 +454,8 @@ class SixMaxSimulator:
             street=street_str,
             big_blind=self.bb_size,
             call_amount=call_amount,
-            equity=equity
+            equity=equity,
+            hero_position=actor_position,
         )
         for idx in range(5):
             seat_key = f"seat_{idx+1}"
@@ -977,7 +988,15 @@ class SixMaxSimulator:
                         "board": board_str,
                         "street": street_idx,
                         "action_history": action_history,
-                        "opponents_profiles": opponents_profiles
+                        "opponents_profiles": opponents_profiles,
+                        # V19 [hero_position fix]: the CURRENT actor's own seat + the button seat,
+                        # so _query_model_decide can compute THIS actor's real button-relative
+                        # position for every query (hero's own turn AND every opponent NN query --
+                        # both funnel through the same table_state_dict-carrying call chain).
+                        # Previously absent -> BoardState.hero_position silently defaulted to 0
+                        # (Button) for every single training-time query, hero and opponent alike.
+                        "actor_seat": current_actor,
+                        "button_seat": button_seat,
                     }
                     
                     if current_actor == 0:  # Hero

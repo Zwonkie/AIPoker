@@ -6,6 +6,9 @@ from core.models.v14_engine import V14ModelEngine, V14_ACTION_KEYS
 from core.models.v15_engine import V15ModelEngine
 from core.models.v17_engine import V17ModelEngine
 from core.models.v17_gauntlet_engine import V17GauntletModelEngine
+from core.models.v19_engine import V19ModelEngine
+from core.models.v20_engine import V20ModelEngine
+from core.models.v20_preflopEq_engine import V20PreflopEqModelEngine
 
 # Live action selection: SAMPLE from the actor policy (matching training/eval, which sample rather
 # than argmax) but SHARPEN with a temperature < 1 so genuine mixing survives on close spots while
@@ -98,6 +101,8 @@ def _narrate_thinking(action, board_state, evs):
 from core.bridge.contract_v8_v9 import ContractV8V9
 from core.bridge.v11.contract_v11 import ContractV8V9 as ContractV11
 from versions.v13.core.contract import ContractV12
+from versions.v20.core.contract import ContractV12 as ContractV12_v20
+from versions.v20_preflopEq.core.contract import ContractV12 as ContractV12_v20PreflopEq
 from core.board_state import BoardState
 from core.action import PokerAction
 
@@ -111,6 +116,59 @@ class PokerDecisionEngine:
         # loading garbage. They are pruned; their weight files remain on disk for reproducibility.
         # To re-enable a legacy model, first fix its weights/contract, THEN re-add it here.
         self.models = {
+            # V20_preflopEq: same PokerEVModelV4 arch + 6-action contract as V20, but WIDER context
+            # (context_dim 35->37, contract_version 4->5) -- two new appended features (equity_edge,
+            # hand_strength) plus a fix to the shared range-aware equity function (hero's opponents
+            # now split front/already-acted [guaranteed in] vs after/still-to-act [normal VPIP roll],
+            # instead of one flat roll for everyone). DIFFERENT input SCALE+WIDTH than every other
+            # model here -- uses its OWN bridge (self.bridge_v20_preflopEq, versions.v20_preflopEq
+            # .core.contract), gated by is_v20_preflopEq below. Loads `expert_main.pth`, the 75k-hand
+            # final checkpoint from this version's first production run (see
+            # versions/v20_preflopEq/SPECS.md). model_verify --full @ 75k: 11 PASS/1 WARN/1 FAIL/
+            # 1 SKIP -- vpip_adapts_to_style PASS (short +6.6pt, deep +7.1pt, the metric most directly
+            # downstream of the equity fix), bb100_vs_standard_fields PASS positive across all 4
+            # fields, beats_offformula_stress PASS, both new-feature sensitivity checks PASS
+            # (confirmed load-bearing). deep_stack_ood_guard FAIL / free_check_low_fold WARN are the
+            # SAME long-standing soft spots V19/V20 also carry, not new. beats_frozen_predecessor
+            # SKIPs (no cross-scale-compatible frozen checkpoint -- same limitation V20 itself hit) --
+            # NO direct head-to-head number exists against V20 specifically. Deployed anyway per
+            # explicit user decision (2026-07-17), accepting that gap for the strong broad evidence
+            # above. V20 (below) stays fully intact as the rollback. ACTIVE.
+            'Herocules (v20_preflopEq)': V20PreflopEqModelEngine(weight_name="expert_main.pth"),
+            # V20: rescaled context-feature resolution (stack/pot/call_amount ctx[1]/ctx[2]/ctx[9]
+            # + 5x opp_stack, /400(/1000) -> /100(/250)) to fit the actual 5-50bb training range --
+            # DIFFERENT input SCALE than every other model here (contract_version 3->4), so it uses
+            # its OWN bridge (self.bridge_v20, versions.v20.core.contract), gated by is_v20_model
+            # below -- NOT the shared bridge_v13 every other sized model was trained on. Loads
+            # `expert_main_200k.pth`, a preserved snapshot cloned at the end of the 120k->200k
+            # continuation (see versions/v20/SPECS.md) so live weights stay fixed regardless of any
+            # further training. LIVE-SAFETY CLAMP applied before deployment: the rescale's
+            # resolution gain trades away headroom past the 50bb training ceiling -- contract.py
+            # clamps stack/pot/call_amount-derived features to that ceiling so real 80-150bb+
+            # tables stay in-distribution (verified: set-of-aces fold rate no longer climbs with
+            # real depth). model_verify --full @ 120k: 9 PASS/1 WARN/1 FAIL/1 SKIP. @ 200k:
+            # 8 PASS/2 WARN/1 FAIL/1 SKIP -- a real tradeoff, not a strict improvement:
+            # deep_stack_ood_guard's failure narrowed sharply (1 failing cell vs 5 uniformly-jamming
+            # cells at 120k) but short_stack_polarization flipped PASS->WARN ([P3] shove-or-fold
+            # call-mass roughly doubled, 0.12->0.25, still open). Deployed at 200k per explicit user
+            # decision (accepting the short-stack regression for the deep-stack gain). ACTIVE.
+            'Herocules (v20)': V20ModelEngine(weight_name="expert_main_200k.pth"),
+            # V19: three targeted content fixes on top of v18's opponent-architecture refactor
+            # (same 6-action sized contract, same PokerEVModelV4 arch): [P0] a size-aware preflop
+            # opponent fold-bar (targets the deep-stack trash-jam target-EV inflation), a real
+            # button-relative hero_position fed to every training-time query (Hero's own AND every
+            # opponent's -- previously silently defaulted to Button for all of them), and a
+            # Past-Self VPIP mystery investigation (documented, not fixed -- see
+            # versions/v19/SPECS.md). model_verify --full: 10 PASS/1 WARN/1 FAIL --
+            # deep_stack_ood_guard STILL FAILS (NOT fixed by [P0]; the failure grid is roughly
+            # FLAT across stack depth, eq>=0.43 argmax-jams 13/25 cells regardless of stack --
+            # doesn't match the stack-scaling hypothesis [P0] targeted, points instead at a
+            # `policy_tightness_bb` threshold effect near eq 0.45, not yet investigated). Deployed
+            # anyway per explicit user decision (2026-07-16): every other gate passes strongly --
+            # vpip_adapts_to_style short +9.7pt/deep +6.8pt, bb100_vs_standard_fields positive
+            # across all 4 fields, beats_frozen_predecessor +56.8 BB/100 vs the v17_gauntlet field,
+            # beats_offformula_stress PASS. deep_stack_ood_guard carried forward as backlog. ACTIVE.
+            'Herocules (v19)': V19ModelEngine(weight_name="expert_main.pth"),
             # V17_gauntlet: same actor-critic/fold-relative recipe as V17, opponent pool widened
             # to frozen V15 (nit seat) and a true lagged self-play mirror (past seat) -- the tag
             # seat was INTENDED to load frozen V16 but a wiring bug silently nullified it (see
@@ -139,10 +197,17 @@ class PokerDecisionEngine:
             # V13: equity-primary + range-aware equity. Kept as the tagged MILESTONE fallback.
             'Herocules (v13 Range-Aware)': V13ModelEngine(weight_name="expert_main.pth"),
         }
-        self.active_model_name = 'Herocules (v17_gauntlet)'
+        self.active_model_name = 'Herocules (v20_preflopEq)'
         self.bridge_v9 = ContractV8V9()
         self.bridge_v11 = ContractV11()
         self.bridge_v13 = ContractV12(max_seq_len=20)
+        # V20 uses a DIFFERENT context-feature scale (contract_version 4, see the registry
+        # comment above) -- it CANNOT share bridge_v13 with every other sized model, or it would
+        # get fed the wrong-scale stack/pot/call_amount values it was never trained on.
+        self.bridge_v20 = ContractV12_v20(max_seq_len=20)
+        # V20_preflopEq uses a DIFFERENT scale+width again (contract_version 5, context_dim 37,
+        # see the registry comment above) -- needs its own bridge, can't share bridge_v20 either.
+        self.bridge_v20_preflopEq = ContractV12_v20PreflopEq(max_seq_len=20)
         self.hand_history_buffer = []
         self._last_street = None
         self._last_hole_cards = None
@@ -151,8 +216,8 @@ class PokerDecisionEngine:
         if model_name in self.models:
             self.active_model_name = model_name
         else:
-            print(f"Warning: {model_name} is not loaded or supported. Falling back to V17_gauntlet.")
-            self.active_model_name = 'Herocules (v17_gauntlet)'
+            print(f"Warning: {model_name} is not loaded or supported. Falling back to V20.")
+            self.active_model_name = 'Herocules (v20)'
 
     def _v14_size_to_slider(self, frac, board_state):
         """Translate a V14 pot-fraction raise bucket into (raise_size_chips, slider_fraction).
@@ -216,12 +281,29 @@ class PokerDecisionEngine:
         is_v15_model = getattr(active_model, 'is_v15', False) or 'v15' in self.active_model_name.lower()
         is_v17_gauntlet_model = getattr(active_model, 'is_v17_gauntlet', False) or 'v17_gauntlet' in self.active_model_name.lower()
         is_v17_model = (not is_v17_gauntlet_model) and (getattr(active_model, 'is_v17', False) or 'v17' in self.active_model_name.lower())
+        is_v19_model = getattr(active_model, 'is_v19', False) or 'v19' in self.active_model_name.lower()
+        # NOTE: must be resolved BEFORE is_v20_model -- 'v20' is a substring of 'v20_preflopeq',
+        # so the naive name-based fallback below would otherwise misfire True for this model too.
+        is_v20_preflopEq_model = getattr(active_model, 'is_v20_preflopEq', False) or 'v20_preflopeq' in self.active_model_name.lower()
+        is_v20_model = (not is_v20_preflopEq_model) and (getattr(active_model, 'is_v20', False) or 'v20' in self.active_model_name.lower())
         is_v11_model = getattr(active_model, 'is_v11', False) or 'v11' in self.active_model_name.lower()
-        # V14/V15/V17/V17_gauntlet share the IDENTICAL 6-action sized contract -> one live path
-        # (selection + slider sizing). Anything gated on "the sized model" uses this combined flag.
-        is_sized_model = is_v14_model or is_v15_model or is_v17_model or is_v17_gauntlet_model
+        # V14/V15/V17/V17_gauntlet/V19/V20/V20_preflopEq share the IDENTICAL 6-action sized
+        # contract -> one live path (selection + slider sizing). Anything gated on "the sized
+        # model" uses this flag.
+        is_sized_model = is_v14_model or is_v15_model or is_v17_model or is_v17_gauntlet_model or is_v19_model or is_v20_model or is_v20_preflopEq_model
         try:
-            if is_v13_model or is_sized_model:
+            if is_v20_preflopEq_model:
+                # V20_preflopEq was trained on a DIFFERENT context-feature WIDTH+scale
+                # (contract_version 5, context_dim 37) -- MUST use its own bridge, not bridge_v13
+                # or bridge_v20, or the two new appended features (equity_edge, hand_strength)
+                # would be missing/misaligned (see versions/v20_preflopEq/core/contract.py).
+                hole, board, ctx, act = self.bridge_v20_preflopEq.to_tensors(self.hand_history_buffer, action_history_raw)
+            elif is_v20_model:
+                # V20 was trained on a DIFFERENT context-feature scale (contract_version 4) --
+                # MUST use its own bridge, not bridge_v13, or stack/pot/call_amount would be fed
+                # at the wrong scale (see versions/v20/core/contract.py, versions/v20/SPECS.md).
+                hole, board, ctx, act = self.bridge_v20.to_tensors(self.hand_history_buffer, action_history_raw)
+            elif is_v13_model or is_sized_model:
                 # V13/V14/V15/V17 share the sequence contract (ContractV12, 35-dim ctx) and the
                 # ACTOR policy head; V14/V15/V17 only differ in head WIDTH (6 vs 3), applied after
                 # inference.
@@ -279,7 +361,7 @@ class PokerDecisionEngine:
             else:
                 action = choice   # FOLD / CALL
                 size_note = choice
-            _tag = "V17_gauntlet" if is_v17_gauntlet_model else ("V17" if is_v17_model else ("V15" if is_v15_model else "V14"))
+            _tag = "V20_preflopEq" if is_v20_preflopEq_model else ("V20" if is_v20_model else ("V19" if is_v19_model else ("V17_gauntlet" if is_v17_gauntlet_model else ("V17" if is_v17_model else ("V15" if is_v15_model else "V14")))))
             reason = (f"{_tag} sampled (temp={temp:.2f}"
                       + (", free-check fold-masked" if free_check else "")
                       + (", raise-unavail" if not bet_raise_available else "")

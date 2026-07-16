@@ -1,0 +1,147 @@
+{
+    "timestamp": "20260716_154910",
+    "chosen_action": "FOLD",
+    "bet_size": 0.0,
+    "reason": "V19 sampled (temp=0.50) -> FOLD: {FOLD 0.83, CALL 0.06, RAISE_33 0.02, RAISE_66 0.06, RAISE_POT 0.03, ALLIN 0.00}",
+    "actor_policy": {
+        "FOLD": 0.8324483633041382,
+        "CALL": 0.06271502375602722,
+        "RAISE_33": 0.016443027183413506,
+        "RAISE_66": 0.059260688722133636,
+        "RAISE_POT": 0.029120968654751778,
+        "ALLIN": 1.194654032588005e-05
+    },
+    "critic_q_vals": {
+        "FOLD": 0.0035895444452762604,
+        "CALL": 0.3076639771461487,
+        "RAISE_33": 0.3528093695640564,
+        "RAISE_66": 0.4739435613155365,
+        "RAISE_POT": 0.22724731266498566,
+        "ALLIN": -13.343572616577148
+    },
+    "equity": 0.58,
+    "equity_meta": {
+        "method": "range-aware",
+        "opp_colors": [
+            "Red"
+        ],
+        "num_opponents": 5,
+        "value": 0.58
+    },
+    "context_vector": [
+        0.3,
+        0.146,
+        0.003,
+        0.58,
+        0.0,
+        0.5,
+        0.0,
+        0.45,
+        0.18
+    ],
+    "context_labeled": {
+        "position": 0.3,
+        "bankroll": 0.146,
+        "pot": 0.003,
+        "equity": 0.58,
+        "pot_odds": 0.0,
+        "num_opponents": 0.5,
+        "street_level": 0.0,
+        "opp_vpip_norm": 0.45,
+        "opp_agg_norm": 0.18
+    },
+    "model_seen": {
+        "position": 3.0,
+        "hero_stack_bb": 73.0,
+        "pot_bb": 1.5,
+        "equity": 0.58,
+        "pot_odds": 0.4,
+        "num_active": 5,
+        "street": "Preflop",
+        "to_call_bb": 1.0
+    },
+    "decision_path": {
+        "preflop_chart": {
+            "status": "Bypassed",
+            "details": "Deprecated in V8/V9"
+        },
+        "active_model": {
+            "status": "Active",
+            "details": "Loaded Herocules (v19)"
+        },
+        "bluff_engine": {
+            "status": "Passed",
+            "details": "Handled natively by V8/V9"
+        },
+        "math_engine": {
+            "status": "Passed",
+            "details": "Math checks out OK"
+        }
+    },
+    "table_state": {
+        "community_cards": [],
+        "hero_cards": [
+            "Jh",
+            "Kc"
+        ],
+        "pot_size": 30,
+        "hero_stack": 1460,
+        "opponents": {
+            "seat_1": {
+                "name": "gazza4sky",
+                "stack": 1400,
+                "is_active": true,
+                "state": "Active",
+                "vpip_color": "Red",
+                "agg_color": "Blue"
+            },
+            "seat_2": {
+                "name": "gcjjdxuvc",
+                "stack": 580,
+                "is_active": true,
+                "state": "Active",
+                "vpip_color": null,
+                "agg_color": null
+            },
+            "seat_3": {
+                "name": "captainbig91",
+                "stack": 1450,
+                "is_active": true,
+                "state": "Active",
+                "vpip_color": null,
+                "agg_color": null
+            },
+            "seat_4": {
+                "name": "kingcoin853",
+                "stack": 2400,
+                "is_active": true,
+                "state": "Active",
+                "vpip_color": null,
+                "agg_color": null
+            },
+            "seat_5": {
+                "name": "DryeJam",
+                "stack": 1380,
+                "is_active": true,
+                "state": "Active",
+                "vpip_color": null,
+                "agg_color": null
+            }
+        },
+        "num_active_players": 5,
+        "active_buttons": [
+            "button_fold"
+        ],
+        "street": "Preflop",
+        "dealer_name": "captainbig91",
+        "dealer_idx": 3,
+        "hero_position": 3,
+        "action_history": [
+            "f"
+        ],
+        "opp_vpip_norm": 0.45,
+        "opp_agg_norm": 0.18,
+        "big_blind": 20.0
+    },
+    "hand_history_len": 2
+}

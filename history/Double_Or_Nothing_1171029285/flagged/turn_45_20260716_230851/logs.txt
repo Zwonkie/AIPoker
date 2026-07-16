@@ -1,0 +1,107 @@
+[XML Tracker] Loaded baseline stacks: {'depor197': 40, 'Shrewdsong763': 1245, 'Xioalin69': 1060, 'Zwonkie': 1940} (Hero: Zwonkie, Dealer: )
+
+--- HERO TURN DETECTED ---
+[Decision] Parsing thread execution path...
+[Decision] Range-aware equity vs ['Blue']: 0.20
+[Vision] Facing bet! Parsed Call Amount: 200.0
+[Decision] DECIDED BRANCH: **FOLD**
+[Decision] Reason: V20_preflopEq sampled (temp=0.20) -> FOLD: {FOLD 1.00, CALL 0.00, RAISE_33 0.00, RAISE_66 0.00, RAISE_POT 0.00, ALLIN 0.00}
+[Decision] Thinking: equity too low (20%) to continue profitably -- folding.
+[Automation] Invoking native call for FOLD...
+[Automation] Executing main action: Clicking FOLD...
+[Automation] Thread interrupt completed successfully.
+[SYSTEM] Parsing loop complete. Monitoring stream...
+[SYSTEM] New hand detected. Resetting table state history.
+[XML Tracker] Loaded baseline stacks: {'depor197': 675, 'Shrewdsong763': 1205, 'Xioalin69': 1020, 'Zwonkie': 1700} (Hero: Zwonkie, Dealer: )
+
+--- HERO TURN DETECTED ---
+[Decision] Parsing thread execution path...
+[Decision] Range-aware equity vs ['Blue', 'Yellow']: 0.29
+[Vision] Facing bet! Parsed Call Amount: 400.0
+[Decision] DECIDED BRANCH: **FOLD**
+[Decision] Reason: V20_preflopEq sampled (temp=0.20) -> FOLD: {FOLD 1.00, CALL 0.00, RAISE_33 0.00, RAISE_66 0.00, RAISE_POT 0.00, ALLIN 0.00}
+[Decision] Thinking: equity too low (29%) to continue profitably -- folding.
+[Automation] Invoking native call for FOLD...
+[Automation] Executing main action: Clicking FOLD...
+[Automation] Thread interrupt completed successfully.
+[SYSTEM] Parsing loop complete. Monitoring stream...
+[SYSTEM] New hand detected. Resetting table state history.
+[XML Tracker] Loaded baseline stacks: {'depor197': 1870, 'Shrewdsong763': 330, 'Xioalin69': 980, 'Zwonkie': 1660} (Hero: Zwonkie, Dealer: )
+
+--- HERO TURN DETECTED ---
+[Decision] Parsing thread execution path...
+[Decision] Range-aware equity vs ['Blue', 'Yellow', 'Yellow']: 0.34
+[Vision] Facing bet! Parsed Call Amount: 400.0
+[Decision] DECIDED BRANCH: **FOLD**
+[Decision] Reason: V20_preflopEq sampled (temp=0.20) -> FOLD: {FOLD 1.00, CALL 0.00, RAISE_33 0.00, RAISE_66 0.00, RAISE_POT 0.00, ALLIN 0.00}
+[Decision] Thinking: equity too low (34%) to continue profitably -- folding.
+[Automation] Invoking native call for FOLD...
+[Automation] Executing main action: Clicking FOLD...
+[Automation] Thread interrupt completed successfully.
+[SYSTEM] Parsing loop complete. Monitoring stream...
+[SYSTEM] New hand detected. Resetting table state history.
+[XML Tracker] Loaded baseline stacks: {'depor197': 1790, 'Shrewdsong763': 90, 'Xioalin69': 1100, 'Zwonkie': 1620} (Hero: Zwonkie, Dealer: )
+
+--- HERO TURN DETECTED ---
+[Decision] Parsing thread execution path...
+[Decision] Range-aware equity vs ['Yellow']: 0.27
+[Vision] Bet/Raise button is unavailable (greyed out/hidden).
+[Vision] Facing bet! Parsed Call Amount: 860.0
+[Decision] DECIDED BRANCH: **FOLD**
+[Decision] Reason: V20_preflopEq sampled (temp=0.20, raise-unavail) -> FOLD: {FOLD 1.00, CALL 0.00, RAISE_33 0.00, RAISE_66 0.00, RAISE_POT 0.00, ALLIN 0.00}
+[Decision] Thinking: equity too low (27%) to continue profitably -- folding.
+[Automation] Invoking native call for FOLD...
+[Automation] Executing main action: Clicking FOLD...
+[Automation] Thread interrupt completed successfully.
+[SYSTEM] Parsing loop complete. Monitoring stream...
+[SYSTEM] Auto-parsed blinds from window title: SB=250, BB=500
+[SYSTEM] New hand detected. Resetting table state history.
+[XML Tracker] Loaded baseline stacks: {'depor197': 1750, 'Shrewdsong763': 50, 'Xioalin69': 1000, 'Zwonkie': 1180} (Hero: Zwonkie, Dealer: )
+
+--- HERO TURN DETECTED ---
+[Decision] Parsing thread execution path...
+[Decision] Range-aware equity vs ['Blue', 'Yellow']: 0.37
+[Vision] Facing bet! Parsed Call Amount: 250.0
+[Decision] DECIDED BRANCH: **FOLD**
+[Decision] Reason: V20_preflopEq sampled (temp=0.20) -> FOLD: {FOLD 0.98, CALL 0.02, RAISE_33 0.00, RAISE_66 0.00, RAISE_POT 0.00, ALLIN 0.00}
+[Decision] Thinking: equity too low (37%) to continue profitably -- folding.
+[Automation] Invoking native call for FOLD...
+[Automation] Executing main action: Clicking FOLD...
+[Automation] Thread interrupt completed successfully.
+[SYSTEM] Parsing loop complete. Monitoring stream...
+[SYSTEM] New hand detected. Resetting table state history.
+[XML Tracker] Loaded baseline stacks: {'depor197': 1750, 'Shrewdsong763': 50, 'Xioalin69': 1000, 'Zwonkie': 1180} (Hero: Zwonkie, Dealer: )
+[SYSTEM] Turn #43 FLAGGED -> history\Double_Or_Nothing_1171029285\flagged\turn_43_20260716_230758/ (open summary.txt)
+[SYSTEM] New hand detected. Resetting table state history.
+[XML Tracker] Loaded baseline stacks: {'depor197': 1700, 'Shrewdsong763': 200, 'Xioalin69': 1770, 'Zwonkie': 880} (Hero: Zwonkie, Dealer: )
+
+--- HERO TURN DETECTED ---
+[Decision] Parsing thread execution path...
+[Decision] Range-aware equity vs ['Blue', 'Yellow']: 0.38
+[Vision] Facing bet! Parsed Call Amount: 500.0
+[Decision] DECIDED BRANCH: **FOLD**
+[Decision] Reason: V20_preflopEq sampled (temp=0.20) -> FOLD: {FOLD 0.99, CALL 0.01, RAISE_33 0.00, RAISE_66 0.00, RAISE_POT 0.00, ALLIN 0.00}
+[Decision] Thinking: equity too low (38%) to continue profitably -- folding.
+[Automation] Invoking native call for FOLD...
+[Automation] Executing main action: Clicking FOLD...
+[Automation] Thread interrupt completed successfully.
+[SYSTEM] Parsing loop complete. Monitoring stream...
+[SYSTEM] Turn #44 FLAGGED -> history\Double_Or_Nothing_1171029285\flagged\turn_44_20260716_230819/ (open summary.txt)
+[SYSTEM] New hand detected. Resetting table state history.
+[XML Tracker] Loaded baseline stacks: {'depor197': 1650, 'Shrewdsong763': 500, 'Xioalin69': 1720, 'Zwonkie': 830} (Hero: Zwonkie, Dealer: )
+
+--- HERO TURN DETECTED ---
+[Decision] Parsing thread execution path...
+[Decision] Range-aware equity vs ['Blue', 'Yellow', 'Yellow']: 0.56
+[Vision] Facing bet! Parsed Call Amount: 500.0
+[Decision] DECIDED BRANCH: **RAISE_SLIDER_1.00**
+[Decision] Reason: V20_preflopEq sampled (temp=0.20) -> ALLIN -> raise-to 830 (slider 1.00): {FOLD 0.00, CALL 0.14, RAISE_33 0.13, RAISE_66 0.15, RAISE_POT 0.21, ALLIN 0.37}
+[Decision] Thinking: showdown-value hand (56% equity) -- betting for value/protection while ahead or close.
+[Decision] Size Allocation: 830.0 units
+[Automation] Invoking native call for RAISE_SLIDER_1.00...
+[Automation][SliderCalib] window_pos=(1456, 145) window_size=(1024, 726) slider_fraction=1.000 center_anchored_track_ref=(1153 to 1508 @ y=970) -> start_px=(2224,791) target_px=(2461,791) drag_delta_px=237
+[Automation] Executing slider sizing: Moving to slider start...
+[Automation] Executing slider sizing: Dragging slider to fraction 1.00...
+[Automation] Executing main action: Clicking RAISE...
+[Automation] Thread interrupt completed successfully.
+[SYSTEM] Parsing loop complete. Monitoring stream...

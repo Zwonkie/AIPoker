@@ -108,6 +108,25 @@ table.heatmap td .ring {{ position: absolute; inset: 2px; border-radius: 3px; bo
 .legend {{ display: flex; gap: 14px; flex-wrap: wrap; margin-top: 12px; font-size: 12px; color: var(--text-secondary); }}
 .legend .sw {{ display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 5px; vertical-align: -1px; }}
 
+table.kv-table {{ border-collapse: collapse; font-size: 12.5px; width: 100%; }}
+table.kv-table th {{
+  font-weight: 500; color: var(--text-muted); text-align: left; padding: 7px 14px 7px 0;
+  border-bottom: 1px solid var(--border); text-transform: capitalize; white-space: nowrap;
+  position: sticky; top: 0; background: var(--surface-1);
+}}
+table.kv-table td {{
+  padding: 7px 14px 7px 0; border-bottom: 1px solid var(--grid); font-variant-numeric: tabular-nums;
+  white-space: nowrap; vertical-align: middle;
+}}
+table.kv-table tr:last-child td {{ border-bottom: none; }}
+table.kv-table tr:hover td {{ background: var(--surface-2); }}
+table.kv-table td.truncate {{ max-width: 260px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }}
+
+.policy-chip {{ display: inline-flex; align-items: center; gap: 7px; }}
+.policy-chip-bar {{ display: flex; width: 84px; height: 9px; border-radius: 3px; overflow: hidden; background: var(--surface-2); flex-shrink: 0; }}
+.policy-chip-seg {{ height: 100%; }}
+.policy-chip-label {{ font-size: 11px; color: var(--text-secondary); }}
+
 .bars {{ display: flex; align-items: flex-end; gap: 18px; height: 140px; padding-top: 10px; }}
 .bar-col {{ display: flex; flex-direction: column; align-items: center; gap: 6px; width: 56px; }}
 .bar-track {{ width: 32px; height: 100px; background: var(--surface-2); border-radius: 4px 4px 0 0; display: flex; align-items: flex-end; }}
@@ -310,14 +329,96 @@ function barChart(data, xField, valueField, color, label) {{
   return wrap;
 }}
 
+const ACTION_KEY_SET = new Set(Object.keys(ACTION_COLOR));
+
+function isPolicyLike(v) {{
+  if (!v || typeof v !== 'object' || Array.isArray(v)) return false;
+  const keys = Object.keys(v);
+  return keys.length > 0 && keys.every(k => ACTION_KEY_SET.has(k));
+}}
+
+// Compact stacked-bar rendering of a {{fold, call, raise_33, ...}} distribution, in place of
+// dumping the raw object as JSON text (which was blowing out table columns).
+function policyChip(policy) {{
+  const wrap = htmlEl('div', {{class: 'policy-chip'}});
+  const bar = htmlEl('div', {{class: 'policy-chip-bar'}});
+  const parts = [];
+  let bestKey = null, bestVal = -Infinity;
+  Object.keys(ACTION_COLOR).forEach(ak => {{
+    const v = policy[ak];
+    if (v === undefined) return;
+    const seg = htmlEl('span', {{class: 'policy-chip-seg'}});
+    seg.style.width = (Math.max(v, 0) * 100) + '%';
+    seg.style.background = ACTION_COLOR[ak];
+    bar.appendChild(seg);
+    parts.push(`${{ACTION_LABEL[ak]}} ${{(v * 100).toFixed(0)}}%`);
+    if (v > bestVal) {{ bestVal = v; bestKey = ak; }}
+  }});
+  wrap.title = parts.join(' · ');
+  wrap.appendChild(bar);
+  wrap.appendChild(htmlEl('span', {{class: 'policy-chip-label'}}, `${{ACTION_LABEL[bestKey] || bestKey}} ${{(bestVal * 100).toFixed(0)}}%`));
+  return wrap;
+}}
+
+function formatScalar(v) {{
+  if (typeof v !== 'number' || Number.isInteger(v)) return String(v);
+  return v.toFixed(3).replace(/0+$/, '').replace(/\\.$/, '');
+}}
+
+// Generic key-value table for checks whose `data` is a flat list of per-scenario records
+// without a bespoke chart above (SLOW checks: vpip_adapts_to_style, bb100_vs_standard_fields,
+// beats_frozen_predecessor, beats_offformula_stress, no_nan_or_crash) -- every check's raw data
+// is visible somewhere, even ones that don't warrant a custom visualization.
+function genericTable(data) {{
+  if (!data || !data.length) return null;
+  const keys = [];
+  data.forEach(row => Object.keys(row).forEach(k => {{ if (!keys.includes(k)) keys.push(k); }}));
+  const table = htmlEl('table', {{class: 'kv-table'}});
+  const head = htmlEl('tr');
+  keys.forEach(k => head.appendChild(htmlEl('th', {{}}, k.replace(/_/g, ' '))));
+  table.appendChild(head);
+  data.forEach(row => {{
+    const tr = htmlEl('tr');
+    keys.forEach(k => {{
+      const v = row[k];
+      const td = htmlEl('td', {{}});
+      if (v === null || v === undefined) td.textContent = '—';
+      else if (typeof v === 'boolean') {{
+        td.textContent = v ? '✓' : '✗';
+        td.style.color = v ? 'var(--good)' : 'var(--critical)';
+      }}
+      else if (isPolicyLike(v)) td.appendChild(policyChip(v));
+      else if (typeof v === 'object') {{
+        td.classList.add('truncate');
+        td.textContent = JSON.stringify(v);
+        td.title = JSON.stringify(v, null, 2);
+      }}
+      else if (typeof v === 'number') td.textContent = formatScalar(v);
+      else td.textContent = String(v);
+      tr.appendChild(td);
+    }});
+    table.appendChild(tr);
+  }});
+  const scroller = htmlEl('div', {{}});
+  scroller.style.overflowX = 'auto';
+  scroller.appendChild(table);
+  return scroller;
+}}
+
 const root = document.getElementById('charts');
 const byId = {{}};
 RESULTS.checks.forEach(c => byId[c.id] = c);
 const actionKeys = RESULTS.action_space;
+const consumed = new Set();
 
 function addCard(id, title, xLabel, yLabel, valueField, ringField, kind) {{
   const c = byId[id];
-  if (!c || !c.data || !c.data.length) return;
+  if (!c) return;
+  consumed.add(id);
+  if (!c.data || !c.data.length) {{
+    root.appendChild(card(title, id, c.detail, c.status));
+    return;
+  }}
   const wrap = card(title, id, c.detail, c.status);
   if (kind === 'line') wrap.appendChild(lineChart(c.data, actionKeys));
   else if (kind === 'heatmap') wrap.appendChild(heatmap(c.data, 'stack_bb', 'equity', valueField, {{xLabel: 'stack (bb)', yLabel: 'equity', ringField}}));
@@ -335,6 +436,7 @@ addCard('action_diversity', 'Action diversity — argmax action by equity x stac
 (function() {{
   const air = byId['air_folds_mostly'], nuts = byId['nuts_aggressive_mostly'];
   if (!air || !nuts) return;
+  consumed.add('air_folds_mostly'); consumed.add('nuts_aggressive_mostly');
   const wrap = htmlEl('div', {{class: 'card'}});
   wrap.appendChild(htmlEl('h2', {{}}, `Air / Nuts spot checks`));
   wrap.appendChild(htmlEl('p', {{class: 'issue'}}, 'guards: V14 spot-test baseline'));
@@ -349,6 +451,17 @@ addCard('action_diversity', 'Action diversity — argmax action by equity x stac
   wrap.appendChild(two);
   root.appendChild(wrap);
 }})();
+
+// Every remaining check (SLOW checks with flat-record data, SKIPs, anything not explicitly
+// chart-rendered above) still gets a card -- a generic key/value table when there's data,
+// otherwise just the status + detail text. Guarantees no check is silently omitted.
+RESULTS.checks.forEach(c => {{
+  if (consumed.has(c.id)) return;
+  const wrap = card(c.id, null, c.detail, c.status);
+  const table = genericTable(c.data);
+  if (table) wrap.appendChild(table);
+  root.appendChild(wrap);
+}});
 </script>
 """
 

@@ -170,7 +170,13 @@ def parse_training_log(logfile):
                         "str": m.group(4), "eq": m.group(5)
                     }
             elif "Seat " in line and "BB/100" in line:
-                m = re.search(r"-\s+(Seat\s+\d+\s+[^:]+):\s+([\+\-]?[\d.]+)\s+BB/100\s+\(VPIP:\s*([\d.]+)%\s+AGG:\s*([\d.]+)%\)\s+\[R:(\d+)\s+F:(\d+)\s+AI:(\d+)", line)
+                # V18+: opponent labels are now "Opp N: {BotName} ({Type})" -- the label ITSELF can
+                # contain a colon (e.g. "Opp 1: LAG (Heuristic)"). A non-greedy/negated-class match
+                # up to the "first" colon stops at the label's own internal colon and drops every
+                # opponent row silently (only "Seat 0 Hero (Main)", which has no internal colon,
+                # ever matched). Greedy `.+` backtracks to the LAST colon before "BB/100" -- the
+                # real delimiter -- regardless of how many colons the label itself contains.
+                m = re.search(r"-\s+(Seat\s+\d+\s+.+):\s+([\+\-]?[\d.]+)\s+BB/100\s+\(VPIP:\s*([\d.]+)%\s+AGG:\s*([\d.]+)%\)\s+\[R:(\d+)\s+F:(\d+)\s+AI:(\d+)", line)
                 if m:
                     telemetry["seats"].append({
                         "name": m.group(1).strip(),

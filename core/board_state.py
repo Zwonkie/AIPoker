@@ -34,6 +34,12 @@ class BoardState:
     call_amount: float = 0.0
     equity: float = 0.0
     big_blind: float = 10.0
+    # [V20_preflopEq] Field-independent hand-quality signal (0.5 = neutral default): preflop an
+    # O(1) lookup into preflop_equities.csv's 169-hand vs-1-random table, postflop a cheap live
+    # vs-1-random MC call -- see versions/v20_preflopEq/core/contract.py. Populated by the CALLER
+    # (mirrors `equity` itself), read by ContractV12.to_tensors. Optional/additive: every other
+    # version's contract simply never reads this field, so this default is inert for them.
+    hand_strength: float = 0.5
     
     @property
     def num_active_players(self) -> int:

@@ -1,0 +1,452 @@
+<!doctype html>
+<title>model_verify: v20</title>
+<style>
+.viz-root {
+  color-scheme: light;
+  --surface-1:      #fcfcfb;
+  --surface-2:      #f9f9f7;
+  --text-primary:   #0b0b0b;
+  --text-secondary: #52514e;
+  --text-muted:     #898781;
+  --grid:           #e1e0d9;
+  --baseline:       #c3c2b7;
+  --border:         rgba(11,11,11,0.10);
+  --good:           #0ca30c;
+  --warning:        #fab219;
+  --serious:        #ec835a;
+  --critical:       #d03b3b;
+  --seq-100: #cde2fb; --seq-200: #9ec5f4; --seq-300: #6da7ec; --seq-400: #3987e5;
+  --seq-500: #256abf; --seq-600: #184f95; --seq-700: #0d366b;
+  --c-fold:      #2a78d6;
+  --c-call:      #1baf7a;
+  --c-raise_33:  #eda100;
+  --c-raise_66:  #008300;
+  --c-raise_pot: #4a3aa7;
+  --c-allin:     #e34948;
+}
+@media (prefers-color-scheme: dark) {
+  :root:where(:not([data-theme="light"])) .viz-root {
+    color-scheme: dark;
+    --surface-1: #1a1a19; --surface-2: #0d0d0d;
+    --text-primary: #ffffff; --text-secondary: #c3c2b7; --text-muted: #898781;
+    --grid: #2c2c2a; --baseline: #383835; --border: rgba(255,255,255,0.10);
+    --good: #0ca30c; --warning: #fab219; --serious: #ec835a; --critical: #d03b3b;
+    --seq-100: #b7d3f6; --seq-200: #9ec5f4; --seq-300: #5598e7; --seq-400: #3987e5;
+    --seq-500: #256abf; --seq-600: #184f95; --seq-700: #0d366b;
+    --c-fold: #3987e5; --c-call: #199e70; --c-raise_33: #c98500;
+    --c-raise_66: #008300; --c-raise_pot: #9085e9; --c-allin: #e66767;
+  }
+}
+:root[data-theme="dark"] .viz-root {
+  color-scheme: dark;
+  --surface-1: #1a1a19; --surface-2: #0d0d0d;
+  --text-primary: #ffffff; --text-secondary: #c3c2b7; --text-muted: #898781;
+  --grid: #2c2c2a; --baseline: #383835; --border: rgba(255,255,255,0.10);
+  --good: #0ca30c; --warning: #fab219; --serious: #ec835a; --critical: #d03b3b;
+  --seq-100: #b7d3f6; --seq-200: #9ec5f4; --seq-300: #5598e7; --seq-400: #3987e5;
+  --seq-500: #256abf; --seq-600: #184f95; --seq-700: #0d366b;
+  --c-fold: #3987e5; --c-call: #199e70; --c-raise_33: #c98500;
+  --c-raise_66: #008300; --c-raise_pot: #9085e9; --c-allin: #e66767;
+}
+
+* { box-sizing: border-box; }
+body {
+  margin: 0; background: var(--surface-2); color: var(--text-primary);
+  font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+.wrap { max-width: 1180px; margin: 0 auto; padding: 32px 24px 80px; }
+h1 { font-size: 22px; margin: 0 0 4px; }
+.subtitle { color: var(--text-secondary); font-size: 14px; margin: 0 0 28px; }
+.subtitle code { background: var(--surface-1); border: 1px solid var(--border); border-radius: 4px; padding: 1px 5px; }
+
+.stat-row { display: flex; gap: 12px; margin-bottom: 32px; flex-wrap: wrap; }
+.stat-tile {
+  background: var(--surface-1); border: 1px solid var(--border); border-radius: 10px;
+  padding: 14px 18px; min-width: 92px;
+}
+.stat-tile .n { font-size: 26px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.stat-tile .l { font-size: 12px; color: var(--text-secondary); text-transform: uppercase; letter-spacing: .04em; }
+.stat-tile.pass .n { color: var(--good); }
+.stat-tile.warn .n { color: var(--warning); }
+.stat-tile.fail .n { color: var(--critical); }
+
+.card {
+  background: var(--surface-1); border: 1px solid var(--border); border-radius: 12px;
+  padding: 20px 22px 22px; margin-bottom: 22px;
+}
+.card h2 { font-size: 15px; margin: 0 0 2px; }
+.card .issue { font-size: 12px; color: var(--text-muted); margin: 0 0 4px; }
+.card .detail { font-size: 13px; color: var(--text-secondary); margin: 0 0 16px; }
+.badge { display: inline-block; font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 999px; margin-left: 8px; vertical-align: middle; }
+.badge.PASS { background: color-mix(in srgb, var(--good) 18%, transparent); color: var(--good); }
+.badge.WARN { background: color-mix(in srgb, var(--warning) 22%, transparent); color: #8a5c00; }
+.badge.FAIL { background: color-mix(in srgb, var(--critical) 18%, transparent); color: var(--critical); }
+:root[data-theme="dark"] .badge.WARN, @media (prefers-color-scheme: dark) { .badge.WARN { color: var(--warning); } }
+
+table.heatmap { border-collapse: collapse; font-size: 12px; }
+table.heatmap th { font-weight: 500; color: var(--text-muted); padding: 4px 8px; text-align: center; }
+table.heatmap td {
+  text-align: center; padding: 8px 10px; font-variant-numeric: tabular-nums;
+  border: 2px solid var(--surface-1); border-radius: 4px; min-width: 54px; position: relative;
+}
+table.heatmap td .ring { position: absolute; inset: 2px; border-radius: 3px; border: 2px solid var(--critical); pointer-events: none; }
+.axis-label { font-size: 11px; color: var(--text-muted); }
+
+.legend { display: flex; gap: 14px; flex-wrap: wrap; margin-top: 12px; font-size: 12px; color: var(--text-secondary); }
+.legend .sw { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 5px; vertical-align: -1px; }
+
+table.kv-table { border-collapse: collapse; font-size: 12.5px; width: 100%; }
+table.kv-table th {
+  font-weight: 500; color: var(--text-muted); text-align: left; padding: 7px 14px 7px 0;
+  border-bottom: 1px solid var(--border); text-transform: capitalize; white-space: nowrap;
+  position: sticky; top: 0; background: var(--surface-1);
+}
+table.kv-table td {
+  padding: 7px 14px 7px 0; border-bottom: 1px solid var(--grid); font-variant-numeric: tabular-nums;
+  white-space: nowrap; vertical-align: middle;
+}
+table.kv-table tr:last-child td { border-bottom: none; }
+table.kv-table tr:hover td { background: var(--surface-2); }
+table.kv-table td.truncate { max-width: 260px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+.policy-chip { display: inline-flex; align-items: center; gap: 7px; }
+.policy-chip-bar { display: flex; width: 84px; height: 9px; border-radius: 3px; overflow: hidden; background: var(--surface-2); flex-shrink: 0; }
+.policy-chip-seg { height: 100%; }
+.policy-chip-label { font-size: 11px; color: var(--text-secondary); }
+
+.bars { display: flex; align-items: flex-end; gap: 18px; height: 140px; padding-top: 10px; }
+.bar-col { display: flex; flex-direction: column; align-items: center; gap: 6px; width: 56px; }
+.bar-track { width: 32px; height: 100px; background: var(--surface-2); border-radius: 4px 4px 0 0; display: flex; align-items: flex-end; }
+.bar-fill { width: 100%; border-radius: 4px 4px 0 0; }
+.bar-val { font-size: 11px; color: var(--text-secondary); font-variant-numeric: tabular-nums; }
+.bar-label { font-size: 11px; color: var(--text-muted); }
+
+.two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+@media (max-width: 720px) { .two-col { grid-template-columns: 1fr; } }
+
+svg text { fill: var(--text-muted); font-size: 10px; font-family: inherit; }
+.line-path { fill: none; stroke-width: 2px; }
+.line-dot { cursor: pointer; }
+</style>
+<div class="viz-root">
+<div class="wrap">
+  <h1>model_verify report</h1>
+  <p class="subtitle">version <code>v20</code> &middot; weights <code>expert_main_120k.pth</code> &middot; action space <code>fold, call, raise_33, raise_66, raise_pot, allin</code></p>
+
+  <div class="stat-row">
+    <div class="stat-tile pass"><div class="n">9</div><div class="l">Pass</div></div>
+    <div class="stat-tile warn"><div class="n">1</div><div class="l">Warn</div></div>
+    <div class="stat-tile fail"><div class="n">1</div><div class="l">Fail</div></div>
+    <div class="stat-tile"><div class="n">1</div><div class="l">Skip</div></div>
+  </div>
+
+  <div id="charts"></div>
+</div>
+</div>
+
+<script>
+const RESULTS = {"version": "v20", "weights": "expert_main_120k.pth", "action_space": ["fold", "call", "raise_33", "raise_66", "raise_pot", "allin"], "full": true, "checks": [{"id": "equity_ablation_monotonic", "status": "PASS", "detail": "P(fold) 1.00->0.00, P(aggressive) 0.00->0.91", "data": [{"equity": 0.05, "policy": {"fold": 0.9998032450675964, "call": 0.00019136274931952357, "raise_33": 3.3278113278356614e-06, "raise_66": 1.4560497447746457e-06, "raise_pot": 5.58056854060851e-07, "allin": 1.4070507259322795e-10}}, {"equity": 0.2, "policy": {"fold": 0.9994814991950989, "call": 0.00048821428208611906, "raise_33": 9.321038305643015e-06, "raise_66": 1.1345395250828005e-05, "raise_pot": 9.610813322069589e-06, "allin": 4.2526529520081624e-10}}, {"equity": 0.35, "policy": {"fold": 0.43935027718544006, "call": 0.2989416718482971, "raise_33": 0.06276590377092361, "raise_66": 0.10671480745077133, "raise_pot": 0.09123176336288452, "allin": 0.000995645415969193}}, {"equity": 0.5, "policy": {"fold": 0.0005636647110804915, "call": 0.12349808216094971, "raise_33": 0.16639350354671478, "raise_66": 0.161288321018219, "raise_pot": 0.18150343000888824, "allin": 0.36675307154655457}}, {"equity": 0.65, "policy": {"fold": 8.082955901045352e-05, "call": 0.1071479469537735, "raise_33": 0.1449495553970337, "raise_66": 0.1532960832118988, "raise_pot": 0.20173831284046173, "allin": 0.39278727769851685}}, {"equity": 0.8, "policy": {"fold": 2.440814205328934e-05, "call": 0.10011991858482361, "raise_33": 0.13888521492481232, "raise_66": 0.1593136042356491, "raise_pot": 0.2136610746383667, "allin": 0.38799574971199036}}, {"equity": 0.95, "policy": {"fold": 8.812492524157278e-06, "call": 0.09449660032987595, "raise_33": 0.13605369627475739, "raise_66": 0.16871857643127441, "raise_pot": 0.22165817022323608, "allin": 0.3790642023086548}}]}, {"id": "free_check_low_fold", "status": "WARN", "detail": "max raw P(fold) when call_bb=0 across sweep: 1.000 (covered by decision.py's free-check mask, but worth tracking)", "data": [{"equity": 0.1, "stack_bb": 8, "policy": {"fold": 0.9997087121009827, "call": 0.0002840645902324468, "raise_33": 3.194107421222725e-06, "raise_66": 2.9641071250807727e-06, "raise_pot": 1.0245028079225449e-06, "allin": 1.505169773541315e-11}}, {"equity": 0.1, "stack_bb": 40, "policy": {"fold": 0.999480664730072, "call": 0.0004969036090187728, "raise_33": 1.0945173926302232e-05, "raise_66": 7.5004800237366e-06, "raise_pot": 4.091800747119123e-06, "allin": 4.900729266843484e-10}}, {"equity": 0.1, "stack_bb": 100, "policy": {"fold": 0.9960825443267822, "call": 0.0035874773748219013, "raise_33": 0.00020329462131485343, "raise_66": 8.827049168758094e-05, "raise_pot": 3.8278849388007075e-05, "allin": 1.4257888381052908e-07}}, {"equity": 0.3, "stack_bb": 8, "policy": {"fold": 0.5585981607437134, "call": 0.32318684458732605, "raise_33": 0.06125447899103165, "raise_66": 0.04668499156832695, "raise_pot": 0.010117153637111187, "allin": 0.00015832297503948212}}, {"equity": 0.3, "stack_bb": 40, "policy": {"fold": 0.31085702776908875, "call": 0.3439939618110657, "raise_33": 0.10222681611776352, "raise_66": 0.1345909684896469, "raise_pot": 0.10569403320550919, "allin": 0.002637225203216076}}, {"equity": 0.3, "stack_bb": 100, "policy": {"fold": 0.9488875269889832, "call": 0.04071727767586708, "raise_33": 0.004413452465087175, "raise_66": 0.003482213243842125, "raise_pot": 0.002485515084117651, "allin": 1.401377267029602e-05}}, {"equity": 0.5, "stack_bb": 8, "policy": {"fold": 0.0002943318395409733, "call": 0.1203361377120018, "raise_33": 0.17597857117652893, "raise_66": 0.14965437352657318, "raise_pot": 0.16504082083702087, "allin": 0.38869574666023254}}, {"equity": 0.5, "stack_bb": 40, "policy": {"fold": 0.000283700181171298, "call": 0.12149376422166824, "raise_33": 0.1772555559873581, "raise_66": 0.15246377885341644, "raise_pot": 0.17241249978542328, "allin": 0.3760906755924225}}, {"equity": 0.5, "stack_bb": 100, "policy": {"fold": 0.001082459813915193, "call": 0.14154614508152008, "raise_33": 0.19869697093963623, "raise_66": 0.18006646633148193, "raise_pot": 0.17423096299171448, "allin": 0.3043769598007202}}, {"equity": 0.7, "stack_bb": 8, "policy": {"fold": 4.6939036110416055e-05, "call": 0.10651056468486786, "raise_33": 0.16192927956581116, "raise_66": 0.15385597944259644, "raise_pot": 0.18512333929538727, "allin": 0.39253389835357666}}, {"equity": 0.7, "stack_bb": 40, "policy": {"fold": 4.3913394620176405e-05, "call": 0.10749626159667969, "raise_33": 0.1619904339313507, "raise_66": 0.15481950342655182, "raise_pot": 0.19087529182434082, "allin": 0.3847745954990387}}, {"equity": 0.7, "stack_bb": 100, "policy": {"fold": 6.642649532295763e-05, "call": 0.11270646005868912, "raise_33": 0.17146822810173035, "raise_66": 0.16598184406757355, "raise_pot": 0.19113817811012268, "allin": 0.35863882303237915}}, {"equity": 0.9, "stack_bb": 8, "policy": {"fold": 1.1644129699561745e-05, "call": 0.0993749275803566, "raise_33": 0.15550124645233154, "raise_66": 0.16441935300827026, "raise_pot": 0.1973951905965805, "allin": 0.3832976222038269}}, {"equity": 0.9, "stack_bb": 40, "policy": {"fold": 1.1488546988402959e-05, "call": 0.1000199243426323, "raise_33": 0.15522092580795288, "raise_66": 0.1651170253753662, "raise_pot": 0.20124198496341705, "allin": 0.3783887028694153}}, {"equity": 0.9, "stack_bb": 100, "policy": {"fold": 1.455830624763621e-05, "call": 0.10183021426200867, "raise_33": 0.15866224467754364, "raise_66": 0.16996414959430695, "raise_pot": 0.20175974071025848, "allin": 0.3677690625190735}}]}, {"id": "air_folds_mostly", "status": "PASS", "detail": "avg P(fold) at ~12% equity facing a real bet: 1.00  (per-stack [1.0, 1.0, 1.0, 1.0])", "data": [{"stack_bb": 8, "policy": {"fold": 0.9999071359634399, "call": 9.125257929554209e-05, "raise_33": 7.087332392075041e-07, "raise_66": 6.583724143638392e-07, "raise_pot": 2.454945615681936e-07, "allin": 2.312836120538231e-12}}, {"stack_bb": 20, "policy": {"fold": 0.9999599456787109, "call": 3.95095776184462e-05, "raise_33": 2.4282135768771695e-07, "raise_66": 2.1725034571318247e-07, "raise_pot": 1.019165409843481e-07, "allin": 4.591484527652345e-13}}, {"stack_bb": 40, "policy": {"fold": 0.9997532963752747, "call": 0.0002388568827882409, "raise_33": 4.195820110908244e-06, "raise_66": 2.4752860099397367e-06, "raise_pot": 1.2027004459014279e-06, "allin": 1.8468641893587545e-10}}, {"stack_bb": 80, "policy": {"fold": 0.9985809326171875, "call": 0.0013276867102831602, "raise_33": 5.318754483596422e-05, "raise_66": 2.5790037398110144e-05, "raise_pot": 1.2335219253145624e-05, "allin": 2.7040112371423675e-08}}]}, {"id": "nuts_aggressive_mostly", "status": "PASS", "detail": "avg aggressive mass at ~92% equity: 0.90", "data": [{"stack_bb": 8, "policy": {"fold": 1.1234415069338866e-05, "call": 0.09465420991182327, "raise_33": 0.1344677209854126, "raise_66": 0.1654222160577774, "raise_pot": 0.21923881769180298, "allin": 0.3862057328224182}}, {"stack_bb": 20, "policy": {"fold": 1.0955366633425001e-05, "call": 0.09481196105480194, "raise_33": 0.1341342329978943, "raise_66": 0.16541776061058044, "raise_pot": 0.22140245139598846, "allin": 0.3842226266860962}}, {"stack_bb": 40, "policy": {"fold": 1.0971892152156215e-05, "call": 0.0952690988779068, "raise_33": 0.1341085582971573, "raise_66": 0.16608062386512756, "raise_pot": 0.22408394515514374, "allin": 0.38044682145118713}}, {"stack_bb": 80, "policy": {"fold": 1.2558687558339443e-05, "call": 0.09645700454711914, "raise_33": 0.13588424026966095, "raise_66": 0.1691889464855194, "raise_pot": 0.22541727125644684, "allin": 0.3730400502681732}}]}, {"id": "deep_stack_ood_guard", "status": "FAIL", "detail": "[V14 P0 regression] deep-stack OOD trash-jam: eq=0.55 stack=15bb -> ALL-IN argmax @ 0.38", "data": [{"equity": 0.35, "stack_bb": 15, "policy": {"fold": 0.561263382434845, "call": 0.33371755480766296, "raise_33": 0.05880831554532051, "raise_66": 0.039163243025541306, "raise_pot": 0.006921800319105387, "allin": 0.00012565906217787415}, "argmax": "fold", "argmax_is_allin": false}, {"equity": 0.35, "stack_bb": 20, "policy": {"fold": 0.6122410893440247, "call": 0.30500832200050354, "raise_33": 0.04701065272092819, "raise_66": 0.03049587272107601, "raise_pot": 0.005170067306607962, "allin": 7.391180406557396e-05}, "argmax": "fold", "argmax_is_allin": false}, {"equity": 0.35, "stack_bb": 25, "policy": {"fold": 0.6582701802253723, "call": 0.2769719958305359, "raise_33": 0.03734739497303963, "raise_66": 0.023542167618870735, "raise_pot": 0.0038250437937676907, "allin": 4.3228701542830095e-05}, "argmax": "fold", "argmax_is_allin": false}, {"equity": 0.35, "stack_bb": 30, "policy": {"fold": 0.6871173977851868, "call": 0.25917384028434753, "raise_33": 0.03155158460140228, "raise_66": 0.01915748603641987, "raise_pot": 0.002971298061311245, "allin": 2.840661363734398e-05}, "argmax": "fold", "argmax_is_allin": false}, {"equity": 0.35, "stack_bb": 40, "policy": {"fold": 0.736470103263855, "call": 0.22576887905597687, "raise_33": 0.02223210595548153, "raise_66": 0.01344793289899826, "raise_pot": 0.0020679952576756477, "allin": 1.2965940186404623e-05}, "argmax": "fold", "argmax_is_allin": false}, {"equity": 0.4, "stack_bb": 15, "policy": {"fold": 0.042386338114738464, "call": 0.3544774353504181, "raise_33": 0.27619072794914246, "raise_66": 0.21177972853183746, "raise_pot": 0.07721817493438721, "allin": 0.03794761747121811}, "argmax": "call", "argmax_is_allin": false}, {"equity": 0.4, "stack_bb": 20, "policy": {"fold": 0.050643377006053925, "call": 0.3698095679283142, "raise_33": 0.27279356122016907, "raise_66": 0.2069290727376938, "raise_pot": 0.07060715556144714, "allin": 0.02921719290316105}, "argmax": "call", "argmax_is_allin": false}, {"equity": 0.4, "stack_bb": 25, "policy": {"fold": 0.05971265956759453, "call": 0.3833359181880951, "raise_33": 0.26812756061553955, "raise_66": 0.2015523910522461, "raise_pot": 0.06466116011142731, "allin": 0.02261027880012989}, "argmax": "call", "argmax_is_allin": false}, {"equity": 0.4, "stack_bb": 30, "policy": {"fold": 0.07452383637428284, "call": 0.4016890823841095, "raise_33": 0.26012638211250305, "raise_66": 0.19123829901218414, "raise_pot": 0.05636370927095413, "allin": 0.016058655455708504}, "argmax": "call", "argmax_is_allin": false}, {"equity": 0.4, "stack_bb": 40, "policy": {"fold": 0.11503104120492935, "call": 0.4438290596008301, "raise_33": 0.23169630765914917, "raise_66": 0.1619112193584442, "raise_pot": 0.04046477749943733, "allin": 0.007067594677209854}, "argmax": "call", "argmax_is_allin": false}, {"equity": 0.43, "stack_bb": 15, "policy": {"fold": 0.0035286573693156242, "call": 0.16293302178382874, "raise_33": 0.2122766524553299, "raise_66": 0.189941868185997, "raise_pot": 0.14532102644443512, "allin": 0.28599876165390015}, "argmax": "allin", "argmax_is_allin": true}, {"equity": 0.43, "stack_bb": 20, "policy": {"fold": 0.0039705331437289715, "call": 0.1716131716966629, "raise_33": 0.21965333819389343, "raise_66": 0.19502176344394684, "raise_pot": 0.14323864877223969, "allin": 0.2665025293827057}, "argmax": "allin", "argmax_is_allin": true}, {"equity": 0.43, "stack_bb": 25, "policy": {"fold": 0.004716824274510145, "call": 0.18521255254745483, "raise_33": 0.22978734970092773, "raise_66": 0.2019699364900589, "raise_pot": 0.14050357043743134, "allin": 0.2378097027540207}, "argmax": "allin", "argmax_is_allin": true}, {"equity": 0.43, "stack_bb": 30, "policy": {"fold": 0.00617079297080636, "call": 0.20815755426883698, "raise_33": 0.24438859522342682, "raise_66": 0.21089379489421844, "raise_pot": 0.13487344980239868, "allin": 0.19551581144332886}, "argmax": "raise_33", "argmax_is_allin": false}, {"equity": 0.43, "stack_bb": 40, "policy": {"fold": 0.01153072714805603, "call": 0.2642175555229187, "raise_33": 0.2699066698551178, "raise_66": 0.22439457476139069, "raise_pot": 0.11682678759098053, "allin": 0.11312367022037506}, "argmax": "raise_33", "argmax_is_allin": false}, {"equity": 0.48, "stack_bb": 15, "policy": {"fold": 0.0008369312854483724, "call": 0.1312590390443802, "raise_33": 0.18027353286743164, "raise_66": 0.1701277494430542, "raise_pot": 0.16211120784282684, "allin": 0.3553915023803711}, "argmax": "allin", "argmax_is_allin": true}, {"equity": 0.48, "stack_bb": 20, "policy": {"fold": 0.0008514973451383412, "call": 0.13145385682582855, "raise_33": 0.18092280626296997, "raise_66": 0.17069192230701447, "raise_pot": 0.16192680597305298, "allin": 0.354153037071228}, "argmax": "allin", "argmax_is_allin": true}, {"equity": 0.48, "stack_bb": 25, "policy": {"fold": 0.0008787006954662502, "call": 0.13182774186134338, "raise_33": 0.18187271058559418, "raise_66": 0.17155979573726654, "raise_pot": 0.16159936785697937, "allin": 0.35226166248321533}, "argmax": "allin", "argmax_is_allin": true}, {"equity": 0.48, "stack_bb": 30, "policy": {"fold": 0.0009129825630225241, "call": 0.13229511678218842, "raise_33": 0.18297918140888214, "raise_66": 0.17260028421878815, "raise_pot": 0.16122375428676605, "allin": 0.3499886989593506}, "argmax": "allin", "argmax_is_allin": true}, {"equity": 0.48, "stack_bb": 40, "policy": {"fold": 0.0010022339411079884, "call": 0.13347679376602173, "raise_33": 0.18549832701683044, "raise_66": 0.17512214183807373, "raise_pot": 0.16043701767921448, "allin": 0.34446343779563904}, "argmax": "allin", "argmax_is_allin": true}, {"equity": 0.55, "stack_bb": 15, "policy": {"fold": 0.00030829422757960856, "call": 0.11954003572463989, "raise_33": 0.16706280410289764, "raise_66": 0.16499803960323334, "raise_pot": 0.172294482588768, "allin": 0.375796377658844}, "argmax": "allin", "argmax_is_allin": true}, {"equity": 0.55, "stack_bb": 20, "policy": {"fold": 0.00030619942117482424, "call": 0.11954272538423538, "raise_33": 0.1672193855047226, "raise_66": 0.16508056223392487, "raise_pot": 0.17249836027622223, "allin": 0.37535274028778076}, "argmax": "allin", "argmax_is_allin": true}, {"equity": 0.55, "stack_bb": 25, "policy": {"fold": 0.00030658775358460844, "call": 0.11959032714366913, "raise_33": 0.1674654632806778, "raise_66": 0.16525988280773163, "raise_pot": 0.17265842854976654, "allin": 0.3747192919254303}, "argmax": "allin", "argmax_is_allin": true}, {"equity": 0.55, "stack_bb": 30, "policy": {"fold": 0.00030670466367155313, "call": 0.1196460872888565, "raise_33": 0.1677141636610031, "raise_66": 0.16544955968856812, "raise_pot": 0.17288273572921753, "allin": 0.3740007281303406}, "argmax": "allin", "argmax_is_allin": true}, {"equity": 0.55, "stack_bb": 40, "policy": {"fold": 0.0003086710348725319, "call": 0.11988456547260284, "raise_33": 0.16835804283618927, "raise_66": 0.16604822874069214, "raise_pot": 0.17338219285011292, "allin": 0.37201833724975586}, "argmax": "allin", "argmax_is_allin": true}]}, {"id": "short_stack_polarization", "status": "PASS", "detail": "avg P(call) in clear shove-or-fold spots: 0.12", "data": [{"equity": 0.5, "stack_bb": 6, "policy": {"fold": 0.0010398357408121228, "call": 0.12817884981632233, "raise_33": 0.16755333542823792, "raise_66": 0.17149092257022858, "raise_pot": 0.17020705342292786, "allin": 0.3615299463272095}}, {"equity": 0.5, "stack_bb": 8, "policy": {"fold": 0.0010127165587618947, "call": 0.12758859992027283, "raise_33": 0.16667377948760986, "raise_66": 0.17038001120090485, "raise_pot": 0.17068661749362946, "allin": 0.36365824937820435}}, {"equity": 0.5, "stack_bb": 10, "policy": {"fold": 0.0009900865843519568, "call": 0.1270487904548645, "raise_33": 0.16584981977939606, "raise_66": 0.1693422943353653, "raise_pot": 0.17113442718982697, "allin": 0.365634560585022}}, {"equity": 0.55, "stack_bb": 6, "policy": {"fold": 0.00045581971062347293, "call": 0.12024518102407455, "raise_33": 0.15972091257572174, "raise_66": 0.16737821698188782, "raise_pot": 0.17803609371185303, "allin": 0.37416377663612366}}, {"equity": 0.55, "stack_bb": 8, "policy": {"fold": 0.00044587787124328315, "call": 0.11993981897830963, "raise_33": 0.15915198624134064, "raise_66": 0.16664625704288483, "raise_pot": 0.1786094754934311, "allin": 0.3752065896987915}}, {"equity": 0.55, "stack_bb": 10, "policy": {"fold": 0.0004366504726931453, "call": 0.11965469270944595, "raise_33": 0.15860645473003387, "raise_66": 0.16595114767551422, "raise_pot": 0.1791904717683792, "allin": 0.37616056203842163}}, {"equity": 0.6, "stack_bb": 6, "policy": {"fold": 0.00024137168657034636, "call": 0.11434704065322876, "raise_33": 0.1533602923154831, "raise_66": 0.1650543510913849, "raise_pot": 0.1840759664773941, "allin": 0.3829210102558136}}, {"equity": 0.6, "stack_bb": 8, "policy": {"fold": 0.0002362298546358943, "call": 0.11414190381765366, "raise_33": 0.15284974873065948, "raise_66": 0.164328932762146, "raise_pot": 0.18471084535121918, "allin": 0.38373231887817383}}, {"equity": 0.6, "stack_bb": 10, "policy": {"fold": 0.0002308603870915249, "call": 0.11392992734909058, "raise_33": 0.15232568979263306, "raise_66": 0.16358433663845062, "raise_pot": 0.18538706004619598, "allin": 0.3845421373844147}}, {"equity": 0.65, "stack_bb": 6, "policy": {"fold": 0.00013665032747667283, "call": 0.10999259352684021, "raise_33": 0.14879712462425232, "raise_66": 0.1640554964542389, "raise_pot": 0.18982957303524017, "allin": 0.38718852400779724}}, {"equity": 0.65, "stack_bb": 8, "policy": {"fold": 0.0001342624454991892, "call": 0.10986092686653137, "raise_33": 0.14837612211704254, "raise_66": 0.16342851519584656, "raise_pot": 0.19051532447338104, "allin": 0.38768482208251953}}, {"equity": 0.65, "stack_bb": 10, "policy": {"fold": 0.00013207539450377226, "call": 0.10974102467298508, "raise_33": 0.14797091484069824, "raise_66": 0.1628229171037674, "raise_pot": 0.19119054079055786, "allin": 0.38814252614974976}}]}, {"id": "action_diversity", "status": "PASS", "detail": "argmax distribution across the equity x stack grid: {'fold': 9, 'allin': 12}", "data": [{"equity": 0.05, "stack_bb": 8, "policy": {"fold": 0.999966025352478, "call": 3.361892595421523e-05, "raise_33": 1.8834280979262985e-07, "raise_66": 1.2506041002779966e-07, "raise_pot": 3.8686270187326954e-08, "allin": 2.2042841185156148e-13}, "argmax": "fold"}, {"equity": 0.05, "stack_bb": 25, "policy": {"fold": 0.9999439716339111, "call": 5.523746949620545e-05, "raise_33": 4.884182658315694e-07, "raise_66": 2.4145552401932946e-07, "raise_pot": 8.523727501597023e-08, "allin": 2.4670369913604162e-12}, "argmax": "fold"}, {"equity": 0.05, "stack_bb": 60, "policy": {"fold": 0.9993849992752075, "call": 0.0005869242595508695, "raise_33": 1.7525730072520673e-05, "raise_66": 7.437426120304735e-06, "raise_pot": 3.0962055461714044e-06, "allin": 3.4298202056248783e-09}, "argmax": "fold"}, {"equity": 0.2, "stack_bb": 8, "policy": {"fold": 0.9992489218711853, "call": 0.0007254485390149057, "raise_33": 1.0839975402632263e-05, "raise_66": 1.107987372961361e-05, "raise_pot": 3.7183749554969836e-06, "allin": 1.4054393759899142e-10}, "argmax": "fold"}, {"equity": 0.2, "stack_bb": 25, "policy": {"fold": 0.9996514320373535, "call": 0.00033292200532741845, "raise_33": 3.8816360756754875e-06, "raise_66": 6.6543298089527525e-06, "raise_pot": 4.952218205289682e-06, "allin": 3.618987748366109e-11}, "argmax": "fold"}, {"equity": 0.2, "stack_bb": 60, "policy": {"fold": 0.9975048899650574, "call": 0.0022862209007143974, "raise_33": 9.527483052806929e-05, "raise_66": 6.925689376657829e-05, "raise_pot": 4.437207826413214e-05, "allin": 3.766676215377629e-08}, "argmax": "fold"}, {"equity": 0.35, "stack_bb": 8, "policy": {"fold": 0.574842631816864, "call": 0.3123181462287903, "raise_33": 0.05315437540411949, "raise_66": 0.047973841428756714, "raise_pot": 0.011557038873434067, "allin": 0.00015396499657072127}, "argmax": "fold"}, {"equity": 0.35, "stack_bb": 25, "policy": {"fold": 0.6327620148658752, "call": 0.2777467966079712, "raise_33": 0.03565787151455879, "raise_66": 0.04039900004863739, "raise_pot": 0.01335930172353983, "allin": 7.500959327444434e-05}, "argmax": "fold"}, {"equity": 0.35, "stack_bb": 60, "policy": {"fold": 0.5912947654724121, "call": 0.18122297525405884, "raise_33": 0.03319201618432999, "raise_66": 0.07561854273080826, "raise_pot": 0.11803589761257172, "allin": 0.0006358439568430185}, "argmax": "fold"}, {"equity": 0.5, "stack_bb": 8, "policy": {"fold": 0.00047425745287910104, "call": 0.12152070552110672, "raise_33": 0.16544750332832336, "raise_66": 0.15529295802116394, "raise_pot": 0.17154905200004578, "allin": 0.3857155442237854}, "argmax": "allin"}, {"equity": 0.5, "stack_bb": 25, "policy": {"fold": 0.00046733772614970803, "call": 0.12143723666667938, "raise_33": 0.16595765948295593, "raise_66": 0.15603303909301758, "raise_pot": 0.17480553686618805, "allin": 0.38129922747612}, "argmax": "allin"}, {"equity": 0.5, "stack_bb": 60, "policy": {"fold": 0.0007055941387079656, "call": 0.12988236546516418, "raise_33": 0.17557089030742645, "raise_66": 0.1717192530632019, "raise_pot": 0.18392279744148254, "allin": 0.3381991386413574}, "argmax": "allin"}, {"equity": 0.65, "stack_bb": 8, "policy": {"fold": 8.650677773403004e-05, "call": 0.10669272392988205, "raise_33": 0.147543802857399, "raise_66": 0.15261441469192505, "raise_pot": 0.19204263389110565, "allin": 0.4010199308395386}, "argmax": "allin"}, {"equity": 0.65, "stack_bb": 25, "policy": {"fold": 7.987008575582877e-05, "call": 0.10681167989969254, "raise_33": 0.14700020849704742, "raise_66": 0.1521552950143814, "raise_pot": 0.1960708200931549, "allin": 0.3978821337223053}, "argmax": "allin"}, {"equity": 0.65, "stack_bb": 60, "policy": {"fold": 8.633691322756931e-05, "call": 0.109464131295681, "raise_33": 0.15044012665748596, "raise_66": 0.15694665908813477, "raise_pot": 0.20124271512031555, "allin": 0.3818199932575226}, "argmax": "allin"}, {"equity": 0.8, "stack_bb": 8, "policy": {"fold": 2.4969371224869974e-05, "call": 0.09976101666688919, "raise_33": 0.14149059355258942, "raise_66": 0.15866349637508392, "raise_pot": 0.2056012898683548, "allin": 0.3944586515426636}, "argmax": "allin"}, {"equity": 0.8, "stack_bb": 25, "policy": {"fold": 2.3867110940045677e-05, "call": 0.10009414702653885, "raise_33": 0.14113976061344147, "raise_66": 0.15878576040267944, "raise_pot": 0.20904552936553955, "allin": 0.3909108638763428}, "argmax": "allin"}, {"equity": 0.8, "stack_bb": 60, "policy": {"fold": 2.5100103812292218e-05, "call": 0.10142473876476288, "raise_33": 0.1425018161535263, "raise_66": 0.16141101717948914, "raise_pot": 0.21265871822834015, "allin": 0.38197869062423706}, "argmax": "allin"}, {"equity": 0.95, "stack_bb": 8, "policy": {"fold": 8.911491022445261e-06, "call": 0.09424261003732681, "raise_33": 0.13815626502037048, "raise_66": 0.16848452389240265, "raise_pot": 0.21455557644367218, "allin": 0.38455209136009216}, "argmax": "allin"}, {"equity": 0.95, "stack_bb": 25, "policy": {"fold": 8.645180969324429e-06, "call": 0.09450574219226837, "raise_33": 0.13775095343589783, "raise_66": 0.16857998073101044, "raise_pot": 0.21734881401062012, "allin": 0.38180580735206604}, "argmax": "allin"}, {"equity": 0.95, "stack_bb": 60, "policy": {"fold": 9.081795724341646e-06, "call": 0.09528928250074387, "raise_33": 0.13822531700134277, "raise_66": 0.17012633383274078, "raise_pot": 0.22001765668392181, "allin": 0.3763323724269867}, "argmax": "allin"}]}, {"id": "no_nan_or_crash", "status": "PASS", "detail": "4 edge cases: no NaN/crash", "data": [{"case": 0, "equity": 0.5, "stack_bb": 0.5, "pot_bb": 1, "call_bb": 0.4, "num_active_opp": 0, "policy": {"fold": 0.0008508193423040211, "call": 0.13355015218257904, "raise_33": 0.18391858041286469, "raise_66": 0.1796170473098755, "raise_pot": 0.16212087869644165, "allin": 0.3399425745010376}, "outcome": "clean", "ok": true}, {"case": 1, "equity": 0.0, "stack_bb": 200, "pot_bb": 0.01, "call_bb": 0.0, "num_active_opp": 5, "policy": {"fold": 0.9948928356170654, "call": 0.004597041755914688, "raise_33": 0.00033084809547290206, "raise_66": 0.00012589689868036658, "raise_pot": 5.27675510966219e-05, "allin": 6.184118888086232e-07}, "outcome": "clean", "ok": true}, {"case": 2, "equity": 1.0, "stack_bb": 400, "pot_bb": 999, "call_bb": 399, "num_active_opp": 5, "opp_vpip": 0.45, "opp_agg": 0.85, "policy": {"fold": 0.7406799793243408, "call": 0.1605767011642456, "raise_33": 0.03573603928089142, "raise_66": 0.03442293033003807, "raise_pot": 0.025802427902817726, "allin": 0.002781966235488653}, "outcome": "clean", "ok": true}, {"case": 3, "equity": 0.5, "stack_bb": 5, "pot_bb": 5, "call_bb": 5, "num_active_opp": 1, "street": 3, "policy": {"fold": 0.0014860545052215457, "call": 0.16041933000087738, "raise_33": 0.16390618681907654, "raise_66": 0.15889513492584229, "raise_pot": 0.15103429555892944, "allin": 0.36425894498825073}, "outcome": "clean", "ok": true}]}, {"id": "vpip_adapts_to_style", "status": "PASS", "detail": "short: tight=24.6% loose=39.8% (delta +15.2pts); deep: tight=8.2% loose=14.7% (delta +6.5pts)", "data": [{"depth": "short", "stack_range": [5, 14], "vpip_tight": 24.6, "vpip_loose": 39.8, "delta": 15.2, "bb100_tight": 28.3, "bb100_loose": 31.2, "pass": true}, {"depth": "deep", "stack_range": [30, 50], "vpip_tight": 8.2, "vpip_loose": 14.7, "delta": 6.5, "bb100_tight": 19.1, "bb100_loose": 26.9, "pass": true}]}, {"id": "beats_offformula_stress", "status": "PASS", "detail": "short: +18.0 BB/100 (VPIP 42%); deep: +24.7 BB/100 (VPIP 16%)", "data": [{"depth": "short", "bb100": 18.0, "vpip": 41.7}, {"depth": "deep", "bb100": 24.7, "vpip": 16.1}]}, {"id": "bb100_vs_standard_fields", "status": "PASS", "detail": "loose_short: +36.1 BB/100, no baseline recorded yet VPIP 40% | loose_deep: +30.5 BB/100, no baseline recorded yet VPIP 14% | tight_short: +30.0 BB/100, no baseline recorded yet VPIP 34% | tight_deep: +46.6 BB/100, no baseline recorded yet VPIP 13%", "data": [{"field": "loose_short", "pool": ["fish", "tag", "nit"], "stack_range": [5, 14], "bb100": 36.1, "vpip": 40.3, "baseline": null, "regressed": false}, {"field": "loose_deep", "pool": ["fish", "tag", "nit"], "stack_range": [30, 50], "bb100": 30.5, "vpip": 14.2, "baseline": null, "regressed": false}, {"field": "tight_short", "pool": ["nit", "tag"], "stack_range": [5, 14], "bb100": 30.0, "vpip": 33.6, "baseline": null, "regressed": false}, {"field": "tight_deep", "pool": ["nit", "tag"], "stack_range": [30, 50], "bb100": 46.6, "vpip": 13.3, "baseline": null, "regressed": false}]}, {"id": "beats_frozen_predecessor", "status": "SKIP", "detail": "no frozen_v*.pth found in this version's weights dir", "data": null}]};
+const ACTION_COLOR = {
+  fold: 'var(--c-fold)', call: 'var(--c-call)', raise_33: 'var(--c-raise_33)',
+  raise_66: 'var(--c-raise_66)', raise_pot: 'var(--c-raise_pot)', allin: 'var(--c-allin)'
+};
+const ACTION_LABEL = {
+  fold: 'Fold', call: 'Call', raise_33: 'Raise 33%', raise_66: 'Raise 66%',
+  raise_pot: 'Raise Pot', allin: 'All-In'
+};
+const SEQ = ['var(--seq-100)','var(--seq-200)','var(--seq-300)','var(--seq-400)','var(--seq-500)','var(--seq-600)','var(--seq-700)'];
+
+function seqColor(v) { // v in [0,1] -> sequential ramp step
+  const idx = Math.max(0, Math.min(SEQ.length - 1, Math.round(v * (SEQ.length - 1))));
+  return SEQ[idx];
+}
+function textOn(v) { return v > 0.55 ? '#ffffff' : 'var(--text-primary)'; }
+
+function el(tag, attrs, children) {
+  const e = document.createElementNS(tag === 'svg' || tag === 'g' || tag === 'path' || tag === 'circle' || tag === 'line' || tag === 'text'
+    ? 'http://www.w3.org/2000/svg' : null, tag);
+  for (const k in (attrs || {})) e.setAttribute(k, attrs[k]);
+  (children || []).forEach(c => e.appendChild(c));
+  return e;
+}
+function htmlEl(tag, attrs, html) {
+  const e = document.createElement(tag);
+  for (const k in (attrs || {})) {
+    if (k === 'class') e.className = attrs[k]; else e.setAttribute(k, attrs[k]);
+  }
+  if (html !== undefined) e.innerHTML = html;
+  return e;
+}
+
+function card(title, issue, detail, status) {
+  const c = htmlEl('div', {class: 'card'});
+  c.appendChild(htmlEl('h2', {}, `${title} <span class="badge ${status}">${status}</span>`));
+  if (issue) c.appendChild(htmlEl('p', {class: 'issue'}, `guards: ${issue}`));
+  c.appendChild(htmlEl('p', {class: 'detail'}, detail));
+  return c;
+}
+
+function lineChart(data, actionKeys) {
+  const W = 640, H = 220, PAD = 34;
+  const xs = data.map(d => d.equity);
+  const svg = el('svg', {viewBox: `0 0 ${W} ${H}`, width: '100%', height: H});
+  // gridlines
+  for (let i = 0; i <= 4; i++) {
+    const y = PAD + (H - 2 * PAD) * (1 - i / 4);
+    svg.appendChild(el('line', {x1: PAD, x2: W - 10, y1: y, y2: y, stroke: 'var(--grid)', 'stroke-width': 1}));
+    const t = el('text', {x: 4, y: y + 3}); t.textContent = (i / 4).toFixed(2); svg.appendChild(t);
+  }
+  xs.forEach((eq, i) => {
+    const x = PAD + (W - PAD - 10) * (i / (xs.length - 1));
+    const t = el('text', {x: x - 8, y: H - 8}); t.textContent = eq.toFixed(2); svg.appendChild(t);
+  });
+  const xFor = i => PAD + (W - PAD - 10) * (i / (xs.length - 1));
+  const yFor = v => PAD + (H - 2 * PAD) * (1 - v);
+  actionKeys.forEach(ak => {
+    const pts = data.map((d, i) => [xFor(i), yFor(d.policy[ak] ?? 0)]);
+    const d = pts.map((p, i) => (i === 0 ? 'M' : 'L') + p[0].toFixed(1) + ',' + p[1].toFixed(1)).join(' ');
+    svg.appendChild(el('path', {d, class: 'line-path', stroke: ACTION_COLOR[ak]}));
+    pts.forEach((p, i) => {
+      const dot = el('circle', {cx: p[0], cy: p[1], r: 3, fill: ACTION_COLOR[ak], class: 'line-dot'});
+      const title = el('title'); title.textContent = `${ACTION_LABEL[ak]} @ equity ${data[i].equity}: ${(data[i].policy[ak] ?? 0).toFixed(2)}`;
+      dot.appendChild(title);
+      svg.appendChild(dot);
+    });
+  });
+  const wrap = htmlEl('div', {});
+  wrap.appendChild(svg);
+  const legend = htmlEl('div', {class: 'legend'});
+  actionKeys.forEach(ak => {
+    const item = htmlEl('span', {});
+    item.innerHTML = `<span class="sw" style="background:${ACTION_COLOR[ak]}"></span>${ACTION_LABEL[ak]}`;
+    legend.appendChild(item);
+  });
+  wrap.appendChild(legend);
+  return wrap;
+}
+
+function getPath(obj, path) {
+  // resolves a possibly-dotted field path like 'policy.allin' against a record
+  return path.split('.').reduce((o, k) => (o == null ? undefined : o[k]), obj);
+}
+
+function heatmap(data, xField, yField, valueField, opts) {
+  opts = opts || {};
+  const xs = [...new Set(data.map(d => d[xField]))].sort((a, b) => a - b);
+  const ys = [...new Set(data.map(d => d[yField]))].sort((a, b) => a - b);
+  const table = htmlEl('table', {class: 'heatmap'});
+  const head = htmlEl('tr');
+  head.appendChild(htmlEl('th', {}, `${opts.yLabel || yField} \\ ${opts.xLabel || xField}`));
+  xs.forEach(x => head.appendChild(htmlEl('th', {}, String(x))));
+  table.appendChild(head);
+  ys.slice().reverse().forEach(y => {
+    const row = htmlEl('tr');
+    row.appendChild(htmlEl('th', {}, String(y)));
+    xs.forEach(x => {
+      const rec = data.find(d => d[xField] === x && d[yField] === y);
+      const v = rec ? getPath(rec, valueField) : null;
+      const td = htmlEl('td', {});
+      if (v !== null && v !== undefined) {
+        td.style.background = seqColor(v);
+        td.style.color = textOn(v);
+        td.textContent = v.toFixed(2);
+        td.title = `${opts.xLabel || xField}=${x}, ${opts.yLabel || yField}=${y}: ${valueField}=${v.toFixed(3)}` + (rec.argmax ? `, argmax=${rec.argmax}` : '');
+        if (opts.ringField && rec[opts.ringField]) td.appendChild(htmlEl('div', {class: 'ring'}));
+      }
+      row.appendChild(td);
+    });
+    table.appendChild(row);
+  });
+  return table;
+}
+
+function categoricalGrid(data, xField, yField, catField) {
+  const xs = [...new Set(data.map(d => d[xField]))].sort((a, b) => a - b);
+  const ys = [...new Set(data.map(d => d[yField]))].sort((a, b) => a - b);
+  const table = htmlEl('table', {class: 'heatmap'});
+  const head = htmlEl('tr');
+  head.appendChild(htmlEl('th', {}, `equity \\ stack`));
+  xs.forEach(x => head.appendChild(htmlEl('th', {}, String(x))));
+  table.appendChild(head);
+  ys.slice().reverse().forEach(y => {
+    const row = htmlEl('tr');
+    row.appendChild(htmlEl('th', {}, String(y)));
+    xs.forEach(x => {
+      const rec = data.find(d => d[xField] === x && d[yField] === y);
+      const td = htmlEl('td', {});
+      if (rec) {
+        const cat = rec[catField];
+        td.style.background = ACTION_COLOR[cat] || '#888';
+        td.style.color = '#fff';
+        td.textContent = ACTION_LABEL[cat] || cat;
+        td.title = `stack=${x}, equity=${y}: argmax=${cat}`;
+      }
+      row.appendChild(td);
+    });
+    table.appendChild(row);
+  });
+  const wrap = htmlEl('div', {});
+  wrap.appendChild(table);
+  const legend = htmlEl('div', {class: 'legend'});
+  Object.keys(ACTION_COLOR).forEach(ak => {
+    const item = htmlEl('span', {});
+    item.innerHTML = `<span class="sw" style="background:${ACTION_COLOR[ak]}"></span>${ACTION_LABEL[ak]}`;
+    legend.appendChild(item);
+  });
+  wrap.appendChild(legend);
+  return wrap;
+}
+
+function barChart(data, xField, valueField, color, label) {
+  const wrap = htmlEl('div', {class: 'bars'});
+  data.forEach(d => {
+    const v = d[valueField];
+    const col = htmlEl('div', {class: 'bar-col'});
+    const track = htmlEl('div', {class: 'bar-track'});
+    const fill = htmlEl('div', {class: 'bar-fill'});
+    fill.style.height = Math.round(v * 100) + '%';
+    fill.style.background = color;
+    fill.title = `${xField}=${d[xField]}: ${label}=${v.toFixed(2)}`;
+    track.appendChild(fill);
+    col.appendChild(htmlEl('div', {class: 'bar-val'}, v.toFixed(2)));
+    col.appendChild(track);
+    col.appendChild(htmlEl('div', {class: 'bar-label'}, String(d[xField]) + 'bb'));
+    wrap.appendChild(col);
+  });
+  return wrap;
+}
+
+const ACTION_KEY_SET = new Set(Object.keys(ACTION_COLOR));
+
+function isPolicyLike(v) {
+  if (!v || typeof v !== 'object' || Array.isArray(v)) return false;
+  const keys = Object.keys(v);
+  return keys.length > 0 && keys.every(k => ACTION_KEY_SET.has(k));
+}
+
+// Compact stacked-bar rendering of a {fold, call, raise_33, ...} distribution, in place of
+// dumping the raw object as JSON text (which was blowing out table columns).
+function policyChip(policy) {
+  const wrap = htmlEl('div', {class: 'policy-chip'});
+  const bar = htmlEl('div', {class: 'policy-chip-bar'});
+  const parts = [];
+  let bestKey = null, bestVal = -Infinity;
+  Object.keys(ACTION_COLOR).forEach(ak => {
+    const v = policy[ak];
+    if (v === undefined) return;
+    const seg = htmlEl('span', {class: 'policy-chip-seg'});
+    seg.style.width = (Math.max(v, 0) * 100) + '%';
+    seg.style.background = ACTION_COLOR[ak];
+    bar.appendChild(seg);
+    parts.push(`${ACTION_LABEL[ak]} ${(v * 100).toFixed(0)}%`);
+    if (v > bestVal) { bestVal = v; bestKey = ak; }
+  });
+  wrap.title = parts.join(' · ');
+  wrap.appendChild(bar);
+  wrap.appendChild(htmlEl('span', {class: 'policy-chip-label'}, `${ACTION_LABEL[bestKey] || bestKey} ${(bestVal * 100).toFixed(0)}%`));
+  return wrap;
+}
+
+function formatScalar(v) {
+  if (typeof v !== 'number' || Number.isInteger(v)) return String(v);
+  return v.toFixed(3).replace(/0+$/, '').replace(/\.$/, '');
+}
+
+// Generic key-value table for checks whose `data` is a flat list of per-scenario records
+// without a bespoke chart above (SLOW checks: vpip_adapts_to_style, bb100_vs_standard_fields,
+// beats_frozen_predecessor, beats_offformula_stress, no_nan_or_crash) -- every check's raw data
+// is visible somewhere, even ones that don't warrant a custom visualization.
+function genericTable(data) {
+  if (!data || !data.length) return null;
+  const keys = [];
+  data.forEach(row => Object.keys(row).forEach(k => { if (!keys.includes(k)) keys.push(k); }));
+  const table = htmlEl('table', {class: 'kv-table'});
+  const head = htmlEl('tr');
+  keys.forEach(k => head.appendChild(htmlEl('th', {}, k.replace(/_/g, ' '))));
+  table.appendChild(head);
+  data.forEach(row => {
+    const tr = htmlEl('tr');
+    keys.forEach(k => {
+      const v = row[k];
+      const td = htmlEl('td', {});
+      if (v === null || v === undefined) td.textContent = '—';
+      else if (typeof v === 'boolean') {
+        td.textContent = v ? '✓' : '✗';
+        td.style.color = v ? 'var(--good)' : 'var(--critical)';
+      }
+      else if (isPolicyLike(v)) td.appendChild(policyChip(v));
+      else if (typeof v === 'object') {
+        td.classList.add('truncate');
+        td.textContent = JSON.stringify(v);
+        td.title = JSON.stringify(v, null, 2);
+      }
+      else if (typeof v === 'number') td.textContent = formatScalar(v);
+      else td.textContent = String(v);
+      tr.appendChild(td);
+    });
+    table.appendChild(tr);
+  });
+  const scroller = htmlEl('div', {});
+  scroller.style.overflowX = 'auto';
+  scroller.appendChild(table);
+  return scroller;
+}
+
+const root = document.getElementById('charts');
+const byId = {};
+RESULTS.checks.forEach(c => byId[c.id] = c);
+const actionKeys = RESULTS.action_space;
+const consumed = new Set();
+
+function addCard(id, title, xLabel, yLabel, valueField, ringField, kind) {
+  const c = byId[id];
+  if (!c) return;
+  consumed.add(id);
+  if (!c.data || !c.data.length) {
+    root.appendChild(card(title, id, c.detail, c.status));
+    return;
+  }
+  const wrap = card(title, id, c.detail, c.status);
+  if (kind === 'line') wrap.appendChild(lineChart(c.data, actionKeys));
+  else if (kind === 'heatmap') wrap.appendChild(heatmap(c.data, 'stack_bb', 'equity', valueField, {xLabel: 'stack (bb)', yLabel: 'equity', ringField}));
+  else if (kind === 'categorical') wrap.appendChild(categoricalGrid(c.data, 'stack_bb', 'equity', 'argmax'));
+  root.appendChild(wrap);
+}
+
+addCard('equity_ablation_monotonic', 'Equity ablation — full policy vs equity', null, null, null, null, 'line');
+addCard('deep_stack_ood_guard', 'Deep-stack OOD guard — P(All-In), ring = All-In is argmax', null, null, 'policy.allin', 'argmax_is_allin', 'heatmap');
+addCard('short_stack_polarization', 'Short-stack polarization — P(Call) in shove-or-fold spots', null, null, 'policy.call', null, 'heatmap');
+addCard('free_check_low_fold', 'Free-check hygiene — raw P(Fold) when call = 0', null, null, 'policy.fold', null, 'heatmap');
+addCard('action_diversity', 'Action diversity — argmax action by equity x stack', null, null, null, null, 'categorical');
+
+// air/nuts as a paired two-col card
+(function() {
+  const air = byId['air_folds_mostly'], nuts = byId['nuts_aggressive_mostly'];
+  if (!air || !nuts) return;
+  consumed.add('air_folds_mostly'); consumed.add('nuts_aggressive_mostly');
+  const wrap = htmlEl('div', {class: 'card'});
+  wrap.appendChild(htmlEl('h2', {}, `Air / Nuts spot checks`));
+  wrap.appendChild(htmlEl('p', {class: 'issue'}, 'guards: V14 spot-test baseline'));
+  const two = htmlEl('div', {class: 'two-col'});
+  const airCol = htmlEl('div');
+  airCol.appendChild(htmlEl('p', {class: 'detail'}, `Air (~12% eq) — P(Fold) <span class="badge ${air.status}">${air.status}</span>`));
+  airCol.appendChild(barChart(air.data.map(d => ({stack_bb: d.stack_bb, v: d.policy.fold})), 'stack_bb', 'v', 'var(--c-fold)', 'P(Fold)'));
+  const nutsCol = htmlEl('div');
+  nutsCol.appendChild(htmlEl('p', {class: 'detail'}, `Nuts (~92% eq) — P(All-In) <span class="badge ${nuts.status}">${nuts.status}</span>`));
+  nutsCol.appendChild(barChart(nuts.data.map(d => ({stack_bb: d.stack_bb, v: d.policy.allin})), 'stack_bb', 'v', 'var(--c-allin)', 'P(All-In)'));
+  two.appendChild(airCol); two.appendChild(nutsCol);
+  wrap.appendChild(two);
+  root.appendChild(wrap);
+})();
+
+// Every remaining check (SLOW checks with flat-record data, SKIPs, anything not explicitly
+// chart-rendered above) still gets a card -- a generic key/value table when there's data,
+// otherwise just the status + detail text. Guarantees no check is silently omitted.
+RESULTS.checks.forEach(c => {
+  if (consumed.has(c.id)) return;
+  const wrap = card(c.id, null, c.detail, c.status);
+  const table = genericTable(c.data);
+  if (table) wrap.appendChild(table);
+  root.appendChild(wrap);
+});
+</script>

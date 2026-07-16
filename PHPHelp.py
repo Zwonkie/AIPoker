@@ -28,6 +28,12 @@ ACTION_DISPLAY_NAMES = {
     "RAISE_33": "Raise 33%", "RAISE_66": "Raise 66%", "RAISE_POT": "Raise Pot", "ALLIN": "All-In",
 }
 
+# Fixed on-screen seat layout, in clockwise order (matches the 3x3 grid in setup_visuals: hero
+# bottom -> seat_1 left -> seat_2 top-left -> seat_3 top-mid -> seat_4 top-right -> seat_5 right ->
+# back to hero). Used only to APPROXIMATE action order (who's already acted this street vs who
+# hasn't) for the equity panel's opponent-color breakdown -- not used by the equity math itself.
+SEAT_ORDER_CLOCKWISE = ['hero', 'seat_1', 'seat_2', 'seat_3', 'seat_4', 'seat_5']
+
 # Action Distribution bar colors: RAW = the actor's untouched softmax output; SAMPLED = the same
 # distribution after live temperature-sharpening (core/decision.py), which is what the sampler
 # ("dice roll") actually draws from. The two can diverge -- sharpening pulls weight away from
@@ -174,7 +180,14 @@ class PHPHelpApp(ctk.CTk):
         # whichever comes first) instead of snapping back to "WAITING..." the moment it's no longer
         # Hero's turn -- gives enough time to actually read the equity/action/distribution panel.
         self.last_decision_ts = 0.0
-        self.MIN_DECISION_DISPLAY_SECONDS = 5.0
+        self.MIN_DECISION_DISPLAY_SECONDS = 10.0
+
+        # Debounce: after acting, the real client can take a moment to visually clear the
+        # fold/check/raise buttons (network/animation lag). Our re-check cadence is only ~1s, so
+        # without this the very next frame can still see the SAME buttons and misread it as a
+        # fresh "Hero's turn," re-deciding and re-acting on stale state -- a double-action bug.
+        # Require at least one confirmed "not Hero's turn" frame after acting before acting again.
+        self._awaiting_turn_clear = False
 
         # --- Continuous turn history (live-bot recorder) ------------------------------------
         # While the bot runs, EVERY decided turn is appended to history/<board_id>/turns.jsonl
@@ -237,10 +250,11 @@ class PHPHelpApp(ctk.CTk):
         self.mode_dropdown = ctk.CTkOptionMenu(self.sidebar, values=["Recommendation Only", "Automatic Play"], variable=self.mode_var)
         self.mode_dropdown.grid(row=4, column=0, padx=20, pady=5, sticky="ew")
         
-        # Model Selection. Default MUST match core/decision.py's active model (v17_gauntlet) so the
-        # UI label reflects what actually runs — the engine defaults to v17_gauntlet regardless,
-        # but a stale label here would be misleading.
-        self.model_var = ctk.StringVar(value="Herocules (v17_gauntlet)")
+        # Model Selection. Default MUST match core/decision.py's active model (v20_preflopEq) so
+        # the UI label reflects what actually runs — the engine defaults to v20_preflopEq
+        # regardless, but a stale label here would be misleading (this dropdown's values/default
+        # do NOT update themselves when core/decision.py's registry changes — bump both here too).
+        self.model_var = ctk.StringVar(value="Herocules (v20_preflopEq)")
         self.model_label = ctk.CTkLabel(self.sidebar, text="Decision Model:", anchor="w")
         self.model_label.grid(row=5, column=0, padx=20, pady=(10, 0), sticky="w")
         self.model_dropdown = ctk.CTkOptionMenu(
@@ -248,8 +262,12 @@ class PHPHelpApp(ctk.CTk):
             # Only models that actually load are listed (see core/decision.py registry). The
             # legacy Pluribus/v8-v11 entries were pruned — their weights are missing or use the
             # old 159-feature contract, so selecting them would output random actions live.
-            # v17_gauntlet/v17/v15/v14 = discretized bet-size action space (raises-to-X / all-in); v13 kept as fallback.
+            # v20_preflopEq/v20/v19/v17_gauntlet/v17/v15/v14 = discretized bet-size action space
+            # (raises-to-X / all-in); v13 kept as fallback.
             values=[
+                "Herocules (v20_preflopEq)",
+                "Herocules (v20)",
+                "Herocules (v19)",
                 "Herocules (v17_gauntlet)",
                 "Herocules (v17 Actor-Critic)",
                 "Herocules (v15 DoN)",
@@ -440,14 +458,46 @@ class PHPHelpApp(ctk.CTk):
         # the panel's real height is fixed by the grid row, and content beyond it just gets clipped
         # (no scrolling), so trimming space here is what keeps ACTION DISTRIBUTION / MODEL CONTEXT
         # FEATURES below actually visible.
-        self.equity_lbl_title = ctk.CTkLabel(self.equity_panel, text="WIN PROBABILITY", font=ctk.CTkFont(weight="bold", size=12))
-        self.equity_lbl_title.pack(pady=(4, 0))
+        # Three-up equity readout: Hand Win% (field-independent card quality, V20_preflopEq's
+        # `hand_strength` feature) and Eq Edge (equity's edge over the field-size fair share,
+        # V20_preflopEq's `equity_edge` feature) flank the main Board Eq (the range/board-aware
+        # equity number that has always lived here, just renamed from "WIN PROBABILITY" -- that
+        # name implied a plain showdown-probability, but this is specifically the range-aware
+        # method's output). The two side stats are V20_preflopEq-only features; they read "-" for
+        # any other active model (see update_equity_ui) rather than a misleading neutral number.
+        self.equity_stats_row = ctk.CTkFrame(self.equity_panel, fg_color="transparent")
+        self.equity_stats_row.pack(pady=(4, 0), fill="x")
+        self.equity_stats_row.grid_columnconfigure((0, 1, 2), weight=1)
 
-        self.equity_val = ctk.CTkLabel(self.equity_panel, text="0.0%", text_color="#3399ff", font=ctk.CTkFont(size=22, weight="bold"))
-        self.equity_val.pack(pady=0)
+        self.hand_strength_lbl_title = ctk.CTkLabel(self.equity_stats_row, text="HAND WIN%", font=ctk.CTkFont(weight="bold", size=10), text_color="#8a90a0")
+        self.hand_strength_lbl_title.grid(row=0, column=0, sticky="n")
+        self.hand_strength_val = ctk.CTkLabel(self.equity_stats_row, text="-", text_color="#c3c2b7", font=ctk.CTkFont(size=15, weight="bold"))
+        self.hand_strength_val.grid(row=1, column=0, sticky="n")
+
+        self.equity_lbl_title = ctk.CTkLabel(self.equity_stats_row, text="BOARD EQ", font=ctk.CTkFont(weight="bold", size=12))
+        self.equity_lbl_title.grid(row=0, column=1, sticky="n")
+        self.equity_val = ctk.CTkLabel(self.equity_stats_row, text="0.0%", text_color="#3399ff", font=ctk.CTkFont(size=22, weight="bold"))
+        self.equity_val.grid(row=1, column=1, sticky="n")
+
+        self.equity_edge_lbl_title = ctk.CTkLabel(self.equity_stats_row, text="EQ EDGE", font=ctk.CTkFont(weight="bold", size=10), text_color="#8a90a0")
+        self.equity_edge_lbl_title.grid(row=0, column=2, sticky="n")
+        self.equity_edge_val = ctk.CTkLabel(self.equity_stats_row, text="-", text_color="#c3c2b7", font=ctk.CTkFont(size=15, weight="bold"))
+        self.equity_edge_val.grid(row=1, column=2, sticky="n")
 
         self.equity_desc = ctk.CTkLabel(self.equity_panel, text="W: 0.0%, D: 0.0%, L: 0.0%", font=ctk.CTkFont(size=11), text_color="#a0a0a0")
         self.equity_desc.pack(pady=0)
+
+        # Range-aware opponent color breakdown (only populated when equity used the range-aware
+        # method -- see update_equity_ui). Replaces what used to be a redundant raw-decimal
+        # equity readout here (a display bug: parsing "Range-aware equity vs [...]: 0.71" for the
+        # text after the colon threw away the useful color list and kept the equity number again).
+        # Heights locked (see the reason/thinking labels above) so a varying opponent count doesn't
+        # shift the panels below.
+        self.equity_inpot_lbl = ctk.CTkLabel(self.equity_panel, text="", font=ctk.CTkFont(size=10), text_color="#a0a0a0", height=16)
+        self.equity_inpot_lbl.pack(pady=0)
+
+        self.equity_toact_lbl = ctk.CTkLabel(self.equity_panel, text="", font=ctk.CTkFont(size=10), text_color="#a0a0a0", height=16)
+        self.equity_toact_lbl.pack(pady=(0, 4))
 
         # Recommended Action
         self.action_title_lbl = ctk.CTkLabel(self.equity_panel, text="RECOMMENDED ACTION", font=ctk.CTkFont(weight="bold", size=11), text_color="#8a90a0")
@@ -476,12 +526,6 @@ class PHPHelpApp(ctk.CTk):
 
         self.ev_title_lbl = ctk.CTkLabel(self.ev_breakdown_frame, text="ACTION DISTRIBUTION", font=ctk.CTkFont(weight="bold", size=10), text_color="#8a90a0")
         self.ev_title_lbl.pack(pady=(4, 0))
-
-        self.dist_legend_lbl = ctk.CTkLabel(
-            self.ev_breakdown_frame,
-            text="blue = raw %   |   yellow = adjusted %  (what the dice used)",
-            font=ctk.CTkFont(size=8), text_color="#6a7080")
-        self.dist_legend_lbl.pack(pady=(0, 2))
 
         self.dist_empty_lbl = ctk.CTkLabel(self.ev_breakdown_frame, text="Waiting for decision...", font=ctk.CTkFont(size=10), text_color="#8a90a0")
         self.dist_empty_lbl.pack(pady=(2, 6))
@@ -755,9 +799,10 @@ class PHPHelpApp(ctk.CTk):
         """Background thread executing the screenshot, CV, equity, decision, and click loop."""
         # Setup coordinates/rect for capturing
         mss_instance = mss.MSS()
-        
+
         self.table_state.reset()
-        
+        self._awaiting_turn_clear = False   # fresh start -- don't inherit a stale gate from a prior run
+
         while self.bot_running:
             try:
                 # Load screenshot (Mock vs Live)
@@ -909,6 +954,10 @@ class PHPHelpApp(ctk.CTk):
                     if self.state_machine.state not in ['IDLE', 'WAITING_FOR_TURN']:
                         self.state_machine.error_occurred()
 
+                    # Confirmed the client has actually moved off our last action -- safe to act
+                    # again next time buttons appear (see _awaiting_turn_clear in __init__).
+                    self._awaiting_turn_clear = False
+
                     # Keep the last real decision's equity/action/distribution on screen for a
                     # minimum hold time instead of blanking it the instant it's not Hero's turn --
                     # this loop iterates every ~1s, so without this the display reset almost
@@ -919,7 +968,14 @@ class PHPHelpApp(ctk.CTk):
                     # Sleep before next continuous tracking frame
                     time.sleep(1.0 if not source.startswith("Mock:") else 5.0)
                     continue
-                    
+
+                # Buttons are visible, but if we haven't yet seen a "not our turn" frame since our
+                # last action, this is almost certainly the SAME stale buttons still on screen from
+                # before (client hasn't visually caught up yet) -- do NOT treat it as a fresh turn.
+                if self._awaiting_turn_clear:
+                    time.sleep(1.0 if not source.startswith("Mock:") else 2.0)
+                    continue
+
                 # It IS our turn!
                 if self.state_machine.state != 'WAITING_FOR_TURN':
                     time.sleep(0.5)
@@ -930,8 +986,9 @@ class PHPHelpApp(ctk.CTk):
                     self.state_machine.turn_detected()
                     self.append_log("\n--- HERO TURN DETECTED ---")
                     
-                    active_opps = [opp for opp in stabilized_state['opponents'].values() if opp.get('is_active', True)]
-                    
+                    active_opps_by_seat = {k: v for k, v in stabilized_state['opponents'].items() if v.get('is_active', True)}
+                    active_opps = list(active_opps_by_seat.values())
+
                     # --- MAX THREAT VPIP/AGG AGGREGATION ---
                     # Aligned with Bet365/iPoker HUD color thresholds:
                     # VPIP: Tight (Blue: <18%), Normal (Green: 18-26%), Loose (Yellow: 26-35%), Maniac (Red: >35%)
@@ -992,13 +1049,23 @@ class PHPHelpApp(ctk.CTk):
                     equity = None
                     sim_msg = None
                     equity_meta = {"method": "vs-random", "opp_colors": None, "num_opponents": num_opponents}
-                    # V13/V14/V15/V17/V17_gauntlet were all trained with RANGE-AWARE equity (hero
-                    # equity vs each opponent's VPIP-color range); feeding vs-random here would be
-                    # a silent train/serve mismatch. Use the matching version's identical impl.
+                    # V13/V14/V15/V17/V17_gauntlet/V19/V20 were all trained with RANGE-AWARE
+                    # equity (hero equity vs each opponent's VPIP-color range); feeding vs-random
+                    # here would be a silent train/serve mismatch. Use the matching version's
+                    # identical impl.
                     _active_lower = self.decision_engine.active_model_name.lower()
-                    if 'v17' in _active_lower or 'v15' in _active_lower or 'v14' in _active_lower or 'v13' in _active_lower:
+                    if 'v20_preflopeq' in _active_lower or 'v20' in _active_lower or 'v19' in _active_lower or 'v17' in _active_lower or 'v15' in _active_lower or 'v14' in _active_lower or 'v13' in _active_lower:
                         try:
-                            if 'v17_gauntlet' in _active_lower:
+                            # NOTE: 'v20_preflopeq' MUST be checked before the plain 'v20' branch --
+                            # 'v20' is a substring of 'v20_preflopeq', so the naive ordering would
+                            # otherwise always match the (wrong, front/after-fix-less) v20 branch.
+                            if 'v20_preflopeq' in _active_lower:
+                                from versions.v20_preflopEq.self_play.simulator import compute_range_aware_equity
+                            elif 'v20' in _active_lower:
+                                from versions.v20.self_play.simulator import compute_range_aware_equity
+                            elif 'v19' in _active_lower:
+                                from versions.v19.self_play.simulator import compute_range_aware_equity
+                            elif 'v17_gauntlet' in _active_lower:
                                 from versions.v17_gauntlet.self_play.simulator import compute_range_aware_equity
                             elif 'v17' in _active_lower:
                                 from versions.v17.self_play.simulator import compute_range_aware_equity
@@ -1008,13 +1075,54 @@ class PHPHelpApp(ctk.CTk):
                                 from versions.v14.self_play.simulator import compute_range_aware_equity
                             else:
                                 from versions.v13.self_play.simulator import compute_range_aware_equity
-                            opp_colors = [o.get('vpip_color') for o in active_opps if o.get('vpip_color')]
+                            # [V20_preflopEq Finding 1] An opponent whose HUD color hasn't been
+                            # classified yet (vpip_color is None) is a real, demonstrably-contesting
+                            # seat -- NOT the same as them not being there. Map unknown -> 'Yellow'
+                            # (this codebase's existing "no info" convention elsewhere, e.g.
+                            # opponents_profiles.get(...).get('vpip', 0.3) -> Yellow's band) rather
+                            # than silently dropping them. See versions/v20_preflopEq/SPECS.md
+                            # Finding 1 -- "full range"/omission is actually the most hero-favorable
+                            # (least conservative) wrong answer, not a cautious middle ground.
+                            opp_colors = [o.get('vpip_color') or 'Yellow' for o in active_opps]
                             equity_meta["opp_colors"] = opp_colors
-                            ra = compute_range_aware_equity(
-                                stabilized_state['hero_cards'],
-                                stabilized_state['community_cards'],
-                                opp_colors,
+                            # For v20_preflopEq this breakdown now ALSO drives the equity call
+                            # below (front_colors=colors_in_pot); for every other model it stays
+                            # display-only (see _classify_opponents_by_action_order's docstring).
+                            colors_in_pot, colors_still_to_act = self._classify_opponents_by_action_order(
+                                stabilized_state, active_opps_by_seat
                             )
+                            equity_meta["opp_colors_in_pot"] = colors_in_pot
+                            equity_meta["opp_colors_still_to_act"] = colors_still_to_act
+                            # sims=250 (2026-07-16, live-serving only -- default is 150, matching
+                            # what training uses): at 150 sims, 2*SE on a ~50% equity estimate is
+                            # ~8pp, comparable to a color band's own width (e.g. Yellow=[26,35], 9pp
+                            # wide) -- too noisy to reliably resolve band-driven differences. 250
+                            # brings 2*SE down to ~6.3pp. Doesn't touch training's own sims=150 call
+                            # (versions/*/self_play/simulator.py) or its default -- same formula
+                            # either way, just less noise around the same expected value live.
+                            if 'v20_preflopeq' in _active_lower and colors_in_pot is not None:
+                                # [V20_preflopEq Finding 2] front (already acted this round,
+                                # guaranteed in -- no VPIP fold-roll) vs after (still to act,
+                                # normal roll), using the SAME positional classifier already
+                                # computed above for display -- now actually driving the equity
+                                # math too, matching training's fix exactly. Falls back to the
+                                # flat legacy call below if the dealer button wasn't detected this
+                                # frame (classifier returns (None, None) when it can't establish
+                                # order, distinct from a real empty front/after list).
+                                ra = compute_range_aware_equity(
+                                    stabilized_state['hero_cards'],
+                                    stabilized_state['community_cards'],
+                                    colors_still_to_act,
+                                    sims=250,
+                                    front_colors=colors_in_pot,
+                                )
+                            else:
+                                ra = compute_range_aware_equity(
+                                    stabilized_state['hero_cards'],
+                                    stabilized_state['community_cards'],
+                                    opp_colors,
+                                    sims=250,
+                                )
                             if ra is not None:
                                 equity = ra
                                 equity_meta["method"] = "range-aware"
@@ -1025,6 +1133,26 @@ class PHPHelpApp(ctk.CTk):
                             equity_meta["fallback_reason"] = f"range-aware raised: {e}"
                             self.append_log(f"[Equity] range-aware failed ({e}); vs-random fallback")
 
+                    # [V20_preflopEq] hand_strength: field-independent card-quality signal, only
+                    # meaningful (and only computed, to avoid a needless live MC call for every
+                    # other model) when v20_preflopEq is active. Preflop: O(1) lookup. Postflop: a
+                    # cheap vs-1-random MC call, same recipe as simulator.py's own _hand_strength.
+                    hand_strength = 0.5
+                    if 'v20_preflopeq' in _active_lower:
+                        try:
+                            from versions.v20_preflopEq.core.contract import preflop_hand_strength
+                            _hero_cards = stabilized_state['hero_cards']
+                            _community = stabilized_state['community_cards']
+                            if len(_community) == 0:
+                                hand_strength = preflop_hand_strength(_hero_cards[0], _hero_cards[1])
+                            else:
+                                hand_strength, _ = self.evaluator.calculate_equity(
+                                    _community, _hero_cards, num_opponents=1, num_simulations=200
+                                )
+                        except Exception as e:
+                            self.append_log(f"[Equity] hand_strength computation failed ({e}); using neutral 0.5")
+                    equity_meta["hand_strength"] = hand_strength
+
                     if equity is None:
                         equity, sim_msg = self.evaluator.calculate_equity(
                             stabilized_state['community_cards'],
@@ -1033,6 +1161,14 @@ class PHPHelpApp(ctk.CTk):
                             num_simulations=num_sims
                         )
                     equity_meta["value"] = equity
+                    # [V20_preflopEq] equity_edge: equity's edge over the field-size fair share
+                    # (equity*(num_active+1), 1.0 = exactly average for this field size) --
+                    # display-only here; contract.py derives its own copy internally from
+                    # state.equity + the active-opponent count for the actual model input, this is
+                    # just that same formula computed for the dashboard, against the FINAL equity
+                    # (post range-aware/vs-random fallback) and the same opponent count `equity`
+                    # was itself computed against (detected_opponents / num_opponents above).
+                    equity_meta["equity_edge"] = equity * (num_opponents + 1)
                     self.last_equity_meta = equity_meta
 
                     self.append_log(f"[Decision] {sim_msg}")
@@ -1118,10 +1254,15 @@ class PHPHelpApp(ctk.CTk):
                 stabilized_state['big_blind'] = self.big_blind_var.get()
                 
                 board_state = self.table_state.to_board_state(
-                    call_amount=call_amount, 
-                    equity=equity, 
+                    call_amount=call_amount,
+                    equity=equity,
                     big_blind=self.big_blind_var.get()
                 )
+                # [V20_preflopEq] hand_strength computed earlier alongside equity (see
+                # equity_meta["hand_strength"]) -- to_board_state() doesn't take it as a
+                # constructor param (BoardState field is additive/optional, see core/board_state.py),
+                # so set it directly here, same as `equity` itself is threaded through above.
+                board_state.hand_strength = self.last_equity_meta.get("hand_strength", 0.5) if self.last_equity_meta else 0.5
 
                 decision_tuple = self.decision_engine.make_decision(
                     board_state,
@@ -1193,10 +1334,16 @@ class PHPHelpApp(ctk.CTk):
                         self.append_log("[Automation] Thread interrupt completed successfully.")
                     else:
                         self.append_log("[Automation] Thread interrupt failed.")
+                    # We just physically clicked -- don't act again until a frame confirms the
+                    # client actually moved on (see _awaiting_turn_clear in __init__/the turn-check
+                    # above). Not set in Recommendation Only mode: nothing was clicked there, so
+                    # gating on a "turn clear" that a human elsewhere controls could stall future
+                    # recommendations indefinitely.
+                    self._awaiting_turn_clear = True
                 else:
                     self.append_log("[Automation] Logging only. Discarding mouse interrupt.")
                     time.sleep(1.5) # Simulate delay
-                    
+
                 # Cycle finished! Transition back to WAITING_FOR_TURN
                 self.state_machine.action_completed()
                 self.append_log("[SYSTEM] Parsing loop complete. Monitoring stream...")
@@ -1333,13 +1480,47 @@ class PHPHelpApp(ctk.CTk):
         else:
             self.equity_val.configure(text_color="#e55353") # Red (Weak)
             
-        if sim_msg:
-            # We already format sim_msg correctly in evaluator.py
-            # Expected format from evaluator: Simulated 2000 hands: W=45.0%, D=5.0%, L=50.0%
-            # Just extract the part after the colon
-            parts = sim_msg.split(":", 1)
-            desc_text = parts[1].strip() if len(parts) > 1 else sim_msg
-            self.equity_desc.configure(text=desc_text)
+        # self.last_equity_meta is set synchronously (worker thread) right before this call gets
+        # scheduled via self.after, so it's always the meta for THIS equity value.
+        meta = self.last_equity_meta or {}
+
+        # [V20_preflopEq] Hand Win% / Eq Edge side stats -- only meaningful for this model (every
+        # other model neither computes hand_strength nor trains with equity_edge), so show "-"
+        # rather than a misleading number when a different model is active.
+        if 'v20_preflopeq' in self.decision_engine.active_model_name.lower():
+            hs = meta.get("hand_strength")
+            self.hand_strength_val.configure(text=f"{hs * 100:.1f}%" if hs is not None else "-")
+            edge = meta.get("equity_edge")
+            self.equity_edge_val.configure(text=f"{edge:.2f}x" if edge is not None else "-")
+        else:
+            self.hand_strength_val.configure(text="-")
+            self.equity_edge_val.configure(text="-")
+
+        if meta.get("method") == "range-aware":
+            # Range-aware equity is a single MC number, not a W/D/L split -- the old code path
+            # below (splitting sim_msg on ":") was written for the vs-random evaluator's message
+            # and, for this method, just re-displayed the equity as a redundant raw decimal
+            # ("Range-aware equity vs [...]: 0.71" -> "0.71") while throwing away the useful
+            # opponent color list. Show that breakdown instead.
+            self.equity_desc.configure(text="Range-aware equity")
+            in_pot = meta.get("opp_colors_in_pot")
+            still_to_act = meta.get("opp_colors_still_to_act")
+            if in_pot is None and still_to_act is None:
+                self.equity_inpot_lbl.configure(text="")
+                self.equity_toact_lbl.configure(text="(no dealer button detected this frame)")
+            else:
+                self.equity_inpot_lbl.configure(text=f"In pot: [{', '.join(in_pot) if in_pot else '-'}]")
+                self.equity_toact_lbl.configure(text=f"Still to act: [{', '.join(still_to_act) if still_to_act else '-'}]")
+        else:
+            self.equity_inpot_lbl.configure(text="")
+            self.equity_toact_lbl.configure(text="")
+            if sim_msg:
+                # We already format sim_msg correctly in evaluator.py
+                # Expected format from evaluator: Simulated 2000 hands: W=45.0%, D=5.0%, L=50.0%
+                # Just extract the part after the colon
+                parts = sim_msg.split(":", 1)
+                desc_text = parts[1].strip() if len(parts) > 1 else sim_msg
+                self.equity_desc.configure(text=desc_text)
 
     def update_action_ui(self, action, reason, bet_size, ev_dict=None):
         # Format action text nicely (bet_size is chip-fraction math -> round for display, e.g.
@@ -1604,6 +1785,57 @@ class PHPHelpApp(ctk.CTk):
         except Exception:
             return {}
 
+    def _classify_opponents_by_action_order(self, stabilized_state, active_opps_by_seat):
+        """Best-effort split of active opponents' HUD colors into 'in pot' (already acted this
+        street) vs 'still to act' (haven't acted yet this street) -- purely from seat position +
+        dealer button + street, since vision/table_state don't track per-seat action status
+        directly. NOT aware of reopened action (a check-raise means an earlier seat must act
+        again, which this can't detect) -- a positional approximation, not ground truth.
+
+        [V20_preflopEq] When that model is active, this split now ALSO drives the actual equity
+        call (front -> compute_range_aware_equity's `front_colors`, guaranteed in, no VPIP roll;
+        still_to_act -> the legacy `opp_colors`, normal roll) -- see the call site above. For
+        every OTHER model, this remains display-only: their compute_range_aware_equity has no
+        front/after concept at all -- preflop it gives every opponent a flat VPIP-weighted chance
+        of even being in the hand, postflop it treats every still-active opponent as fully in.
+        Returns (colors_in_pot, colors_still_to_act), or (None, None) if the dealer button wasn't
+        detected this frame (can't establish an order without it).
+        """
+        dealer_idx = stabilized_state.get('dealer_idx', -1)
+        if dealer_idx not in range(0, 6):
+            return None, None
+
+        button_seat = 'hero' if dealer_idx == 0 else f'seat_{dealer_idx}'
+        if button_seat not in SEAT_ORDER_CLOCKWISE:
+            return None, None
+        start = SEAT_ORDER_CLOCKWISE.index(button_seat)
+        order = SEAT_ORDER_CLOCKWISE[start:] + SEAT_ORDER_CLOCKWISE[:start]  # button first, then clockwise
+
+        # First-to-act this street: postflop = seat right after the button; preflop = 2 seats
+        # after that (past the blinds) -- a full-ring approximation; doesn't adjust if the blinds
+        # themselves already folded.
+        is_preflop = len(stabilized_state.get('community_cards', [])) == 0
+        first_to_act_offset = 3 if is_preflop else 1
+        order = order[first_to_act_offset:] + order[:first_to_act_offset]
+
+        if 'hero' not in order:
+            return None, None
+        hero_pos = order.index('hero')
+        before_hero = order[:hero_pos]        # already had their turn this street -> "in pot"
+        after_hero = order[hero_pos + 1:]     # haven't acted yet this street -> "still to act"
+
+        def colors_for(seat_list):
+            colors = []
+            for seat_key in seat_list:
+                opp = active_opps_by_seat.get(seat_key)
+                if opp:
+                    # [V20_preflopEq Finding 1] Same unknown->Yellow mapping as the main opp_colors
+                    # list above -- a seat with no HUD color read yet is still really there.
+                    colors.append(opp.get('vpip_color') or 'Yellow')
+            return colors
+
+        return colors_for(before_hero), colors_for(after_hero)
+
     def _curate_opponents(self, state):
         """Per-seat opponent snapshot for the board-state layer (objective read from vision)."""
         opps = []
@@ -1689,6 +1921,15 @@ class PHPHelpApp(ctk.CTk):
                 "equity": self.last_equity,
                 "equity_method": em.get("method"),
                 "equity_opp_colors": em.get("opp_colors"),
+                # [V20_preflopEq] front/after split (only meaningfully populated when this model is
+                # active -- see _classify_opponents_by_action_order; None for every other model,
+                # same as before) and the two new engineered features. Previously shown live in the
+                # dashboard but never persisted, so a past session couldn't be audited after the
+                # fact -- now part of the permanent turn record.
+                "equity_opp_colors_in_pot": em.get("opp_colors_in_pot"),
+                "equity_opp_colors_still_to_act": em.get("opp_colors_still_to_act"),
+                "hand_strength": em.get("hand_strength"),
+                "equity_edge": em.get("equity_edge"),
                 "actor_policy": {k: ev.get(k) for k in ACTION_DIAG_ORDER if k in ev},
                 "critic_q": ev.get("q_vals"),
                 "model_input": ev.get("model_input"),   # exact input tensors -> faithful replay
