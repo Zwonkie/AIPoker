@@ -15,6 +15,7 @@ import glob
 import importlib
 import json
 import os
+import re
 import sys
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..')))
@@ -39,9 +40,24 @@ def _save_baselines(baselines):
 
 
 def _find_frozen_predecessor(version_id):
+    """Pick the frozen-predecessor weights file for `beats_frozen_predecessor`.
+
+    Fixed 2026-07-16 (found while evaluating v17_gauntlet, which deliberately keeps THREE
+    frozen_*.pth files -- frozen_v15/v16/v17 -- as opponent-pool inputs, not just one).
+    Alphabetical-first (the old behavior) picks the OLDEST file (frozen_v15 < frozen_v16 <
+    frozen_v17), which is almost always the wrong benchmark -- a version's predecessor
+    comparison should be its most recent frozen ancestor. Prefer the HIGHEST parsed version
+    number; fall back to alphabetical-last, then alphabetical-first, if none parse.
+    """
     weights_dir = os.path.join(_REPO_ROOT, 'versions', version_id, 'weights')
     hits = sorted(glob.glob(os.path.join(weights_dir, 'frozen_*.pth')))
-    return os.path.basename(hits[0]) if hits else None
+    if not hits:
+        return None
+    def _version_num(path):
+        m = re.search(r'v(\d+)', os.path.basename(path))
+        return int(m.group(1)) if m else -1
+    best = max(hits, key=_version_num)
+    return os.path.basename(best)
 
 
 def _load_range_aware_flag(version_id):

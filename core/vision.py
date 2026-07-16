@@ -40,7 +40,9 @@ class PokerVision:
             'seat_top_name': (670, 195, 200, 40),
             'seat_top_stack': (670, 230, 200, 40),
             
-            'buttons': (980, 970, 550, 120)
+            # Top edge moved down 8px then a further 10px 2026-07-16 (bottom edge held fixed at
+            # y=1090) -- the ROI was capturing extra area above the actual fold/check/raise buttons.
+            'buttons': (980, 988, 550, 102)
         }
 
     def load_templates(self):

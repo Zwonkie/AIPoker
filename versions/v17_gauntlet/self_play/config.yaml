@@ -1,27 +1,25 @@
-version: "v17"
+version: "v17_gauntlet"
 training:
   # --- Discretized bet-size action space (inherited from V14, UNCHANGED) --------------
   # The raise buckets the hero (and per-size EV targets) use, as pot fractions; `null` = ALL-IN.
   raise_pot_fractions: [0.33, 0.66, 1.0, null]   # 0.33/0.66/1.0 pot + all-in
-  # V17 test run: 100k (not the main line's 200k) -- a directional check of the actor-critic
-  # routing before committing to full budget, matching v16_foldregret's precedent. The cutover
-  # (ACTOR_CRITIC_CUTOVER_HANDS=30000, train.py) fires at the same milestone bootstrap_alpha
-  # already decays to 0 at, so this budget gives ~70k hands under the new critic-routed regime.
-  target_hands: 100000
+  # v17_gauntlet: full 200k production budget (up from V17's 100k test), same actor-critic
+  # recipe as V17 (deployed live) -- the ONE variable this run changes is the opponent pool
+  # (widened to include frozen V15/V16 as genuinely skilled opponents, not just heuristics +
+  # a single frozen predecessor). See versions/v17_gauntlet/SPECS.md.
+  target_hands: 200000
   batch_size: 256
   epochs_per_batch: 3
   sim_batch_size: 2000
   learning_rate: 0.001
-  equity_sims: 5000       # bumped from 2000 (round 2) -- CUDA MC rollouts, negligible time cost,
-                          # lowers per-hand equity/EV noise (orthogonal to the baseline-formula
-                          # change above: a measurement-precision knob, not a competing hypothesis)
+  equity_sims: 2000   # reverted from V17's 5000 -- see versions/v18/SPECS.md "MC equity_sims
+                       # budget" (measured 2.46x wall-clock cost for a ~0.3pt noise reduction,
+                       # small next to the critic's own much more powerful denoising)
   mid_flight_diagnostics_interval: 10000
   checkpoint_dump_interval: 25000   # distinct restore-point checkpoint every N hands (weights/checkpoints/)
-  # --- Training knobs: IDENTICAL to the validated V14 run (do NOT change for V15) ------
-  # V15 = same proven recipe, fresh; only the sim-table setup (stacks + opponents) + budget
-  # differ. Changing these would confound whether a regression is the recipe or the new field.
+  # --- Training knobs: IDENTICAL to V17's validated recipe (do NOT change here) --------
   aux_loss_weight: 0.0          # 0 = bluff/strength/equity heads OFF
-  disable_target_shaping: true  # bias priors off
+  disable_target_shaping: true  # preflop tightness prior off; COUNTERFACTUAL_WEIGHT always ON (V17 fix)
   target_clip_bb: 40.0          # VARIANCE clip -- KEEP ON (removing it diverged the critic)
   disable_bootstrap: false      # heuristic warmup generates good-play examples (decays by 30k)
   disable_exploration: false    # 5% random + heuristic anchor -> model visits diverse states
@@ -33,29 +31,34 @@ training:
   policy_entropy_penalty: 0.0
 
 curriculum:
+  # UNCHANGED from V17's validated recipe -- the opponent pool is already the one variable this
+  # run tests; changing the curriculum at the same time would confound the comparison.
   phase_1_max_hands: 10000
   phase_1_stacks: [100.0]
   phase_5_focus_rounds: true
   disable_extreme_stacks: true  # the old 10-300bb fat-tail curriculum stays OFF
-  # V15 DoN-SHAPED depth MIXTURE (replaces V14's flat fixed_stack_bb: [5,14]). Per hand, pick a
-  # band by weight then sample a uniform depth within it — short-weighted with a real deep tail so
-  # ONE model covers the whole DoN arc (fixes the deep-stack OOD that jammed K9o for 20bb live).
+  # V15 DoN-SHAPED depth MIXTURE. Per hand, pick a band by weight then sample a uniform depth
+  # within it — short-weighted with a real deep tail so ONE model covers the whole DoN arc.
   #   [lo_bb, hi_bb, weight]
   stack_depth_mix:
     - [5, 14, 0.55]     # late-game short (v14's proven zone — kept dense)
     - [14, 30, 0.30]    # mid-game
-    - [30, 50, 0.15]    # early-game deep tail (the missing OOD coverage)
+    - [30, 50, 0.15]    # early-game deep tail
   # fixed_stack_bb intentionally UNSET so stack_depth_mix takes over.
 
-# --- Opponent lineup (V17: stations + FROZEN V16 expert, UNCHANGED from V16's own recipe) ----
-# Keep the station-heavy heuristic base (best postflop/value data) and add a STATIC frozen-V16
-# expert in the "past" seat so the hero learns sizing/shove dynamics vs a competent, adaptive
-# opponent (not just heuristics) — and gives a benchmark (V17 must beat frozen-V16).
+# --- Opponent lineup (v17_gauntlet: widened frozen-opponent pool, V18 [P0-adjacent] item) -----
+# 'nit' and 'tag' repurposed to load STATIC frozen experts (frozen_v15.pth / frozen_v16.pth)
+# instead of pure heuristics -- UNFORCED (simulator.py's style-forcing logic is bypassed
+# whenever a real model is loaded, so these two genuinely play their own learned game, not a
+# stereotyped nit/tag pattern). 'past' is a TRUE LAGGED SELF-PLAY MIRROR of v17_gauntlet's own
+# training history (freeze_past_self: false) -- NOT a frozen file. 'fish'/'maniac' stay pure
+# scripted heuristics for continued non-NN diversity.
 opponents:
-  pool: ["fish", "tag", "nit", "past"]   # 'past' = frozen_v16 (static expert, NOT a lagged mirror)
-  weights: [0.40, 0.20, 0.20, 0.20]      # station-heavy base + 20% competent expert
+  pool: ["fish", "maniac", "nit", "tag", "past"]
+  weights: [0.25, 0.15, 0.20, 0.20, 0.20]
   live_players: 6                        # 6-max to match live tables
   disable_past_self: false               # ENABLE the past seat...
-  freeze_past_self: true                 # ...pinned to versions/v17/weights/frozen_v16.pth (no lagged snapshot)
-  frozen_past_filename: frozen_v16.pth   # generalized past-self filename
-  disable_focus_rounds: true
+  freeze_past_self: false                # ...as a TRUE lagged mirror (not a static frozen file)
+  nit_model_filename: frozen_v15.pth     # 'nit' seat -> frozen V15, unforced
+  tag_model_filename: frozen_v16.pth     # 'tag' seat -> frozen V16, unforced
+  disable_focus_rounds: true             # unchanged from V17 -- keep the field composition constant

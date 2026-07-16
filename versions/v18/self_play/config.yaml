@@ -1,0 +1,82 @@
+version: "v18"
+training:
+  # --- Discretized bet-size action space (inherited from V14, UNCHANGED) --------------
+  # The raise buckets the hero (and per-size EV targets) use, as pot fractions; `null` = ALL-IN.
+  raise_pot_fractions: [0.33, 0.66, 1.0, null]   # 0.33/0.66/1.0 pot + all-in
+  # V18: pure ARCHITECTURE refactor (opponent wiring -> the Opponent interface in opponents.py),
+  # not a new training experiment. Same recipe as v17_gauntlet was INTENDED to run. Budget here
+  # is the SANITY-CHECK size (20k), not a production run -- bump target_hands once the sanity
+  # check confirms the refactor is behaviorally sound. See versions/v18/SPECS.md.
+  target_hands: 20000
+  batch_size: 256
+  epochs_per_batch: 3
+  sim_batch_size: 2000
+  learning_rate: 0.001
+  equity_sims: 2000
+  mid_flight_diagnostics_interval: 5000
+  checkpoint_dump_interval: 25000   # distinct restore-point checkpoint every N hands (weights/checkpoints/)
+  # --- Training knobs: IDENTICAL to V17/V17_gauntlet's validated recipe (do NOT change here) ---
+  aux_loss_weight: 0.0          # 0 = bluff/strength/equity heads OFF
+  disable_target_shaping: true  # preflop tightness prior off; COUNTERFACTUAL_WEIGHT always ON (V17 fix)
+  target_clip_bb: 40.0          # VARIANCE clip -- KEEP ON (removing it diverged the critic)
+  disable_bootstrap: false      # heuristic warmup generates good-play examples (decays by 30k)
+  disable_exploration: false    # 5% random + heuristic anchor -> model visits diverse states
+  policy_target_source: counterfactual  # 'realized' (legacy) | 'counterfactual'
+  range_aware_equity: true      # hero equity vs each opp's VPIP-color range (opponent adaptation)
+  policy_tightness_bb: 2.0      # realization discount on the actor target
+  ablate_hole_cards: false
+  policy_target_temperature: 1.0
+  policy_entropy_penalty: 0.0
+
+curriculum:
+  # UNCHANGED from V17/V17_gauntlet's validated recipe -- this pass only refactors the opponent
+  # PLUMBING, not the training recipe itself.
+  phase_1_max_hands: 10000
+  phase_1_stacks: [100.0]
+  phase_5_focus_rounds: true
+  disable_extreme_stacks: true  # the old 10-300bb fat-tail curriculum stays OFF
+  # V15 DoN-SHAPED depth MIXTURE. Per hand, pick a band by weight then sample a uniform depth
+  # within it — short-weighted with a real deep tail so ONE model covers the whole DoN arc.
+  #   [lo_bb, hi_bb, weight]
+  stack_depth_mix:
+    - [5, 14, 0.55]     # late-game short (v14's proven zone — kept dense)
+    - [14, 30, 0.30]    # mid-game
+    - [30, 50, 0.15]    # early-game deep tail
+  # fixed_stack_bb intentionally UNSET so stack_depth_mix takes over.
+
+# --- Opponent lineup (V18: DECLARATIVE format, opponents.py's build_opponent_pool) -------------
+# Same INTENDED composition as v17_gauntlet: 'nit'->frozen V15, 'tag'->frozen V16, 'past'->true
+# lagged self-play mirror, 'fish'/'maniac' stay scripted heuristics. NOTE: v17_gauntlet's actual
+# trained checkpoint never really got frozen V16 in the 'tag' seat (a wiring bug silently
+# nullified it, see versions/v17_gauntlet/SPECS.md "CORRECTION") -- this config is what was
+# ALWAYS intended, and the refactor's whole point is that this declarative shape can't have that
+# class of bug. So a sanity run here will behave a bit differently from v17_gauntlet's own early
+# trajectory (frozen V16 genuinely plays in the tag seat this time), which is expected, not a
+# refactor regression.
+#
+# Each pool entry: {style, weight, model?, forced?, lagged_self?}
+#   - model: a checkpoint filename (resolved against this version's weights/ dir) -> NNOpponent,
+#     UNFORCED by default (a real trained network keeps its own tendencies; forcing it toward an
+#     archetype stereotype is an explicit opt-in via forced: true, not the default).
+#   - lagged_self: true -> 'past' only; a TRUE lagged self-play mirror, refreshed every 5k hands
+#     (NOT a static file -- mutually exclusive with 'model' on the same entry).
+#   - neither model nor lagged_self -> HeuristicOpponent (scripted archetype bot), forced=true.
+opponents:
+  pool:
+    - style: fish
+      weight: 0.25
+    - style: maniac
+      weight: 0.15
+    - style: nit
+      weight: 0.20
+      model: frozen_v15.pth
+      forced: false
+    - style: tag
+      weight: 0.20
+      model: frozen_v16.pth
+      forced: false
+    - style: past
+      weight: 0.20
+      lagged_self: true
+  live_players: 6                        # 6-max to match live tables
+  disable_focus_rounds: true              # unchanged from V17/V17_gauntlet -- keep the field composition constant

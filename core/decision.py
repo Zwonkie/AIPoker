@@ -5,6 +5,7 @@ from core.models.v13_engine import V13ModelEngine
 from core.models.v14_engine import V14ModelEngine, V14_ACTION_KEYS
 from core.models.v15_engine import V15ModelEngine
 from core.models.v17_engine import V17ModelEngine
+from core.models.v17_gauntlet_engine import V17GauntletModelEngine
 
 # Live action selection: SAMPLE from the actor policy (matching training/eval, which sample rather
 # than argmax) but SHARPEN with a temperature < 1 so genuine mixing survives on close spots while
@@ -110,13 +111,24 @@ class PokerDecisionEngine:
         # loading garbage. They are pruned; their weight files remain on disk for reproducibility.
         # To re-enable a legacy model, first fix its weights/contract, THEN re-add it here.
         self.models = {
+            # V17_gauntlet: same actor-critic/fold-relative recipe as V17, opponent pool widened
+            # to frozen V15 (nit seat) and a true lagged self-play mirror (past seat) -- the tag
+            # seat was INTENDED to load frozen V16 but a wiring bug silently nullified it (see
+            # versions/v17_gauntlet/SPECS.md "CORRECTION"); this checkpoint actually trained
+            # against the TAG heuristic there, not frozen V16. Still a real, valid improvement --
+            # per-seat action-forcing bypassed for the real models that DID load correctly.
+            # Beats V17 on 3/4 bb100_vs_standard_fields (loose_short +28.9->+32.5, tight_short
+            # +18.4->+26.8, tight_deep +32.6->+35.4; loose_deep +90.3->+69.8 -- still strongly
+            # positive, reads as more balanced not a regression) and more than doubles V17's
+            # deep-stack vpip_adapts_to_style delta (+5.8pt->+12.3pt). model_verify: 10 PASS/1
+            # WARN/1 FAIL (the FAIL is the same pre-existing deep-stack OOD defect every version
+            # in this line carries, tracked as V18 [P0]). Beats frozen-V17 by +84.3 BB/100. ACTIVE.
+            'Herocules (v17_gauntlet)': V17GauntletModelEngine(weight_name="expert_main.pth"),
             # V17: same 6-action sized contract as V14/V15, actor regret-matching routed through
             # the critic's own (detached) Q-values past 30k hands with a fold-relative baseline.
             # Fixes the air/draws overcontinuation V16 had (air_folds_mostly 0.62->1.00) WITHOUT
             # v16_foldregret's style-flip regression (loose_deep BB/100 +62.1->+90.3, not a
-            # collapse). model_verify: 10 PASS/1 WARN/1 FAIL (the FAIL is the pre-existing
-            # deep-stack OOD defect every version in this line carries, tracked as V18 [P0]).
-            # Beats frozen-V16 by +87.5 BB/100. ACTIVE.
+            # collapse). Superseded by V17_gauntlet above; kept as fallback.
             'Herocules (v17 Actor-Critic)': V17ModelEngine(weight_name="expert_main.pth"),
             # V15: same 6-action sized contract as V14, retrained on a DoN-shaped stack mixture
             # (5-50bb) + a frozen-V14 expert opponent. Fixes v14's deep-stack OOD; loose-aggressive
@@ -127,7 +139,7 @@ class PokerDecisionEngine:
             # V13: equity-primary + range-aware equity. Kept as the tagged MILESTONE fallback.
             'Herocules (v13 Range-Aware)': V13ModelEngine(weight_name="expert_main.pth"),
         }
-        self.active_model_name = 'Herocules (v17 Actor-Critic)'
+        self.active_model_name = 'Herocules (v17_gauntlet)'
         self.bridge_v9 = ContractV8V9()
         self.bridge_v11 = ContractV11()
         self.bridge_v13 = ContractV12(max_seq_len=20)
@@ -139,8 +151,8 @@ class PokerDecisionEngine:
         if model_name in self.models:
             self.active_model_name = model_name
         else:
-            print(f"Warning: {model_name} is not loaded or supported. Falling back to V17.")
-            self.active_model_name = 'Herocules (v17 Actor-Critic)'
+            print(f"Warning: {model_name} is not loaded or supported. Falling back to V17_gauntlet.")
+            self.active_model_name = 'Herocules (v17_gauntlet)'
 
     def _v14_size_to_slider(self, frac, board_state):
         """Translate a V14 pot-fraction raise bucket into (raise_size_chips, slider_fraction).
@@ -202,11 +214,12 @@ class PokerDecisionEngine:
         is_v13_model = getattr(active_model, 'is_v13', False) or 'v13' in self.active_model_name.lower()
         is_v14_model = getattr(active_model, 'is_v14', False) or 'v14' in self.active_model_name.lower()
         is_v15_model = getattr(active_model, 'is_v15', False) or 'v15' in self.active_model_name.lower()
-        is_v17_model = getattr(active_model, 'is_v17', False) or 'v17' in self.active_model_name.lower()
+        is_v17_gauntlet_model = getattr(active_model, 'is_v17_gauntlet', False) or 'v17_gauntlet' in self.active_model_name.lower()
+        is_v17_model = (not is_v17_gauntlet_model) and (getattr(active_model, 'is_v17', False) or 'v17' in self.active_model_name.lower())
         is_v11_model = getattr(active_model, 'is_v11', False) or 'v11' in self.active_model_name.lower()
-        # V14/V15/V17 share the IDENTICAL 6-action sized contract -> one live path (selection +
-        # slider sizing). Anything gated on "the sized model" uses this combined flag.
-        is_sized_model = is_v14_model or is_v15_model or is_v17_model
+        # V14/V15/V17/V17_gauntlet share the IDENTICAL 6-action sized contract -> one live path
+        # (selection + slider sizing). Anything gated on "the sized model" uses this combined flag.
+        is_sized_model = is_v14_model or is_v15_model or is_v17_model or is_v17_gauntlet_model
         try:
             if is_v13_model or is_sized_model:
                 # V13/V14/V15/V17 share the sequence contract (ContractV12, 35-dim ctx) and the
@@ -266,7 +279,7 @@ class PokerDecisionEngine:
             else:
                 action = choice   # FOLD / CALL
                 size_note = choice
-            _tag = "V17" if is_v17_model else ("V15" if is_v15_model else "V14")
+            _tag = "V17_gauntlet" if is_v17_gauntlet_model else ("V17" if is_v17_model else ("V15" if is_v15_model else "V14"))
             reason = (f"{_tag} sampled (temp={temp:.2f}"
                       + (", free-check fold-masked" if free_check else "")
                       + (", raise-unavail" if not bet_raise_available else "")

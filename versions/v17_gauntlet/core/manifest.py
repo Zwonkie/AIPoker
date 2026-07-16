@@ -1,13 +1,20 @@
 """V17_gauntlet manifest — clones V17 (versions/v17, deployed live), same 6-action contract/arch/
-training recipe. ONE change: the opponent pool. Pulls the V18 backlog item "widen the
+training recipe. ONE INTENDED change: the opponent pool. Pulls the V18 backlog item "widen the
 frozen-opponent pool" forward -- instead of scripted heuristics + a single frozen predecessor, the
-hero now faces THREE genuinely skilled frozen/lagged opponents in three of its five opponent seats:
+hero was INTENDED to face THREE genuinely skilled frozen/lagged opponents in three of its five
+opponent seats:
 
-- `nit` slot -> frozen V15 (`frozen_v15.pth`), UNFORCED (see below)
+- `nit` slot -> frozen V15 (`frozen_v15.pth`), UNFORCED (see below) -- WORKED AS INTENDED.
 - `tag` slot -> frozen V16 (`frozen_v16.pth`), UNFORCED -- NEW model-loading wiring, this slot was
-  previously hardcoded to always use the pure heuristic bot with no model option at all
+  previously hardcoded to always use the pure heuristic bot with no model option at all.
+  **CORRECTION (found 2026-07-16 while planning V18's opponent-architecture refactor): this wiring
+  had a bug (`opp_model = self.tag_model` immediately followed by a leftover `opp_model = None`)
+  that silently nullified it. The already-trained `v17_gauntlet` checkpoint actually trained
+  against the TAG heuristic bot in this seat, NOT frozen V16.** See versions/v17_gauntlet/SPECS.md
+  "CORRECTION" section. Fixed going forward in versions/v18 (not retroactive to this checkpoint).
 - `past` slot -> TRUE lagged self-play mirror of V17_gauntlet's own training history
-  (`freeze_past_self: false`, the standard mechanism -- NOT a static frozen file)
+  (`freeze_past_self: false`, the standard mechanism -- NOT a static frozen file) -- WORKED AS
+  INTENDED.
 - `fish`/`maniac` stay pure scripted heuristics, for continued diversity against non-NN opponents
 
 Prerequisite fix required: `maniac`/`nit`/`fish` style slots have STYLE-FORCING logic in

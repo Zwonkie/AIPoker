@@ -237,10 +237,10 @@ class PHPHelpApp(ctk.CTk):
         self.mode_dropdown = ctk.CTkOptionMenu(self.sidebar, values=["Recommendation Only", "Automatic Play"], variable=self.mode_var)
         self.mode_dropdown.grid(row=4, column=0, padx=20, pady=5, sticky="ew")
         
-        # Model Selection. Default MUST match core/decision.py's active model (v17) so the UI
-        # label reflects what actually runs — the engine defaults to v17 regardless, but a stale
-        # label here would be misleading.
-        self.model_var = ctk.StringVar(value="Herocules (v17 Actor-Critic)")
+        # Model Selection. Default MUST match core/decision.py's active model (v17_gauntlet) so the
+        # UI label reflects what actually runs — the engine defaults to v17_gauntlet regardless,
+        # but a stale label here would be misleading.
+        self.model_var = ctk.StringVar(value="Herocules (v17_gauntlet)")
         self.model_label = ctk.CTkLabel(self.sidebar, text="Decision Model:", anchor="w")
         self.model_label.grid(row=5, column=0, padx=20, pady=(10, 0), sticky="w")
         self.model_dropdown = ctk.CTkOptionMenu(
@@ -248,8 +248,9 @@ class PHPHelpApp(ctk.CTk):
             # Only models that actually load are listed (see core/decision.py registry). The
             # legacy Pluribus/v8-v11 entries were pruned — their weights are missing or use the
             # old 159-feature contract, so selecting them would output random actions live.
-            # v17/v15/v14 = discretized bet-size action space (raises-to-X / all-in); v13 kept as fallback.
+            # v17_gauntlet/v17/v15/v14 = discretized bet-size action space (raises-to-X / all-in); v13 kept as fallback.
             values=[
+                "Herocules (v17_gauntlet)",
                 "Herocules (v17 Actor-Critic)",
                 "Herocules (v15 DoN)",
                 "Herocules (v14 Sized)",
@@ -991,13 +992,15 @@ class PHPHelpApp(ctk.CTk):
                     equity = None
                     sim_msg = None
                     equity_meta = {"method": "vs-random", "opp_colors": None, "num_opponents": num_opponents}
-                    # V13/V14/V15/V17 were all trained with RANGE-AWARE equity (hero equity vs each
-                    # opponent's VPIP-color range); feeding vs-random here would be a silent
-                    # train/serve mismatch. Use the matching version's identical impl.
+                    # V13/V14/V15/V17/V17_gauntlet were all trained with RANGE-AWARE equity (hero
+                    # equity vs each opponent's VPIP-color range); feeding vs-random here would be
+                    # a silent train/serve mismatch. Use the matching version's identical impl.
                     _active_lower = self.decision_engine.active_model_name.lower()
                     if 'v17' in _active_lower or 'v15' in _active_lower or 'v14' in _active_lower or 'v13' in _active_lower:
                         try:
-                            if 'v17' in _active_lower:
+                            if 'v17_gauntlet' in _active_lower:
+                                from versions.v17_gauntlet.self_play.simulator import compute_range_aware_equity
+                            elif 'v17' in _active_lower:
                                 from versions.v17.self_play.simulator import compute_range_aware_equity
                             elif 'v15' in _active_lower:
                                 from versions.v15.self_play.simulator import compute_range_aware_equity
@@ -1183,7 +1186,8 @@ class PHPHelpApp(ctk.CTk):
                         fold_btn_coord=fold_btn_coord,
                         action_type=action,
                         window_pos=win_pos,
-                        window_size=win_size
+                        window_size=win_size,
+                        log_fn=self.append_log
                     )
                     if success:
                         self.append_log("[Automation] Thread interrupt completed successfully.")
