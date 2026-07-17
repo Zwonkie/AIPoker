@@ -187,6 +187,33 @@ V20_preflopEq_AI), so the gap matters more than it used to.
 training's exact mechanism. Scoped conceptually, not started — the live pipeline currently has no
 per-seat "have they acted since the last raise" tracking at all.
 
+### [OPP-5] Opponent-style/VPIP-AGG-color read may not be load-bearing 🔴 OPEN
+**First identified**: `model_verify`'s `opponent_style_sweep` check, added 2026-07-15 (first
+version to carry it). **Confirmed**: V20_preflopEq_AI (spread 0.000, completely flat) and V21
+(spread 0.001, then re-confirmed at 0.004 after widening the sweep from 3 to 5 equity points to
+cover the actual fold/continue transition zone — ruling out "the two saturated endpoints just
+happened to hide a real mid-curve difference").
+
+**Simple**: Facing the identical bet at the identical hand strength, we play essentially the same
+way against a tight, disciplined opponent (a "nit") as against a loose, aggressive one (a
+"maniac") — the model doesn't seem to actually use its read on who it's up against.
+
+**Technical**: `check_opponent_style_sweep` holds equity/stack/pot/call fixed and only varies the
+fed-in opponent VPIP/AGG archetype (Blue=nit through Red=maniac). Every version tested shows
+P(fold) essentially flat across all four archetypes (spread ≤0.004), despite the model receiving
+per-opponent VPIP-color/AGG-color context features since early versions. This is a DIFFERENT gap
+from [OPP-2]/[OPP-3] (those are about the in-hand ACTION sequence not being per-opponent-attributed
+or size-aware) — this is about whether the per-seat HUD-style CONTEXT features (present since early
+versions, no architecture change needed to use them) are actually load-bearing at all, and the
+answer looks like no.
+
+**Suggestion**: Root cause not yet isolated. Worth checking whether this is a genuine dead input
+(plausible: the deterministic heuristic-bot training population doesn't reward differentiating by
+style enough to matter for the loss — a similar population-level flatness to [BET-1]'s root cause)
+versus an actual wiring/normalization issue in how `VPIP_MAP`/`AGG_MAP` values reach the model. A
+cheap first check: an isolated sensitivity ablation on just the VPIP/AGG color inputs (mirroring
+`equity_edge_sensitivity`'s approach) before assuming it's purely a training-population artifact.
+
 ---
 
 ## Format fit
@@ -223,27 +250,6 @@ specific spot.
 **Suggestion**: Spot-check a handful of well-known solved situations (e.g. published heads-up
 shove/fold charts) against actual model output, as an independent axis alongside the existing
 suite.
-
-### [VAL-2] Cross-scale predecessor comparison gap ⚪ METHODOLOGY
-**First identified**: V20 (`beats_frozen_predecessor` SKIP vs frozen `nit`/`tag`).
-**Reconfirmed**: V20_preflopEq (SKIP vs frozen V20 — context_dim 35 vs 37).
-**Worked around, not fixed**: V20_preflopEq_AI (used same-architecture opponents only, so its own
-`beats_frozen_predecessor` actually ran and PASSED — but that's avoidance, not a general fix).
-
-**Simple**: We can't always directly test a new version against its immediate predecessor if the
-internal number format changed — some comparisons have to be skipped rather than measured.
-
-**Technical**: No per-model contract-selection mechanism exists. A frozen checkpoint from a
-DIFFERENT `contract_version` can't be safely loaded as an opponent inside a differently-scaled
-version's simulator — every opponent query funnels through the querying version's OWN contract
-instance, so a shape/scale mismatch either crashes (different context_dim, safe) or silently
-corrupts behavior (same context_dim, different scale — the exact class of bug found and fixed in
-V20_preflopEq's training pipeline, see V20_preflopEq/specs.md).
-
-**Suggestion**: Build a mechanism to query each frozen opponent through the contract IT was
-trained under, not the querying version's own. Flagged as backlog three times now (V20,
-V20_preflopEq, this doc) without being built — worth doing once a version genuinely needs a
-cross-scale comparison rather than avoiding it again.
 
 ### [VAL-3] `free_check_low_fold` residual mass 🟡 PARTIAL
 **Simple**: When there's no cost to seeing another card, the model's raw output occasionally still
@@ -308,3 +314,16 @@ entirely from the live equity calculation, as if not contesting the pot. Fixed b
 V19: every training-time model query (hero's own AND every opponent's) silently defaulted
 `BoardState.hero_position` to Button — confirmed universal across V12-V18, training-only (live
 serve was always correct). Fixed by threading each actor's real button-relative position through.
+
+### [RESOLVED-6, accepted-as-policy] Cross-scale predecessor comparison gap 🟢 RESOLVED
+Originally `[VAL-2]`, first identified V20 (`beats_frozen_predecessor` SKIP vs frozen `nit`/`tag`
+when `contract_version`/context_dim changed), reconfirmed V20_preflopEq, worked around (not fixed)
+in V20_preflopEq_AI. **2026-07-17: accepted as by-design, not a gap to close.** Decision: an older
+model trained under a stale/incompatible contract is not a useful opponent or comparison baseline
+for a newer version regardless of whether a cross-scale query mechanism existed — those older
+models weren't strong enough in general for beating them to be meaningful signal, and building a
+mechanism to query each frozen opponent through its own original contract would serve a comparison
+we don't actually want while the model line is still moving quickly on base behavior. Revisit only
+if the model line matures to a point where genuinely strong historical checkpoints exist and a
+same-generation baseline becomes valuable again; until then, `beats_frozen_predecessor` SKIPping
+across an incompatible contract change is expected, not a defect.

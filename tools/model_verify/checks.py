@@ -319,6 +319,177 @@ def check_equity_edge_sensitivity(rc):
     return CheckResult(status, detail, data)
 
 
+# =====================================================================================
+# SENSITIVITY SWEEPS -- one clean parameter axis per check, so a collapsed/flatlined/
+# wrong-direction response is visible at a glance (as a line chart or small heatmap) rather than
+# buried in an aggregate pass/fail number. Complements the spot-checks above: those probe SPECIFIC
+# known-bad neighborhoods (the V14 trash-jam, the short-stack polarization spot); these sweep a
+# whole practical range of ONE (or two) input dimensions and watch for "nothing moved at all",
+# which is the signature of a feature that silently isn't load-bearing (wrong tensor index, a
+# dead weight, a normalization bug) rather than a specific behavioral defect. WARN-only by design
+# -- there usually isn't a single "correct" curve shape to gate on, only "did it respond at all".
+# =====================================================================================
+
+def _policy_sweep_range(records, action_keys):
+    """Robust flatline detector across a full parameter sweep: max, over actions, of that
+    action's probability range (max-min) across every point in the sweep. Endpoint-only TV
+    (first vs last) can miss a real non-monotonic bump in the middle -- e.g. argmax swinging
+    to a different action mid-sweep and back to the SAME action at both ends -- this doesn't."""
+    return max(max(r["policy"][k] for r in records) - min(r["policy"][k] for r in records)
+               for k in action_keys)
+
+
+def check_stack_full_sweep(rc):
+    """Full-range 1D stack sweep (5-180bb) at a fixed marginal spot (~50% equity facing a
+    proportionally-sized bet), independent of the narrow OOD-guard neighborhoods above (those
+    only cover 6-40bb). Bet/pot sizes scale WITH stack so every point stays a realistic
+    ~20%-pot bet rather than a nonsensical tiny-bet-at-huge-stack or huge-bet-at-tiny-stack.
+    WARN-only flatline detector: stack alone has no single "correct" direction (short-stack
+    push/fold vs deep-stack pot-control are both legitimate depending on the rest of the read),
+    so this only flags total non-responsiveness across the whole practical range -- NOTE for
+    V20+ (contract_version>=4): stack-derived features clamp at 50bb by design (the live-safety
+    clamp, see versions/v20/SPECS.md), so a flat tail from 60bb-180bb on those models is the
+    KNOWN clamp behavior, not a new defect -- the signal that matters is whether 5bb-40bb (fully
+    unclamped) shows movement."""
+    stacks = [5, 10, 15, 25, 40, 60, 90, 130, 180]
+    data = []
+    for s in stacks:
+        ctx = build_ctx(equity=0.50, stack_bb=s, pot_bb=s * 0.2, call_bb=s * 0.1, num_active_opp=2,
+                        contract_version=rc.manifest.contract_version)
+        policy, _ = run_policy(rc.model, ctx, rc.action_keys, device=rc.device)
+        data.append({"stack_bb": s, "policy": policy, "argmax": max(policy, key=policy.get)})
+    rng = _policy_sweep_range(data, rc.action_keys)
+    detail = (f"max action-probability range across the full stack sweep: {rng:.3f}  "
+              f"(argmax path: {[d['argmax'] for d in data]})")
+    status = 'PASS' if rng > 0.05 else 'WARN'
+    if status == 'WARN':
+        detail += " -- flat across the whole practical stack range; stack feature may not be load-bearing"
+    return CheckResult(status, detail, data)
+
+
+def check_position_sweep(rc):
+    """Full 1D sweep over hero_position (0-5) at a fixed marginal preflop spot. Regression
+    watch for the historical hero_position bug (universal, training-only -- fixed in V19, see
+    auto-memory v19-p0-position-fix / versions/v19/SPECS.md). WARN-only flatline detector --
+    position's "correct" direction isn't a single scalar prior (it depends on the rest of the
+    table), so this only flags total non-responsiveness."""
+    fold_i = _find(rc.action_keys, 'fold')
+    if fold_i is None:
+        return CheckResult('SKIP', 'no fold action')
+    data = []
+    for p in range(6):
+        ctx = build_ctx(equity=0.45, stack_bb=40, pot_bb=3, call_bb=1.5, position=p,
+                        num_active_opp=2, street=0, contract_version=rc.manifest.contract_version)
+        policy, _ = run_policy(rc.model, ctx, rc.action_keys, device=rc.device)
+        data.append({"position": p, "policy": policy, "argmax": max(policy, key=policy.get)})
+    fold_vals = [d["policy"][rc.action_keys[fold_i]] for d in data]
+    spread = max(fold_vals) - min(fold_vals)
+    detail = f"P(fold) across position 0-5: {[round(v, 2) for v in fold_vals]} (spread {spread:.3f})"
+    status = 'PASS' if spread > 0.03 else 'WARN'
+    if status == 'WARN':
+        detail += " -- policy barely varies by position; position feature may not be load-bearing"
+    return CheckResult(status, detail, data)
+
+
+# Opponent-style archetypes mirroring the HUD-color -> VPIP/AGG convention used across every
+# version's contract.py (e.g. versions/v20_preflopEq/core/contract.py VPIP_MAP/AGG_MAP: Blue=nit,
+# Green=tag, Yellow=loose/station, Red=loose-aggressive). Defined locally (not imported) so this
+# tool stays version-agnostic -- these are illustrative reference points, not a hard dependency.
+STYLE_ARCHETYPES = [
+    (0, 'Blue (nit)', 0.10, 0.18),
+    (1, 'Green (tag)', 0.22, 0.46),
+    (2, 'Yellow (station)', 0.30, 0.63),
+    (3, 'Red (maniac)', 0.45, 0.85),
+]
+
+
+def check_opponent_style_sweep(rc):
+    """2D sweep: equity x opponent-style-archetype (Blue/Green/Yellow/Red), P(fold) facing an
+    identical bet. A dimension model_verify never probed before. Poker prior: the SAME bet from a
+    tighter/more-aggressive villain should play scarier (more folds) than the identical bet from a
+    looser villain, at fixed hero equity. WARN-only / diagnostic -- first version to carry this
+    check, but it directly probes the [P6] backlog concern (versions/v16/SPECS.md: "opponent-
+    action attribution") from a different angle: not the action-sequence gap P6 tracks, but
+    whether the per-opponent VPIP/AGG color inputs the model has ALWAYS received are actually
+    load-bearing at all."""
+    fold_i = _find(rc.action_keys, 'fold')
+    if fold_i is None:
+        return CheckResult('SKIP', 'no fold action')
+    data = []
+    # [2026-07-17] 0.25 and 0.45 were both already saturated (fold~1.0 / fold~0.0) for every
+    # style, so the original 3-point sweep couldn't tell "opponent style doesn't matter" apart
+    # from "opponent style shifts WHERE the fold/continue threshold sits, but not by much once
+    # you're already past it" -- the two additional points sample the actual transition zone
+    # between those saturated ends, where a real per-style continuation-threshold shift (if the
+    # model has one) would actually show up.
+    for eq in (0.25, 0.30, 0.35, 0.45, 0.65):
+        for style_idx, style_name, vpip, agg in STYLE_ARCHETYPES:
+            ctx = build_ctx(equity=eq, stack_bb=40, pot_bb=10, call_bb=6, num_active_opp=1,
+                            opp_vpip=vpip, opp_agg=agg, contract_version=rc.manifest.contract_version)
+            policy, _ = run_policy(rc.model, ctx, rc.action_keys, device=rc.device)
+            data.append({"equity": eq, "style_idx": style_idx, "style": style_name,
+                         "policy": policy, "argmax": max(policy, key=policy.get)})
+    by_eq = {}
+    for d in data:
+        by_eq.setdefault(d["equity"], []).append(d)
+    spreads = []
+    for eq, rows in by_eq.items():
+        rows.sort(key=lambda r: r["style_idx"])
+        fold_vals = [r["policy"][rc.action_keys[fold_i]] for r in rows]
+        spreads.append(max(fold_vals) - min(fold_vals))
+    avg_spread = sum(spreads) / len(spreads)
+    detail = f"avg P(fold) spread across Blue->Red opponent archetypes (same bet, fixed equity): {avg_spread:.3f}"
+    status = 'PASS' if avg_spread > 0.03 else 'WARN'
+    if status == 'WARN':
+        detail += " -- fold rate barely moves with opponent style; per-opponent VPIP/AGG read may not be load-bearing"
+    return CheckResult(status, detail, data)
+
+
+def check_hand_strength_sweep(rc):
+    """Full 5-point curve companion to check_hand_strength_sensitivity's 2-point TV check -- same
+    synthetic ablation (hand_strength swung independently of equity; never decoupled like this in
+    real play, isolates whether the network reads ctx[36] at all), but shaped for a line chart so
+    a flatline OR a non-monotonic kink is visible, not just one aggregate number. SKIP if the
+    model's context has no hand_strength feature (context_dim<37)."""
+    if getattr(rc.manifest, 'context_dim', 35) < 37:
+        return CheckResult('SKIP', 'model context has no hand_strength feature (context_dim<37)')
+    values = [0.1, 0.3, 0.5, 0.7, 0.9]
+    data = []
+    for hs in values:
+        ctx = build_ctx(equity=0.45, stack_bb=40, pot_bb=10, call_bb=4, num_active_opp=2,
+                        contract_version=rc.manifest.contract_version, hand_strength=hs)
+        policy, _ = run_policy(rc.model, ctx, rc.action_keys, device=rc.device)
+        data.append({"hand_strength": hs, "policy": policy, "argmax": max(policy, key=policy.get)})
+    rng = _policy_sweep_range(data, rc.action_keys)
+    detail = f"max action-probability range across the hand_strength={values[0]}-{values[-1]} sweep: {rng:.3f}"
+    status = 'PASS' if rng > 0.03 else 'WARN'
+    if status == 'WARN':
+        detail += " -- negligible response across the full sweep"
+    return CheckResult(status, detail, data)
+
+
+def check_equity_edge_sweep(rc):
+    """Full multi-point curve companion to check_equity_edge_sensitivity's 2-point TV check,
+    sweeping the raw equity_edge override directly (not via num_active) at fixed
+    equity/stack/field, shaped for a line chart. SKIP if the model's context has no equity_edge
+    feature (context_dim<37)."""
+    if getattr(rc.manifest, 'context_dim', 35) < 37:
+        return CheckResult('SKIP', 'model context has no equity_edge feature (context_dim<37)')
+    values = [0.4, 0.8, 1.2, 1.6, 2.4, 3.2]
+    data = []
+    for edge in values:
+        ctx = build_ctx(equity=0.45, stack_bb=40, pot_bb=10, call_bb=4, num_active_opp=2,
+                        contract_version=rc.manifest.contract_version, equity_edge=edge)
+        policy, _ = run_policy(rc.model, ctx, rc.action_keys, device=rc.device)
+        data.append({"equity_edge": edge, "policy": policy, "argmax": max(policy, key=policy.get)})
+    rng = _policy_sweep_range(data, rc.action_keys)
+    detail = f"max action-probability range across the equity_edge={values[0]}-{values[-1]} sweep: {rng:.3f}"
+    status = 'PASS' if rng > 0.03 else 'WARN'
+    if status == 'WARN':
+        detail += " -- negligible response across the full sweep"
+    return CheckResult(status, detail, data)
+
+
 FAST_CHECKS = [
     ("equity_ablation_monotonic", "P(fold) falls / P(aggressive) rises as equity rises",
      "general health", check_equity_ablation_monotonic),
@@ -340,6 +511,16 @@ FAST_CHECKS = [
      "V20_preflopEq -- is the new feature actually load-bearing", check_hand_strength_sensitivity),
     ("equity_edge_sensitivity", "policy responds to equity_edge at fixed equity/field (SKIP if context_dim<37)",
      "V20_preflopEq -- is the new feature actually load-bearing", check_equity_edge_sensitivity),
+    ("stack_full_sweep", "full 5-180bb stack sweep at a fixed marginal spot doesn't flatline",
+     "sensitivity sweep -- stack", check_stack_full_sweep),
+    ("position_sweep", "full 0-5 position sweep at a fixed marginal spot doesn't flatline",
+     "sensitivity sweep -- position / V19 hero_position regression watch", check_position_sweep),
+    ("opponent_style_sweep", "P(fold) responds to opponent VPIP/AGG archetype (Blue->Red) at fixed equity",
+     "sensitivity sweep -- opponent style / P6-adjacent", check_opponent_style_sweep),
+    ("hand_strength_sweep", "full 5-point hand_strength curve doesn't flatline (SKIP if context_dim<37)",
+     "sensitivity sweep -- hand_strength", check_hand_strength_sweep),
+    ("equity_edge_sweep", "full multi-point equity_edge curve doesn't flatline (SKIP if context_dim<37)",
+     "sensitivity sweep -- equity_edge", check_equity_edge_sweep),
 ]
 
 
@@ -527,3 +708,108 @@ SLOW_CHECKS = [
 ]
 
 ALL_CHECKS = FAST_CHECKS + SLOW_CHECKS
+
+
+# =====================================================================================
+# PLAIN-ENGLISH DOCS -- one entry per check_id, surfaced in the rendered HTML report so a human
+# reading it doesn't need to open this source file to know what's being tested. Keep in sync
+# with ALL_CHECKS (a check with no entry here just renders without the explainer, it's not an
+# error) -- add one whenever a new check is added above.
+# =====================================================================================
+CHECK_DOCS = {
+    "equity_ablation_monotonic": dict(
+        what="Sweeps the model's win probability (equity) from very weak (5%) to very strong (95%), holding everything else fixed, and watches how often it folds vs bets/raises.",
+        expect="Folding should become rare and betting/raising should become common as equity rises -- a smooth swing from mostly-fold at low equity to mostly-aggressive at high equity.",
+        if_not="If fold doesn't drop or aggression doesn't rise, the model isn't using its own equity input correctly -- a fundamental, likely training-breaking bug (wrong feature index, dead equity pathway, or a catastrophic collapse).",
+    ),
+    "free_check_low_fold": dict(
+        what="Checks how often the model wants to fold when there's nothing to call (a free option) -- folding here is always a mistake since checking costs nothing.",
+        expect="Fold probability should be near zero whenever the price to continue is zero.",
+        if_not="A high raw rate here isn't necessarily a live bug (core/decision.py masks FOLD out of live sampling when checking is free), but a rising trend over versions means the model's own preference is drifting worse and the live mask is doing more of the work to paper over it.",
+    ),
+    "air_folds_mostly": dict(
+        what="Tests a clearly bad hand (~12% equity) facing a real bet across a range of stack depths.",
+        expect="The model should fold more often than not -- weak hands facing money should mostly give up.",
+        if_not="A model that keeps calling/raising with air is over-continuing with trash hands, bleeding chips broadly -- this was the historical V16 regression this check was built to catch.",
+    ),
+    "nuts_aggressive_mostly": dict(
+        what="Tests a near-certain winning hand (~92% equity) facing a real bet across stack depths.",
+        expect="The model should bet/raise more often than not -- strong hands should build the pot, not slow-play into passivity.",
+        if_not="A model that mostly calls/folds here is leaving value on the table with its best hands -- a passive-value-hand bug.",
+    ),
+    "deep_stack_ood_guard": dict(
+        what="Re-creates the exact spot that caused a real-money mistake: a marginal hand (35-55% equity) at a moderate-to-deep stack (15-40bb) facing one modest bet from a single opponent.",
+        expect="ALL-IN should never be the model's top choice here -- shoving a marginal hand for stacks this deep into a small bet is a severe, high-variance mistake.",
+        if_not="If ALL-IN wins, the model is repeating the live incident that motivated this check (a K9o 20bb trash-jam) -- a hard, deploy-blocking regression, not a stylistic quirk.",
+    ),
+    "short_stack_polarization": dict(
+        what="Tests short-stack (6-10bb) spots with decent equity (50-65%) facing a raise sized near the whole stack -- a classic 'push or fold' situation.",
+        expect="CALL should be rare -- with a stack this short and a raise this big, the correct play is almost always shove or fold, not a flat call sitting in between.",
+        if_not="A high call rate means the model hasn't learned short-stack push/fold theory and is leaking value through a 'mushy middle' action -- tracked as an open backlog item, not yet gating deploys (WARN-only).",
+    ),
+    "action_diversity": dict(
+        what="Sweeps equity and stack together and checks which action wins (argmax) across the whole grid.",
+        expect="Different regions of the grid should prefer different actions. A HEALTHY model can still have only 3-4 actions ever win (e.g. raise buckets legitimately never peak -- a known 'no middle gear' pattern) as long as no ONE action dominates almost everything.",
+        if_not="If one single action wins over ~85%+ of the whole grid regardless of equity/stack, that's a policy collapse -- the model has stopped discriminating between situations, historically caused by a 'raise-everything' or 'call-everything' training failure.",
+    ),
+    "no_nan_or_crash": dict(
+        what="Feeds the model deliberately extreme/edge-case inputs (near-zero stacks, zero opponents, huge pots, max street) that a real table could occasionally produce.",
+        expect="The model should always return a valid, finite policy -- no crashes, no NaN outputs.",
+        if_not="A NaN or crash means the model would go completely unresponsive (or the live client would error out) the moment a rare real-table edge case occurs -- previously caused by a padding-mask bug, now a permanent regression guard.",
+    ),
+    "hand_strength_sensitivity": dict(
+        what="Artificially swings the model's 'hand_strength' input (how strong the raw two cards are, independent of position/opponents) between weak and strong while holding equity fixed -- an ablation that could never happen in real play, used to check whether the model actually reads that input slot.",
+        expect="The policy should shift meaningfully between the weak and strong settings -- proof the feature carries real weight in the network, not just padding along for the ride.",
+        if_not="A flat/negligible response means this input may be dead weight -- either never learned as useful, or a wiring bug feeding it to the wrong place. WARN-only: no established 'correct' amount of movement yet, this is a first-pass load-bearing check.",
+    ),
+    "equity_edge_sensitivity": dict(
+        what="Same idea as hand_strength, but for 'equity_edge' -- a precomputed 'how much better than average for this field size is my equity' signal. Swings it independently of equity/opponent-count to isolate whether the network reads it.",
+        expect="The policy should respond meaningfully to this input on its own.",
+        if_not="A flat response suggests the feature may be redundant with (fully derivable from) equity + opponent-count, and the network never bothered to use it separately -- not dangerous, just a wasted input, worth knowing before investing more design effort in it.",
+    ),
+    "stack_full_sweep": dict(
+        what="Sweeps stack depth from very short (5bb) to very deep (180bb) at a fixed, middling equity spot with a bet sized proportionally to the stack, watching whether/how the chosen action changes.",
+        expect="SOME meaningful change in behavior across that huge range -- a stack-blind model would be a real gap, since push/fold, pot-control, and deep-stack play all call for different approaches.",
+        if_not="A totally flat policy across 5bb-180bb means stack depth isn't influencing decisions at all. For V20-family models a flat TAIL past ~50bb is an accepted, deliberate side effect of a live-safety clamp -- but flatness across the WHOLE range (including 5-40bb, never clamped) would be a real defect.",
+    ),
+    "position_sweep": dict(
+        what="Sweeps table position (0 through 5) at a fixed marginal spot, checking whether fold rate changes at all by seat.",
+        expect="Some spread -- position is one of the most basic levers in poker strategy (tighter early, looser on the button), so a healthy model should show at least a little sensitivity.",
+        if_not="A flatline means the model isn't differentiating by seat at all in this spot -- a hardcoded/default-position bug existed once before (since fixed in V19) and this check exists specifically to catch a repeat.",
+    ),
+    "opponent_style_sweep": dict(
+        what="Holds hero's own equity fixed and swaps only the opponent's read style (from a tight/aggressive 'nit' to a loose/aggressive 'maniac') while facing an identical bet, checking whether fold rate shifts.",
+        expect="Facing the SAME bet, hero should fold more against a villain whose range is scarier (tighter-but-betting = stronger range) and less against a looser villain, at the same equity.",
+        if_not="No shift at all means the model may be ignoring the opponent-style inputs entirely and just reacting to its own hand/equity in a vacuum -- a real exploitability gap (a fixed strategy is easier to beat than an adjusting one), and ties into a known open backlog item about per-opponent modeling.",
+    ),
+    "hand_strength_sweep": dict(
+        what="Full 5-point curve version of hand_strength_sensitivity (same ablation, more points) so a flatline OR a non-monotonic kink is visible on a chart, not just one aggregate number.",
+        expect="Same as hand_strength_sensitivity: a meaningful, ideally smooth response across the curve.",
+        if_not="Same as hand_strength_sensitivity -- WARN-only, diagnostic.",
+    ),
+    "equity_edge_sweep": dict(
+        what="Full multi-point curve version of equity_edge_sensitivity (same ablation, more points) so a flatline OR a non-monotonic kink is visible on a chart, not just one aggregate number.",
+        expect="Same as equity_edge_sensitivity: a meaningful, ideally smooth response across the curve.",
+        if_not="Same as equity_edge_sensitivity -- WARN-only, diagnostic.",
+    ),
+    "vpip_adapts_to_style": dict(
+        what="Runs real simulated hands against an all-tight ('nit') table vs an all-loose ('fish') table, and measures how often hero voluntarily enters a pot (VPIP) against each.",
+        expect="Hero's VPIP should be noticeably HIGHER against the loose/weak table than the tight table (by at least ~5 percentage points) -- playing more hands where opponents are more likely to be weak, fewer where they're not.",
+        if_not="A flat VPIP regardless of opponent tightness means hero isn't adapting its starting-hand selection to the table at all -- the exact bug this check was built to catch (a real historical regression).",
+    ),
+    "bb100_vs_standard_fields": dict(
+        what="Runs real simulated hands against four standard opponent-field presets (loose/tight x short/deep stacks) and measures hero's win rate (BB/100), compared against the last recorded baseline for this version.",
+        expect="Win rate should hold roughly steady or improve versus the stored baseline in all four fields.",
+        if_not="A drop of more than 15 BB/100 in any field vs baseline is flagged as a quiet regression -- the model got WORSE against a standard opponent mix, even though nothing else may be failing.",
+    ),
+    "beats_frozen_predecessor": dict(
+        what="Plays real simulated hands against a mixed field that includes a frozen snapshot of this version's immediate predecessor, so the new model literally plays against the old one.",
+        expect="The new version should have a positive win rate (profit) in that field -- a straightforward 'did we actually get better' test.",
+        if_not="A loss (negative BB/100) here means the new version may not actually be an improvement over what it's replacing -- a serious deploy-readiness concern.",
+    ),
+    "beats_offformula_stress": dict(
+        what="Swaps in a structurally different opponent (a discrete equity-tier lookup bot, not just a reweighted version of the same continuous pot-odds formula every training opponent uses) to see if hero's win rate holds up against a genuinely different playing style.",
+        expect="Win rate should stay positive or only mildly negative -- evidence the model learned general poker principles, not just how to beat its own training-opponent formula.",
+        if_not="A big win-rate collapse (below -30 BB/100) is a strong overfitting signal -- the model may have learned to exploit quirks specific to the training bots' math rather than transferable strategy.",
+    ),
+}

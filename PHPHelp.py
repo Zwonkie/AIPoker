@@ -1775,22 +1775,44 @@ class PHPHelpApp(ctk.CTk):
 
     def _decode_model_input(self, ev):
         """Decode the ACTUAL scalars the model consumed from its recorded input tensor (final step
-        of the 35-dim ContractV12 context). Ground truth — unlike re-deriving from the raw vision
-        state, which can diverge (a bridge bug). Indices per versions/v13/core/contract.py.
+        of the context vector). Ground truth — unlike re-deriving from the raw vision state, which
+        can diverge (a bridge bug).
+
+        Scale constants depend on which model family is active: v20/v20_preflopEq/v20_preflopEq_AI
+        share the money-feature rescale (STACK_SCALE=100, POT_SCALE=250, CALL_SCALE=100 -- see
+        versions/v20/core/contract.py and versions/v20_preflopEq/core/contract.py); every earlier
+        model (v13/v14/v15/v17/v19) uses the original bridge_v13 scale (/400 stack+call, /1000
+        pot). Decoding with the wrong constant silently produces plausible-but-wrong numbers --
+        this is what happened before this fix (see
+        history/Double_Or_Nothing_1171073366/flagged/turn_3_20260717_083117: displayed
+        hero_stack=200BB/pot=6BB for a v20_preflopEq_AI turn that actually saw the clamped
+        50BB/1.5BB, decoded with the stale /400,/1000 constants).
         Returns {} if no tensor was captured."""
         try:
             last = (ev or {}).get("model_input", {}).get("ctx")[0][-1]
             street = {0: "Preflop", 1: "Flop", 2: "Turn", 3: "River"}.get(round(last[6] * 3.0), "?")
-            return {
+            active_name = getattr(self.decision_engine, "active_model_name", "").lower()
+            is_v20_family = "v20" in active_name
+            stack_scale = 100.0 if is_v20_family else 400.0
+            pot_scale = 250.0 if is_v20_family else 1000.0
+            call_scale = 100.0 if is_v20_family else 400.0
+            out = {
                 "position": round(last[0] * 5.0, 2),
-                "hero_stack_bb": round(last[1] * 400.0, 1),
-                "pot_bb": round(last[2] * 1000.0, 2),
+                "hero_stack_bb": round(last[1] * stack_scale, 1),
+                "pot_bb": round(last[2] * pot_scale, 2),
                 "equity": round(last[3], 3),
                 "pot_odds": round(last[4], 3),
                 "num_active": round(last[5] * 10.0),
                 "street": street,
-                "to_call_bb": round(last[9] * 400.0, 2),
+                "to_call_bb": round(last[9] * call_scale, 2),
             }
+            # [V20_preflopEq / V20_preflopEq_AI] two appended features (context_dim 37). Raw
+            # floats, NOT money-compressed like stack/pot/call above -- see
+            # equity_edge_feature()/preflop_hand_strength() in versions/v20_preflopEq/core/contract.py.
+            if len(last) >= 37:
+                out["equity_edge"] = round(last[35], 3)
+                out["hand_strength"] = round(last[36], 3)
+            return out
         except Exception:
             return {}
 
@@ -2075,6 +2097,8 @@ class PHPHelpApp(ctk.CTk):
                 L.append(f"  street     : {seen.get('street')}     equity : {seen.get('equity')}   [method: {eqm.get('method')}]")
                 L.append(f"  pot        : {seen.get('pot_bb')}BB    to_call : {seen.get('to_call_bb')}BB    pot_odds : {seen.get('pot_odds')}")
                 L.append(f"  hero_stack : {seen.get('hero_stack_bb')}BB    position : {seen.get('position')}    num_active : {seen.get('num_active')}")
+                if 'equity_edge' in seen:
+                    L.append(f"  equity_edge: {seen.get('equity_edge')}    hand_strength : {seen.get('hand_strength')}")
                 # Bridge check: does what the model consumed match the raw vision read?
                 raw_street = {0: 'Preflop', 3: 'Flop', 4: 'Turn', 5: 'River'}.get(len(state.get('community_cards', [])), '?')
                 mism = []
@@ -2083,6 +2107,10 @@ class PHPHelpApp(ctk.CTk):
                 rc = state.get('call_amount')
                 if rc is None and seen.get('to_call_bb'):
                     mism.append(f"to_call OCR=None but model saw {seen.get('to_call_bb')}BB (bridge filled it)")
+                if 'equity_edge' in seen:
+                    expected_edge = round(seen.get('equity', 0.0) * (seen.get('num_active', 0) + 1), 3)
+                    if abs(seen.get('equity_edge') - expected_edge) > 0.02:
+                        mism.append(f"equity_edge decoded={seen.get('equity_edge')} vs equity*(num_active+1)={expected_edge} (decode index likely wrong)")
                 if mism:
                     L.append(f"  (!) MODEL-INPUT vs RAW-OCR MISMATCH -> BRIDGE issue: {mism}")
             else:

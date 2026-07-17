@@ -4,12 +4,16 @@ beyond the PASS/FAIL table. Reusable across versions -- point it at any results 
 
 Usage:
   .venv/Scripts/python.exe -m tools.model_verify.render_report \
-      tools/model_verify/results/v15__expert_main.pth.json \
-      --out tools/model_verify/results/v15_report.html
+      tools/model_verify/results/v15__expert_main.pth.json
+
+Writes to .agents/skills/OFK/references/<version>/model_verify_report.html by default (the OFK
+knowledge base's per-version folder, alongside that version's specs.md) -- pass --out to override.
 """
 import argparse
 import json
 import os
+
+_REPO_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
 
 TEMPLATE = """<!doctype html>
 <title>{title}</title>
@@ -90,6 +94,13 @@ h1 {{ font-size: 22px; margin: 0 0 4px; }}
 .card h2 {{ font-size: 15px; margin: 0 0 2px; }}
 .card .issue {{ font-size: 12px; color: var(--text-muted); margin: 0 0 4px; }}
 .card .detail {{ font-size: 13px; color: var(--text-secondary); margin: 0 0 16px; }}
+.explainer {{
+  background: var(--surface-2); border-left: 3px solid var(--baseline); border-radius: 6px;
+  padding: 10px 14px; margin: 10px 0 14px;
+}}
+.explainer p {{ font-size: 12.5px; color: var(--text-secondary); margin: 0 0 6px; line-height: 1.45; }}
+.explainer p:last-child {{ margin-bottom: 0; }}
+.explainer b {{ color: var(--text-primary); font-weight: 600; }}
 .badge {{ display: inline-block; font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 999px; margin-left: 8px; vertical-align: middle; }}
 .badge.PASS {{ background: color-mix(in srgb, var(--good) 18%, transparent); color: var(--good); }}
 .badge.WARN {{ background: color-mix(in srgb, var(--warning) 22%, transparent); color: #8a5c00; }}
@@ -131,6 +142,8 @@ table.kv-table td.truncate {{ max-width: 260px; overflow: hidden; text-overflow:
 .bar-col {{ display: flex; flex-direction: column; align-items: center; gap: 6px; width: 56px; }}
 .bar-track {{ width: 32px; height: 100px; background: var(--surface-2); border-radius: 4px 4px 0 0; display: flex; align-items: flex-end; }}
 .bar-fill {{ width: 100%; border-radius: 4px 4px 0 0; }}
+.bar-track-stacked {{ width: 32px; height: 100px; background: var(--surface-2); border-radius: 4px 4px 0 0; display: flex; flex-direction: column-reverse; overflow: hidden; }}
+.bar-seg {{ width: 100%; flex-shrink: 0; }}
 .bar-val {{ font-size: 11px; color: var(--text-secondary); font-variant-numeric: tabular-nums; }}
 .bar-label {{ font-size: 11px; color: var(--text-muted); }}
 
@@ -191,17 +204,27 @@ function htmlEl(tag, attrs, html) {{
   return e;
 }}
 
-function card(title, issue, detail, status) {{
+function card(title, issue, detail, status, doc) {{
   const c = htmlEl('div', {{class: 'card'}});
   c.appendChild(htmlEl('h2', {{}}, `${{title}} <span class="badge ${{status}}">${{status}}</span>`));
   if (issue) c.appendChild(htmlEl('p', {{class: 'issue'}}, `guards: ${{issue}}`));
+  if (doc) {{
+    const box = htmlEl('div', {{class: 'explainer'}});
+    if (doc.what) box.appendChild(htmlEl('p', {{}}, `<b>What this tests:</b> ${{doc.what}}`));
+    if (doc.expect) box.appendChild(htmlEl('p', {{}}, `<b>Expected:</b> ${{doc.expect}}`));
+    if (doc.if_not) box.appendChild(htmlEl('p', {{}}, `<b>If it doesn't:</b> ${{doc.if_not}}`));
+    c.appendChild(box);
+  }}
   c.appendChild(htmlEl('p', {{class: 'detail'}}, detail));
   return c;
 }}
 
-function lineChart(data, actionKeys) {{
+function lineChart(data, actionKeys, xField, xLabel) {{
+  xField = xField || 'equity';
+  xLabel = xLabel || xField;
   const W = 640, H = 220, PAD = 34;
-  const xs = data.map(d => d.equity);
+  const xs = data.map(d => d[xField]);
+  const fmtX = v => (typeof v === 'number' ? (Number.isInteger(v) ? String(v) : v.toFixed(2)) : String(v));
   const svg = el('svg', {{viewBox: `0 0 ${{W}} ${{H}}`, width: '100%', height: H}});
   // gridlines
   for (let i = 0; i <= 4; i++) {{
@@ -209,9 +232,9 @@ function lineChart(data, actionKeys) {{
     svg.appendChild(el('line', {{x1: PAD, x2: W - 10, y1: y, y2: y, stroke: 'var(--grid)', 'stroke-width': 1}}));
     const t = el('text', {{x: 4, y: y + 3}}); t.textContent = (i / 4).toFixed(2); svg.appendChild(t);
   }}
-  xs.forEach((eq, i) => {{
+  xs.forEach((xv, i) => {{
     const x = PAD + (W - PAD - 10) * (i / (xs.length - 1));
-    const t = el('text', {{x: x - 8, y: H - 8}}); t.textContent = eq.toFixed(2); svg.appendChild(t);
+    const t = el('text', {{x: x - 10, y: H - 8}}); t.textContent = fmtX(xv); svg.appendChild(t);
   }});
   const xFor = i => PAD + (W - PAD - 10) * (i / (xs.length - 1));
   const yFor = v => PAD + (H - 2 * PAD) * (1 - v);
@@ -221,7 +244,7 @@ function lineChart(data, actionKeys) {{
     svg.appendChild(el('path', {{d, class: 'line-path', stroke: ACTION_COLOR[ak]}}));
     pts.forEach((p, i) => {{
       const dot = el('circle', {{cx: p[0], cy: p[1], r: 3, fill: ACTION_COLOR[ak], class: 'line-dot'}});
-      const title = el('title'); title.textContent = `${{ACTION_LABEL[ak]}} @ equity ${{data[i].equity}}: ${{(data[i].policy[ak] ?? 0).toFixed(2)}}`;
+      const title = el('title'); title.textContent = `${{ACTION_LABEL[ak]}} @ ${{xLabel}} ${{fmtX(data[i][xField])}}: ${{(data[i].policy[ak] ?? 0).toFixed(2)}}`;
       dot.appendChild(title);
       svg.appendChild(dot);
     }});
@@ -254,7 +277,7 @@ function heatmap(data, xField, yField, valueField, opts) {{
   table.appendChild(head);
   ys.slice().reverse().forEach(y => {{
     const row = htmlEl('tr');
-    row.appendChild(htmlEl('th', {{}}, String(y)));
+    row.appendChild(htmlEl('th', {{}}, opts.yFormat ? opts.yFormat(y) : String(y)));
     xs.forEach(x => {{
       const rec = data.find(d => d[xField] === x && d[yField] === y);
       const v = rec ? getPath(rec, valueField) : null;
@@ -322,6 +345,35 @@ function barChart(data, xField, valueField, color, label) {{
     fill.title = `${{xField}}=${{d[xField]}}: ${{label}}=${{v.toFixed(2)}}`;
     track.appendChild(fill);
     col.appendChild(htmlEl('div', {{class: 'bar-val'}}, v.toFixed(2)));
+    col.appendChild(track);
+    col.appendChild(htmlEl('div', {{class: 'bar-label'}}, String(d[xField]) + 'bb'));
+    wrap.appendChild(col);
+  }});
+  return wrap;
+}}
+
+// Vertical stacked bar per x-category, one segment per seriesKey (bottom-to-top in the order
+// given) -- e.g. the full raise_33/raise_66/raise_pot/allin breakdown behind an "aggressive mass"
+// number, instead of collapsing it to a single action's probability.
+function stackedBarChart(data, xField, seriesKeys) {{
+  const wrap = htmlEl('div', {{class: 'bars'}});
+  data.forEach(d => {{
+    const col = htmlEl('div', {{class: 'bar-col'}});
+    const track = htmlEl('div', {{class: 'bar-track-stacked'}});
+    let total = 0;
+    const parts = [];
+    seriesKeys.forEach(k => {{
+      const v = d.policy[k] ?? 0;
+      total += v;
+      parts.push(`${{ACTION_LABEL[k]}} ${{(v * 100).toFixed(0)}}%`);
+      const seg = htmlEl('div', {{class: 'bar-seg'}});
+      seg.style.height = Math.round(v * 100) + '%';
+      seg.style.background = ACTION_COLOR[k];
+      seg.title = `${{xField}}=${{d[xField]}}: ${{ACTION_LABEL[k]}} ${{(v * 100).toFixed(0)}}%`;
+      track.appendChild(seg);
+    }});
+    track.title = parts.join(' · ');
+    col.appendChild(htmlEl('div', {{class: 'bar-val'}}, (total * 100).toFixed(0) + '%'));
     col.appendChild(track);
     col.appendChild(htmlEl('div', {{class: 'bar-label'}}, String(d[xField]) + 'bb'));
     wrap.appendChild(col);
@@ -411,17 +463,18 @@ RESULTS.checks.forEach(c => byId[c.id] = c);
 const actionKeys = RESULTS.action_space;
 const consumed = new Set();
 
-function addCard(id, title, xLabel, yLabel, valueField, ringField, kind) {{
+function addCard(id, title, xLabel, yLabel, valueField, ringField, kind, opts) {{
+  opts = opts || {{}};
   const c = byId[id];
   if (!c) return;
   consumed.add(id);
   if (!c.data || !c.data.length) {{
-    root.appendChild(card(title, id, c.detail, c.status));
+    root.appendChild(card(title, id, c.detail, c.status, c.doc));
     return;
   }}
-  const wrap = card(title, id, c.detail, c.status);
-  if (kind === 'line') wrap.appendChild(lineChart(c.data, actionKeys));
-  else if (kind === 'heatmap') wrap.appendChild(heatmap(c.data, 'stack_bb', 'equity', valueField, {{xLabel: 'stack (bb)', yLabel: 'equity', ringField}}));
+  const wrap = card(title, id, c.detail, c.status, c.doc);
+  if (kind === 'line') wrap.appendChild(lineChart(c.data, actionKeys, opts.xField, xLabel));
+  else if (kind === 'heatmap') wrap.appendChild(heatmap(c.data, opts.xField || 'stack_bb', opts.yField || 'equity', valueField, {{xLabel: xLabel || 'stack (bb)', yLabel: yLabel || 'equity', ringField, yFormat: opts.yFormat}}));
   else if (kind === 'categorical') wrap.appendChild(categoricalGrid(c.data, 'stack_bb', 'equity', 'argmax'));
   root.appendChild(wrap);
 }}
@@ -432,6 +485,14 @@ addCard('short_stack_polarization', 'Short-stack polarization — P(Call) in sho
 addCard('free_check_low_fold', 'Free-check hygiene — raw P(Fold) when call = 0', null, null, 'policy.fold', null, 'heatmap');
 addCard('action_diversity', 'Action diversity — argmax action by equity x stack', null, null, null, null, 'categorical');
 
+// --- Sensitivity sweeps: one clean parameter axis each, so a flatline/collapse jumps out. ---
+addCard('stack_full_sweep', 'Sensitivity sweep — full policy vs stack (bb)', 'stack (bb)', null, null, null, 'line', {{xField: 'stack_bb'}});
+addCard('position_sweep', 'Sensitivity sweep — full policy vs table position', 'position', null, null, null, 'line', {{xField: 'position'}});
+addCard('hand_strength_sweep', 'Sensitivity sweep — full policy vs hand_strength', 'hand_strength', null, null, null, 'line', {{xField: 'hand_strength'}});
+addCard('equity_edge_sweep', 'Sensitivity sweep — full policy vs equity_edge', 'equity_edge', null, null, null, 'line', {{xField: 'equity_edge'}});
+addCard('opponent_style_sweep', 'Sensitivity sweep — P(Fold) vs opponent style (Blue=nit .. Red=maniac)', 'equity', 'opponent style', 'policy.fold', null, 'heatmap',
+  {{xField: 'equity', yField: 'style_idx', yFormat: y => (['Blue', 'Green', 'Yellow', 'Red'][y] || String(y))}});
+
 // air/nuts as a paired two-col card
 (function() {{
   const air = byId['air_folds_mostly'], nuts = byId['nuts_aggressive_mostly'];
@@ -440,13 +501,33 @@ addCard('action_diversity', 'Action diversity — argmax action by equity x stac
   const wrap = htmlEl('div', {{class: 'card'}});
   wrap.appendChild(htmlEl('h2', {{}}, `Air / Nuts spot checks`));
   wrap.appendChild(htmlEl('p', {{class: 'issue'}}, 'guards: V14 spot-test baseline'));
+  if (air.doc || nuts.doc) {{
+    const box = htmlEl('div', {{class: 'explainer'}});
+    if (air.doc) {{
+      box.appendChild(htmlEl('p', {{}}, `<b>Air (${{'~12% eq'}}) — what this tests:</b> ${{air.doc.what}}`));
+      box.appendChild(htmlEl('p', {{}}, `<b>Expected:</b> ${{air.doc.expect}} <b>If it doesn't:</b> ${{air.doc.if_not}}`));
+    }}
+    if (nuts.doc) {{
+      box.appendChild(htmlEl('p', {{}}, `<b>Nuts (${{'~92% eq'}}) — what this tests:</b> ${{nuts.doc.what}}`));
+      box.appendChild(htmlEl('p', {{}}, `<b>Expected:</b> ${{nuts.doc.expect}} <b>If it doesn't:</b> ${{nuts.doc.if_not}}`));
+    }}
+    wrap.appendChild(box);
+  }}
   const two = htmlEl('div', {{class: 'two-col'}});
   const airCol = htmlEl('div');
   airCol.appendChild(htmlEl('p', {{class: 'detail'}}, `Air (~12% eq) — P(Fold) <span class="badge ${{air.status}}">${{air.status}}</span>`));
   airCol.appendChild(barChart(air.data.map(d => ({{stack_bb: d.stack_bb, v: d.policy.fold}})), 'stack_bb', 'v', 'var(--c-fold)', 'P(Fold)'));
   const nutsCol = htmlEl('div');
-  nutsCol.appendChild(htmlEl('p', {{class: 'detail'}}, `Nuts (~92% eq) — P(All-In) <span class="badge ${{nuts.status}}">${{nuts.status}}</span>`));
-  nutsCol.appendChild(barChart(nuts.data.map(d => ({{stack_bb: d.stack_bb, v: d.policy.allin}})), 'stack_bb', 'v', 'var(--c-allin)', 'P(All-In)'));
+  const AGGR_KEYS = ['raise_33', 'raise_66', 'raise_pot', 'allin'].filter(k => nuts.data.some(d => k in d.policy));
+  nutsCol.appendChild(htmlEl('p', {{class: 'detail'}}, `Nuts (~92% eq) — aggressive mass (raise/all-in breakdown) <span class="badge ${{nuts.status}}">${{nuts.status}}</span>`));
+  nutsCol.appendChild(stackedBarChart(nuts.data, 'stack_bb', AGGR_KEYS));
+  const nutsLegend = htmlEl('div', {{class: 'legend'}});
+  AGGR_KEYS.forEach(ak => {{
+    const item = htmlEl('span', {{}});
+    item.innerHTML = `<span class="sw" style="background:${{ACTION_COLOR[ak]}}"></span>${{ACTION_LABEL[ak]}}`;
+    nutsLegend.appendChild(item);
+  }});
+  nutsCol.appendChild(nutsLegend);
   two.appendChild(airCol); two.appendChild(nutsCol);
   wrap.appendChild(two);
   root.appendChild(wrap);
@@ -457,7 +538,7 @@ addCard('action_diversity', 'Action diversity — argmax action by equity x stac
 // otherwise just the status + detail text. Guarantees no check is silently omitted.
 RESULTS.checks.forEach(c => {{
   if (consumed.has(c.id)) return;
-  const wrap = card(c.id, null, c.detail, c.status);
+  const wrap = card(c.id, null, c.detail, c.status, c.doc);
   const table = genericTable(c.data);
   if (table) wrap.appendChild(table);
   root.appendChild(wrap);
@@ -489,7 +570,16 @@ def main():
         results_json=json.dumps(results),
     )
 
-    out = args.out or os.path.splitext(args.results_json)[0] + '_report.html'
+    # Default location: the OFK knowledge base's per-version reference folder (mirrors
+    # specs.md/milestone.md living at .agents/skills/OFK/references/<Version>/) -- an HTML report
+    # is a curated, human-readable artifact like those docs, not raw data (the JSON dump stays in
+    # tools/model_verify/results/, next to its --dump-json sibling). Pass --out to override.
+    # NOTE: OFK folder names capitalize the leading 'v' (versions/v20_preflopEq_AI -> OFK's
+    # V20_preflopEq_AI) -- versions/ itself stays lowercase, only the OFK mirror capitalizes it.
+    ofk_folder = results['version'][0].upper() + results['version'][1:]
+    out = args.out or os.path.join(_REPO_ROOT, '.agents', 'skills', 'OFK', 'references',
+                                    ofk_folder, 'model_verify_report.html')
+    os.makedirs(os.path.dirname(out), exist_ok=True)
     with open(out, 'w', encoding='utf-8') as f:
         f.write(html)
     print(f"wrote {out}")

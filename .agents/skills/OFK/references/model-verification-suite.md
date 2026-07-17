@@ -69,10 +69,32 @@ Two speed tiers, both version-agnostic — loads ANY version via `shared/registr
 Prints a PASS/WARN/FAIL/SKIP table, exits non-zero on any FAIL (usable as a gate later). Every run
 also writes the full raw per-scenario data to
 `tools/model_verify/results/<version>__<weights>.json` — feed that into
-`tools/model_verify/render_report.py <json> --out <html>` to get an interactive HTML report
-(heatmaps/line charts/hover tooltips over the raw sweep data, dataviz-skill palette, dark/light
-themed) instead of just the printed summary. NOT auto-wired into `train.py` (deliberate,
-2026-07-15 decision) — run it as a manual follow-up step after a training run for now.
+`tools/model_verify/render_report.py <json>` to get an interactive HTML report (heatmaps/line
+charts/hover tooltips over the raw sweep data, dataviz-skill palette, dark/light themed) instead of
+just the printed summary. NOT auto-wired into `train.py` (deliberate, 2026-07-15 decision) — run it
+as a manual follow-up step after a training run for now.
+
+**Report location (2026-07-17 convention):** `render_report.py` writes its HTML by default to
+`.agents/skills/OFK/references/<Version>/model_verify_report.html` — this OFK folder, next to that
+version's own `specs.md`, NOT `tools/model_verify/results/` (which stays JSON-only: the raw
+`--dump-json` data, not a curated/human-facing artifact). Note the capitalization: `versions/` on
+disk is lowercase (`versions/v20_preflopEq_AI`), but its OFK mirror capitalizes the leading `v`
+(`references/V20_preflopEq_AI`) — matching the existing V11-V20 folder convention. Pass `--out` to
+override for a one-off location.
+
+## Sensitivity-sweep checks + plain-English docs (2026-07-17 addition)
+
+Beyond the spot-checks above (which probe SPECIFIC known-bad neighborhoods), `checks.py` now also
+has one-parameter-axis sweeps that watch for total non-responsiveness (a flatlined/collapsed
+feature) across a full practical range: `stack_full_sweep` (5-180bb), `position_sweep` (0-5),
+`opponent_style_sweep` (equity x Blue/Green/Yellow/Red VPIP-AGG archetype, 2D heatmap -- a new
+dimension never probed before, directly relevant to the `[P6]` per-opponent-read backlog concern),
+`hand_strength_sweep` and `equity_edge_sweep` (fuller curve companions to the existing 2-point TV
+checks). All WARN-only by design (no single "correct" curve to gate on for most of these).
+
+Every check (all 19, FAST+SLOW) also now has a `CHECK_DOCS` entry (`checks.py`, bottom of file) --
+plain-English `what`/`expect`/`if_not` fields, rendered as an explainer box on every card in the
+HTML report so a reader doesn't need to open this source file to understand a result.
 
 ## How to extend the curriculum
 

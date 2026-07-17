@@ -21,7 +21,7 @@ import sys
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..')))
 
 from shared.registry import get_manifest, load_model
-from tools.model_verify.checks import FAST_CHECKS, SLOW_CHECKS, RunCtx
+from tools.model_verify.checks import FAST_CHECKS, SLOW_CHECKS, RunCtx, CHECK_DOCS
 
 _REPO_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
 _BASELINES_PATH = os.path.join(os.path.dirname(__file__), 'baselines.json')
@@ -136,7 +136,8 @@ def main():
         "action_space": list(action_keys),
         "full": args.full,
         "checks": [
-            {"id": check_id, "status": r.status, "detail": r.detail, "data": r.data}
+            {"id": check_id, "status": r.status, "detail": r.detail, "data": r.data,
+             "doc": CHECK_DOCS.get(check_id)}
             for check_id, r in results
         ],
     }

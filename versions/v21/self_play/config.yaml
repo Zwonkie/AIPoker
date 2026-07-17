@@ -1,0 +1,97 @@
+version: "v21"
+training:
+  # --- Discretized bet-size action space (inherited from V14, UNCHANGED) --------------
+  # The raise buckets the hero (and per-size EV targets) use, as pot fractions; `null` = ALL-IN.
+  raise_pot_fractions: [0.33, 0.66, 1.0, null]   # 0.33/0.66/1.0 pot + all-in
+  # V20 rescale inherited unchanged (stack/pot/call-amount ctx[1]/ctx[2]/ctx[9]) -- see
+  # versions/v20/SPECS.md. V20_preflopEq's own additions (front/after range-aware equity split,
+  # equity_edge + hand_strength features, and the rescale fix) are in versions/v20_preflopEq/SPECS.md.
+  # This version (V21) is a STRUCTURAL CLEANUP of the train/sim loop's actor-target pipeline,
+  # exploration mix, and curriculum timing -- same tensor schema, same opponent pool, no new
+  # behavior being tested. See versions/v21/SPECS.md.
+  # Target: 100k hands. checkpoint_dump_interval aligned to the new curriculum milestones
+  # (20k=actor-critic cutover, 40k=Phase-4 dynamic tables) so restore points land on them.
+  target_hands: 100000
+  batch_size: 256
+  epochs_per_batch: 3
+  sim_batch_size: 2000
+  learning_rate: 0.001
+  equity_sims: 2000
+  mid_flight_diagnostics_interval: 5000
+  checkpoint_dump_interval: 20000   # distinct restore-point checkpoint every N hands (weights/checkpoints/)
+  # --- Training knobs ---
+  aux_loss_weight: 0.0          # 0 = bluff/strength/equity heads OFF (see SPECS.md item 7 -- an
+                                 # isolated ablation, NOT this main run, is how we'd test raising this)
+  # [V21] disable_target_shaping REMOVED -- the preflop-entry tightness prior it gated
+  # (TIGHTNESS_PENALTY_BB/ENTRY_EQUITY_MARGIN) has been deleted outright, not just left at 0. See
+  # SPECS.md item 1: superseded by range-aware equity, and validated dormant since V17 anyway.
+  target_clip_bb: 40.0          # VARIANCE clip -- KEEP ON (removing it diverged the critic)
+  disable_bootstrap: false      # heuristic warmup generates good-play examples (decays by 20k, [V21] was 30k)
+  disable_exploration: false    # 5% random + 95% model ([V21] was 80%/15% heuristic-anchor, see item 2)
+  policy_target_source: counterfactual  # 'realized' (legacy) | 'counterfactual'
+  range_aware_equity: true      # hero equity vs each opp's VPIP-color range (opponent adaptation)
+  policy_tightness_bb: 2.0      # realization discount on the actor target (now a single shared
+                                 # helper for both the pre/post actor-critic-cutover regimes, [V21] item 5)
+  ablate_hole_cards: false
+  policy_target_temperature: 1.0
+  policy_entropy_penalty: 0.0
+
+curriculum:
+  # UNCHANGED from V17/V17_gauntlet's validated recipe -- this pass only refactors the opponent
+  # PLUMBING, not the training recipe itself.
+  phase_1_max_hands: 10000
+  phase_1_stacks: [100.0]
+  phase_5_focus_rounds: true
+  disable_extreme_stacks: true  # the old 10-300bb fat-tail curriculum stays OFF
+  # V15 DoN-SHAPED depth MIXTURE. Per hand, pick a band by weight then sample a uniform depth
+  # within it — short-weighted with a real deep tail so ONE model covers the whole DoN arc.
+  #   [lo_bb, hi_bb, weight]
+  stack_depth_mix:
+    - [5, 14, 0.55]     # late-game short (v14's proven zone — kept dense)
+    - [14, 30, 0.30]    # mid-game
+    - [30, 50, 0.15]    # early-game deep tail
+  # fixed_stack_bb intentionally UNSET so stack_depth_mix takes over.
+
+# --- Opponent lineup (V18: DECLARATIVE format, opponents.py's build_opponent_pool) -------------
+# [V21] UNCHANGED from v20_preflopEq_AI, deliberately -- this version is a structural cleanup of
+# the training loop's plumbing, not another opponent-pool experiment. Keeping the pool identical
+# means any behavior delta between v20_preflopEq_AI and V21 is attributable to the cleanup, not a
+# confound. Every NN entry here is natively context_dim=37/contract_version=5 (a frozen
+# restore-point checkpoint from V20_preflopEq's 75k run, or a lagged mirror of THIS run) -- no
+# cross-version scale mismatch is possible, unlike V20's own note below (kept for history/reference).
+#
+# NOTE on `style` keys: `maniac`/`fish` below do NOT play as those heuristic archetypes -- they're
+# repurposed as the (fixed, 5-slot) stat-bucket identifiers simulator.py's STYLE_SLOT requires,
+# each carrying a `model:` override instead. Telemetry/dashboards show the REAL loaded model name
+# (via opponents.describe_pool_entry), never the slot name -- e.g. "FROZEN_50K (NN)", not "Maniac".
+# Same pattern this codebase has used since V18 (see opponents.py's own docstring).
+#
+# [Historical V20 note, not applicable here] 'nit'/'tag' were reverted to plain heuristics in V20
+# because its OWN context rescale made every prior-version frozen checkpoint receive wrongly-scaled
+# inputs. That constraint doesn't apply to the frozen files below -- they're this SAME version's
+# own checkpoints, already on its own scale.
+#
+# Each pool entry: {style, weight, model?, forced?, lagged_self?}
+#   - model: a checkpoint filename (resolved against this version's weights/ dir) -> NNOpponent,
+#     UNFORCED by default (a real trained network keeps its own tendencies; forcing it toward an
+#     archetype stereotype is an explicit opt-in via forced: true, not the default).
+#   - lagged_self: true -> 'past' only; a TRUE lagged self-play mirror, refreshed every 5k hands
+#     (NOT a static file -- mutually exclusive with 'model' on the same entry).
+#   - neither model nor lagged_self -> HeuristicOpponent (scripted archetype bot), forced=true.
+opponents:
+  pool:
+    - style: past                # NN: lagged self-play mirror of THIS run, refreshed every 5k hands
+      weight: 0.25
+      lagged_self: true
+    - style: maniac               # NN: V20_preflopEq's 50k-hand checkpoint (slot repurposed, see above)
+      weight: 0.20
+      model: frozen_50k.pth
+    - style: fish                 # NN: V20_preflopEq's 25k-hand checkpoint (slot repurposed, see above)
+      weight: 0.15
+      model: frozen_25k.pth
+    - style: tag                  # Heuristic anchor, as requested
+      weight: 0.25
+    - style: nit                  # Heuristic, short-stack push/fold discipline
+      weight: 0.15
+  live_players: 6                        # 6-max to match live tables
+  disable_focus_rounds: true              # unchanged from V17/V17_gauntlet -- keep the field composition constant
