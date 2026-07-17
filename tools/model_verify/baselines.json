@@ -6,5 +6,13 @@
       "tight_short": 22.8,
       "tight_deep": 61.1
     }
+  },
+  "v20_preflopEq_AI": {
+    "bb100": {
+      "loose_short": 31.1,
+      "loose_deep": 57.7,
+      "tight_short": 27.0,
+      "tight_deep": 65.1
+    }
   }
 }

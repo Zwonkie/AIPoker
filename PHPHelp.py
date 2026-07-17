@@ -250,11 +250,11 @@ class PHPHelpApp(ctk.CTk):
         self.mode_dropdown = ctk.CTkOptionMenu(self.sidebar, values=["Recommendation Only", "Automatic Play"], variable=self.mode_var)
         self.mode_dropdown.grid(row=4, column=0, padx=20, pady=5, sticky="ew")
         
-        # Model Selection. Default MUST match core/decision.py's active model (v20_preflopEq) so
-        # the UI label reflects what actually runs — the engine defaults to v20_preflopEq
+        # Model Selection. Default MUST match core/decision.py's active model (v20_preflopEq_AI) so
+        # the UI label reflects what actually runs — the engine defaults to v20_preflopEq_AI
         # regardless, but a stale label here would be misleading (this dropdown's values/default
         # do NOT update themselves when core/decision.py's registry changes — bump both here too).
-        self.model_var = ctk.StringVar(value="Herocules (v20_preflopEq)")
+        self.model_var = ctk.StringVar(value="Herocules (v20_preflopEq_AI)")
         self.model_label = ctk.CTkLabel(self.sidebar, text="Decision Model:", anchor="w")
         self.model_label.grid(row=5, column=0, padx=20, pady=(10, 0), sticky="w")
         self.model_dropdown = ctk.CTkOptionMenu(
@@ -262,9 +262,10 @@ class PHPHelpApp(ctk.CTk):
             # Only models that actually load are listed (see core/decision.py registry). The
             # legacy Pluribus/v8-v11 entries were pruned — their weights are missing or use the
             # old 159-feature contract, so selecting them would output random actions live.
-            # v20_preflopEq/v20/v19/v17_gauntlet/v17/v15/v14 = discretized bet-size action space
-            # (raises-to-X / all-in); v13 kept as fallback.
+            # v20_preflopEq_AI/v20_preflopEq/v20/v19/v17_gauntlet/v17/v15/v14 = discretized
+            # bet-size action space (raises-to-X / all-in); v13 kept as fallback.
             values=[
+                "Herocules (v20_preflopEq_AI)",
                 "Herocules (v20_preflopEq)",
                 "Herocules (v20)",
                 "Herocules (v19)",
@@ -1054,12 +1055,15 @@ class PHPHelpApp(ctk.CTk):
                     # here would be a silent train/serve mismatch. Use the matching version's
                     # identical impl.
                     _active_lower = self.decision_engine.active_model_name.lower()
-                    if 'v20_preflopeq' in _active_lower or 'v20' in _active_lower or 'v19' in _active_lower or 'v17' in _active_lower or 'v15' in _active_lower or 'v14' in _active_lower or 'v13' in _active_lower:
+                    if 'v20_preflopeq_ai' in _active_lower or 'v20_preflopeq' in _active_lower or 'v20' in _active_lower or 'v19' in _active_lower or 'v17' in _active_lower or 'v15' in _active_lower or 'v14' in _active_lower or 'v13' in _active_lower:
                         try:
-                            # NOTE: 'v20_preflopeq' MUST be checked before the plain 'v20' branch --
-                            # 'v20' is a substring of 'v20_preflopeq', so the naive ordering would
-                            # otherwise always match the (wrong, front/after-fix-less) v20 branch.
-                            if 'v20_preflopeq' in _active_lower:
+                            # NOTE: resolution order matters -- 'v20_preflopeq' is a substring of
+                            # 'v20_preflopeq_ai', and 'v20' is a substring of both, so each must be
+                            # checked before the shorter name it contains or the naive ordering
+                            # would always match the wrong (earlier-fix-less) branch.
+                            if 'v20_preflopeq_ai' in _active_lower:
+                                from versions.v20_preflopEq_AI.self_play.simulator import compute_range_aware_equity
+                            elif 'v20_preflopeq' in _active_lower:
                                 from versions.v20_preflopEq.self_play.simulator import compute_range_aware_equity
                             elif 'v20' in _active_lower:
                                 from versions.v20.self_play.simulator import compute_range_aware_equity
@@ -1135,12 +1139,17 @@ class PHPHelpApp(ctk.CTk):
 
                     # [V20_preflopEq] hand_strength: field-independent card-quality signal, only
                     # meaningful (and only computed, to avoid a needless live MC call for every
-                    # other model) when v20_preflopEq is active. Preflop: O(1) lookup. Postflop: a
-                    # cheap vs-1-random MC call, same recipe as simulator.py's own _hand_strength.
+                    # other model) when v20_preflopEq or v20_preflopEq_AI is active (identical
+                    # feature, both versions' own contract module). Preflop: O(1) lookup.
+                    # Postflop: a cheap vs-1-random MC call, same recipe as simulator.py's own
+                    # _hand_strength.
                     hand_strength = 0.5
                     if 'v20_preflopeq' in _active_lower:
                         try:
-                            from versions.v20_preflopEq.core.contract import preflop_hand_strength
+                            if 'v20_preflopeq_ai' in _active_lower:
+                                from versions.v20_preflopEq_AI.core.contract import preflop_hand_strength
+                            else:
+                                from versions.v20_preflopEq.core.contract import preflop_hand_strength
                             _hero_cards = stabilized_state['hero_cards']
                             _community = stabilized_state['community_cards']
                             if len(_community) == 0:

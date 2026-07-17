@@ -1,0 +1,33 @@
+=== TURN DIAGNOSTIC — 20260717_083234 ===
+Model : Herocules (v20_preflopEq_AI)
+CHOSE : CALL   bet=0.0   reason=V20_preflopEq_AI sampled (temp=0.50, raise-unavail) -> CALL: {FOLD 0.47, CALL 0.12, RAISE_33 0.04, RAISE_66 0.09, RAISE_POT 0.28, ALLIN 0.00}
+
+--- LAYER 1: PERCEPTION  (RAW vision read — cross-check vs screenshot.png) ---
+  Hero cards : ['3c', 'Ts']
+  Board      : []   (Preflop)
+  Position   : 2
+  Hero stack : 1370  (68.5BB)
+  Pot        : 170  (8.5BB)
+  To call    : None  (?)
+  Opp colors : ['Red']   (num_opponents=1)
+  >> If any disagree with the screenshot -> OCR / PARSE bug (Layer 1).
+
+--- LAYER 2: FEATURES  (what the model ACTUALLY consumed — decoded from its input tensor) ---
+  street     : Preflop     equity : 0.37   [method: range-aware]
+  pot        : 34.0BB    to_call : 0.27BB    pot_odds : 0.008
+  hero_stack : 200.0BB    position : 2.0    num_active : 1
+  (!) MODEL-INPUT vs RAW-OCR MISMATCH -> BRIDGE issue: ['to_call OCR=None but model saw 0.27BB (bridge filled it)']
+  >> These are the model's TRUE inputs. Wrong equity -> range/color bug;
+     wrong price/street here but right in Layer 1 -> BRIDGE bug (not OCR, not the model).
+
+--- LAYER 3: POLICY  (given correct inputs, did the model choose right?) ---
+  Actor policy P(action):
+  FOLD 0.47  CALL 0.12  RAISE_33 0.04  RAISE_66 0.09  RAISE_POT 0.28  ALLIN 0.00
+  Critic Q (EV vs fold, ~BB):
+  FOLD -0.07  CALL +0.36  RAISE_33 +0.45  RAISE_66 +0.40  RAISE_POT +0.18  ALLIN -8.89
+  Chosen action : CALL
+  (!) ACTOR/CRITIC DISAGREE: actor prefers FOLD, critic values RAISE_33 highest
+      -> policy possibly miscalibrated vs the model's own value estimate.
+  >> If Layers 1-2 are correct but this action is wrong -> MODEL / POLICY issue (Layer 3).
+
+Files: screenshot.png | telemetry.json | logs.txt | expected.txt

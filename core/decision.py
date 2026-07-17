@@ -9,6 +9,7 @@ from core.models.v17_gauntlet_engine import V17GauntletModelEngine
 from core.models.v19_engine import V19ModelEngine
 from core.models.v20_engine import V20ModelEngine
 from core.models.v20_preflopEq_engine import V20PreflopEqModelEngine
+from core.models.v20_preflopEq_AI_engine import V20PreflopEqAIModelEngine
 
 # Live action selection: SAMPLE from the actor policy (matching training/eval, which sample rather
 # than argmax) but SHARPEN with a temperature < 1 so genuine mixing survives on close spots while
@@ -116,6 +117,25 @@ class PokerDecisionEngine:
         # loading garbage. They are pruned; their weight files remain on disk for reproducibility.
         # To re-enable a legacy model, first fix its weights/contract, THEN re-add it here.
         self.models = {
+            # V20_preflopEq_AI: IDENTICAL architecture/tensor schema to V20_preflopEq (context_dim=37,
+            # contract_version=5) -- this version only changed the training opponent pool (shifted
+            # toward real NN opponents: a lagged self-play mirror + V20_preflopEq's own 25k/50k
+            # checkpoints, testing whether that reduces the shove-preference traced to the heuristic
+            # bots' price-insensitive value-branch -- see versions/v20_preflopEq_AI/SPECS.md). Shares
+            # bridge_v20_preflopEq (same contract class, no new bridge needed), gated by
+            # is_v20_preflopEq_AI_model below (checked BEFORE is_v20_preflopEq_model -- same substring
+            # trap as v20/v20_preflopeq: 'v20_preflopeq' is contained in 'v20_preflopeq_ai'). Loads
+            # `expert_main.pth`, the 150k-hand final checkpoint. model_verify --full @ 150k: 12 PASS/
+            # 1 WARN/1 FAIL/0 SKIP -- the sizing-diversity hypothesis did NOT pan out (action_diversity
+            # stayed allin-dominant, deep_stack_ood_guard still FAILs, same as V20_preflopEq), but the
+            # model is a clear overall improvement: beats_frozen_predecessor actually RAN this time
+            # (same architecture as V20_preflopEq, no scale-mismatch skip) and PASSED at +53.5 BB/100
+            # vs a field including frozen V20_preflopEq -- the first real validated predecessor win
+            # this lineage has managed. Also beats V20_preflopEq's own bb100_vs_standard_fields
+            # baseline in all 4 fields and shows stronger vpip_adapts_to_style deltas. Deployed for
+            # user testing per explicit request (2026-07-17). V20_preflopEq and V20 both stay fully
+            # intact below as rollback options. ACTIVE.
+            'Herocules (v20_preflopEq_AI)': V20PreflopEqAIModelEngine(weight_name="expert_main.pth"),
             # V20_preflopEq: same PokerEVModelV4 arch + 6-action contract as V20, but WIDER context
             # (context_dim 35->37, contract_version 4->5) -- two new appended features (equity_edge,
             # hand_strength) plus a fix to the shared range-aware equity function (hero's opponents
@@ -197,7 +217,7 @@ class PokerDecisionEngine:
             # V13: equity-primary + range-aware equity. Kept as the tagged MILESTONE fallback.
             'Herocules (v13 Range-Aware)': V13ModelEngine(weight_name="expert_main.pth"),
         }
-        self.active_model_name = 'Herocules (v20_preflopEq)'
+        self.active_model_name = 'Herocules (v20_preflopEq_AI)'
         self.bridge_v9 = ContractV8V9()
         self.bridge_v11 = ContractV11()
         self.bridge_v13 = ContractV12(max_seq_len=20)
@@ -282,21 +302,25 @@ class PokerDecisionEngine:
         is_v17_gauntlet_model = getattr(active_model, 'is_v17_gauntlet', False) or 'v17_gauntlet' in self.active_model_name.lower()
         is_v17_model = (not is_v17_gauntlet_model) and (getattr(active_model, 'is_v17', False) or 'v17' in self.active_model_name.lower())
         is_v19_model = getattr(active_model, 'is_v19', False) or 'v19' in self.active_model_name.lower()
-        # NOTE: must be resolved BEFORE is_v20_model -- 'v20' is a substring of 'v20_preflopeq',
-        # so the naive name-based fallback below would otherwise misfire True for this model too.
-        is_v20_preflopEq_model = getattr(active_model, 'is_v20_preflopEq', False) or 'v20_preflopeq' in self.active_model_name.lower()
-        is_v20_model = (not is_v20_preflopEq_model) and (getattr(active_model, 'is_v20', False) or 'v20' in self.active_model_name.lower())
+        # NOTE: resolution order matters -- 'v20_preflopeq' is a substring of 'v20_preflopeq_ai',
+        # and 'v20' is a substring of both, so each must be checked BEFORE the shorter name it
+        # contains or the naive name-based fallback misfires true for the wrong model.
+        is_v20_preflopEq_AI_model = getattr(active_model, 'is_v20_preflopEq_AI', False) or 'v20_preflopeq_ai' in self.active_model_name.lower()
+        is_v20_preflopEq_model = (not is_v20_preflopEq_AI_model) and (getattr(active_model, 'is_v20_preflopEq', False) or 'v20_preflopeq' in self.active_model_name.lower())
+        is_v20_model = (not is_v20_preflopEq_model) and (not is_v20_preflopEq_AI_model) and (getattr(active_model, 'is_v20', False) or 'v20' in self.active_model_name.lower())
         is_v11_model = getattr(active_model, 'is_v11', False) or 'v11' in self.active_model_name.lower()
-        # V14/V15/V17/V17_gauntlet/V19/V20/V20_preflopEq share the IDENTICAL 6-action sized
-        # contract -> one live path (selection + slider sizing). Anything gated on "the sized
-        # model" uses this flag.
-        is_sized_model = is_v14_model or is_v15_model or is_v17_model or is_v17_gauntlet_model or is_v19_model or is_v20_model or is_v20_preflopEq_model
+        # V14/V15/V17/V17_gauntlet/V19/V20/V20_preflopEq/V20_preflopEq_AI share the IDENTICAL
+        # 6-action sized contract -> one live path (selection + slider sizing). Anything gated on
+        # "the sized model" uses this flag.
+        is_sized_model = is_v14_model or is_v15_model or is_v17_model or is_v17_gauntlet_model or is_v19_model or is_v20_model or is_v20_preflopEq_model or is_v20_preflopEq_AI_model
         try:
-            if is_v20_preflopEq_model:
-                # V20_preflopEq was trained on a DIFFERENT context-feature WIDTH+scale
-                # (contract_version 5, context_dim 37) -- MUST use its own bridge, not bridge_v13
-                # or bridge_v20, or the two new appended features (equity_edge, hand_strength)
-                # would be missing/misaligned (see versions/v20_preflopEq/core/contract.py).
+            if is_v20_preflopEq_model or is_v20_preflopEq_AI_model:
+                # V20_preflopEq / V20_preflopEq_AI (identical architecture, different training
+                # opponent pool only) were trained on a DIFFERENT context-feature WIDTH+scale
+                # (contract_version 5, context_dim 37) -- MUST use their shared bridge, not
+                # bridge_v13 or bridge_v20, or the two appended features (equity_edge,
+                # hand_strength) would be missing/misaligned (see
+                # versions/v20_preflopEq/core/contract.py).
                 hole, board, ctx, act = self.bridge_v20_preflopEq.to_tensors(self.hand_history_buffer, action_history_raw)
             elif is_v20_model:
                 # V20 was trained on a DIFFERENT context-feature scale (contract_version 4) --
@@ -361,7 +385,7 @@ class PokerDecisionEngine:
             else:
                 action = choice   # FOLD / CALL
                 size_note = choice
-            _tag = "V20_preflopEq" if is_v20_preflopEq_model else ("V20" if is_v20_model else ("V19" if is_v19_model else ("V17_gauntlet" if is_v17_gauntlet_model else ("V17" if is_v17_model else ("V15" if is_v15_model else "V14")))))
+            _tag = "V20_preflopEq_AI" if is_v20_preflopEq_AI_model else ("V20_preflopEq" if is_v20_preflopEq_model else ("V20" if is_v20_model else ("V19" if is_v19_model else ("V17_gauntlet" if is_v17_gauntlet_model else ("V17" if is_v17_model else ("V15" if is_v15_model else "V14"))))))
             reason = (f"{_tag} sampled (temp={temp:.2f}"
                       + (", free-check fold-masked" if free_check else "")
                       + (", raise-unavail" if not bet_raise_available else "")

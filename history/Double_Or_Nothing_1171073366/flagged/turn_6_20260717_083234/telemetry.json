@@ -1,0 +1,153 @@
+{
+    "timestamp": "20260717_083234",
+    "chosen_action": "CALL",
+    "bet_size": 0.0,
+    "reason": "V20_preflopEq_AI sampled (temp=0.50, raise-unavail) -> CALL: {FOLD 0.47, CALL 0.12, RAISE_33 0.04, RAISE_66 0.09, RAISE_POT 0.28, ALLIN 0.00}",
+    "actor_policy": {
+        "FOLD": 0.47292888164520264,
+        "CALL": 0.12286169081926346,
+        "RAISE_33": 0.04071933776140213,
+        "RAISE_66": 0.0881580337882042,
+        "RAISE_POT": 0.2752985954284668,
+        "ALLIN": 3.3460954000474885e-05
+    },
+    "critic_q_vals": {
+        "FOLD": -0.06526808440685272,
+        "CALL": 0.3598979115486145,
+        "RAISE_33": 0.44964849948883057,
+        "RAISE_66": 0.404644250869751,
+        "RAISE_POT": 0.17558565735816956,
+        "ALLIN": -8.889909744262695
+    },
+    "equity": 0.37,
+    "equity_meta": {
+        "method": "range-aware",
+        "opp_colors": [
+            "Red"
+        ],
+        "num_opponents": 1,
+        "opp_colors_in_pot": [
+            "Red"
+        ],
+        "opp_colors_still_to_act": [],
+        "hand_strength": 0.4258,
+        "value": 0.37,
+        "equity_edge": 0.74
+    },
+    "context_vector": [
+        0.2,
+        0.137,
+        0.017,
+        0.37,
+        0.0,
+        0.1,
+        0.0,
+        0.45,
+        0.46
+    ],
+    "context_labeled": {
+        "position": 0.2,
+        "bankroll": 0.137,
+        "pot": 0.017,
+        "equity": 0.37,
+        "pot_odds": 0.0,
+        "num_opponents": 0.1,
+        "street_level": 0.0,
+        "opp_vpip_norm": 0.45,
+        "opp_agg_norm": 0.46
+    },
+    "model_seen": {
+        "position": 2.0,
+        "hero_stack_bb": 200.0,
+        "pot_bb": 34.0,
+        "equity": 0.37,
+        "pot_odds": 0.008,
+        "num_active": 1,
+        "street": "Preflop",
+        "to_call_bb": 0.27
+    },
+    "decision_path": {
+        "preflop_chart": {
+            "status": "Bypassed",
+            "details": "Deprecated in V8/V9"
+        },
+        "active_model": {
+            "status": "Active",
+            "details": "Loaded Herocules (v20_preflopEq_AI)"
+        },
+        "bluff_engine": {
+            "status": "Passed",
+            "details": "Handled natively by V8/V9"
+        },
+        "math_engine": {
+            "status": "Passed",
+            "details": "Math checks out OK"
+        }
+    },
+    "table_state": {
+        "community_cards": [],
+        "hero_cards": [
+            "3c",
+            "Ts"
+        ],
+        "pot_size": 170,
+        "hero_stack": 1370,
+        "opponents": {
+            "seat_1": {
+                "name": "istory\\Double_Or_N",
+                "stack": 0,
+                "is_active": false,
+                "state": "Folded",
+                "vpip_color": null,
+                "agg_color": null
+            },
+            "seat_2": {
+                "name": "eere is el el",
+                "stack": 1420,
+                "is_active": true,
+                "state": "All-In",
+                "vpip_color": "Red",
+                "agg_color": "Green"
+            },
+            "seat_3": {
+                "name": "f",
+                "stack": 0,
+                "is_active": false,
+                "state": "Folded",
+                "vpip_color": null,
+                "agg_color": null
+            },
+            "seat_4": {
+                "name": "Anarchy4ever",
+                "stack": 1257,
+                "is_active": false,
+                "state": "Folded",
+                "vpip_color": "Yellow",
+                "agg_color": "Blue"
+            },
+            "seat_5": {
+                "name": "Ratt6809",
+                "stack": 75,
+                "is_active": false,
+                "state": "Folded",
+                "vpip_color": "Green",
+                "agg_color": "Red"
+            }
+        },
+        "num_active_players": 1,
+        "active_buttons": [
+            "button_fold"
+        ],
+        "street": "Preflop",
+        "dealer_name": "Anarchy4ever",
+        "dealer_idx": 4,
+        "hero_position": 2,
+        "action_history": [
+            "r"
+        ],
+        "opp_vpip_norm": 0.45,
+        "opp_agg_norm": 0.46,
+        "big_blind": 20.0
+    },
+    "hand_history_len": 2
+}

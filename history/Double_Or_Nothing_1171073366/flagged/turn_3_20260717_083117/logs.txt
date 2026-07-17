@@ -1,0 +1,58 @@
+[SYSTEM] Switched decision model to: Herocules (v20_preflopEq_AI)
+[SYSTEM] Executing Auto-Live Quick Start...
+[SYSTEM] Scanning 9 active windows...
+  Candidate: '#announcements | LM Studio - Discord' (pipes: 1, table_match: False)
+  Candidate: 'AIPoker - Antigravity IDE - Bash tool output (vqrwq7)' (pipes: 0, table_match: False)
+  Candidate: 'Bet365 Poker' (pipes: 0, table_match: False)
+  Candidate: 'Bet365 Poker' (pipes: 0, table_match: False)
+  Candidate: 'Double Or Nothing (€1) 1171073366 | NL Hold'em | Niveau 1 | 10/20     v.26.1.1.34' (pipes: 3, table_match: True)
+  Candidate: 'log - File Explorer' (pipes: 0, table_match: True)
+  Candidate: 'weights - File Explorer' (pipes: 0, table_match: True)
+[SYSTEM] Auto-matched & selected target window: [61152] Double Or Nothing (€1) 1171073366 | NL Hold'em | Niveau 1 | 10/20     v.26.1.1.34
+[SYSTEM] Starting PHPHelp engine...
+[SYSTEM] Auto-parsed blinds from window title: SB=10, BB=20
+
+--- HERO TURN DETECTED ---
+[Decision] Parsing thread execution path...
+[Decision] Range-aware equity vs ['Red', 'Yellow']: 0.32
+[Vision] Facing bet! Parsed Call Amount: 10.0
+[Decision] DECIDED BRANCH: **FOLD**
+[Decision] Reason: V20_preflopEq_AI sampled (temp=0.50) -> FOLD: {FOLD 1.00, CALL 0.00, RAISE_33 0.00, RAISE_66 0.00, RAISE_POT 0.00, ALLIN 0.00}
+[Decision] Thinking: equity too low (32%) to continue profitably -- folding.
+[History] Recording turns -> history\Double_Or_Nothing_1171073366/turns.jsonl
+[Automation] Invoking native call for FOLD...
+[Automation] Executing main action: Clicking FOLD...
+[Automation] Thread interrupt completed successfully.
+[SYSTEM] Parsing loop complete. Monitoring stream...
+[SYSTEM] New hand detected. Resetting table state history.
+[XML Tracker] Loaded baseline stacks: {'Ratt6809': 1500, 'Zwonkie': 1490, 'Sanoj86': 1480, 'stelor': 1480, 'prometheus71': 1500, 'Anarchy4ever': 1500} (Hero: Zwonkie, Dealer: )
+[SYSTEM] New hand detected. Resetting table state history.
+[XML Tracker] Loaded baseline stacks: {'Ratt6809': 1500, 'Zwonkie': 1490, 'Sanoj86': 1480, 'stelor': 1480, 'prometheus71': 1500, 'Anarchy4ever': 1500} (Hero: Zwonkie, Dealer: )
+[SYSTEM] New hand detected. Resetting table state history.
+[XML Tracker] Loaded baseline stacks: {'Ratt6809': 1307, 'Zwonkie': 1490, 'Sanoj86': 1470, 'stelor': 1470, 'prometheus71': 1500, 'Anarchy4ever': 1307} (Hero: Zwonkie, Dealer: )
+
+--- HERO TURN DETECTED ---
+[Decision] Parsing thread execution path...
+[Decision] Range-aware equity vs ['Yellow', 'Yellow', 'Yellow']: 0.33
+[Vision] Facing bet! Parsed Call Amount: 20.0
+[Decision] DECIDED BRANCH: **FOLD**
+[Decision] Reason: V20_preflopEq_AI sampled (temp=0.50) -> FOLD: {FOLD 1.00, CALL 0.00, RAISE_33 0.00, RAISE_66 0.00, RAISE_POT 0.00, ALLIN 0.00}
+[Decision] Thinking: equity too low (33%) to continue profitably -- folding.
+[Automation] Invoking native call for FOLD...
+[Automation] Executing main action: Clicking FOLD...
+[Automation] Thread interrupt completed successfully.
+[SYSTEM] Parsing loop complete. Monitoring stream...
+[SYSTEM] New hand detected. Resetting table state history.
+[XML Tracker] Loaded baseline stacks: {'Ratt6809': 1763, 'Zwonkie': 1490, 'Sanoj86': 2950, 'stelor': 1460, 'prometheus71': 0.0, 'Anarchy4ever': 1307} (Hero: Zwonkie, Dealer: )
+
+--- HERO TURN DETECTED ---
+[Decision] Parsing thread execution path...
+[Decision] Range-aware equity vs ['Red', 'Red', 'Yellow', 'Yellow']: 0.28
+[Vision] Facing bet! Parsed Call Amount: 20.0
+[Decision] DECIDED BRANCH: **FOLD**
+[Decision] Reason: V20_preflopEq_AI sampled (temp=0.50) -> FOLD: {FOLD 1.00, CALL 0.00, RAISE_33 0.00, RAISE_66 0.00, RAISE_POT 0.00, ALLIN 0.00}
+[Decision] Thinking: equity too low (28%) to continue profitably -- folding.
+[Automation] Invoking native call for FOLD...
+[Automation] Executing main action: Clicking FOLD...
+[Automation] Thread interrupt completed successfully.
+[SYSTEM] Parsing loop complete. Monitoring stream...
