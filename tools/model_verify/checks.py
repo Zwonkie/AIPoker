@@ -763,9 +763,14 @@ def check_equity_edge_sweep(rc):
     return CheckResult(status, detail, data)
 
 
+# VAL-1 external ground-truth axis (self-contained plug-in -- see tools/model_verify/nash/).
+from tools.model_verify.nash.pushfold_check import check_nash_pushfold_vs_chart
+
 FAST_CHECKS = [
     ("equity_ablation_monotonic", "P(fold) falls / P(aggressive) rises as equity rises",
      "general health", check_equity_ablation_monotonic),
+    ("nash_pushfold_vs_chart", "shove/fold lean agrees with heads-up Nash on unambiguous cells (EXTERNAL ground truth, WARN-only)",
+     "VAL-1 -- first external GTO reference axis", check_nash_pushfold_vs_chart),
     ("free_check_low_fold", "never wants to fold a free option (call_amount == 0)",
      "train/serve fold-mask consistency", check_free_check_low_fold),
     ("air_folds_mostly", "~12% equity facing a real bet folds more than it doesn't",
@@ -1000,6 +1005,11 @@ ALL_CHECKS = FAST_CHECKS + SLOW_CHECKS
 # error) -- add one whenever a new check is added above.
 # =====================================================================================
 CHECK_DOCS = {
+    "nash_pushfold_vs_chart": dict(
+        what="Compares the model's shove-vs-fold lean against a curated set of UNAMBIGUOUS heads-up Nash push/fold reference spots (SB open-jam, chip-EV) -- the first check that tests hero against an EXTERNAL game-theory answer rather than this project's own simulator/bots.",
+        expect="On spots where Nash is not in dispute (premiums/pairs/aces shove short; bottom-tier offsuit trash folds at 15bb), the model should lean the same way. Reported as a % agreement over in-training-range (>=5bb) cells; below-5bb cells are shown separately as out-of-distribution.",
+        if_not="WARN-only, never a deploy gate -- a 6-max cash model isn't required to match a heads-up subgame, and heads-up/position is mildly OOD. But a LOW agreement (or a gross disagreement like folding a premium or shoving pure trash deep) is a real external red flag worth investigating, independent of how clean the self-referential checks look.",
+    ),
     "equity_ablation_monotonic": dict(
         what="Sweeps the model's win probability (equity) from very weak (5%) to very strong (95%), holding everything else fixed, and watches how often it folds vs bets/raises.",
         expect="Folding should become rare and betting/raising should become common as equity rises -- a smooth swing from mostly-fold at low equity to mostly-aggressive at high equity.",

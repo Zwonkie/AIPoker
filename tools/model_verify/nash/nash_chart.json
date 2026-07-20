@@ -1,0 +1,313 @@
+{
+  "_meta": {
+    "description": "Curated unambiguous heads-up Nash push/fold reference cells (SB open-jam, 0.5/1 blinds, no ante, chip-EV). equity_vs_random is raw HU preflop equity vs one random opponent, computed offline via core.evaluator.",
+    "n_sims_per_hand": 40000,
+    "n_cells": 38
+  },
+  "cells": [
+    {
+      "hand": "AA",
+      "stack_bb": 15,
+      "nash_action": "shove",
+      "equity_vs_random": 0.8538,
+      "in_training_range": true,
+      "note": "the nuts -- shoves at every push/fold depth"
+    },
+    {
+      "hand": "KK",
+      "stack_bb": 15,
+      "nash_action": "shove",
+      "equity_vs_random": 0.8225,
+      "in_training_range": true,
+      "note": "shoves at every push/fold depth"
+    },
+    {
+      "hand": "QQ",
+      "stack_bb": 15,
+      "nash_action": "shove",
+      "equity_vs_random": 0.7992,
+      "in_training_range": true,
+      "note": "shoves at every push/fold depth"
+    },
+    {
+      "hand": "AKs",
+      "stack_bb": 15,
+      "nash_action": "shove",
+      "equity_vs_random": 0.6681,
+      "in_training_range": true,
+      "note": "shoves at every push/fold depth"
+    },
+    {
+      "hand": "AKo",
+      "stack_bb": 15,
+      "nash_action": "shove",
+      "equity_vs_random": 0.6555,
+      "in_training_range": true,
+      "note": "shoves at every push/fold depth"
+    },
+    {
+      "hand": "JJ",
+      "stack_bb": 15,
+      "nash_action": "shove",
+      "equity_vs_random": 0.7785,
+      "in_training_range": true,
+      "note": "any pair shoves comfortably at 15bb HU"
+    },
+    {
+      "hand": "TT",
+      "stack_bb": 15,
+      "nash_action": "shove",
+      "equity_vs_random": 0.7518,
+      "in_training_range": true,
+      "note": "any pair shoves comfortably at 15bb HU"
+    },
+    {
+      "hand": "88",
+      "stack_bb": 15,
+      "nash_action": "shove",
+      "equity_vs_random": 0.6896,
+      "in_training_range": true,
+      "note": "any pair shoves comfortably at 15bb HU"
+    },
+    {
+      "hand": "55",
+      "stack_bb": 15,
+      "nash_action": "shove",
+      "equity_vs_random": 0.6026,
+      "in_training_range": true,
+      "note": "any pair shoves comfortably at 15bb HU"
+    },
+    {
+      "hand": "22",
+      "stack_bb": 12,
+      "nash_action": "shove",
+      "equity_vs_random": 0.5027,
+      "in_training_range": true,
+      "note": "even the worst pair shoves well past 12bb HU"
+    },
+    {
+      "hand": "A2s",
+      "stack_bb": 15,
+      "nash_action": "shove",
+      "equity_vs_random": 0.5741,
+      "in_training_range": true,
+      "note": "any suited ace shoves at 15bb HU"
+    },
+    {
+      "hand": "A5s",
+      "stack_bb": 15,
+      "nash_action": "shove",
+      "equity_vs_random": 0.6034,
+      "in_training_range": true,
+      "note": "any suited ace shoves at 15bb HU"
+    },
+    {
+      "hand": "AJo",
+      "stack_bb": 12,
+      "nash_action": "shove",
+      "equity_vs_random": 0.6357,
+      "in_training_range": true,
+      "note": "strong offsuit ace, clear shove at 12bb"
+    },
+    {
+      "hand": "ATo",
+      "stack_bb": 12,
+      "nash_action": "shove",
+      "equity_vs_random": 0.6248,
+      "in_training_range": true,
+      "note": "offsuit ace, clear shove at 12bb"
+    },
+    {
+      "hand": "A9o",
+      "stack_bb": 10,
+      "nash_action": "shove",
+      "equity_vs_random": 0.6055,
+      "in_training_range": true,
+      "note": "offsuit ace, clear shove at 10bb"
+    },
+    {
+      "hand": "A2o",
+      "stack_bb": 7,
+      "nash_action": "shove",
+      "equity_vs_random": 0.5511,
+      "in_training_range": true,
+      "note": "worst offsuit ace still shoves at 7bb HU"
+    },
+    {
+      "hand": "KQs",
+      "stack_bb": 12,
+      "nash_action": "shove",
+      "equity_vs_random": 0.63,
+      "in_training_range": true,
+      "note": "suited broadway, clear shove"
+    },
+    {
+      "hand": "KJs",
+      "stack_bb": 12,
+      "nash_action": "shove",
+      "equity_vs_random": 0.6236,
+      "in_training_range": true,
+      "note": "suited broadway, clear shove"
+    },
+    {
+      "hand": "KTs",
+      "stack_bb": 12,
+      "nash_action": "shove",
+      "equity_vs_random": 0.6181,
+      "in_training_range": true,
+      "note": "suited broadway, clear shove"
+    },
+    {
+      "hand": "QJs",
+      "stack_bb": 10,
+      "nash_action": "shove",
+      "equity_vs_random": 0.5989,
+      "in_training_range": true,
+      "note": "suited broadway, clear shove at 10bb"
+    },
+    {
+      "hand": "JTs",
+      "stack_bb": 10,
+      "nash_action": "shove",
+      "equity_vs_random": 0.5792,
+      "in_training_range": true,
+      "note": "suited connector broadway, clear shove at 10bb"
+    },
+    {
+      "hand": "K9s",
+      "stack_bb": 10,
+      "nash_action": "shove",
+      "equity_vs_random": 0.6013,
+      "in_training_range": true,
+      "note": "suited king, clear shove at 10bb"
+    },
+    {
+      "hand": "KQo",
+      "stack_bb": 10,
+      "nash_action": "shove",
+      "equity_vs_random": 0.6168,
+      "in_training_range": true,
+      "note": "offsuit broadway, clear shove at 10bb"
+    },
+    {
+      "hand": "72o",
+      "stack_bb": 15,
+      "nash_action": "fold",
+      "equity_vs_random": 0.3489,
+      "in_training_range": true,
+      "note": "the single worst hand -- folds far below 15bb"
+    },
+    {
+      "hand": "82o",
+      "stack_bb": 15,
+      "nash_action": "fold",
+      "equity_vs_random": 0.3684,
+      "in_training_range": true,
+      "note": "offsuit trash, clear fold at 15bb"
+    },
+    {
+      "hand": "83o",
+      "stack_bb": 15,
+      "nash_action": "fold",
+      "equity_vs_random": 0.3785,
+      "in_training_range": true,
+      "note": "offsuit trash, clear fold at 15bb"
+    },
+    {
+      "hand": "92o",
+      "stack_bb": 15,
+      "nash_action": "fold",
+      "equity_vs_random": 0.3928,
+      "in_training_range": true,
+      "note": "offsuit trash, clear fold at 15bb"
+    },
+    {
+      "hand": "93o",
+      "stack_bb": 15,
+      "nash_action": "fold",
+      "equity_vs_random": 0.3964,
+      "in_training_range": true,
+      "note": "offsuit trash, clear fold at 15bb"
+    },
+    {
+      "hand": "62o",
+      "stack_bb": 15,
+      "nash_action": "fold",
+      "equity_vs_random": 0.342,
+      "in_training_range": true,
+      "note": "offsuit trash, clear fold at 15bb"
+    },
+    {
+      "hand": "73o",
+      "stack_bb": 15,
+      "nash_action": "fold",
+      "equity_vs_random": 0.3705,
+      "in_training_range": true,
+      "note": "offsuit trash, clear fold at 15bb"
+    },
+    {
+      "hand": "42o",
+      "stack_bb": 15,
+      "nash_action": "fold",
+      "equity_vs_random": 0.3316,
+      "in_training_range": true,
+      "note": "offsuit trash, clear fold at 15bb"
+    },
+    {
+      "hand": "32o",
+      "stack_bb": 15,
+      "nash_action": "fold",
+      "equity_vs_random": 0.3199,
+      "in_training_range": true,
+      "note": "offsuit trash, clear fold at 15bb"
+    },
+    {
+      "hand": "J2o",
+      "stack_bb": 15,
+      "nash_action": "fold",
+      "equity_vs_random": 0.4431,
+      "in_training_range": true,
+      "note": "J-high offsuit trash, clear fold at 15bb"
+    },
+    {
+      "hand": "Q2o",
+      "stack_bb": 15,
+      "nash_action": "fold",
+      "equity_vs_random": 0.4732,
+      "in_training_range": true,
+      "note": "Q-high offsuit trash, clear fold at 15bb"
+    },
+    {
+      "hand": "T2o",
+      "stack_bb": 15,
+      "nash_action": "fold",
+      "equity_vs_random": 0.4117,
+      "in_training_range": true,
+      "note": "T-high offsuit trash, clear fold at 15bb"
+    },
+    {
+      "hand": "72o",
+      "stack_bb": 2,
+      "nash_action": "shove",
+      "equity_vs_random": 0.3489,
+      "in_training_range": false,
+      "note": "at 2bb HU, any two cards shove (below 5bb training floor -- OOD)"
+    },
+    {
+      "hand": "32o",
+      "stack_bb": 2,
+      "nash_action": "shove",
+      "equity_vs_random": 0.3199,
+      "in_training_range": false,
+      "note": "at 2bb HU, any two cards shove (below 5bb training floor -- OOD)"
+    },
+    {
+      "hand": "92o",
+      "stack_bb": 2,
+      "nash_action": "shove",
+      "equity_vs_random": 0.3928,
+      "in_training_range": false,
+      "note": "at 2bb HU, any two cards shove (below 5bb training floor -- OOD)"
+    }
+  ]
+}

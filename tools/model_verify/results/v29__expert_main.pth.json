@@ -9,7 +9,7 @@
     "raise_pot",
     "allin"
   ],
-  "full": true,
+  "full": false,
   "checks": [
     {
       "id": "equity_ablation_monotonic",
@@ -98,6 +98,512 @@
         "what": "Sweeps the model's win probability (equity) from very weak (5%) to very strong (95%), holding everything else fixed, and watches how often it folds vs bets/raises.",
         "expect": "Folding should become rare and betting/raising should become common as equity rises -- a smooth swing from mostly-fold at low equity to mostly-aggressive at high equity.",
         "if_not": "If fold doesn't drop or aggression doesn't rise, the model isn't using its own equity input correctly -- a fundamental, likely training-breaking bug (wrong feature index, dead equity pathway, or a catastrophic collapse)."
+      }
+    },
+    {
+      "id": "nash_pushfold_vs_chart",
+      "status": "PASS",
+      "detail": "Nash commit-vs-fold agreement (in-range >=5bb): 34/35 (97%) | of 23 agreeing shove cells, 23 commit via a sized RAISE not a literal jam (expected post-V29 anti-jam) | DIRECTION disagreements: Q2o@15bb (Nash fold, model shove: agg=0.61/F=0.23, argmax=raise_pot) | below-floor(<5bb): 0/3 agree (OOD, informational)",
+      "data": [
+        {
+          "hand": "AA",
+          "stack_bb": 15,
+          "nash": "shove",
+          "model_lean": "shove",
+          "agrees": true,
+          "agg_mass": 0.84,
+          "p_allin": 0.101,
+          "p_fold": 0.002,
+          "raw_argmax": "raise_pot",
+          "prefers_allin": false,
+          "in_training_range": true
+        },
+        {
+          "hand": "KK",
+          "stack_bb": 15,
+          "nash": "shove",
+          "model_lean": "shove",
+          "agrees": true,
+          "agg_mass": 0.839,
+          "p_allin": 0.081,
+          "p_fold": 0.002,
+          "raw_argmax": "raise_pot",
+          "prefers_allin": false,
+          "in_training_range": true
+        },
+        {
+          "hand": "QQ",
+          "stack_bb": 15,
+          "nash": "shove",
+          "model_lean": "shove",
+          "agrees": true,
+          "agg_mass": 0.84,
+          "p_allin": 0.068,
+          "p_fold": 0.002,
+          "raw_argmax": "raise_pot",
+          "prefers_allin": false,
+          "in_training_range": true
+        },
+        {
+          "hand": "AKs",
+          "stack_bb": 15,
+          "nash": "shove",
+          "model_lean": "shove",
+          "agrees": true,
+          "agg_mass": 0.856,
+          "p_allin": 0.019,
+          "p_fold": 0.005,
+          "raw_argmax": "raise_pot",
+          "prefers_allin": false,
+          "in_training_range": true
+        },
+        {
+          "hand": "AKo",
+          "stack_bb": 15,
+          "nash": "shove",
+          "model_lean": "shove",
+          "agrees": true,
+          "agg_mass": 0.858,
+          "p_allin": 0.017,
+          "p_fold": 0.006,
+          "raw_argmax": "raise_pot",
+          "prefers_allin": false,
+          "in_training_range": true
+        },
+        {
+          "hand": "JJ",
+          "stack_bb": 15,
+          "nash": "shove",
+          "model_lean": "shove",
+          "agrees": true,
+          "agg_mass": 0.841,
+          "p_allin": 0.058,
+          "p_fold": 0.002,
+          "raw_argmax": "raise_pot",
+          "prefers_allin": false,
+          "in_training_range": true
+        },
+        {
+          "hand": "TT",
+          "stack_bb": 15,
+          "nash": "shove",
+          "model_lean": "shove",
+          "agrees": true,
+          "agg_mass": 0.843,
+          "p_allin": 0.047,
+          "p_fold": 0.003,
+          "raw_argmax": "raise_pot",
+          "prefers_allin": false,
+          "in_training_range": true
+        },
+        {
+          "hand": "88",
+          "stack_bb": 15,
+          "nash": "shove",
+          "model_lean": "shove",
+          "agrees": true,
+          "agg_mass": 0.853,
+          "p_allin": 0.025,
+          "p_fold": 0.004,
+          "raw_argmax": "raise_pot",
+          "prefers_allin": false,
+          "in_training_range": true
+        },
+        {
+          "hand": "55",
+          "stack_bb": 15,
+          "nash": "shove",
+          "model_lean": "shove",
+          "agrees": true,
+          "agg_mass": 0.86,
+          "p_allin": 0.009,
+          "p_fold": 0.012,
+          "raw_argmax": "raise_pot",
+          "prefers_allin": false,
+          "in_training_range": true
+        },
+        {
+          "hand": "22",
+          "stack_bb": 12,
+          "nash": "shove",
+          "model_lean": "shove",
+          "agrees": true,
+          "agg_mass": 0.747,
+          "p_allin": 0.002,
+          "p_fold": 0.111,
+          "raw_argmax": "raise_pot",
+          "prefers_allin": false,
+          "in_training_range": true
+        },
+        {
+          "hand": "A2s",
+          "stack_bb": 15,
+          "nash": "shove",
+          "model_lean": "shove",
+          "agrees": true,
+          "agg_mass": 0.849,
+          "p_allin": 0.006,
+          "p_fold": 0.021,
+          "raw_argmax": "raise_pot",
+          "prefers_allin": false,
+          "in_training_range": true
+        },
+        {
+          "hand": "A5s",
+          "stack_bb": 15,
+          "nash": "shove",
+          "model_lean": "shove",
+          "agrees": true,
+          "agg_mass": 0.86,
+          "p_allin": 0.009,
+          "p_fold": 0.012,
+          "raw_argmax": "raise_pot",
+          "prefers_allin": false,
+          "in_training_range": true
+        },
+        {
+          "hand": "AJo",
+          "stack_bb": 12,
+          "nash": "shove",
+          "model_lean": "shove",
+          "agrees": true,
+          "agg_mass": 0.862,
+          "p_allin": 0.014,
+          "p_fold": 0.008,
+          "raw_argmax": "raise_pot",
+          "prefers_allin": false,
+          "in_training_range": true
+        },
+        {
+          "hand": "ATo",
+          "stack_bb": 12,
+          "nash": "shove",
+          "model_lean": "shove",
+          "agrees": true,
+          "agg_mass": 0.863,
+          "p_allin": 0.012,
+          "p_fold": 0.009,
+          "raw_argmax": "raise_pot",
+          "prefers_allin": false,
+          "in_training_range": true
+        },
+        {
+          "hand": "A9o",
+          "stack_bb": 10,
+          "nash": "shove",
+          "model_lean": "shove",
+          "agrees": true,
+          "agg_mass": 0.858,
+          "p_allin": 0.01,
+          "p_fold": 0.014,
+          "raw_argmax": "raise_pot",
+          "prefers_allin": false,
+          "in_training_range": true
+        },
+        {
+          "hand": "A2o",
+          "stack_bb": 7,
+          "nash": "shove",
+          "model_lean": "shove",
+          "agrees": true,
+          "agg_mass": 0.822,
+          "p_allin": 0.005,
+          "p_fold": 0.045,
+          "raw_argmax": "raise_pot",
+          "prefers_allin": false,
+          "in_training_range": true
+        },
+        {
+          "hand": "KQs",
+          "stack_bb": 12,
+          "nash": "shove",
+          "model_lean": "shove",
+          "agrees": true,
+          "agg_mass": 0.863,
+          "p_allin": 0.013,
+          "p_fold": 0.009,
+          "raw_argmax": "raise_pot",
+          "prefers_allin": false,
+          "in_training_range": true
+        },
+        {
+          "hand": "KJs",
+          "stack_bb": 12,
+          "nash": "shove",
+          "model_lean": "shove",
+          "agrees": true,
+          "agg_mass": 0.863,
+          "p_allin": 0.012,
+          "p_fold": 0.009,
+          "raw_argmax": "raise_pot",
+          "prefers_allin": false,
+          "in_training_range": true
+        },
+        {
+          "hand": "KTs",
+          "stack_bb": 12,
+          "nash": "shove",
+          "model_lean": "shove",
+          "agrees": true,
+          "agg_mass": 0.862,
+          "p_allin": 0.011,
+          "p_fold": 0.01,
+          "raw_argmax": "raise_pot",
+          "prefers_allin": false,
+          "in_training_range": true
+        },
+        {
+          "hand": "QJs",
+          "stack_bb": 10,
+          "nash": "shove",
+          "model_lean": "shove",
+          "agrees": true,
+          "agg_mass": 0.856,
+          "p_allin": 0.009,
+          "p_fold": 0.016,
+          "raw_argmax": "raise_pot",
+          "prefers_allin": false,
+          "in_training_range": true
+        },
+        {
+          "hand": "JTs",
+          "stack_bb": 10,
+          "nash": "shove",
+          "model_lean": "shove",
+          "agrees": true,
+          "agg_mass": 0.848,
+          "p_allin": 0.007,
+          "p_fold": 0.023,
+          "raw_argmax": "raise_pot",
+          "prefers_allin": false,
+          "in_training_range": true
+        },
+        {
+          "hand": "K9s",
+          "stack_bb": 10,
+          "nash": "shove",
+          "model_lean": "shove",
+          "agrees": true,
+          "agg_mass": 0.857,
+          "p_allin": 0.01,
+          "p_fold": 0.015,
+          "raw_argmax": "raise_pot",
+          "prefers_allin": false,
+          "in_training_range": true
+        },
+        {
+          "hand": "KQo",
+          "stack_bb": 10,
+          "nash": "shove",
+          "model_lean": "shove",
+          "agrees": true,
+          "agg_mass": 0.861,
+          "p_allin": 0.012,
+          "p_fold": 0.011,
+          "raw_argmax": "raise_pot",
+          "prefers_allin": false,
+          "in_training_range": true
+        },
+        {
+          "hand": "72o",
+          "stack_bb": 15,
+          "nash": "fold",
+          "model_lean": "fold",
+          "agrees": true,
+          "agg_mass": 0.001,
+          "p_allin": 0.0,
+          "p_fold": 0.995,
+          "raw_argmax": "fold",
+          "prefers_allin": null,
+          "in_training_range": true
+        },
+        {
+          "hand": "82o",
+          "stack_bb": 15,
+          "nash": "fold",
+          "model_lean": "fold",
+          "agrees": true,
+          "agg_mass": 0.005,
+          "p_allin": 0.0,
+          "p_fold": 0.982,
+          "raw_argmax": "fold",
+          "prefers_allin": null,
+          "in_training_range": true
+        },
+        {
+          "hand": "83o",
+          "stack_bb": 15,
+          "nash": "fold",
+          "model_lean": "fold",
+          "agrees": true,
+          "agg_mass": 0.013,
+          "p_allin": 0.0,
+          "p_fold": 0.963,
+          "raw_argmax": "fold",
+          "prefers_allin": null,
+          "in_training_range": true
+        },
+        {
+          "hand": "92o",
+          "stack_bb": 15,
+          "nash": "fold",
+          "model_lean": "fold",
+          "agrees": true,
+          "agg_mass": 0.04,
+          "p_allin": 0.0,
+          "p_fold": 0.916,
+          "raw_argmax": "fold",
+          "prefers_allin": null,
+          "in_training_range": true
+        },
+        {
+          "hand": "93o",
+          "stack_bb": 15,
+          "nash": "fold",
+          "model_lean": "fold",
+          "agrees": true,
+          "agg_mass": 0.05,
+          "p_allin": 0.0,
+          "p_fold": 0.9,
+          "raw_argmax": "fold",
+          "prefers_allin": null,
+          "in_training_range": true
+        },
+        {
+          "hand": "62o",
+          "stack_bb": 15,
+          "nash": "fold",
+          "model_lean": "fold",
+          "agrees": true,
+          "agg_mass": 0.0,
+          "p_allin": 0.0,
+          "p_fold": 0.997,
+          "raw_argmax": "fold",
+          "prefers_allin": null,
+          "in_training_range": true
+        },
+        {
+          "hand": "73o",
+          "stack_bb": 15,
+          "nash": "fold",
+          "model_lean": "fold",
+          "agrees": true,
+          "agg_mass": 0.006,
+          "p_allin": 0.0,
+          "p_fold": 0.979,
+          "raw_argmax": "fold",
+          "prefers_allin": null,
+          "in_training_range": true
+        },
+        {
+          "hand": "42o",
+          "stack_bb": 15,
+          "nash": "fold",
+          "model_lean": "fold",
+          "agrees": true,
+          "agg_mass": 0.0,
+          "p_allin": 0.0,
+          "p_fold": 0.998,
+          "raw_argmax": "fold",
+          "prefers_allin": null,
+          "in_training_range": true
+        },
+        {
+          "hand": "32o",
+          "stack_bb": 15,
+          "nash": "fold",
+          "model_lean": "fold",
+          "agrees": true,
+          "agg_mass": 0.0,
+          "p_allin": 0.0,
+          "p_fold": 0.998,
+          "raw_argmax": "fold",
+          "prefers_allin": null,
+          "in_training_range": true
+        },
+        {
+          "hand": "J2o",
+          "stack_bb": 15,
+          "nash": "fold",
+          "model_lean": "fold",
+          "agrees": true,
+          "agg_mass": 0.358,
+          "p_allin": 0.0,
+          "p_fold": 0.505,
+          "raw_argmax": "fold",
+          "prefers_allin": null,
+          "in_training_range": true
+        },
+        {
+          "hand": "Q2o",
+          "stack_bb": 15,
+          "nash": "fold",
+          "model_lean": "shove",
+          "agrees": false,
+          "agg_mass": 0.613,
+          "p_allin": 0.001,
+          "p_fold": 0.234,
+          "raw_argmax": "raise_pot",
+          "prefers_allin": null,
+          "in_training_range": true
+        },
+        {
+          "hand": "T2o",
+          "stack_bb": 15,
+          "nash": "fold",
+          "model_lean": "fold",
+          "agrees": true,
+          "agg_mass": 0.113,
+          "p_allin": 0.0,
+          "p_fold": 0.807,
+          "raw_argmax": "fold",
+          "prefers_allin": null,
+          "in_training_range": true
+        },
+        {
+          "hand": "72o",
+          "stack_bb": 2,
+          "nash": "shove",
+          "model_lean": "fold",
+          "agrees": false,
+          "agg_mass": 0.001,
+          "p_allin": 0.0,
+          "p_fold": 0.994,
+          "raw_argmax": "fold",
+          "prefers_allin": null,
+          "in_training_range": false
+        },
+        {
+          "hand": "32o",
+          "stack_bb": 2,
+          "nash": "shove",
+          "model_lean": "fold",
+          "agrees": false,
+          "agg_mass": 0.0,
+          "p_allin": 0.0,
+          "p_fold": 0.999,
+          "raw_argmax": "fold",
+          "prefers_allin": null,
+          "in_training_range": false
+        },
+        {
+          "hand": "92o",
+          "stack_bb": 2,
+          "nash": "shove",
+          "model_lean": "fold",
+          "agrees": false,
+          "agg_mass": 0.019,
+          "p_allin": 0.0,
+          "p_fold": 0.95,
+          "raw_argmax": "fold",
+          "prefers_allin": null,
+          "in_training_range": false
+        }
+      ],
+      "doc": {
+        "what": "Compares the model's shove-vs-fold lean against a curated set of UNAMBIGUOUS heads-up Nash push/fold reference spots (SB open-jam, chip-EV) -- the first check that tests hero against an EXTERNAL game-theory answer rather than this project's own simulator/bots.",
+        "expect": "On spots where Nash is not in dispute (premiums/pairs/aces shove short; bottom-tier offsuit trash folds at 15bb), the model should lean the same way. Reported as a % agreement over in-training-range (>=5bb) cells; below-5bb cells are shown separately as out-of-distribution.",
+        "if_not": "WARN-only, never a deploy gate -- a 6-max cash model isn't required to match a heads-up subgame, and heads-up/position is mildly OOD. But a LOW agreement (or a gross disagreement like folding a premium or shoving pure trash deep) is a real external red flag worth investigating, independent of how clean the self-referential checks look."
       }
     },
     {
@@ -3831,151 +4337,6 @@
         "what": "Full multi-point curve version of equity_edge_sensitivity (same ablation, more points) so a flatline OR a non-monotonic kink is visible on a chart, not just one aggregate number.",
         "expect": "Same as equity_edge_sensitivity: a meaningful, ideally smooth response across the curve.",
         "if_not": "Same as equity_edge_sensitivity -- WARN-only, diagnostic."
-      }
-    },
-    {
-      "id": "vpip_adapts_to_style",
-      "status": "PASS",
-      "detail": "short: tight=15.8% loose=21.8% (delta +6.0pts); deep: tight=20.0% loose=25.7% (delta +5.6pts)",
-      "data": [
-        {
-          "depth": "short",
-          "stack_range": [
-            5,
-            14
-          ],
-          "vpip_tight": 15.8,
-          "vpip_loose": 21.8,
-          "delta": 6.0,
-          "bb100_tight": 25.8,
-          "bb100_loose": 12.6,
-          "pass": true
-        },
-        {
-          "depth": "deep",
-          "stack_range": [
-            30,
-            50
-          ],
-          "vpip_tight": 20.0,
-          "vpip_loose": 25.7,
-          "delta": 5.6,
-          "bb100_tight": 36.6,
-          "bb100_loose": 37.4,
-          "pass": true
-        }
-      ],
-      "doc": {
-        "what": "Runs real simulated hands against an all-tight ('nit') table vs an all-loose ('fish') table, and measures how often hero voluntarily enters a pot (VPIP) against each.",
-        "expect": "Hero's VPIP should be noticeably HIGHER against the loose/weak table than the tight table (by at least ~5 percentage points) -- playing more hands where opponents are more likely to be weak, fewer where they're not.",
-        "if_not": "A flat VPIP regardless of opponent tightness means hero isn't adapting its starting-hand selection to the table at all -- the exact bug this check was built to catch (a real historical regression)."
-      }
-    },
-    {
-      "id": "beats_offformula_stress",
-      "status": "PASS",
-      "detail": "short: +14.1 BB/100 (VPIP 22%); deep: +30.1 BB/100 (VPIP 27%)",
-      "data": [
-        {
-          "depth": "short",
-          "bb100": 14.1,
-          "vpip": 21.9
-        },
-        {
-          "depth": "deep",
-          "bb100": 30.1,
-          "vpip": 27.2
-        }
-      ],
-      "doc": {
-        "what": "Swaps in a structurally different opponent (a discrete equity-tier lookup bot, not just a reweighted version of the same continuous pot-odds formula every training opponent uses) to see if hero's win rate holds up against a genuinely different playing style.",
-        "expect": "Win rate should stay positive or only mildly negative -- evidence the model learned general poker principles, not just how to beat its own training-opponent formula.",
-        "if_not": "A big win-rate collapse (below -30 BB/100) is a strong overfitting signal -- the model may have learned to exploit quirks specific to the training bots' math rather than transferable strategy."
-      }
-    },
-    {
-      "id": "bb100_vs_standard_fields",
-      "status": "PASS",
-      "detail": "loose_short: +20.7 BB/100, no baseline recorded yet VPIP 23% | loose_deep: +72.5 BB/100, no baseline recorded yet VPIP 27% | tight_short: +32.4 BB/100, no baseline recorded yet VPIP 25% | tight_deep: +53.6 BB/100, no baseline recorded yet VPIP 31%",
-      "data": [
-        {
-          "field": "loose_short",
-          "pool": [
-            "fish",
-            "tag",
-            "nit"
-          ],
-          "stack_range": [
-            5,
-            14
-          ],
-          "bb100": 20.7,
-          "vpip": 22.9,
-          "baseline": null,
-          "regressed": false
-        },
-        {
-          "field": "loose_deep",
-          "pool": [
-            "fish",
-            "tag",
-            "nit"
-          ],
-          "stack_range": [
-            30,
-            50
-          ],
-          "bb100": 72.5,
-          "vpip": 27.5,
-          "baseline": null,
-          "regressed": false
-        },
-        {
-          "field": "tight_short",
-          "pool": [
-            "nit",
-            "tag"
-          ],
-          "stack_range": [
-            5,
-            14
-          ],
-          "bb100": 32.4,
-          "vpip": 25.0,
-          "baseline": null,
-          "regressed": false
-        },
-        {
-          "field": "tight_deep",
-          "pool": [
-            "nit",
-            "tag"
-          ],
-          "stack_range": [
-            30,
-            50
-          ],
-          "bb100": 53.6,
-          "vpip": 30.7,
-          "baseline": null,
-          "regressed": false
-        }
-      ],
-      "doc": {
-        "what": "Runs real simulated hands against four standard opponent-field presets (loose/tight x short/deep stacks) and measures hero's win rate (BB/100), compared against the last recorded baseline for this version.",
-        "expect": "Win rate should hold roughly steady or improve versus the stored baseline in all four fields.",
-        "if_not": "A drop of more than 15 BB/100 in any field vs baseline is flagged as a quiet regression -- the model got WORSE against a standard opponent mix, even though nothing else may be failing."
-      }
-    },
-    {
-      "id": "beats_frozen_predecessor",
-      "status": "SKIP",
-      "detail": "could not load frozen_v28.pth: Checkpoint C:\\REPO\\Antigravity\\AIPoker\\versions/v29/weights\\frozen_v28.pth is context_dim=44 (contract v7), but v29 expects context_dim=54. Refusing to load.",
-      "data": null,
-      "doc": {
-        "what": "Plays real simulated hands against a mixed field that includes a frozen snapshot of this version's immediate predecessor, so the new model literally plays against the old one.",
-        "expect": "The new version should have a positive win rate (profit) in that field -- a straightforward 'did we actually get better' test.",
-        "if_not": "A loss (negative BB/100) here means the new version may not actually be an improvement over what it's replacing -- a serious deploy-readiness concern."
       }
     }
   ]

@@ -760,18 +760,48 @@ prioritized.
 
 ## Validation & tooling (methodology gaps, not model behavior bugs)
 
-### [VAL-1] No external GTO/solver ground truth ⚪ METHODOLOGY
+### [VAL-1] No external GTO/solver ground truth 🟡 PARTIAL (first external axis built, V30 2026-07-20)
 **Simple**: We've never checked our play against real game-theory-optimal solutions — all
 validation is "do we beat our own training opponents," not "are we close to unexploitable play."
 
-**Technical**: The entire `model_verify` suite (FAST + SLOW checks) is self-referential — it tests
+**Technical**: The entire `model_verify` suite (FAST + SLOW checks) was self-referential — it tests
 against the project's own simulator, its own heuristic archetypes, and its own frozen
-predecessors. No external solver (e.g. PioSOLVER-derived ranges) has ever been used to validate a
+predecessors. No external solver (e.g. PioSOLVER-derived ranges) had ever been used to validate a
 specific spot.
 
-**Suggestion**: Spot-check a handful of well-known solved situations (e.g. published heads-up
-shove/fold charts) against actual model output, as an independent axis alongside the existing
-suite.
+**Progress (V30, 2026-07-20 — first external axis, chosen as the V30 scope)**: added
+`nash_pushfold_vs_chart` — the FIRST check that tests hero against an EXTERNAL game-theory answer.
+Fully ENCAPSULATED plug-in under `tools/model_verify/nash/` (curated static chart + baked-in
+equities + one FAST check); integration into existing code is only an import + one `FAST_CHECKS`
+entry + one `CHECK_DOCS` entry in `checks.py`. Touches NOTHING in `versions/*`, the simulator, or
+`train.py`. This is deliberately a TOOLING addition, NOT a retrain — run it BEFORE deciding whether
+a trained V30 model is even warranted. Method: curated set of UNAMBIGUOUS heads-up Nash push/fold
+reference cells (SB open-jam, 0.5/1, chip-EV) — premiums/pairs/aces shove short, bottom-tier
+offsuit trash folds at 15bb — avoiding near-indifference boundary hands whose exact BB threshold
+varies by source. Equity fed to the model is raw HU equity vs one random opponent (assumption-free;
+the model supplies push/fold reasoning from stack geometry). WARN-only, never a deploy gate (a
+6-max cash model isn't REQUIRED to match a HU subgame; HU/position is mildly OOD). **Key
+methodology lesson learned building it**: the first cut compared ALLIN-vs-FOLD specifically and
+mislabeled 9 premiums as "folds" — the model was actually choosing RAISE_POT. Corrected to
+compare AGGRESSION(raise-family+allin)-vs-FOLD (Nash "shove" ≈ "commit" in a discretized sizing
+action space), with the ALLIN-vs-raise sizing split reported separately.
+
+**First results (V29, the current live model)**: 34/35 (97%) in-range direction agreement, PASS.
+Two genuinely useful external findings self-play never surfaced: (1) ALL 23 committed premiums are
+played as a sized RAISE, never a literal jam — V29's anti-jam [BET-1] fix confirmed on an
+independent axis; the model has essentially no literal all-in in its short-stack repertoire now
+(defensible at 10-15bb since a pot raise commits a big fraction, but a real, quantified divergence
+from pure push/fold theory). (2) ONE candidate leak: `Q2o@15bb` — Nash folds it, model commits it
+(61% aggression, argmax raise_pot), plausibly over-weighting Q-high's deceptively high raw HU equity
+(0.47 vs random) without accounting for domination. Single boundary cell, mild — but exactly the
+class of thing this axis exists to catch. Worth watching whether it recurs / widens in future
+versions.
+
+**Suggestion (remaining, Tier B)**: extend toward a full sourced 169-hand table (with attribution)
+and add the BB call-vs-shove-facing-a-jam decision (a cleaner binary spot — facing an all-in there's
+no cheap-limp confound — though it needs Nash CALLING ranges + range-conditioned equity). Also worth
+spot-checking against published PioSOLVER postflop outputs eventually. Still METHODOLOGY-flavored,
+but no longer zero external coverage.
 
 ### [VAL-3] `free_check_low_fold` residual mass 🟡 PARTIAL
 **Simple**: When there's no cost to seeing another card, the model's raw output occasionally still

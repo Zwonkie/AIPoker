@@ -9,6 +9,7 @@ venv/
 # Large Datasets and Extracted Files
 tools/data/
 data/
+graphify-out/
 
 # Model Weights
 core/weights/
