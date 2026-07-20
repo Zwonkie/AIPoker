@@ -18,6 +18,17 @@ import re
 # Add workspace path to system path to ensure imports work
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
+# ============================================================================================
+# [TEST FLAG] Action-selection mode. Flip to True to make live pick the critic's argmax-Q action
+# instead of sampling the actor policy (see core/decision.py USE_CRITIC_ARGMAX_ACTION, OFK
+# [STACK-3]). This drives the env var core.decision reads AT IMPORT, so it MUST be set before the
+# `from core.decision import ...` line below -- keep it here. Authoritative: this wins over any
+# HEROCULES_CRITIC_ARGMAX left in the shell. The HUD shows an amber "Q-CRITIC MODE" header when on.
+# ============================================================================================
+CRITIC_ARGMAX_MODE = False   # <-- flip to True to test Q-critic mode, then just run PHPHelp
+##os.environ['HEROCULES_CRITIC_ARGMAX'] = '1' if CRITIC_ARGMAX_MODE else '0'
+
+
 # Canonical action ordering for diagnostics. Covers the v13 3-way {FOLD,CALL,RAISE} and the
 # v14 6-way {FOLD,CALL,RAISE_33,RAISE_66,RAISE_POT,ALLIN} policies. F12 shows whichever keys exist.
 ACTION_DIAG_ORDER = ("FOLD", "CALL", "RAISE", "RAISE_33", "RAISE_66", "RAISE_POT", "ALLIN")
@@ -52,7 +63,7 @@ def _blend_hex(rgb_a, rgb_b):
 from core.vision import PokerVision
 from core.table_state import TableState
 from core.evaluator import PokerEvaluator
-from core.decision import PokerDecisionEngine
+from core.decision import PokerDecisionEngine, USE_CRITIC_ARGMAX_ACTION
 from core.state_machine import PokerStateMachine
 from core.action_executor import ActionExecutor, EmergencyAbortException
 from core.xml_tracker import XMLTracker
@@ -530,7 +541,12 @@ class PHPHelpApp(ctk.CTk):
         self.ev_breakdown_frame = ctk.CTkFrame(self.equity_panel, fg_color="#181a20", corner_radius=6)
         self.ev_breakdown_frame.pack(fill="x", padx=10, pady=(8, 4))
 
-        self.ev_title_lbl = ctk.CTkLabel(self.ev_breakdown_frame, text="ACTION DISTRIBUTION", font=ctk.CTkFont(weight="bold", size=10), text_color="#8a90a0")
+        # [TEST FLAG] Show which action-selection mode is live (see core.decision
+        # USE_CRITIC_ARGMAX_ACTION). Fixed at process start, so set once here. Critic-argmax mode
+        # gets a distinct amber title + suffix so it's never mistaken for the normal sampled policy.
+        _dist_title = "ACTION DISTRIBUTION — Q-CRITIC MODE" if USE_CRITIC_ARGMAX_ACTION else "ACTION DISTRIBUTION"
+        _dist_title_color = "#ffb020" if USE_CRITIC_ARGMAX_ACTION else "#8a90a0"
+        self.ev_title_lbl = ctk.CTkLabel(self.ev_breakdown_frame, text=_dist_title, font=ctk.CTkFont(weight="bold", size=10), text_color=_dist_title_color)
         self.ev_title_lbl.pack(pady=(4, 0))
 
         self.dist_empty_lbl = ctk.CTkLabel(self.ev_breakdown_frame, text="Waiting for decision...", font=ctk.CTkFont(size=10), text_color="#8a90a0")

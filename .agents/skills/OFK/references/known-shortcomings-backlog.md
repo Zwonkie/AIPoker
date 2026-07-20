@@ -250,6 +250,46 @@ isolation, so their individual contributions aren't separately attributable — 
 (21 PASS/2 WARN/0 FAIL/1 SKIP, the cleanest scorecard in this whole lineage). Verified, NOT yet
 deployed live (V28 stays active pending user evaluation).
 
+### [BET-3] Multiway passivity — model collapses to call/fold with 3+ opponents 🔴 OPEN (LIVE-CONFIRMED, V29, 2026-07-20 — HIGH PRIORITY)
+**First identified**: 2026-07-20, triaging a real live complaint ("v29 is really bad — too tight,
+almost not aggressive") against recorded Double-or-Nothing turns
+(`history/Double_Or_Nothing_1171441087` & `_1171442571`, normal actor-policy serving temp~0.2-0.5).
+
+**Simple**: Heads-up the model plays a correct, aggressive short-stack range. But as soon as 3+
+opponents are in the hand it stops raising almost entirely — it becomes a call/fold machine, folding
+clear short-stack jams (88 @5.75bb 3-way → FOLD 0.97; KQs @13.6bb → FOLD; K6s @7bb; JTs @9bb) and
+calling instead of shoving. Live DoN play is almost all multiway short stacks, so this is what the
+user experiences constantly.
+
+**Technical (root cause ISOLATED, not guessed)**: reproduced the live FOLD by feeding the exact
+recorded context through v29 via `build_ctx`/`run_policy` — so it is NOT a live-bridge/scale bug
+(feeding the correct 5.75bb reproduces FOLD 1.00 vs recorded 0.97; opponent `is_active` counts match
+`num_opponents` everywhere — no folded-seat over-count; V20-class scaling bug RULED OUT). The driver
+is `num_active_opp`: holding the 88 @5.75bb spot fixed and sweeping only opponent count —
+  - HU (opp=1): eq 0.50 → RAISE_POT 0.44, fold 0.09 (correct aggressive push/fold).
+  - 3-way (opp=3): eq 0.50 → fold 0.68 / call 0.32 / **raise 0.00**; even eq **0.90** → call 0.46 /
+    allin 0.25 (won't build the pot with the near-nuts multiway).
+So the model learned an extreme multiway caution: some tightening is correct multiway, but this is
+degenerate (no raising even at 90% equity). Compounded by low multiway range-aware equity and no ICM
+([FMT-1]) in a DoN.
+
+**Why model_verify missed it (a real suite blind spot)**: `nuts_aggressive`, `action_diversity`,
+and even [VAL-1]'s Nash checks all run at 1-2 opponents with higher equities. NOTHING in the suite
+exercises 3+-opponent short-stack aggression — the exact live condition. This is the concrete reason
+"live doesn't match verify."
+
+**Priority**: HIGH — real live money in the format actually played, and it SUBSUMES the [VAL-1]
+BB-5-6bb lead (a facet of the same short-stack weakness). Outranks [OPP-8].
+
+**Suggestion**: (1) FIRST add a multiway (3-5 opp) short-stack aggression check to model_verify so
+it's measurable and regression-guarded (cheap, closes the blind spot). (2) The real fix is a trained
+version: curriculum upweighting 3-5-way SHORT-stack spots where jamming for multiway fold equity is
+rewarded (the current target/population evidently teaches multiway=call/fold); likely bundles with
+[FMT-1] (DoN ICM) and subsumes [VAL-1]'s BB-5-6bb finding + [BET-2]. (3) Interim live mitigation
+worth considering: a Nash push/fold override below ~8-10bb (the [VAL-1] solver already produced the
+ranges) to bypass the model where it's provably weakest. See [[v30-val1-external-nash-axis]] and
+[[ofk-known-shortcomings-backlog]].
+
 ### [BET-2] Short-stack polarization — residual flatting 🟡 LIKELY RESOLVED (V29, 2026-07-20 — unconfirmed side effect)
 **First identified**: tracked since V15/V16 era as `[P3]`. **Last confirmed failing**: V22
 (2026-07-17, 0.35 avg P(call) in shove-or-fold spots) — still present after the [STACK-1]/[STACK-2]
@@ -333,6 +373,52 @@ deeper tables but the model had zero deep-stack skill. Now trains with real expo
 logic still applies beyond 100bb) -- fully resolved for the trained 5-100bb range, not for
 truly-deep tournament-style stacks past that. Extend further in a future version if that becomes a
 priority.
+
+### [STACK-3] 6-max short-stack open-jam under-aggression — actor folds commits its own critic prefers 🔴 OPEN (live observation, not yet quantified)
+**First identified**: 2026-07-20, live V29 (Herocules) Double-or-Nothing board
+`history/Double_Or_Nothing_1171442571` — user flagged the stack bleeding
+74→48→27→13→6→5.2bb straight into a bust-bound final jam, over 45 recorded decisions.
+
+**Simple**: At short 6-max stacks (~7–14bb) we fold a lot of hands standard push/fold play would
+open-jam (KQs, K8s, JTs closing the BB for 0.5bb, K6s), and we only start actually jamming at ~5bb
+— when we're already too short to have real fold equity. We blind down and die instead of jamming
+to pick up the blinds/antes.
+
+**Technical**: across the board, in **6 of the 8** preflop spots where V29's OWN critic Q ranks a
+non-fold action above FOLD, the actor policy folded anyway — and in those spots the raw policy puts
+ZERO mass on any RAISE bucket. Examples: turn 23 KQs@13.6bb 3-way, policy `{FOLD 0.56, CALL 0.44,
+all raises 0.00}` (critic prefers a raise); turn 40 K8s@8.2bb CO `{FOLD 1.00}`; turn 41 K6s@7.1bb
+HU `{FOLD 0.93}`; turn 37 JTs@9bb BB facing 0.5bb `{FOLD 0.54, CALL 0.45}`. The actor never
+open-JAMS in the 7–14bb band at all — it only ever chooses between fold and flat-call — and the
+first genuine jam in the whole session is at 5.2bb (turn 45, Ah8s, `RAISE_POT → slider 1.00`,
+which the critic AND actor both prefer). `to_call` in the folded spots is ~0.5–1.0bb (limp/BB
+completion spots), NOT a big raise being folded to, and Layer-1/Layer-2 (OCR/decoded input) are not
+implicated — this is an actor/critic policy-EXTRACTION divergence in the short-stack region: the
+chip-EV critic is right, the actor ignores it.
+
+**Relationship to existing entries (logged as DISTINCT, not a duplicate)**:
+- Distinct from **[FMT-1]** (ICM/myopia): there the critic itself lacks future-cost awareness; here
+  the chip-EV critic already prefers the commit and the ACTOR diverges from it. Same DoN board
+  family, different layer.
+- Distinct from **[VAL-1] Finding (A)** (BB too tight CALLING jams at 5–6bb HU, range-conditioned):
+  this is FIRST-IN / open-jam aggression at 7–14bb, 6-max, often multiway — a regime the HU Nash
+  push/fold checks don't cover.
+- OPPOSITE direction to **[BET-1]** (deep-stack ALLIN over-preference). **Primary hypothesis worth
+  checking**: V29's [BET-1] Fix 5 (ALLIN-specific critic-consistency filter that vetoes ALLIN's
+  regret when another action's Q beats it, + risk_aversion 0.10→0.15) is an anti-jam mechanism — it
+  may have OVERCORRECTED into the short-stack band, suppressing legitimate open-jams the critic
+  still wants. If so, the same lever that RESOLVED [BET-1]/[STACK-1] created this. Not yet tested.
+
+**Suggestion**: Confirm systematicity cheaply BEFORE any retrain — this is single-board evidence and
+the per-spot critic-Q margins may be small. Re-inspect the actor-vs-critic gap directly in the
+7–14bb first-in band via the EXISTING checks (`short_stack_polarization`, `stack_full_sweep`, and
+the already-built Nash `nash_pushfold_vs_chart`/`nash_bbcall_vs_jam` from [VAL-1] — **Nash push/fold
+was already run this session, do NOT re-run it**): does the actor assign ~0 to raise/allin buckets
+while the critic's best raise/allin Q beats fold? If confirmed a V29-filter overcorrection, scope
+the critic-consistency veto so it can NEVER suppress an ALLIN when the only alternative that beats it
+is FOLD (only veto when a SIZED raise or CALL dominates). If instead it's curriculum coverage, fold
+into the same short-stack/ICM pass [VAL-1] Finding (A) already points to (upweight `stack_depth_mix`
+density in the 5–14bb first-in / multiway region). Quantify before committing a version.
 
 ---
 
@@ -684,6 +770,27 @@ the "Important correction" above, same logic). The suggested `fold_pressure_colo
 same-seed V25-vs-V26 ablation) remains the next real lever; simply adding more/different opponents
 without that feature does not appear sufficient.
 
+**Pre-build calibration (2026-07-20, computed before committing to any V30/OPP-8 retrain — scope
+was HELD as a result).** Confirmed with the real v29 archetype traits that `fold_pressure_color`
+alone is REDUNDANT: across the current 4-archetype roster, `vpip_color` and `base_fold_to_pressure`
+are PERFECTLY rank-anti-correlated — Spearman −1.00 (NIT 0.11vpip/Blue & 0.85 fold; TAG
+0.22/Green & 0.60; LAG 0.32/Yellow & 0.45; STATION 0.45/Red & 0.15). So adding the feature CANNOT
+move `allin_exploits_opponent_foldiness` off 0.011 in any way the model can't already get from
+`vpip_color`. The correct fix is therefore TWO coupled changes: (a) +2 trait-DECOUPLED archetypes
+(e.g. a loose fit-or-fold fish: vpip~0.42/Red but fold~0.78; a trap-nit: vpip~0.14/Blue but
+fold~0.20) — which drops the roster correlation to ~−0.26 so the trait carries new info AND
+mitigates the range-selection confound — PLUS (b) the `fold_pressure_color` feature (contract_version
+8→9, context_dim 54→59). **Decision: HELD, not built.** Reasons: (1) the 0.011 metric likely
+OVERSTATES the real leak (the range-selection correction above); (2) reshaping the opponent
+population is the historically highest-collateral change in this repo (V24_extreme broke
+`vpip_adapts_to_style`; V27's opponent-perception fix doubled VPIP / narrowed action diversity) —
+risky to bet a clean V29 against; (3) no LIVE payoff without a separate empirical-HUD-tracking
+project (fold_pressure_color is an oracle read live can't provide); (4) V29 is clean/validated —
+this is a speculative capability-add, not a fix. Revisit only if the goal shifts to explicitly
+exploitative play AND live fold-to-pressure HUD tracking exists. Higher-ROI next moves identified:
+live-validation of V29's untested OPP-2/all-in vision wiring ([VAL-4]), then the short-stack/ICM
+curriculum pass ([FMT-1] + the [VAL-1] BB-5-6bb finding) as the next lower-risk trained version.
+
 ### [OPP-9] Live range-aware equity doesn't narrow with continued action 🔴 OPEN
 **First identified**: 2026-07-19, user's own question while scoping V28 ("in postflops should we
 still assume that remaining players' VPIP is real when calculating range-aware equity?").
@@ -760,7 +867,7 @@ prioritized.
 
 ## Validation & tooling (methodology gaps, not model behavior bugs)
 
-### [VAL-1] No external GTO/solver ground truth 🟡 PARTIAL (first external axis built, V30 2026-07-20)
+### [VAL-1] No external GTO/solver ground truth 🟡 PARTIAL (external axis built + Tier B in-repo Nash solver, V30 2026-07-20)
 **Simple**: We've never checked our play against real game-theory-optimal solutions — all
 validation is "do we beat our own training opponents," not "are we close to unexploitable play."
 
@@ -797,11 +904,49 @@ from pure push/fold theory). (2) ONE candidate leak: `Q2o@15bb` — Nash folds i
 class of thing this axis exists to catch. Worth watching whether it recurs / widens in future
 versions.
 
-**Suggestion (remaining, Tier B)**: extend toward a full sourced 169-hand table (with attribution)
-and add the BB call-vs-shove-facing-a-jam decision (a cleaner binary spot — facing an all-in there's
-no cheap-limp confound — though it needs Nash CALLING ranges + range-conditioned equity). Also worth
-spot-checking against published PioSOLVER postflop outputs eventually. Still METHODOLOGY-flavored,
-but no longer zero external coverage.
+**Tier B DONE (2026-07-20, same session)**: instead of copying a published chart (transcription-risk),
+SOLVED the HU push/fold Nash equilibrium IN-REPO — `tools/model_verify/nash/solve_nash_pushfold.py`
+(offline): a 169x169 Monte-Carlo preflop all-in equity matrix (cached to `equity_matrix.json`) fed
+into fictitious play over the shove-or-fold zero-sum game (SB jam vs BB call, 0.5/1, chip-EV), for
+stacks 5-20bb. Output `nash_solved.json` (SB jam range + BB call range + BB-equity-vs-jam-range per
+stack). VALIDATED against 12 famous non-controversial anchors (all pass) and the solved range SIZES
+match canonical published Nash closely (10bb: SB jam 56.9% / BB call 36.7%; 15bb: 45% / 26%; 20bb:
+40% / 20%). Documented approximations: canonical-suit-representative MC equities (card removal within
+each matchup, not across range weighting) + MC noise. Two runtime checks now read this file (still
+pure lookup + run_policy, zero solver/sim deps): `nash_pushfold_vs_chart` (SB, full 169xstacks) and
+the NEW `nash_bbcall_vs_jam` (BB facing a jam — the cleaner binary spot, no cheap-limp confound,
+model equity RANGE-CONDITIONED on SB's Nash jam range).
+
+**Tier B results vs V29 (both PASS, WARN-gated)**: SB 1247/1498 (83%) over unambiguous cells; BB
+1304/1507 (87%). By-stack breakdown revealed TWO distinct, opposite, computed findings (not guessed):
+(A) **BB is TOO TIGHT calling jams at 5-6bb** (agreement 74%/78%, rising monotonically to 95% by
+20bb) — folds K-/Q-high suited hands Nash CALLS. This is the trustworthy, actionable finding: a real
+spot, at stacks the model DOES train on, with range-conditioned equity. Overlaps [FMT-1]'s
+ultra-short myopia and the 5bb training-floor boundary. (B) SB agreement instead ERODES with depth
+(88% at 5bb → 73% at 20bb), but this is mostly a YARDSTICK ARTIFACT not a leak: the deep
+disagreements are the model COMMITTING weak suited hands (Q4s/J6s/K2s) that pure jam-or-fold Nash
+folds — and it commits them via a sized RAISE, which is normal/correct real-poker open-raising at
+20bb HU where a jam-or-fold game is unrealistic. The SB check is most trustworthy at short stacks
+(87-88%), where jam-or-fold is the actual game. Also reconfirmed at scale: 851/851 SB commits use a
+sized raise, never a literal jam (V29 anti-jam, [BET-1]).
+
+**Finding (A) DIAGNOSED (2026-07-20, cheap no-retrain probe — done before deciding on a version)**:
+computed pot-odds threshold t=(S-1)/(2S) and margin=eq_vs_jam−t for every BB call/fold cell, then
+compared agreement at EQUAL margin across stack depth. Result is decisive: it is a STACK-SPECIFIC
+calibration gap, NOT boundary noise. At an equal +0.03–0.07 price-edge the model calls 0% of
+Nash-call hands at 5-6bb vs 57% at 8-20bb; mean P(fold) at that edge is 0.80 short vs 0.48 deep —
+the model demands ~2x the price-edge before committing at 5-6bb. It is NOT gross: every wrongly
+folded hand is only a modest +EV call (median margin +0.027, max +0.09; no clear +0.20 spot folded),
+and both bands converge to 100% call once margin>+0.12. Root cause = a TRAINING-CURRICULUM FLOOR
+effect (5-6bb is the thin bottom edge of the lowest `stack_depth_mix` band 5-14bb; the model
+over-generalizes a deeper-stack "don't commit a big fraction on a thin edge" caution to a 5bb spot
+where it's already priced in), NOT a feature/target bug. **Decision: do NOT spend a dedicated version
+on it** — real but narrow/modest (marginal +EV calls, only the bottom two depths, a rare live 6-max
+spot). Fold into a future short-stack/ICM pass ([FMT-1]) via extending `stack_depth_mix` below 5bb /
+upweighting 5-8bb, then a retrain — a data-coverage lever, not a new mechanism. Further
+external axes still open: PioSOLVER postflop spot-checks; a genuinely different (human/solver-like)
+opponent for [OPP-1] stress. Still METHODOLOGY-flavored but now real external coverage of the whole
+short-stack preflop push/fold space, both seats.
 
 ### [VAL-3] `free_check_low_fold` residual mass 🟡 PARTIAL
 **Simple**: When there's no cost to seeing another card, the model's raw output occasionally still

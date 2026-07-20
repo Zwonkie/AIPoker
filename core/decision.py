@@ -38,6 +38,29 @@ SHORT_STACK_BB = 8.0
 DEEP_STACK_BB = 20.0
 SHORT_STACK_TEMPERATURE = 0.2  # reverted alongside LIVE_POLICY_TEMPERATURE above
 
+# [TEST FLAG — 2026-07-20] Critic-argmax action mode. When ON, live selection picks the action with
+# the highest critic Q (EV-vs-fold, ~BB) instead of SAMPLING the actor-policy distribution. Purpose:
+# probe the actor/critic short-stack divergence logged as [STACK-3] in OFK
+# known-shortcomings-backlog.md (actor folds jams its own critic prefers). Flip the default below, or
+# toggle without editing code via env var:  HEROCULES_CRITIC_ARGMAX=1  (on) / 0 (off, default).
+# Safe no-op for any model without a critic Q head (last_q_vals is None) and honors the exact same
+# free-check / raise-availability masking the sampler applies. Diagnostic only — remove when done.
+USE_CRITIC_ARGMAX_ACTION = os.environ.get('HEROCULES_CRITIC_ARGMAX', '0').strip().lower() \
+    not in ('0', '', 'false', 'no', 'off')
+
+
+def _critic_argmax_action(q_vals, legal_names):
+    """[TEST] Highest-Q action among `legal_names`, or None if no critic Q is available (so callers
+    fall through to the normal sampled choice). `legal_names` is the already-masked candidate set
+    (free-check FOLD removed, unavailable raises removed), so the critic pick obeys the same legality
+    constraints the sampler does."""
+    if not q_vals or not legal_names:
+        return None
+    scored = [(a, q_vals[a]) for a in legal_names if a in q_vals]
+    if not scored:
+        return None
+    return max(scored, key=lambda kv: kv[1])[0]
+
 
 def _stack_scaled_temperature(board_state):
     bb = float(getattr(board_state, 'big_blind', 10.0) or 10.0)
@@ -535,6 +558,13 @@ class PokerDecisionEngine:
             choice = random.choices(names, weights=[sharp[a] for a in names], k=1)[0] if names \
                 else ('CALL' if free_check or not bet_raise_available else 'FOLD')
 
+            # [TEST FLAG] Optionally replace the sampled actor choice with the critic's argmax-Q pick
+            # over the SAME masked candidate set (see USE_CRITIC_ARGMAX_ACTION). No-op if off / no Q.
+            _critic_pick = _critic_argmax_action(getattr(active_model, 'last_q_vals', None), names) \
+                if USE_CRITIC_ARGMAX_ACTION else None
+            if _critic_pick is not None:
+                choice = _critic_pick
+
             chosen_key = choice   # the raw policy bucket the sampler picked, e.g. RAISE_66 or ALLIN
             if choice in V14_RAISE_FRAC:
                 raise_size, slider = self._v14_size_to_slider(V14_RAISE_FRAC[choice], board_state)
@@ -545,10 +575,12 @@ class PokerDecisionEngine:
                 action = choice   # FOLD / CALL
                 size_note = choice
             _tag = "V29" if is_v29_model else ("V28" if is_v28_model else ("V26" if is_v26_model else ("V25" if is_v25_model else ("V21_auxhead" if is_v21_auxhead_model else ("V20_preflopEq_AI" if is_v20_preflopEq_AI_model else ("V20_preflopEq" if is_v20_preflopEq_model else ("V20" if is_v20_model else ("V19" if is_v19_model else ("V17_gauntlet" if is_v17_gauntlet_model else ("V17" if is_v17_model else ("V15" if is_v15_model else "V14")))))))))))
-            reason = (f"{_tag} sampled (temp={temp:.2f}"
+            _mode = "CRITIC-ARGMAX(Q)" if _critic_pick is not None else f"sampled (temp={temp:.2f}"
+            _modeclose = "" if _critic_pick is not None else ")"
+            reason = (f"{_tag} {_mode}"
                       + (", free-check fold-masked" if free_check else "")
                       + (", raise-unavail" if not bet_raise_available else "")
-                      + f") -> {size_note}: {_fmt_dist(evs)}")
+                      + f"{_modeclose} -> {size_note}: {_fmt_dist(evs)}")
         elif is_actor_policy:
             probs = {a: max(0.0, float(evs.get(a, 0.0))) for a in ('FOLD', 'CALL', 'RAISE')}
             if free_check:
@@ -561,10 +593,18 @@ class PokerDecisionEngine:
                 action = random.choices(names, weights=[sharp[a] for a in names], k=1)[0]
             else:
                 action = 'CALL' if free_check else 'FOLD'   # degenerate safety net
+            # [TEST FLAG] Optional critic-argmax override (see USE_CRITIC_ARGMAX_ACTION); no-op off /
+            # for models without a Q head.
+            _critic_pick = _critic_argmax_action(getattr(active_model, 'last_q_vals', None), names) \
+                if USE_CRITIC_ARGMAX_ACTION else None
+            if _critic_pick is not None:
+                action = _critic_pick
             chosen_key = action
-            reason = (f"Sampled policy (temp={temp:.2f}"
+            _mode = "CRITIC-ARGMAX(Q)" if _critic_pick is not None else f"Sampled policy (temp={temp:.2f}"
+            _modeclose = "" if _critic_pick is not None else ")"
+            reason = (f"{_mode}"
                       + (", free-check fold-masked" if free_fold_overridden else "")
-                      + f") -> {action}: {_fmt_dist(evs)}")
+                      + f"{_modeclose} -> {action}: {_fmt_dist(evs)}")
         else:
             action = argmax_action
             if free_fold_overridden:

@@ -50,9 +50,9 @@
     "semantic_hash": "48e1a947106b4d3059465488a9c19c3d"
   },
   "core/decision.py": {
-    "mtime": 1784545582.8183577,
-    "ast_hash": "7fc8323dc7c2452c9b5ba0dd8d531b88",
-    "semantic_hash": "7fc8323dc7c2452c9b5ba0dd8d531b88"
+    "mtime": 1784562467.3061888,
+    "ast_hash": "21db3a6375dae1427bbf6b7fc9e38966",
+    "semantic_hash": ""
   },
   "core/evaluator.py": {
     "mtime": 1783895325.2352245,
@@ -460,8 +460,8 @@
     "semantic_hash": "af6a8d91c6ffb853cbaf130fe394082c"
   },
   "tools/model_verify/checks.py": {
-    "mtime": 1784558639.1187267,
-    "ast_hash": "3ff10dd2bdf09e81d3073476721ef4a9",
+    "mtime": 1784559581.2899766,
+    "ast_hash": "f5c28793f1876235f59013eb1382ce23",
     "semantic_hash": ""
   },
   "tools/model_verify/render_report.py": {
@@ -605,8 +605,8 @@
     "semantic_hash": "c4ade9a08fc65bedb4b42bfe867cb5aa"
   },
   "tools/model_verify/results/v29__expert_main.pth.json": {
-    "mtime": 1784558838.291291,
-    "ast_hash": "3b02701dc92b4a7582531e0ca0aa1bd4",
+    "mtime": 1784559865.302435,
+    "ast_hash": "012e4178777b5c3c8ff6c42675b16ee6",
     "semantic_hash": ""
   },
   "tools/model_verify/run.py": {
@@ -775,7 +775,7 @@
     "semantic_hash": "7818ad8c7376f8c437c021ac5e458385"
   },
   "tools/training_monitor/telemetry.json": {
-    "mtime": 1784558854.8154144,
+    "mtime": 1784562503.354411,
     "ast_hash": "aabc1d7af92d2baef882aec30e6551d6",
     "semantic_hash": "aabc1d7af92d2baef882aec30e6551d6"
   },
@@ -3210,8 +3210,8 @@
     "semantic_hash": ""
   },
   "tools/model_verify/nash/pushfold_check.py": {
-    "mtime": 1784558795.5613427,
-    "ast_hash": "e5fd88593eba94a838d58c6c4938f2b1",
+    "mtime": 1784559550.4401035,
+    "ast_hash": "2085e1bd5d20fe86ad0ad2c6218112e2",
     "semantic_hash": ""
   },
   ".agents/AGENTS.md": {
@@ -3415,8 +3415,8 @@
     "semantic_hash": ""
   },
   ".agents/skills/OFK/references/known-shortcomings-backlog.md": {
-    "mtime": 1784545703.0865493,
-    "ast_hash": "320e05b4937abd4d8ddcd343073009cc",
+    "mtime": 1784562314.3796492,
+    "ast_hash": "12bf282d964effd08e3a24912224c478",
     "semantic_hash": ""
   },
   ".agents/skills/OFK/references/legacy-versions-history.md": {
@@ -4517,6 +4517,21 @@
   "tools/decision-builder/src/assets/vite.svg": {
     "mtime": 1783190418.519334,
     "ast_hash": "9960a24288958394ac50e57ff638b036",
+    "semantic_hash": ""
+  },
+  "tools/model_verify/nash/equity_matrix.json": {
+    "mtime": 1784559585.6816733,
+    "ast_hash": "e17d4ed3add299efa148bd070547c48d",
+    "semantic_hash": ""
+  },
+  "tools/model_verify/nash/nash_solved.json": {
+    "mtime": 1784559844.5697937,
+    "ast_hash": "38330d2343180b41f699dfc2be6c5e5b",
+    "semantic_hash": ""
+  },
+  "tools/model_verify/nash/solve_nash_pushfold.py": {
+    "mtime": 1784559363.2052124,
+    "ast_hash": "2e5f7d7ef6b1ed8fac0ea7fb4224f1ec",
     "semantic_hash": ""
   }
 }

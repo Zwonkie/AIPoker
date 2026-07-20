@@ -764,13 +764,16 @@ def check_equity_edge_sweep(rc):
 
 
 # VAL-1 external ground-truth axis (self-contained plug-in -- see tools/model_verify/nash/).
-from tools.model_verify.nash.pushfold_check import check_nash_pushfold_vs_chart
+from tools.model_verify.nash.pushfold_check import (
+    check_nash_pushfold_vs_chart, check_nash_bbcall_vs_jam)
 
 FAST_CHECKS = [
     ("equity_ablation_monotonic", "P(fold) falls / P(aggressive) rises as equity rises",
      "general health", check_equity_ablation_monotonic),
-    ("nash_pushfold_vs_chart", "shove/fold lean agrees with heads-up Nash on unambiguous cells (EXTERNAL ground truth, WARN-only)",
-     "VAL-1 -- first external GTO reference axis", check_nash_pushfold_vs_chart),
+    ("nash_pushfold_vs_chart", "SB commit/fold lean agrees with in-repo heads-up Nash over all 169 hands x stacks (EXTERNAL ground truth, WARN-only)",
+     "VAL-1 -- external GTO reference axis (SB jam)", check_nash_pushfold_vs_chart),
+    ("nash_bbcall_vs_jam", "BB call/fold-facing-a-jam agrees with in-repo heads-up Nash, range-conditioned equity (EXTERNAL ground truth, WARN-only)",
+     "VAL-1 -- external GTO reference axis (BB call)", check_nash_bbcall_vs_jam),
     ("free_check_low_fold", "never wants to fold a free option (call_amount == 0)",
      "train/serve fold-mask consistency", check_free_check_low_fold),
     ("air_folds_mostly", "~12% equity facing a real bet folds more than it doesn't",
@@ -1006,9 +1009,14 @@ ALL_CHECKS = FAST_CHECKS + SLOW_CHECKS
 # =====================================================================================
 CHECK_DOCS = {
     "nash_pushfold_vs_chart": dict(
-        what="Compares the model's shove-vs-fold lean against a curated set of UNAMBIGUOUS heads-up Nash push/fold reference spots (SB open-jam, chip-EV) -- the first check that tests hero against an EXTERNAL game-theory answer rather than this project's own simulator/bots.",
-        expect="On spots where Nash is not in dispute (premiums/pairs/aces shove short; bottom-tier offsuit trash folds at 15bb), the model should lean the same way. Reported as a % agreement over in-training-range (>=5bb) cells; below-5bb cells are shown separately as out-of-distribution.",
-        if_not="WARN-only, never a deploy gate -- a 6-max cash model isn't required to match a heads-up subgame, and heads-up/position is mildly OOD. But a LOW agreement (or a gross disagreement like folding a premium or shoving pure trash deep) is a real external red flag worth investigating, independent of how clean the self-referential checks look.",
+        what="SB open-jam decision: compares the model's commit-vs-fold lean against an IN-REPO-SOLVED heads-up Nash push/fold equilibrium (SB jam vs BB call, chip-EV), over all 169 starting hands x every solved stack depth (5-20bb). The first check that tests hero against an EXTERNAL game-theory answer rather than this project's own simulator/bots. Nash 'shove' is scored as 'commit aggressively' (any raise-family or all-in mass beating fold), since the model has a discretized sizing action space.",
+        expect="On UNAMBIGUOUS Nash cells (jam-freq near 0 or 1; mixed hands are skipped), the model should lean the same way -- commit its Nash jam range, fold the rest. The jam-vs-sized-raise split is reported separately (a model that commits via raise_pot instead of a literal jam still AGREES on direction).",
+        if_not="WARN-only, never a deploy gate -- a 6-max cash model isn't required to match a heads-up subgame, and HU/position is mildly OOD. But low agreement, or a gross error like folding a premium or committing pure trash deep, is a real external red flag independent of how clean the self-referential checks look.",
+    ),
+    "nash_bbcall_vs_jam": dict(
+        what="BB-facing-a-jam decision: compares the model's call/commit-vs-fold lean against the in-repo-solved Nash BB calling range, over all 169 hands x stacks. The cleaner binary spot -- facing an all-in there is no cheap-limp option to muddy the read -- with the model's equity input RANGE-CONDITIONED on SB's Nash jamming range (as it would be in real play once the opponent has committed).",
+        expect="On unambiguous Nash cells, the model should call (commit) with hands whose equity vs the jam range clears the pot-odds threshold and fold the rest. Because facing a jam collapses the action space to call-or-fold, agreement here is a purer test of the model's short-stack calling discipline than the SB check.",
+        if_not="WARN-only. A gross error (folding AA to a jam, or calling off with trash that can't be getting the right price) is a real external red flag. Calibrate expectations for HU/position OOD, but the range-conditioned equity makes this the more trustworthy of the two axes.",
     ),
     "equity_ablation_monotonic": dict(
         what="Sweeps the model's win probability (equity) from very weak (5%) to very strong (95%), holding everything else fixed, and watches how often it folds vs bets/raises.",
