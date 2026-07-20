@@ -30997,6 +30997,90 @@
       }
     },
     {
+      "id": "multiway_shortstack_aggression",
+      "status": "WARN",
+      "detail": "[BET-3] multiway aggression COLLAPSE in 6/6 short-stack cells (HU aggression vanishes by 3-way): 5bb/eq0.55: 0.82->0.00; 5bb/eq0.65: 0.86->0.01; 6bb/eq0.55: 0.82->0.00; 6bb/eq0.65: 0.86->0.01; 8bb/eq0.55: 0.83->0.00; 8bb/eq0.65: 0.86->0.01",
+      "data": [
+        {
+          "stack_bb": 5,
+          "equity": 0.55,
+          "hu_agg": 0.818,
+          "three_way_agg": 0.001,
+          "agg_by_opp": {
+            "1": 0.818,
+            "2": 0.011,
+            "3": 0.001,
+            "4": 0.0
+          }
+        },
+        {
+          "stack_bb": 5,
+          "equity": 0.65,
+          "hu_agg": 0.863,
+          "three_way_agg": 0.01,
+          "agg_by_opp": {
+            "1": 0.863,
+            "2": 0.13,
+            "3": 0.01,
+            "4": 0.007
+          }
+        },
+        {
+          "stack_bb": 6,
+          "equity": 0.55,
+          "hu_agg": 0.821,
+          "three_way_agg": 0.0,
+          "agg_by_opp": {
+            "1": 0.821,
+            "2": 0.011,
+            "3": 0.0,
+            "4": 0.0
+          }
+        },
+        {
+          "stack_bb": 6,
+          "equity": 0.65,
+          "hu_agg": 0.863,
+          "three_way_agg": 0.009,
+          "agg_by_opp": {
+            "1": 0.863,
+            "2": 0.133,
+            "3": 0.009,
+            "4": 0.007
+          }
+        },
+        {
+          "stack_bb": 8,
+          "equity": 0.55,
+          "hu_agg": 0.826,
+          "three_way_agg": 0.0,
+          "agg_by_opp": {
+            "1": 0.826,
+            "2": 0.011,
+            "3": 0.0,
+            "4": 0.0
+          }
+        },
+        {
+          "stack_bb": 8,
+          "equity": 0.65,
+          "hu_agg": 0.862,
+          "three_way_agg": 0.009,
+          "agg_by_opp": {
+            "1": 0.862,
+            "2": 0.139,
+            "3": 0.009,
+            "4": 0.006
+          }
+        }
+      ],
+      "doc": {
+        "what": "At a fixed short-stack, jam-worthy spot, sweeps ONLY the number of opponents (1 to 4) and measures how much aggressive (raise/all-in) mass the model keeps. Isolates a live-confirmed failure where the model plays aggressively heads-up but goes passive multiway.",
+        "expect": "Aggression should stay meaningful as opponents are added -- multiway warrants SOME tightening, but a strong short-stack hand should still want to commit, not drop to zero raises the moment a third player is in.",
+        "if_not": "If heads-up aggression vanishes by 3 opponents (the V29 pattern -- won't raise even at 90% equity, folds clear short jams), the model is a multiway call/fold machine. This is exactly the live 'too tight / not aggressive' complaint in Double-or-Nothing (all multiway short stacks), and the reason a clean heads-up scorecard didn't predict live play."
+      }
+    },
+    {
       "id": "action_diversity",
       "status": "PASS",
       "detail": "argmax distribution across the equity x stack grid: {'fold': 11, 'call': 5, 'raise_pot': 5}",

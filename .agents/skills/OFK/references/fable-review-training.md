@@ -1,0 +1,59 @@
+# Fable Review — Training, Targets & Evaluation (V29)
+
+**Date Recorded**: 2026-07-20
+**Related Files**: [train.py](file:///c:/REPO/Antigravity/AIPoker/versions/v29/self_play/train.py), [model.py](file:///c:/REPO/Antigravity/AIPoker/versions/v29/core/model.py), [config.yaml](file:///c:/REPO/Antigravity/AIPoker/versions/v29/self_play/config.yaml), [checks.py](file:///c:/REPO/Antigravity/AIPoker/tools/model_verify/checks.py), [gameplay_eval.py](file:///c:/REPO/Antigravity/AIPoker/versions/v29/self_play/gameplay_eval.py)
+
+## Context
+
+Training-area report from the 2026-07-20 four-way V29 audit (see
+`fable-review-consolidated.md`). Scope: target construction, loss/optimization, architecture,
+train/eval methodology, self-referential drift. H1 was independently re-verified (dead
+`past_model`/`disable_past_self` attributes confirmed absent from the V18+ simulator).
+
+## HIGH
+
+**H1. `check_beats_frozen_predecessor` never actually plays the frozen predecessor — the promotion gate is vacuous.**
+`tools/model_verify/checks.py:964-965` sets `sim.disable_past_self = False` and `sim.past_model = frozen_model`, but the V18+ simulator has no such attributes — `versions/v29/self_play/simulator.py` reads opponents only from `self.opponent_pool` (built by `build_opponent_pool`, which checks.py **never calls**; the dict stays `{}` per simulator.py:348). Seat assignment falls back at simulator.py:1307 to `HeuristicOpponent(style, self.tag_heuristic, forced=True)`, and 'past' has **no** forcing rule (opponents.py:72-75), so the "frozen V28" seat is literally a plain TAG heuristic. Same for `_run_field` (checks.py:861-884): the "nit field"/"fish field" are the TAG bot with stat-forcing, not the real NIT/CALLING_STATION bots. Failure scenario: V29 (or any version since V18) could be strictly worse than its predecessor head-to-head and still get a PASS by beating a TAG-heuristic field — this is the exact v17_gauntlet dead-attribute bug recurring, and it silently undermines the "V26 beats frozen V25", "V27 beats V26", "V28 deployed" chain of evidence wherever it ran through this check.
+
+**H2. The risk (variance) penalty is applied only to raise actions — CALL is exempt — making the "risk-adjusted" target an internally inconsistent utility that structurally rewards passivity.**
+`simulator.py:1018` (`evs = [0.0, true_equity*(pot+to_call) - to_call]`) has no variance term; `simulator.py:1044-1047` subtracts `0.15*sqrt(Var)` from every sized raise. Calling a jam has the same outcome variance as raising, but only raising pays the penalty. In multiway pots `p_all_fold ≈ 0` and `Var ≈ eq(1-eq)(base_pot+…)²`, so the penalty scales with pot size exactly when raising for value matters, while the call target is untouched. Concrete failure: at 90% equity 3-way, a pot-size raise's target loses ~`0.045*(pot+2R)` bb versus an unpenalized call — this is a direct, code-level mechanism for the observed [BET-3] "collapses to call/fold with 3+ opponents" regression flagged after V29 went live. Also note the math inconsistency: for non-all-in raises the **mean** gets the V25 multi-street continuation delta added (simulator.py:1037-1043) but the **variance** (simulator.py:928-947) is computed on the single-street 3-point mixture — the penalized quantity is not the variance of the estimated outcome.
+
+**H3. Three stacked, independently-tuned risk-aversion mechanisms with no joint calibration — plus a fourth in disguise.**
+(1) the variance penalty on critic targets (`risk_aversion_coefficient: 0.15`, itself bumped 0.10→0.15 explicitly *without* recalibration, config.yaml:63-72); (2) the actor-side realization discount `policy_tightness_bb: 2.0` below eq 0.45, applied on top of Q values that are *already* risk-penalized (train.py:266-268); (3) the ALLIN veto (train.py:274-278); (4) `TARGET_CLIP_BB=40` whose stated purpose is to damp the fat *right* tail (train.py:82-86) — i.e. a deliberate EV pessimizer on entries. All four subtract from aggressive-action values through different formulas at different pipeline stages. Failure scenario: aggregate over-tightening that no single knob explains — consistent with V29 playing "too tight" live, and with the Nash check finding "all-raise-no-jam" (the veto + penalty both single out the jam).
+
+**H4. Critic-consistency margin of 0.15 bb is below critic noise and creates a self-confirming ALLIN blackout.**
+`train.py:274-278`: ALLIN's regret is zeroed whenever any other head's Q beats it by >0.15 bb — on Q values with per-hand MC targets clipped at ±40 bb, 0.15 bb is far inside estimation noise, so in practice ALLIN keeps actor mass only when it is the critic's near-argmax. The loop: veto removes ALLIN from the actor target → policy stops sampling jams → the ALLIN Q head trains only on the 0.5-weighted heuristic counterfactual (which the variance penalty already suppresses most) → Q_allin stays relatively low → veto keeps firing. The margin was calibrated against *frozen V28's* Q scale (config.yaml:76-84) but applied for the whole from-scratch V29 run while the Q distribution it gates was simultaneously changed by the risk-aversion bump — two confounded interventions judged by one scorecard. [VAL-1]'s "all-raise-no-jam" finding on V29 is exactly the predicted signature; see also [STACK-3] (actor folds commits its own critic prefers) — this is its concrete candidate mechanism.
+
+## MED
+
+**M1. No confidence intervals anywhere; BB/100 verdicts are inside noise.** `checks.py:37-38` (3000/4000 hands), pass criterion `bb100 > 0` (checks.py:982), regression gate −15 BB/100 (checks.py:928). NLHE per-hand std ≈ 8-12 bb → SE over 4000 hands ≈ ±13-19 BB/100. A genuinely −5 BB/100 model passes the predecessor gate ~40% of the time; the −15 gate is ~1 SE. `gameplay_eval.py:13` defaults to 500 hands (SE ≈ ±40 BB/100).
+
+**M2. The fold-equity survivorship fix only governs the first 20% of training.** `policy_target_source: 'counterfactual'` affects only the pre-cutover dataset target (train.py:509-529); after 20k hands (train.py:186, 1302-1310) the actor target comes from the critic — whose taken-action head is deliberately trained on realized returns at full weight (train.py:114-117, 496-501). The diagnosed "weak entries reinforced by uncontested wins" ratchet re-enters via the critic for 80% of the run, diluted only by the 0.5-weight counterfactual pull.
+
+**M3. Fold-relative regret matching makes the per-state fold target binary.** With `baseline='fold'`, fold's own regret is identically 0, so the target distribution is either fold=0 (something beats fold) or the fold=1.0 fallback (train.py:273, 281-289). Mixed strategies containing fold are inexpressible per state, and the 2 bb realization discount shifts states discontinuously from "never fold" to "always fold" at the equity pivot — a cliff, not calibration.
+
+**M4. Counterfactual fold-equity is computed against heuristic proxies while ~60% of opponent weight is non-heuristic.** `simulator.py:1481-1485` passes `agent.recording_bot` (the heuristic archetype) as the `bot` used by `_ev_target_fold_decision`, but the actual seats are lagged-self NN (0.25), TreeOpponent clusters (0.20+0.15) per config.yaml:141-153. Realized returns come from XGBoost/NN behavior; counterfactual targets assume heuristic-threshold folding. The taken/untaken targets for the same head are drawn from systematically different opponent models.
+
+**M5. `TARGET_CLIP_BB=40` vs a 100 bb stack curriculum.** train.py:86/482-484 clips all targets to ±40 bb while `stack_depth_mix` reaches 100 bb (config.yaml:99-103, `STACK_CEIL_BB=100` contract.py:43). A 100 bb stack-off and a 40 bb loss get identical targets; the risk penalty on deep jams is partially clipped away. This is exactly the deep-stack region where the guard checks kept failing V23-V28.
+
+**M6. Validation is not validation.** `random_split` over the same 2000-hand sim batch (train.py:1231-1239) measures within-batch memorization only; post-cutover the val actor target is recomputed from the model's own `preds` (train.py:1397-1401), so the pi component of val_loss tracks self-consistency, not generalization.
+
+**M7. Optimizer/scheduler hygiene.** `CosineAnnealingLR(T_max=100)` stepped once per sim batch (train.py:896, 1361) = ~50 steps in a 100k run — the anneal never completes (ends ≈ lr/2), and on `--resume_path` neither optimizer moments nor scheduler position are restored (train.py:909-918 loads weights only). 3 Adam epochs at 1e-3 over each fresh 2k-hand batch with no replay buffer is a recency-bias/forgetting recipe. (Candidate mechanism for the open [VAL-5] warm-start diversity collapse.)
+
+**M8. Goodharting model_verify.** Both new V29 knobs were tuned directly against `deep_stack_ood_guard`'s eq×stack grid (config.yaml:63-84), then success was declared partly on that same check passing "for the first time since V22". The check stopped being an independent measurement the moment it became the calibration target.
+
+**M9. Short-stack action aliasing.** `_raise_size_for_fraction` (simulator.py:756-764) clamps every fraction to `hero_stack`, so at short stacks raise_33/66/pot/allin are chip-identical actions — yet only `frac is None` gets `is_allin=True`: the others receive the show-of-strength fold bonus (simulator.py:823-824), escape the ALLIN veto, and the model sees four "different" actions with different targets for one physical shove. (Directly relevant to [VAL-1]'s "commits via sized raise, never a literal jam" and [STACK-3].)
+
+**M10. Eval harness temperature mismatch.** `gameplay_eval.py:36-43` never sets `policy_temperature` → runs at 1.0 while serving uses 0.5 — the exact documented trap ("a winning model looks like a loser") that was fixed in checks.py but not here.
+
+## LOW
+
+- **L1.** Aux heads (model.py:74-76) are trained (weights 0.05-0.10) but unused in serving; `opp_bluff` is an oracle-threshold binary (`eq < 0.33` of last raiser, simulator.py:1050-1055) regressed with MSE — a coarse label whose value as a regularizer was never separately demonstrated post-V21_auxhead.
+- **L2.** Stale/misleading docs: model.py:31,104,108 say 31/35-dim context and 3 actions (actual 54/6); train.py:1282 says `b_w` is `[B,T,3]` (actual K=6).
+- **L3.** Sequences are right-aligned with leading pads and `key_padding_mask=None` in training (train.py:1268, vectorize start_idx train.py:383); the causal mask lets real steps attend to pad positions that still carry the hole-card embedding (model.py:116-126). Train/serve-consistent, but attention capacity leaks into garbage tokens — the legacy "padding collapse" lesson half-relearned.
+- **L4.** `p_all_fold` from 10 Bernoulli draws per opponent per size (simulator.py:1029-1034): 0.1-granularity noise, multiplied across seats — the counterfactual raise targets carry avoidable quantization noise.
+- **L5.** Silent warm-start hook: a `expert_v7_selfplay.pth` in `versions/v29/weights/` would be loaded into a "fresh" run with only a console message (train.py:902-922). Currently absent (verified), so V29 did start fresh — but it's a lineage-contamination trap.
+
+## What's actually solid
+
+The single-source contract scaling helpers shared by training/rollout/live (train.py:43-45) closing the V20 drift class; fail-loud checkpoint loading (train.py:575-599); anchoring the critic's untaken actions to *model-free* MC counterfactuals, which genuinely blocks the pure self-play value-hallucination spiral; the equity-primary base + zero-init residual head design (model.py:88-93 — SP_IDX indices verified correct against the ctx layout); the detached critic in the actor target; temp-0.5 serve-consistency in the model_verify field runs; the V24 decoupled fold model showing real awareness of target-inflation coupling; and unusually honest in-code documentation of partial fixes and their calibration provenance. The pipeline's discipline is good — the problem is that its acceptance evidence (H1, M1, M8) is much weaker than its engineering.

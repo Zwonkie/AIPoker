@@ -763,6 +763,43 @@ def check_equity_edge_sweep(rc):
     return CheckResult(status, detail, data)
 
 
+def check_multiway_shortstack_aggression(rc):
+    """[BET-3] Aggression must not collapse as opponent count rises at short stacks.
+
+    Live-confirmed (V29, Double-or-Nothing): the model plays a correct aggressive short-stack
+    push/fold range HEADS-UP but refuses to raise at all with 3+ opponents (won't jam even at
+    90% equity), folding clear short jams -- the exact live "too tight / not aggressive"
+    complaint. This isolates that collapse by sweeping ONLY num_active_opp at a fixed
+    short-stack / jam-worthy spot, the one condition no other check exercises (nuts_aggressive,
+    action_diversity, and the VAL-1 Nash checks all run at 1-2 opponents)."""
+    agg_idx = _aggressive_indices(rc.action_keys)
+    if not agg_idx:
+        return CheckResult('SKIP', 'no aggressive actions in action space')
+    cv = rc.manifest.contract_version
+    data, collapses = [], []
+    for stack in (5, 6, 8):
+        for eq in (0.55, 0.65):
+            aggs = {}
+            for opp in (1, 2, 3, 4):
+                ctx = build_ctx(equity=eq, stack_bb=stack, pot_bb=2.0, call_bb=1.0,
+                                num_active_opp=opp, position=2, street=0,
+                                contract_version=cv, hand_strength=0.62, equity_edge=eq * (opp + 1))
+                pol, _q = run_policy(rc.model, ctx, rc.action_keys, device=rc.device)
+                aggs[opp] = sum(pol[rc.action_keys[i]] for i in agg_idx)
+            hu, mw = aggs[1], aggs[3]
+            data.append({"stack_bb": stack, "equity": eq, "hu_agg": round(hu, 3),
+                         "three_way_agg": round(mw, 3),
+                         "agg_by_opp": {o: round(a, 3) for o, a in aggs.items()}})
+            if hu >= 0.30 and mw < 0.10:   # HU wants to commit, 3-way craters to ~nothing
+                collapses.append(f"{stack}bb/eq{eq}: HU {hu:.2f}->3way {mw:.2f}")
+    profile = "; ".join(f"{d['stack_bb']}bb/eq{d['equity']}: {d['hu_agg']:.2f}->{d['three_way_agg']:.2f}"
+                        for d in data)
+    if collapses:
+        return CheckResult('WARN', f"[BET-3] multiway aggression COLLAPSE in {len(collapses)}/{len(data)} "
+                           f"short-stack cells (HU aggression vanishes by 3-way): {profile}", data)
+    return CheckResult('PASS', f"multiway aggression holds up (HU->3way agg): {profile}", data)
+
+
 # VAL-1 external ground-truth axis (self-contained plug-in -- see tools/model_verify/nash/).
 from tools.model_verify.nash.pushfold_check import (
     check_nash_pushfold_vs_chart, check_nash_bbcall_vs_jam)
@@ -784,6 +821,8 @@ FAST_CHECKS = [
      "V14 P0 -- live K9o 20bb trash-jam", check_deep_stack_ood_guard),
     ("short_stack_polarization", "CALL not dominant in a clear short-stack shove-or-fold spot",
      "P3 -- preflop flattening (WARN, tracked not gated)", check_short_stack_polarization),
+    ("multiway_shortstack_aggression", "aggression doesn't collapse from heads-up to 3+ opponents at short stacks",
+     "BET-3 -- live-confirmed V29 multiway passivity (WARN, tracked)", check_multiway_shortstack_aggression),
     ("action_diversity", "at least most actions appear as argmax somewhere in the grid",
      "V11 raise-/call-everything collapse", check_action_diversity),
     ("no_nan_or_crash", "edge-case seat/stack/street combos never NaN or throw",
@@ -1017,6 +1056,11 @@ CHECK_DOCS = {
         what="BB-facing-a-jam decision: compares the model's call/commit-vs-fold lean against the in-repo-solved Nash BB calling range, over all 169 hands x stacks. The cleaner binary spot -- facing an all-in there is no cheap-limp option to muddy the read -- with the model's equity input RANGE-CONDITIONED on SB's Nash jamming range (as it would be in real play once the opponent has committed).",
         expect="On unambiguous Nash cells, the model should call (commit) with hands whose equity vs the jam range clears the pot-odds threshold and fold the rest. Because facing a jam collapses the action space to call-or-fold, agreement here is a purer test of the model's short-stack calling discipline than the SB check.",
         if_not="WARN-only. A gross error (folding AA to a jam, or calling off with trash that can't be getting the right price) is a real external red flag. Calibrate expectations for HU/position OOD, but the range-conditioned equity makes this the more trustworthy of the two axes.",
+    ),
+    "multiway_shortstack_aggression": dict(
+        what="At a fixed short-stack, jam-worthy spot, sweeps ONLY the number of opponents (1 to 4) and measures how much aggressive (raise/all-in) mass the model keeps. Isolates a live-confirmed failure where the model plays aggressively heads-up but goes passive multiway.",
+        expect="Aggression should stay meaningful as opponents are added -- multiway warrants SOME tightening, but a strong short-stack hand should still want to commit, not drop to zero raises the moment a third player is in.",
+        if_not="If heads-up aggression vanishes by 3 opponents (the V29 pattern -- won't raise even at 90% equity, folds clear short jams), the model is a multiway call/fold machine. This is exactly the live 'too tight / not aggressive' complaint in Double-or-Nothing (all multiway short stacks), and the reason a clean heads-up scorecard didn't predict live play.",
     ),
     "equity_ablation_monotonic": dict(
         what="Sweeps the model's win probability (equity) from very weak (5%) to very strong (95%), holding everything else fixed, and watches how often it folds vs bets/raises.",

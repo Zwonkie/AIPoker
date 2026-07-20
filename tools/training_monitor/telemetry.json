@@ -1,71 +1,71 @@
 {
-  "progress": "100,006",
-  "progress_percent": "100.0",
-  "epoch": "165",
-  "stage": "Phase 5: Dynamic Tables + Focus Rounds (if enabled)",
-  "eta": "59m 59s",
-  "train_loss": "1.1802",
-  "val_loss": "0.3721",
-  "entropy": "0.6490",
+  "progress": "48,392",
+  "progress_percent": "48.4",
+  "epoch": "75",
+  "stage": "Phase 4: Dynamic Table Sizes",
+  "eta": "1h 11m 15s",
+  "train_loss": "8.8907",
+  "val_loss": "8.7728",
+  "entropy": "0.8483",
   "seats": [
     {
       "name": "Seat 0 Hero (Main)",
-      "bb100": 42.9,
-      "vpip": 43.5,
-      "agg": 64.7,
-      "r": 70087,
-      "f": 59151,
-      "ai": 18838,
+      "bb100": 17.0,
+      "vpip": 46.0,
+      "agg": 50.4,
+      "r": 25791,
+      "f": 32687,
+      "ai": 7178,
       "active": true
     },
     {
       "name": "Seat 1 Opp 1: RealPlay-0 (Tree)",
-      "bb100": -19.1,
-      "vpip": 37.7,
-      "agg": 47.5,
-      "r": 51325,
-      "f": 51098,
-      "ai": 13014,
+      "bb100": -12.7,
+      "vpip": 35.8,
+      "agg": 53.5,
+      "r": 25379,
+      "f": 32289,
+      "ai": 6298,
       "active": true
     },
     {
       "name": "Seat 2 Opp 2: RealPlay-3 (Tree)",
-      "bb100": -28.3,
-      "vpip": 40.8,
-      "agg": 50.7,
-      "r": 41212,
-      "f": 49300,
-      "ai": 9899,
+      "bb100": -35.6,
+      "vpip": 34.9,
+      "agg": 52.5,
+      "r": 20475,
+      "f": 33848,
+      "ai": 4679,
       "active": true
     },
     {
       "name": "Seat 3 Opp 3: Calling Station (Heuristic)",
-      "bb100": 12.9,
-      "vpip": 67.3,
-      "agg": 14.7,
-      "r": 17972,
-      "f": 32984,
-      "ai": 8838,
+      "bb100": 21.9,
+      "vpip": 58.4,
+      "agg": 16.7,
+      "r": 11267,
+      "f": 23218,
+      "ai": 5801,
       "active": true
     },
     {
       "name": "Seat 4 Opp 4: Lagged-Self (NN)",
-      "bb100": -46.0,
-      "vpip": 56.9,
-      "agg": 74.0,
-      "r": 67258,
-      "f": 47754,
-      "ai": 17766,
+      "bb100": -27.2,
+      "vpip": 43.3,
+      "agg": 59.0,
+      "r": 29478,
+      "f": 29625,
+      "ai": 7732,
       "active": true
     },
     {
       "name": "Seat 5 Opp 5: TAG (Heuristic)",
-      "bb100": 37.5,
-      "vpip": 47.5,
-      "agg": 39.4,
-      "r": 44174,
-      "f": 56202,
-      "ai": 11742,
+      "bb100": 36.6,
+      "vpip": 36.8,
+      "agg": 49.8,
+      "r": 21564,
+      "f": 32974,
+      "ai": 5753,
       "active": true
     }
   ],
@@ -75,46 +75,46 @@
       "action_cols": [
         [
           "Fold",
-          "77.4%"
+          "75.4%"
         ],
         [
           "Call",
-          "14.6%"
+          "12.5%"
         ],
         [
           "r33",
-          "0.6%"
+          "1.0%"
         ],
         [
           "r66",
-          "0.6%"
+          "0.8%"
         ],
         [
           "rPot",
-          "0.5%"
+          "1.1%"
         ],
         [
           "All-In",
-          "6.3%"
+          "9.1%"
         ]
       ],
-      "n_hands": "4,172",
-      "free_checks": "1,989",
+      "n_hands": "2,639",
+      "free_checks": "991",
       "avg_end_street": "1.2",
-      "net_chips": "-158031.5",
-      "won_chips": "+25292",
-      "lost_chips": "-183323"
+      "net_chips": "-92484.5",
+      "won_chips": "+25274",
+      "lost_chips": "-117758"
     },
     {
       "bracket": "20-40% (Draws)",
       "action_cols": [
         [
           "Fold",
-          "83.3%"
+          "85.5%"
         ],
         [
           "Call",
-          "7.5%"
+          "6.4%"
         ],
         [
           "r33",
@@ -122,34 +122,69 @@
         ],
         [
           "r66",
-          "1.0%"
+          "0.9%"
         ],
         [
           "rPot",
-          "1.1%"
+          "1.0%"
         ],
         [
           "All-In",
-          "6.0%"
+          "5.0%"
         ]
       ],
-      "n_hands": "57,102",
-      "free_checks": "1,177",
+      "n_hands": "29,405",
+      "free_checks": "553",
       "avg_end_street": "0.1",
-      "net_chips": "-317415.9",
-      "won_chips": "+464838",
-      "lost_chips": "-782254"
+      "net_chips": "-151083.0",
+      "won_chips": "+212716",
+      "lost_chips": "-363799"
     },
     {
       "bracket": "40-60% (Marginal)",
       "action_cols": [
         [
           "Fold",
-          "31.3%"
+          "50.1%"
         ],
         [
           "Call",
-          "24.9%"
+          "20.1%"
+        ],
+        [
+          "r33",
+          "4.0%"
+        ],
+        [
+          "r66",
+          "3.3%"
+        ],
+        [
+          "rPot",
+          "4.0%"
+        ],
+        [
+          "All-In",
+          "18.5%"
+        ]
+      ],
+      "n_hands": "10,407",
+      "free_checks": "582",
+      "avg_end_street": "0.2",
+      "net_chips": "+43081.2",
+      "won_chips": "+349098",
+      "lost_chips": "-306017"
+    },
+    {
+      "bracket": "60-80% (Strong)",
+      "action_cols": [
+        [
+          "Fold",
+          "10.3%"
+        ],
+        [
+          "Call",
+          "20.0%"
         ],
         [
           "r33",
@@ -157,93 +192,58 @@
         ],
         [
           "r66",
-          "5.2%"
+          "5.8%"
         ],
         [
           "rPot",
-          "5.6%"
+          "10.4%"
         ],
         [
           "All-In",
-          "27.0%"
+          "47.5%"
         ]
       ],
-      "n_hands": "25,472",
-      "free_checks": "1,144",
-      "avg_end_street": "0.2",
-      "net_chips": "+184280.4",
-      "won_chips": "+1172032",
-      "lost_chips": "-987751"
-    },
-    {
-      "bracket": "60-80% (Strong)",
-      "action_cols": [
-        [
-          "Fold",
-          "4.1%"
-        ],
-        [
-          "Call",
-          "23.1%"
-        ],
-        [
-          "r33",
-          "8.2%"
-        ],
-        [
-          "r66",
-          "6.8%"
-        ],
-        [
-          "rPot",
-          "9.7%"
-        ],
-        [
-          "All-In",
-          "48.1%"
-        ]
-      ],
-      "n_hands": "5,438",
-      "free_checks": "925",
-      "avg_end_street": "0.7",
-      "net_chips": "+342814.1",
-      "won_chips": "+605145",
-      "lost_chips": "-262331"
+      "n_hands": "2,115",
+      "free_checks": "435",
+      "avg_end_street": "0.8",
+      "net_chips": "+115199.2",
+      "won_chips": "+218184",
+      "lost_chips": "-102985"
     },
     {
       "bracket": ">80% (Nuts)",
       "action_cols": [
         [
           "Fold",
-          "0.8%"
+          "2.9%"
         ],
         [
           "Call",
-          "20.9%"
+          "19.8%"
         ],
         [
           "r33",
-          "7.1%"
+          "6.3%"
         ],
         [
           "r66",
-          "4.3%"
+          "5.6%"
         ],
         [
           "rPot",
-          "7.1%"
+          "8.8%"
         ],
         [
           "All-In",
-          "59.8%"
+          "56.5%"
         ]
       ],
-      "n_hands": "1,787",
-      "free_checks": "800",
+      "n_hands": "885",
+      "free_checks": "380",
       "avg_end_street": "1.7",
-      "net_chips": "+282426.2",
-      "won_chips": "+329433",
-      "lost_chips": "-47007"
+      "net_chips": "+140546.9",
+      "won_chips": "+163446",
+      "lost_chips": "-22899"
     }
   ],
   "personality": "MAIN",
@@ -251,62 +251,62 @@
     {
       "name": "Hero (Main)",
       "hero": 0.0,
-      "s1": 10.7,
-      "s2": 10.3,
-      "s3": 3.8,
-      "s4": 20.8,
-      "s5": -2.7
+      "s1": 8.2,
+      "s2": 9.1,
+      "s3": -5.0,
+      "s4": 6.6,
+      "s5": -1.9
     },
     {
       "name": "Opp 1: RealPlay-0 (Tree)",
-      "hero": -10.7,
+      "hero": -8.2,
       "s1": 0.0,
-      "s2": 1.5,
-      "s3": -4.7,
-      "s4": 3.0,
-      "s5": -8.1
+      "s2": 3.4,
+      "s3": -2.8,
+      "s4": 1.4,
+      "s5": -6.6
     },
     {
       "name": "Opp 2: RealPlay-3 (Tree)",
-      "hero": -10.3,
-      "s1": -1.5,
+      "hero": -9.1,
+      "s1": -3.4,
       "s2": 0.0,
-      "s3": -8.4,
-      "s4": -0.3,
-      "s5": -7.9
+      "s3": -10.3,
+      "s4": -3.6,
+      "s5": -9.2
     },
     {
       "name": "Opp 3: Calling Station (Heuristic)",
-      "hero": -3.8,
-      "s1": 4.7,
-      "s2": 8.4,
+      "hero": 5.0,
+      "s1": 2.8,
+      "s2": 10.3,
       "s3": 0.0,
-      "s4": 7.6,
-      "s5": -3.9
+      "s4": 10.1,
+      "s5": -6.2
     },
     {
       "name": "Opp 4: Lagged-Self (NN)",
-      "hero": -20.8,
-      "s1": -3.0,
-      "s2": 0.3,
-      "s3": -7.6,
+      "hero": -6.6,
+      "s1": -1.4,
+      "s2": 3.6,
+      "s3": -10.1,
       "s4": 0.0,
-      "s5": -14.9
+      "s5": -12.8
     },
     {
       "name": "Opp 5: TAG (Heuristic)",
-      "hero": 2.7,
-      "s1": 8.1,
-      "s2": 7.9,
-      "s3": 3.9,
-      "s4": 14.9,
+      "hero": 1.9,
+      "s1": 6.6,
+      "s2": 9.2,
+      "s3": 6.2,
+      "s4": 12.8,
       "s5": 0.0
     }
   ],
   "action_usage": [
     [
       "Fold",
-      "34.9%"
+      "42.6%"
     ],
     [
       "Call",
@@ -314,47 +314,47 @@
     ],
     [
       "r33",
-      "12.5%"
+      "9.4%"
     ],
     [
       "r66",
-      "11.9%"
+      "8.6%"
     ],
     [
       "rPot",
-      "15.3%"
+      "13.7%"
     ],
     [
       "All-In",
-      "1.7%"
+      "2.0%"
     ]
   ],
-  "allin_winrate": "52.7%",
-  "allin_n": "16568",
+  "allin_winrate": "50.8%",
+  "allin_n": "6124",
   "jam_by_color": [
     [
       "Blue",
-      "6.8%"
+      "4.6%"
     ],
     [
       "Green",
-      "12.2%"
+      "11.7%"
     ],
     [
       "Yellow",
-      "16.7%"
+      "15.6%"
     ],
     [
       "Red",
-      "11.1%"
+      "12.8%"
     ]
   ],
   "loss_breakdown": {
-    "q": "1.1771",
-    "pi": "0.0022",
-    "bluff": "0.0024",
-    "str": "0.0067",
-    "eq": "0.0014"
+    "q": "8.1049",
+    "pi": "0.7780",
+    "bluff": "0.0972",
+    "str": "0.0256",
+    "eq": "0.0066"
   },
   "active_seat_count": 6,
   "configured_seats": 6,
