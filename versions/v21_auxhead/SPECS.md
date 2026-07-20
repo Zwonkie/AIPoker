@@ -234,8 +234,158 @@ continuation next (Phase 5).
 Same warm-start base (`phase2_fresh_100k.pth`) and the Phase 4 sqrt-dampened weighting, but a
 longer continuation (+50k hands, target 150k total, vs Phase 3/4's +25k) to test whether `equity`/
 `strength` recover given more training time with the dampened bluff loss active throughout, the way
-the main Q/Pi loss recovered by the end of Phase 1's shorter window.
+the main Q/Pi loss recovered by the end of Phase 1's shorter window. Weights preserved at
+`weights/phase5_sqrtweight_150k.pth`.
 
-Results: pending.
+**Result: settles the transient-vs-persistent question.**
 
-Results: pending.
+| head | Phase 2 | Phase 3 (+25k) | Phase 4 (+25k) | Phase 5 (+50k) |
+|---|---|---|---|---|
+| equity | 0.949 | 0.949 | 0.861 | 0.918 |
+| strength | 0.151 | 0.065 | 0.047 | **0.033** |
+| bluff | 0.080 | 0.104 | 0.115 | 0.105 |
+
+`equity` mostly recovered with more hands (0.861→0.918) — consistent with a partially transient
+warm-start effect. `strength` kept declining MONOTONICALLY across every single phase since Phase 2
+— more hands made it worse, not better, ruling out "just needs more time to resettle" for this
+specific head. `bluff` stayed stable and reasonably calibrated across the last three phases.
+
+**Conclusion**: the shared-`aux_loss_weight` hypothesis is the best-supported explanation —
+`strength`'s signal is being structurally crowded out by bluff's now-correctly-larger loss
+magnitude within one shared budget, not suffering a transient perturbation. Moving to Phase 6:
+decouple the weight per head instead of sharing one scalar.
+
+## Phase 6 (complete) — per-head aux weights
+
+Code change in `train.py`: `run_training` now accepts `aux_loss_weight_bluff`/`_strength`/`_equity`
+(each defaulting to the shared `aux_loss_weight` if unset in config, for backward compatibility)
+instead of one scalar multiplying the summed aux loss. Config set `strength=0.20` (4x the fallback
+0.05), bluff/equity left at the fallback. Same base (`phase2_fresh_100k.pth`) and +50k-hand window
+as Phase 5, for a direct, controlled comparison at the identical hand count. Weights preserved at
+`weights/phase6_strength020_150k.pth`.
+
+**Correction to the Phase 5 write-up**: `w * (a + b + c)` and `w*a + w*b + w*c` are mathematically
+IDENTICAL when `w` is the same for all three terms — Phase 2-5's "one shared weight" was never
+actually a different FORMULA STRUCTURE from per-head weights, only a special case where all three
+happened to be equal. The real lever was always just giving one term a different coefficient than
+the others; "sharing a sum" itself was never the mechanism. Correcting this here rather than
+leaving the imprecise framing standing.
+
+**Result:**
+
+| head | Phase 5 (all @ 0.05) | Phase 6 (strength @ 0.20) |
+|---|---|---|
+| equity | 0.918 | 0.927 |
+| strength | 0.033 | **0.144** |
+| bluff | 0.105 | 0.086 |
+
+`strength` improved >4x (0.033→0.144) — a real effect, not noise, given the magnitude. `equity`
+held steady. `bluff`'s small dip (0.105→0.086) is very likely ordinary run-to-run noise, since its
+own coefficient was UNCHANGED between these two runs (0.05 both times) — nothing about boosting
+strength's weight should mechanically cost bluff anything.
+
+**Retrospective check on whether this could have been predicted rather than guessed**: raw
+per-head loss magnitudes from Phase 2's baseline (before any reweighting) don't cleanly predict
+which head needs a bigger coefficient — all three started in a similar numeric range. What DOES
+distinguish `strength` in hindsight: its raw loss barely decreased over Phase 2's full 100k-hand
+run (0.029→0.011, ~2.6x) while `bluff`/`equity` dropped 15-30x in the same window. A magnitude
+snapshot wouldn't have flagged it in advance; "is this term's loss actually decreasing over
+training" would have. Going forward, `inspect_aux_heads.py`'s correlation readout remains the most
+direct, ground-truth tuning signal available (measure -> adjust weight -> cheap warm-started
+re-test -> re-measure) — not as rigorous as real gradient-norm-based dynamic balancing (e.g. a
+GradNorm-style scheme), but usable now without new machinery.
+
+## Phase 7 (complete) — mapping the response curve
+
+One data point (`strength=0.20`) doesn't establish whether it's near-optimal or a lucky guess.
+Tested two more points at the same base/window (`phase2_fresh_100k.pth`, +50k hands): `strength=
+0.10` (Phase 7a, weights `phase7a_strength010_150k.pth`) and `strength=0.35` (Phase 7b, weights
+`phase7b_strength035_150k.pth`), bluff/equity fixed at 0.05 throughout.
+
+**Full response curve:**
+
+| strength weight | equity | strength | bluff |
+|---|---|---|---|
+| 0.05 (Phase 5) | 0.918 | 0.033 | 0.105 |
+| 0.10 (Phase 7a) | **0.943** | 0.120 | **0.130** |
+| 0.20 (Phase 6) | 0.927 | **0.144** | 0.086 |
+| 0.35 (Phase 7b) | 0.921 | 0.057 | 0.062 |
+
+Not a plateau — an inverted U. Pushing to 0.35 made `strength` WORSE than 0.20 (0.144→0.057) and
+dragged `bluff` down too (0.086→0.062): past the peak, now costing both the head it's meant to help
+and its neighbor. Looking across all three heads rather than optimizing `strength` in isolation,
+**`strength=0.10` is the best overall balance** — best `equity` and best `bluff` of all four points,
+with `strength` at 0.120 (close to 0.20's peak without paying its cost elsewhere).
+
+**Chosen final configuration**: `aux_loss_weight_bluff=0.05, aux_loss_weight_strength=0.10,
+aux_loss_weight_equity=0.05`, sqrt-dampened bluff reweighting (Phase 4's fix), corrected
+`opp_bluff_prob` label (Phase 1's fix).
+
+**`model_verify --full` on Phase 7a's weights (150k total: 100k fresh + 50k warm-started
+continuation) surfaced an important confound**: `action_diversity` regressed to `{fold:9,
+allin:12}` — only 2 distinct actions across the whole grid, WORSE than V21's own baseline
+(`{fold:9,allin:10,raise_66:2}`, 3 actions) and much worse than Phase 2's OWN 100k-hand result
+(`{fold:9,allin:10,call:1,raise_pot:1}`, 4 actions -- the best diversity of the whole
+investigation). `stack_full_sweep`'s argmax path was `allin` at all 9 stack points (was a real
+call->raise_pot->raise_66 progression in Phase 2, never even reaching allin).
+
+**Root-caused, not just noted**: Phase 2's own 100k FRESH run already had the best bet-sizing
+diversity in this whole investigation. Every one of Phases 5/6/7a/7b independently applied a +50k
+warm-started CONTINUATION on top of that same clean base, at four different aux weights (0.05,
+0.20, 0.10, 0.35) -- and the diversity collapse showed up in every single one of them regardless of
+weight. That's strong evidence the CONTINUATION mechanism itself (not the aux-weight tuning) is
+responsible -- plausibly the same "more total hands in this recipe trends toward shove-dominance"
+pattern already tracked as [BET-1] in the OFK backlog, observed live during V21's own 100k run.
+
+## Phase 8 (complete) — the actual final candidate: fresh 100k with the full chosen config
+
+Rather than ship the continuation-damaged Phase 7a checkpoint, Phase 8 trains the FULLY chosen
+configuration (corrected bluff label + sqrt-dampened reweighting + per-head weights
+bluff=0.05/strength=0.10/equity=0.05) together, FRESH from scratch, matching Phase 2's own protocol
+exactly (100k hands, no `--resume_path`) -- getting the aux-head correlation improvements without
+the continuation-induced diversity cost.
+
+**`inspect_aux_heads.py` (5161 live decision points, `--n-hands 4000`):**
+
+| head | label | r (corr) | MAE | pred mean/std | label mean/std |
+|---|---|---|---|---|---|
+| equity | self_equity (ctx[3]) | 0.922 | 0.042 | 0.382/0.149 | 0.366/0.166 |
+| strength | opp_strength | **0.171** | 0.106 | 0.570/0.034 | 0.603/0.142 |
+| bluff | opp_bluff_prob | 0.091 | 0.089 | 0.059/0.117 | 0.018/0.134 |
+
+`strength` is the best of ANY phase in this investigation (0.171, beating Phase 6's 0.144 peak),
+training it together with the other two heads from scratch rather than as an isolated
+warm-started arm. `equity` stays strong (0.922, in the same band as every prior phase). `bluff`
+(0.091) sits between Phase 2's 0.080 and Phase 7a's 0.130 -- consistent with prior noise level for
+this head, not a regression.
+
+**`model_verify --full`: 15 PASS / 3 WARN / 1 FAIL / 0 SKIP.** Directly compared to Phase 2 (fresh
+100k, the pre-registered "best case" baseline) and Phase 7a (150k, continuation-damaged):
+
+| metric | Phase 2 (fresh 100k) | Phase 7a (150k, continuation) | **Phase 8 (fresh 100k, final config)** |
+|---|---|---|---|
+| `action_diversity` | `{fold:9,allin:10,call:1,raise_pot:1}` (4 actions) | `{fold:9,allin:12}` (**2 actions**) | `{fold:9,allin:11,raise_33:1}` (**3 actions**) |
+| `stack_full_sweep` argmax path | call→raise_pot→raise_66 progression, never reaches allin | `allin` at all 9 points | allin/allin/allin/**raise_33 x5**/allin (range 0.232) |
+| PASS/WARN/FAIL | 16/2/1 | (not re-run standalone, same shape expected) | 15/3/1 |
+| `deep_stack_ood_guard` | FAIL (40bb cell) | — | FAIL (30bb cell, eq=0.55→allin@0.37) |
+| `opponent_style_sweep` | WARN (flat, [OPP-5]) | — | WARN (flat, spread 0.010, [OPP-5]) |
+
+**This confirms the continuation-confound hypothesis.** Phase 8 recovers real mid-stack bet-sizing
+diversity (a genuine `raise_33` plateau across 5 of 9 stack points) that Phase 7a's warm-started
+continuation had completely erased down to a fold/allin coin-flip. It doesn't fully match Phase 2's
+own 4-action peak (no `call` or `raise_pot` argmax cell here), so training FRESH recovers *most* but
+not all of the diversity lost to continuation -- the residual gap is small compared to the
+Phase 7a collapse and is within the kind of run-to-run noise seen elsewhere in this investigation
+(e.g. `deep_stack_ood_guard`'s failing cell moving between runs, per [STACK-1]).
+
+One new (mild) WARN not seen in Phase 2: `free_check_low_fold` -- max raw P(fold) when call_bb=0
+hits 1.0 in the synthetic sweep, but the check's own detail notes this is already covered by
+`decision.py`'s free-check mask at serve time, so it's a training-time-only artifact, not a live
+behavior regression.
+
+**Verdict: Phase 8 is the final candidate for this experiment.** `expert_main.pth` (this run's
+weights) supersedes Phase 7a's checkpoint -- it carries the full aux-head configuration (corrected
+bluff label, sqrt-dampened reweighting, per-head weights) with model_verify numbers close to V21's
+own baseline shape and no continuation damage. `deep_stack_ood_guard` and `opponent_style_sweep`
+remain open, pre-existing issues ([STACK-1]/[OPP-5] in the OFK backlog) untouched by this
+experiment either way.

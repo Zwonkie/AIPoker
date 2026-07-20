@@ -1,0 +1,98 @@
+version: "v24_extreme"
+training:
+  # --- Discretized bet-size action space (inherited from V14, UNCHANGED) --------------
+  # The raise buckets the hero (and per-size EV targets) use, as pot fractions; `null` = ALL-IN.
+  raise_pot_fractions: [0.33, 0.66, 1.0, null]   # 0.33/0.66/1.0 pot + all-in
+  # [V24_EXTREME] Deliberately EXTREME, throwaway DIAGNOSTIC -- NOT a production candidate. Same
+  # mechanism as V24 (decoupled EV-target fold model + bot_bluff_perc "show of strength" bonus),
+  # only the PARAMETERS + this recipe change: bot_bluff_perc pushed to near-0 for all 4 archetypes,
+  # RAISE_RESPECT_BOOST pushed to 0.40 (was 0.10), target_hands cut to 50000, bootstrap warmup
+  # skipped, and a single fixed stack depth (see curriculum below) instead of the full
+  # stack_depth_mix -- so training converges quickly on just the one variable under test. See
+  # versions/v24_extreme/core/manifest.py and SPECS.md for the full rationale (V24's calibrated
+  # settings showed a real effect in ISOLATION but no movement over a full 150k-hand retrain; this
+  # answers whether ANY strength of this lever can move the needle before concluding the whole
+  # opponent-response-shaping approach is a dead end).
+  target_hands: 50000
+  batch_size: 256
+  epochs_per_batch: 3
+  sim_batch_size: 2000
+  learning_rate: 0.001
+  equity_sims: 2000
+  mid_flight_diagnostics_interval: 5000
+  checkpoint_dump_interval: 20000   # matches V21/V21_auxhead's own cadence for a like-for-like comparison
+  # --- Training knobs ---
+  # [V21_auxhead, inherited unchanged] aux heads validated over Phases 1-8 -- see
+  # versions/v21_auxhead/SPECS.md for the full derivation of these numbers. Not touched by V22.
+  aux_loss_weight: 0.05    # fallback default for any head without its own override below
+  aux_loss_weight_strength: 0.10   # [V21_auxhead Phase 7 conclusion] best overall balance across all three heads
+  aux_loss_weight_bluff: 0.05
+  aux_loss_weight_equity: 0.05
+  # [V21] disable_target_shaping REMOVED -- the preflop-entry tightness prior it gated
+  # (TIGHTNESS_PENALTY_BB/ENTRY_EQUITY_MARGIN) has been deleted outright, not just left at 0. See
+  # versions/v21/SPECS.md item 1: superseded by range-aware equity, and validated dormant since V17 anyway.
+  target_clip_bb: 40.0          # VARIANCE clip -- KEEP ON (removing it diverged the critic)
+  # [V24_EXTREME] Skipped entirely (was false) -- let training converge quickly on pure model
+  # behavior without the heuristic-anchoring warmup phase diluting the signal for this diagnostic.
+  disable_bootstrap: true
+  disable_exploration: false    # 5% random + 95% model
+  policy_target_source: counterfactual  # 'realized' (legacy) | 'counterfactual'
+  range_aware_equity: true      # hero equity vs each opp's VPIP-color range (opponent adaptation)
+  policy_tightness_bb: 2.0      # realization discount on the actor target (shared pre/post
+                                 # actor-critic-cutover helper, [V21] item 5)
+  ablate_hole_cards: false
+  policy_target_temperature: 1.0
+  policy_entropy_penalty: 0.0
+
+curriculum:
+  # [V24_EXTREME] stack_depth_mix REMOVED in favor of a single fixed_stack_bb (was V22's widened
+  # DoN-shaped mixture, see versions/v22/SPECS.md for that recipe's own history) -- this diagnostic
+  # wants training to converge quickly on just the bot_bluff_perc/RAISE_RESPECT_BOOST variable
+  # under test, not spread exposure across a whole stack-depth curriculum. 35bb chosen to match
+  # deep_stack_ood_guard's own failure zone (eq=0.55, stack=40bb) as closely as possible.
+  phase_1_max_hands: 10000
+  phase_1_stacks: [100.0]
+  phase_5_focus_rounds: true
+  disable_extreme_stacks: true  # the old 10-300bb fat-tail curriculum stays OFF
+  fixed_stack_bb: 35.0
+
+# --- Opponent lineup (V18: DECLARATIVE format, opponents.py's build_opponent_pool) -------------
+# [V22] `maniac`/`fish` REVERTED to plain heuristics (were V20_preflopEq's frozen_50k.pth/
+# frozen_25k.pth NN checkpoints in V21_auxhead/V21/V20_preflopEq_AI). Those checkpoints are
+# context_dim=37/contract_version=5 -- V22's OWN context_dim=43/contract_version=6 means
+# `_query_model_decide` now builds a 43-dim context for EVERY queried model, which would shape-
+# mismatch-crash a 37-dim-input frozen checkpoint. This is the exact same situation V20 itself hit
+# with ITS OWN rescale (see the historical note below) -- same precedented fix: fall back to plain
+# heuristics for any opponent seat that isn't natively on this version's own scale. `past` (lagged
+# self-play mirror of THIS run) is unaffected -- it's always version-native by construction.
+#
+# NOTE on `style` keys: `maniac`/`fish` here DO play as those heuristic archetypes now (unlike
+# V21_auxhead, where they were repurposed NN-model slots) -- see opponents.py's own docstring for
+# the general slot-repurposing mechanism, not in use here.
+#
+# [Historical V20 note] 'nit'/'tag' were reverted to plain heuristics in V20 because its OWN
+# context rescale made every prior-version frozen checkpoint receive wrongly-scaled inputs --
+# exactly the same mechanism now hitting `maniac`/`fish` here in V22.
+#
+# Each pool entry: {style, weight, model?, forced?, lagged_self?}
+#   - model: a checkpoint filename (resolved against this version's weights/ dir) -> NNOpponent,
+#     UNFORCED by default (a real trained network keeps its own tendencies; forcing it toward an
+#     archetype stereotype is an explicit opt-in via forced: true, not the default).
+#   - lagged_self: true -> 'past' only; a TRUE lagged self-play mirror, refreshed every 5k hands
+#     (NOT a static file -- mutually exclusive with 'model' on the same entry).
+#   - neither model nor lagged_self -> HeuristicOpponent (scripted archetype bot), forced=true.
+opponents:
+  pool:
+    - style: past                # NN: lagged self-play mirror of THIS run, refreshed every 5k hands
+      weight: 0.25
+      lagged_self: true
+    - style: maniac               # Heuristic (see note above -- was an NN slot in V21_auxhead)
+      weight: 0.20
+    - style: fish                 # Heuristic (see note above -- was an NN slot in V21_auxhead)
+      weight: 0.15
+    - style: tag                  # Heuristic anchor
+      weight: 0.25
+    - style: nit                  # Heuristic, short-stack push/fold discipline
+      weight: 0.15
+  live_players: 6                        # 6-max to match live tables
+  disable_focus_rounds: true              # unchanged from V17/V17_gauntlet -- keep the field composition constant

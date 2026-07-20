@@ -319,6 +319,73 @@ def check_equity_edge_sensitivity(rc):
     return CheckResult(status, detail, data)
 
 
+def check_committed_sensitivity(rc):
+    """[V22] Same idea as check_hand_strength_sensitivity/check_equity_edge_sensitivity but for
+    the new `opp_committed_this_hand_bb`/`hero_committed_this_hand_bb` features (ctx[37:43]).
+    Holds equity/stack/pot/field FIXED and swings only the lead opponent's committed-this-hand
+    amount between 0bb (hasn't put in anything, e.g. a flat call so far) and near-stack-deep (a
+    big earlier bet/raise this hand) -- probing whether the network reads these ctx slots as
+    informative beyond what it could already derive from `opp_stack` (remaining) +
+    `call_amount`/`pot_size` alone. WARN-only / diagnostic, not a pass/fail gate (first version to
+    carry this feature -- no established expected magnitude yet). SKIP if context_dim<43."""
+    if getattr(rc.manifest, 'context_dim', 35) < 43:
+        return CheckResult('SKIP', 'model context has no committed-this-hand feature (context_dim<43)')
+    diffs, data = [], []
+    for eq in (0.35, 0.50, 0.65, 0.80):
+        for stack in (20, 60):
+            ctx_lo = build_ctx(equity=eq, stack_bb=stack, pot_bb=10, call_bb=4, num_active_opp=2,
+                                contract_version=rc.manifest.contract_version,
+                                per_opp_committed_bb=[0.0, 0.0])
+            ctx_hi = build_ctx(equity=eq, stack_bb=stack, pot_bb=10, call_bb=4, num_active_opp=2,
+                                contract_version=rc.manifest.contract_version,
+                                per_opp_committed_bb=[stack * 0.6, 0.0])
+            policy_lo, _ = run_policy(rc.model, ctx_lo, rc.action_keys, device=rc.device)
+            policy_hi, _ = run_policy(rc.model, ctx_hi, rc.action_keys, device=rc.device)
+            tv_dist = 0.5 * sum(abs(policy_hi[k] - policy_lo[k]) for k in rc.action_keys)
+            diffs.append(tv_dist)
+            data.append({"equity": eq, "stack_bb": stack,
+                         "policy_lo_committed": policy_lo, "policy_hi_committed": policy_hi,
+                         "total_variation": round(tv_dist, 4)})
+    avg = sum(diffs) / len(diffs)
+    detail = f"avg policy shift (total variation) between opp committed=0bb vs =60%stack at fixed equity/stack: {avg:.3f}"
+    status = 'PASS' if avg > 0.03 else 'WARN'
+    if status == 'WARN':
+        detail += " -- negligible response; opp_committed_this_hand_bb may be redundant with opp_stack/call_amount"
+    return CheckResult(status, detail, data)
+
+
+def check_pot_type_sensitivity(rc):
+    """[V23] Same idea as check_committed_sensitivity but for `pot_type` (ctx[43], bucketed
+    0=limped/1=single-raised/2=3-bet+). Holds equity/stack/pot/call/field FIXED and swings only
+    pot_type between 0 (limped) and 2 (3-bet+) -- probing whether the network reads this ctx slot
+    as informative beyond what it could already derive from call_amount/pot_size/committed alone
+    (a big call_amount can arise from one big bet OR a raise war -- pot_type distinguishes them).
+    WARN-only / diagnostic, not a pass/fail gate (first version to carry this feature -- no
+    established expected magnitude yet). SKIP if context_dim<44."""
+    if getattr(rc.manifest, 'context_dim', 35) < 44:
+        return CheckResult('SKIP', 'model context has no pot_type feature (context_dim<44)')
+    diffs, data = [], []
+    for eq in (0.35, 0.50, 0.65, 0.80):
+        for stack in (20, 60):
+            ctx_lo = build_ctx(equity=eq, stack_bb=stack, pot_bb=10, call_bb=4, num_active_opp=2,
+                                contract_version=rc.manifest.contract_version, pot_type=0)
+            ctx_hi = build_ctx(equity=eq, stack_bb=stack, pot_bb=10, call_bb=4, num_active_opp=2,
+                                contract_version=rc.manifest.contract_version, pot_type=2)
+            policy_lo, _ = run_policy(rc.model, ctx_lo, rc.action_keys, device=rc.device)
+            policy_hi, _ = run_policy(rc.model, ctx_hi, rc.action_keys, device=rc.device)
+            tv_dist = 0.5 * sum(abs(policy_hi[k] - policy_lo[k]) for k in rc.action_keys)
+            diffs.append(tv_dist)
+            data.append({"equity": eq, "stack_bb": stack,
+                         "policy_lo_pottype": policy_lo, "policy_hi_pottype": policy_hi,
+                         "total_variation": round(tv_dist, 4)})
+    avg = sum(diffs) / len(diffs)
+    detail = f"avg policy shift (total variation) between pot_type=limped vs =3bet+ at fixed equity/stack: {avg:.3f}"
+    status = 'PASS' if avg > 0.03 else 'WARN'
+    if status == 'WARN':
+        detail += " -- negligible response; pot_type may be redundant with call_amount/pot_size/committed"
+    return CheckResult(status, detail, data)
+
+
 # =====================================================================================
 # SENSITIVITY SWEEPS -- one clean parameter axis per check, so a collapsed/flatlined/
 # wrong-direction response is visible at a glance (as a line chart or small heatmap) rather than
@@ -445,6 +512,212 @@ def check_opponent_style_sweep(rc):
     return CheckResult(status, detail, data)
 
 
+# Exact base_vpip/base_agg_freq of the 4 named archetypes populating the training pool
+# (opponent_bots.py's TAG/LAG/NIT/CALLING_STATION) -- deliberately NOT the same as STYLE_ARCHETYPES
+# above, which uses idealized/representative spectrum points (its own "Red (maniac)" point, for
+# instance, doesn't match the real CALLING_STATION archetype at all: loose+PASSIVE in reality
+# (agg=0.15) vs loose+aggressive as modeled there (agg=0.85)). See [OPP-8].
+# Ordered tightest/most-fold-prone (NIT) -> loosest/least-fold-prone (CALLING_STATION), matching
+# each archetype's real base_fold_to_pressure ordering (0.85/0.60/0.45/0.15) for a meaningful
+# gradient when rendered as a heatmap axis.
+REAL_ARCHETYPES = [
+    (0, 'NIT', 0.11, 0.25),
+    (1, 'TAG', 0.22, 0.45),
+    (2, 'LAG', 0.32, 0.55),
+    (3, 'CALLING_STATION', 0.45, 0.15),
+]
+
+
+def check_allin_exploits_opponent_foldiness(rc):
+    """[OPP-8] Does hero's own all-in FREQUENCY actually differentiate by opponent archetype,
+    proportional to how differently those archetypes really respond to a shove? Complements
+    `opponent_style_sweep` (an abstract Blue->Red VPIP/AGG spectrum) by feeding the EXACT
+    base_vpip/base_agg_freq of the four named archetypes that actually populate the training pool.
+    Motivation (2026-07-18): a direct probe against `_ev_target_fold_decision` (the same function
+    used to build hero's own training targets) shows NIT folds to an all-in ~98% of the time at a
+    realistic price, vs CALLING_STATION ~0%, at the IDENTICAL price -- driven by each archetype's
+    independent `base_fold_to_pressure` (NIT=0.85, CALLING_STATION=0.15), a trait NEVER itself fed
+    to the model as an input feature (only inferred indirectly via the coarse 4-bucket VPIP/AGG
+    color read). A policy that's actually exploiting this should show a LARGE P(all-in) spread
+    across these 4 real archetypes at a fixed, decent equity -- not just whatever
+    `opponent_style_sweep`'s synthetic spectrum shows. WARN-only / diagnostic (informational, not
+    gated) -- see OFK known-shortcomings-backlog [OPP-8] for the full investigation.
+
+    CAVEAT (2026-07-18, user-caught methodology point -- do not over-read a low spread as pure
+    exploitable waste): this sweep feeds a FLAT equity value per cell, i.e. it asks "given the
+    opponent genuinely has this equity right now, does the policy react to who they are" -- it does
+    NOT weight by how OFTEN each archetype actually presents that equity level in real play. NIT's
+    tight preflop selection (VPIP 0.11) means its real postflop range is selection-skewed strong --
+    a genuine 45%-equity NIT spot is rarer than this synthetic sweep implies, since most weak NIT
+    hands never survive to see a flop at all. A low spread here is still evidence the model can't
+    directly observe the underlying fold_to_pressure trait, but it does NOT by itself prove hero is
+    leaving significant real-game EV on the table -- that requires weighting by each archetype's
+    true conditional-on-continuing range, which this check deliberately does not attempt."""
+    allin_i = _find(rc.action_keys, 'allin')
+    if allin_i is None:
+        return CheckResult('SKIP', 'no all-in action')
+    data = []
+    for eq in (0.15, 0.25, 0.35, 0.45, 0.55, 0.65, 0.75, 0.85):
+        for idx, name, vpip, agg in REAL_ARCHETYPES:
+            ctx = build_ctx(equity=eq, stack_bb=25, pot_bb=7.5, call_bb=3.75, num_active_opp=1,
+                            opp_vpip=vpip, opp_agg=agg, contract_version=rc.manifest.contract_version)
+            policy, _ = run_policy(rc.model, ctx, rc.action_keys, device=rc.device)
+            argmax = max(policy, key=policy.get)
+            data.append({"equity": eq, "archetype": name, "archetype_idx": idx, "policy": policy,
+                         "argmax": argmax, "argmax_is_allin": argmax == rc.action_keys[allin_i]})
+    by_eq = {}
+    for d in data:
+        by_eq.setdefault(d["equity"], []).append(d)
+    spreads = []
+    for eq, rows in by_eq.items():
+        allin_vals = [r["policy"][rc.action_keys[allin_i]] for r in rows]
+        spreads.append(max(allin_vals) - min(allin_vals))
+    avg_spread = sum(spreads) / len(spreads)
+    detail = f"avg P(all-in) spread across NIT/TAG/LAG/CALLING_STATION at fixed equity: {avg_spread:.3f}"
+    status = 'PASS' if avg_spread > 0.08 else 'WARN'
+    if status == 'WARN':
+        detail += " -- [OPP-8] all-in frequency barely differs by real opponent archetype despite wildly different actual fold-to-pressure"
+    return CheckResult(status, detail, data)
+
+
+def check_allin_vs_nextbest_qgap(rc):
+    """[BET-1 diagnostic, V28] The FIRST permanent, reusable measurement of the all-in-vs-next-best
+    Q-value gap. Every number quoted for this gap in versions/v21_auxhead..v26/SPECS.md (reported
+    as a 1.35x-1.78x ratio across versions) was run via a one-off, non-committed script -- five
+    versions of "did the gap get better or worse" were each measured a different way. This check
+    reuses the SAME eq x stack grid `check_deep_stack_ood_guard` already sweeps (directly
+    comparable to that check's own numbers) and the SAME 4 real archetypes [OPP-8] already defines,
+    and reports a full BREAKDOWN (by stack depth, by opponent archetype) using the raw Q-values
+    `run_policy` already returns (and every other check discards) -- not a single aggregate figure.
+    That's the actual localization ("where does the gap concentrate") the prior five versions
+    never had, which is the point: know WHERE before picking a fix.
+
+    Reports the gap as `q_allin - max(other actions' q)`, normalized by the scenario's own pot_bb
+    (so the two breakdowns, which use different pot sizes, are comparable to each other) --
+    NOT the historical ratio framing, since that ratio was never well-defined near a zero/negative
+    next-best Q (FOLD's own critic target is a hardcoded 0.0 by construction, see
+    `_mc_target_evs_sized`, so a ratio against it can blow up or flip sign). WARN-only / diagnostic
+    -- first version to carry this check, so the 0.15-of-pot threshold below is a provisional
+    starting point, not an established baseline; the main value is the breakdown table itself.
+
+    [Caught before shipping] The by-stack/by-archetype breakdown reports the WORST (max) cell in
+    each slice, NOT the average. An early version of this check averaged across the equity sweep
+    and reported PASS even at stack=40bb, where Q_allin swings from -6.12 (eq=0.35) to +2.97
+    (eq=0.55) -- a steep, almost threshold-like jump, much sharper than call/raise's much more
+    gradual rise over the same range -- because the other 4 (correctly negative) cells in that
+    stack bucket diluted the one cell that actually matches `check_deep_stack_ood_guard`'s own
+    FAIL at that exact spot. Averaging across a swept dimension hides exactly the localization
+    this check exists to surface -- fixed to report the max (worst) cell per slice instead.
+    """
+    allin_i = _find(rc.action_keys, 'allin')
+    if allin_i is None:
+        return CheckResult('SKIP', 'no all-in action')
+    allin_key = rc.action_keys[allin_i]
+
+    def _gap_frac(q, pot_bb):
+        other_best = max(v for k, v in q.items() if k != allin_key)
+        return (q[allin_key] - other_best) / max(pot_bb, 1e-6)
+
+    # -- Breakdown 1: by stack depth (same eq x stack grid as check_deep_stack_ood_guard). --
+    by_stack, stack_data = {}, []
+    for stack in (15, 20, 25, 30, 40):
+        gaps = []
+        for eq in (0.35, 0.40, 0.43, 0.48, 0.55):
+            ctx = build_ctx(equity=eq, stack_bb=stack, pot_bb=2.5, call_bb=1.0, num_active_opp=1,
+                            contract_version=rc.manifest.contract_version)
+            _, q = run_policy(rc.model, ctx, rc.action_keys, device=rc.device)
+            gap = _gap_frac(q, 2.5)
+            gaps.append(gap)
+            stack_data.append({"stack_bb": stack, "equity": eq, "qvals": q, "gap_frac_of_pot": round(gap, 4)})
+        by_stack[stack] = max(gaps)   # worst cell, not the average -- see docstring caveat
+
+    # -- Breakdown 2: by opponent archetype, same MARGINAL-equity band as breakdown 1 (0.35-0.55,
+    # NOT check_allin_exploits_opponent_foldiness's own wider 0.15-0.85 sweep). Deliberately
+    # narrower than OPP-8's own range: an early version of this check reused that wider band and
+    # its "worst cell" always landed at eq=0.85 -- shoving for value at 85% equity is often
+    # correctly profitable, not the BET-1 defect (marginal-equity overshoving) this check exists to
+    # localize. Keeping both breakdowns on the SAME equity band makes them directly comparable and
+    # keeps this check pointed at the actual phenomenon, not legitimate high-equity value shoves.
+    by_archetype, archetype_data = {}, []
+    for idx, name, vpip, agg in REAL_ARCHETYPES:
+        gaps = []
+        for eq in (0.35, 0.40, 0.43, 0.48, 0.55):
+            ctx = build_ctx(equity=eq, stack_bb=25, pot_bb=7.5, call_bb=3.75, num_active_opp=1,
+                            opp_vpip=vpip, opp_agg=agg, contract_version=rc.manifest.contract_version)
+            _, q = run_policy(rc.model, ctx, rc.action_keys, device=rc.device)
+            gap = _gap_frac(q, 7.5)
+            gaps.append(gap)
+            archetype_data.append({"archetype": name, "archetype_idx": idx, "equity": eq, "qvals": q,
+                                   "gap_frac_of_pot": round(gap, 4)})
+        by_archetype[name] = max(gaps)   # worst cell, not the average -- see docstring caveat
+
+    # Flat combined list (not a nested dict) so render_report.py's bespoke card can `.filter()`
+    # it into the two sub-views by which shape each record has (stack_bb+equity vs
+    # archetype+equity) -- matching the "paired two-col card" convention already used for
+    # air_folds_mostly/nuts_aggressive_mostly. The two per-breakdown averages are still in
+    # `detail` above for anyone just reading the text summary.
+    data = stack_data + archetype_data
+
+    worst_stack = max(by_stack, key=by_stack.get)
+    worst_archetype = max(by_archetype, key=by_archetype.get)
+    worst_overall = max(by_stack[worst_stack], by_archetype[worst_archetype])
+    detail = (f"WORST-cell Q-gap (allin - next-best, as fraction of pot) by stack: "
+              + ", ".join(f"{s}bb={g:+.2f}" for s, g in by_stack.items())
+              + " | by archetype: "
+              + ", ".join(f"{n}={g:+.2f}" for n, g in by_archetype.items())
+              + f" | worst overall: stack={worst_stack}bb ({by_stack[worst_stack]:+.2f}), "
+                f"archetype={worst_archetype} ({by_archetype[worst_archetype]:+.2f})")
+    status = 'WARN' if worst_overall > 0.15 else 'PASS'
+    if status == 'WARN':
+        detail += " -- [BET-1] a meaningful gap survives somewhere in the breakdown; see raw_stack/raw_archetype in the JSON dump to localize it further"
+    return CheckResult(status, detail, data)
+
+
+def check_opponent_color_isolated_ablation(rc):
+    """[OPP-5 diagnostic] `check_opponent_style_sweep` already sweeps opp_vpip/opp_agg across the
+    full REALISTIC archetype range (Blue 0.10/0.18 -> Red 0.45/0.85) and found essentially flat
+    P(fold) (spread <=0.004). That leaves two very different explanations open: (a) the training
+    population never rewarded differentiating by style enough for the network to bother -- a
+    training-population artifact, same mechanism as [BET-1] -- or (b) the VPIP/AGG inputs are
+    genuinely dead (a wiring/normalization bug), in which case NOTHING would move them, no matter
+    how extreme. This check distinguishes the two by (1) pushing WELL past the realistic range
+    (0.0 vs 1.0, not 0.10 vs 0.85) and (2) testing the ctx's TWO separate VPIP/AGG representations
+    IN ISOLATION: the table-level scalar (ctx[7]/ctx[8], set once per decision) vs the per-seat
+    block (5 opponent slots x [active,pos,stack,vpip,agg], see build_ctx) -- mirroring
+    check_hand_strength_sensitivity/check_equity_edge_sensitivity's isolate-one-slot-at-extremes
+    approach rather than opponent_style_sweep's realistic-archetype sweep. Uses full-policy total
+    variation (all actions), not just P(fold), so it also catches a response that shows up in
+    raise-sizing rather than the fold/continue line. WARN-only / diagnostic -- first version to
+    carry this check, still investigating [OPP-5], not yet a pass/fail gate."""
+    fixed = dict(equity=0.45, stack_bb=40, pot_bb=10, call_bb=6, num_active_opp=2,
+                 contract_version=rc.manifest.contract_version)
+    data = {}
+    # (1) Table-level scalar isolated: per-seat block held at neutral defaults throughout.
+    ctx_lo = build_ctx(**fixed, opp_vpip=0.0, opp_agg=0.0, per_opp_vpip=[0.30, 0.30], per_opp_agg=[0.40, 0.40])
+    ctx_hi = build_ctx(**fixed, opp_vpip=1.0, opp_agg=1.0, per_opp_vpip=[0.30, 0.30], per_opp_agg=[0.40, 0.40])
+    policy_lo, _ = run_policy(rc.model, ctx_lo, rc.action_keys, device=rc.device)
+    policy_hi, _ = run_policy(rc.model, ctx_hi, rc.action_keys, device=rc.device)
+    tv_scalar = 0.5 * sum(abs(policy_hi[k] - policy_lo[k]) for k in rc.action_keys)
+    data['table_scalar'] = {"policy_lo": policy_lo, "policy_hi": policy_hi, "total_variation": round(tv_scalar, 4)}
+    # (2) Per-seat block isolated: table-level scalar held at the default (0.30/0.40) throughout.
+    ctx_lo2 = build_ctx(**fixed, opp_vpip=0.30, opp_agg=0.40, per_opp_vpip=[0.0, 0.0], per_opp_agg=[0.0, 0.0])
+    ctx_hi2 = build_ctx(**fixed, opp_vpip=0.30, opp_agg=0.40, per_opp_vpip=[1.0, 1.0], per_opp_agg=[1.0, 1.0])
+    policy_lo2, _ = run_policy(rc.model, ctx_lo2, rc.action_keys, device=rc.device)
+    policy_hi2, _ = run_policy(rc.model, ctx_hi2, rc.action_keys, device=rc.device)
+    tv_seat = 0.5 * sum(abs(policy_hi2[k] - policy_lo2[k]) for k in rc.action_keys)
+    data['per_seat_block'] = {"policy_lo": policy_lo2, "policy_hi": policy_hi2, "total_variation": round(tv_seat, 4)}
+
+    detail = f"table-scalar TV (0.0 vs 1.0): {tv_scalar:.3f} | per-seat-block TV (0.0 vs 1.0): {tv_seat:.3f}"
+    status = 'PASS' if (tv_scalar > 0.03 or tv_seat > 0.03) else 'WARN'
+    if status == 'WARN':
+        detail += (" -- flat even at synthetic extremes (0.0 vs 1.0, well past any realistic archetype); "
+                   "looks like a genuinely dead/unwired input, not just training-population insensitivity")
+    else:
+        detail += (" -- responds at extremes but opponent_style_sweep found realistic-archetype values flat; "
+                   "reads as a training-population artifact (network CAN use this input, population never taught it to care within realistic bounds), not dead wiring")
+    return CheckResult(status, detail, data)
+
+
 def check_hand_strength_sweep(rc):
     """Full 5-point curve companion to check_hand_strength_sensitivity's 2-point TV check -- same
     synthetic ablation (hand_strength swung independently of equity; never decoupled like this in
@@ -511,12 +784,22 @@ FAST_CHECKS = [
      "V20_preflopEq -- is the new feature actually load-bearing", check_hand_strength_sensitivity),
     ("equity_edge_sensitivity", "policy responds to equity_edge at fixed equity/field (SKIP if context_dim<37)",
      "V20_preflopEq -- is the new feature actually load-bearing", check_equity_edge_sensitivity),
+    ("committed_sensitivity", "policy responds to opp_committed_this_hand_bb at fixed equity/stack (SKIP if context_dim<43)",
+     "V22 -- is the new entry-sizing feature actually load-bearing", check_committed_sensitivity),
+    ("pot_type_sensitivity", "policy responds to pot_type (limped vs 3bet+) at fixed equity/stack (SKIP if context_dim<44)",
+     "V23 -- is the new pot_type feature actually load-bearing", check_pot_type_sensitivity),
     ("stack_full_sweep", "full 5-180bb stack sweep at a fixed marginal spot doesn't flatline",
      "sensitivity sweep -- stack", check_stack_full_sweep),
     ("position_sweep", "full 0-5 position sweep at a fixed marginal spot doesn't flatline",
      "sensitivity sweep -- position / V19 hero_position regression watch", check_position_sweep),
     ("opponent_style_sweep", "P(fold) responds to opponent VPIP/AGG archetype (Blue->Red) at fixed equity",
      "sensitivity sweep -- opponent style / P6-adjacent", check_opponent_style_sweep),
+    ("allin_exploits_opponent_foldiness", "P(all-in) spreads meaningfully across the 4 REAL named archetypes (NIT/TAG/LAG/CALLING_STATION) at fixed equity",
+     "OPP-8 diagnostic -- does hero exploit each archetype's real (unobserved) fold-to-pressure trait", check_allin_exploits_opponent_foldiness),
+    ("allin_vs_nextbest_qgap", "all-in's Q-value advantage over the next-best action, broken down by stack depth and by opponent archetype",
+     "BET-1 diagnostic, V28 -- first permanent/reproducible measurement of the shove-preference gap", check_allin_vs_nextbest_qgap),
+    ("opponent_color_isolated_ablation", "policy responds to opp VPIP/AGG at synthetic extremes (0.0 vs 1.0), table-scalar and per-seat-block isolated separately",
+     "OPP-5 diagnostic -- dead input vs training-population artifact", check_opponent_color_isolated_ablation),
     ("hand_strength_sweep", "full 5-point hand_strength curve doesn't flatline (SKIP if context_dim<37)",
      "sensitivity sweep -- hand_strength", check_hand_strength_sweep),
     ("equity_edge_sweep", "full multi-point equity_edge curve doesn't flatline (SKIP if context_dim<37)",
@@ -767,6 +1050,16 @@ CHECK_DOCS = {
         expect="The policy should respond meaningfully to this input on its own.",
         if_not="A flat response suggests the feature may be redundant with (fully derivable from) equity + opponent-count, and the network never bothered to use it separately -- not dangerous, just a wasted input, worth knowing before investing more design effort in it.",
     ),
+    "committed_sensitivity": dict(
+        what="Holds equity/stack/pot/field fixed and swings only how much an opponent has ALREADY put into this hand's pot -- from nothing (0bb) to a substantial chunk (60% of their stack) -- checking whether the policy responds.",
+        expect="The policy should respond meaningfully -- an opponent who already has 60% of their stack in the pot this hand reads very differently from one who hasn't put in anything yet, even at identical remaining stack and hand equity.",
+        if_not="A flat response suggests this new feature isn't load-bearing yet (may need more training exposure, or the network is deriving everything it needs from opp_stack/call_amount already) -- not dangerous on its own, but means the entry-sizing addition isn't paying off yet.",
+    ),
+    "pot_type_sensitivity": dict(
+        what="Holds equity/stack/pot/call fixed and swings only whether this hand has been limped/unraised vs 3-bet (or more) -- checking whether the policy responds to the STRUCTURE of the action, not just the raw money amounts.",
+        expect="The policy should respond meaningfully -- a 3-bet pot implies a much stronger range behind the bet than a limped pot, even at an identical call price.",
+        if_not="A flat response suggests pot_type isn't load-bearing yet -- the network may already be deriving everything it needs from call_amount/committed, or hasn't had enough training exposure to use this new signal.",
+    ),
     "stack_full_sweep": dict(
         what="Sweeps stack depth from very short (5bb) to very deep (180bb) at a fixed, middling equity spot with a bet sized proportionally to the stack, watching whether/how the chosen action changes.",
         expect="SOME meaningful change in behavior across that huge range -- a stack-blind model would be a real gap, since push/fold, pot-control, and deep-stack play all call for different approaches.",
@@ -781,6 +1074,21 @@ CHECK_DOCS = {
         what="Holds hero's own equity fixed and swaps only the opponent's read style (from a tight/aggressive 'nit' to a loose/aggressive 'maniac') while facing an identical bet, checking whether fold rate shifts.",
         expect="Facing the SAME bet, hero should fold more against a villain whose range is scarier (tighter-but-betting = stronger range) and less against a looser villain, at the same equity.",
         if_not="No shift at all means the model may be ignoring the opponent-style inputs entirely and just reacting to its own hand/equity in a vacuum -- a real exploitability gap (a fixed strategy is easier to beat than an adjusting one), and ties into a known open backlog item about per-opponent modeling.",
+    ),
+    "opponent_color_isolated_ablation": dict(
+        what="Follow-up to opponent_style_sweep: pushes the opponent VPIP/AGG inputs to synthetic extremes (0.0 vs 1.0, well past any real archetype) and tests the table-level scalar and the per-seat block separately, rather than sweeping both together across realistic values.",
+        expect="If opponent_style_sweep found no response within the realistic range, this check tells us why: a response HERE (at extremes) but not there means the network can read the input but the training population never taught it to care within realistic bounds. No response even here means the input is likely dead/unwired.",
+        if_not="Flat even at 0.0 vs 1.0 is stronger evidence of a genuine wiring/normalization bug than opponent_style_sweep alone could show -- worth a direct code audit of how VPIP_MAP/AGG_MAP values reach the model before assuming it's purely a training-population artifact.",
+    ),
+    "allin_exploits_opponent_foldiness": dict(
+        what="Sweeps hero's own all-in probability across equity, feeding the EXACT VPIP/AGG of the four real named archetypes that populate the training pool (NIT/TAG/LAG/CALLING_STATION) -- not an abstract Blue-Red spectrum, the literal opponents hero actually trains against.",
+        expect="Since these four archetypes have wildly different real fold-to-a-shove rates AT A GIVEN EQUITY (e.g. NIT folds an all-in ~98% of the time at a realistic price when it genuinely holds marginal equity, CALLING_STATION ~0%, driven by a `fold_to_pressure` trait the model is never directly shown), a well-exploiting policy should shove NIT somewhat more often than CALLING_STATION at the same hero equity.",
+        if_not="A small spread is evidence the model can't directly observe the underlying fold_to_pressure trait (it only infers tight-vs-loose via a coarse VPIP/AGG color). CAVEAT: don't over-read this as pure exploitable waste -- this sweep feeds a flat equity per cell and doesn't weight by how OFTEN each archetype actually presents that equity in real play; NIT's tight preflop selection means a genuine marginal-equity NIT spot is rarer in practice than the sweep implies, since NIT's real postflop range is already selection-skewed strong. See OFK known-shortcomings-backlog [OPP-8] for the full investigation, including this correction.",
+    ),
+    "allin_vs_nextbest_qgap": dict(
+        what="Measures the raw Q-value gap between ALL-IN and whichever OTHER action the model rates second-best, reporting the WORST (max) cell in each slice -- broken down by stack depth (15-40bb) and by the 4 real named opponent archetypes (NIT/TAG/LAG/CALLING_STATION) -- not a single aggregate number, a full breakdown table.",
+        expect="This is the FIRST committed, reproducible version of a metric that's been quoted informally (as a 1.35x-1.78x ratio) since V21_auxhead -- every prior number was measured with a different one-off script. No established 'correct' magnitude yet; the value is in localizing WHERE any gap concentrates (which stack depths, which opponent reads) rather than re-measuring the same aggregate a sixth way. Reports the WORST cell deliberately, not an average across the equity sweep -- an early version of this check averaged and hid a real spike (all-in swinging from strongly disfavored to strongly favored over a narrow equity band at one specific stack depth) under four other correctly-behaved cells.",
+        if_not="A large gap surviving in a specific slice of the breakdown (e.g. concentrated at one stack depth or one archetype) is a much sharper lead for a targeted fix than the old aggregate ratio ever was -- see [BET-1] in the OFK backlog for the investigation this feeds.",
     ),
     "hand_strength_sweep": dict(
         what="Full 5-point curve version of hand_strength_sensitivity (same ablation, more points) so a flatline OR a non-monotonic kink is visible on a chart, not just one aggregate number.",

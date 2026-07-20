@@ -1,0 +1,106 @@
+[XML Tracker] Loaded baseline stacks: {'Bluesman61': 1340, 'iwillfull': 1455, 'martulis65': 2410, 'Zwonkie': 170, 'HILLVIEWHAWK': 1530, 'GTOChihuahua': 2095} (Hero: Zwonkie, Dealer: )
+[SYSTEM] New hand detected. Resetting table state history.
+[XML Tracker] Loaded baseline stacks: {'Bluesman61': 1340, 'iwillfull': 1455, 'martulis65': 2380, 'Zwonkie': 0.0, 'HILLVIEWHAWK': 1720, 'GTOChihuahua': 2095} (Hero: Zwonkie, Dealer: )
+[SYSTEM] Emergency Abort: Escape key pressed. Stopping bot.
+[SYSTEM] Executing Auto-Live Quick Start...
+[SYSTEM] Scanning 15 active windows...
+  Candidate: 'AIPoker - Antigravity IDE - Bash tool output (qk9jq6)' (pipes: 0, table_match: False)
+  Candidate: 'AIPoker Training Dashboard - Google Chrome' (pipes: 0, table_match: False)
+  Candidate: 'Bet365 Poker' (pipes: 0, table_match: False)
+  Candidate: 'Double Or Nothing (€0.50)' (pipes: 0, table_match: True)
+  Candidate: 'Double Or Nothing (€0.50) 1171318453 | NL Hold'em | Niveau 1 | 10/20     v.26.1.1.34' (pipes: 3, table_match: True)
+  Candidate: 'Games - File Explorer' (pipes: 0, table_match: True)
+  Candidate: 'Tournaments - File Explorer' (pipes: 0, table_match: True)
+  Candidate: 'V25 - File Explorer' (pipes: 0, table_match: True)
+  Candidate: 'V26 - File Explorer' (pipes: 0, table_match: True)
+[SYSTEM] Auto-matched & selected target window: [68520] Double Or Nothing (€0.50) 1171318453 | NL Hold'em | Niveau 1 | 10/20     v.26.1.1.34
+[SYSTEM] Starting PHPHelp engine...
+[SYSTEM] Auto-parsed blinds from window title: SB=10, BB=20
+
+--- HERO TURN DETECTED ---
+[Decision] Parsing thread execution path...
+[Decision] Range-aware equity vs ['Yellow', 'Yellow', 'Yellow']: 0.20
+[Vision] Facing bet! Parsed Call Amount: 20.0
+[Decision] DECIDED BRANCH: **FOLD**
+[Decision] Reason: V26 sampled (temp=0.50) -> FOLD: {FOLD 1.00, CALL 0.00, RAISE_33 0.00, RAISE_66 0.00, RAISE_POT 0.00, ALLIN 0.00}
+[Decision] Thinking: equity too low (20%) to continue profitably -- folding. Opponent read (experimental, weak signal): strength-read 66%, bluff-read 7%.
+[History] Recording turns -> history\Double_Or_Nothing_1171318453/turns.jsonl
+[Automation] Invoking native call for FOLD...
+[Automation] Executing main action: Clicking FOLD...
+[Automation] Thread interrupt completed successfully.
+[SYSTEM] Parsing loop complete. Monitoring stream...
+[SYSTEM] New hand detected. Resetting table state history.
+[XML Tracker] Loaded baseline stacks: {'Zwonkie': 800, 'Budddhaaah': 780, 'rexloyal274': 780, 'Frituurkok': 700, 'Wutang': 940, 'Vibrantsober12': 800} (Hero: Zwonkie, Dealer: )
+
+--- HERO TURN DETECTED ---
+[Decision] Parsing thread execution path...
+[Decision] Range-aware equity vs ['Yellow', 'Yellow', 'Yellow']: 0.44
+[Vision] Facing bet! Parsed Call Amount: 60.0
+[Decision] DECIDED BRANCH: **FOLD**
+[Decision] Reason: V26 sampled (temp=0.50) -> FOLD: {FOLD 0.98, CALL 0.02, RAISE_33 0.00, RAISE_66 0.00, RAISE_POT 0.00, ALLIN 0.00}
+[Decision] Thinking: equity too low (44%) to continue profitably -- folding. Opponent read (experimental, weak signal): strength-read 63%, bluff-read 1%.
+[Automation] Invoking native call for FOLD...
+[Automation] Executing main action: Clicking FOLD...
+[Automation] Thread interrupt completed successfully.
+[SYSTEM] Parsing loop complete. Monitoring stream...
+[SYSTEM] New hand detected. Resetting table state history.
+[XML Tracker] Loaded baseline stacks: {'Zwonkie': 800, 'Budddhaaah': 780, 'rexloyal274': 770, 'Frituurkok': 680, 'Wutang': 940, 'Vibrantsober12': 790} (Hero: Zwonkie, Dealer: )
+
+--- HERO TURN DETECTED ---
+[Decision] Parsing thread execution path...
+[Decision] Range-aware equity vs ['Yellow', 'Yellow', 'Yellow']: 0.34
+[Vision] Facing bet! Parsed Call Amount: 20.0
+[Decision] DECIDED BRANCH: **FOLD**
+[Decision] Reason: V26 sampled (temp=0.50) -> FOLD: {FOLD 1.00, CALL 0.00, RAISE_33 0.00, RAISE_66 0.00, RAISE_POT 0.00, ALLIN 0.00}
+[Decision] Thinking: equity too low (34%) to continue profitably -- folding. Opponent read (experimental, weak signal): strength-read 63%, bluff-read -4%.
+[Automation] Invoking native call for FOLD...
+[Automation] Executing main action: Clicking FOLD...
+[Automation] Thread interrupt completed successfully.
+[SYSTEM] Parsing loop complete. Monitoring stream...
+[SYSTEM] New hand detected. Resetting table state history.
+[XML Tracker] Loaded baseline stacks: {'Zwonkie': 800, 'Budddhaaah': 330, 'rexloyal274': 770, 'Frituurkok': 670, 'Wutang': 780, 'Vibrantsober12': 830} (Hero: Zwonkie, Dealer: )
+[SYSTEM] New hand detected. Resetting table state history.
+[XML Tracker] Loaded baseline stacks: {'Zwonkie': 800, 'Budddhaaah': 330, 'rexloyal274': 770, 'Frituurkok': 670, 'Wutang': 780, 'Vibrantsober12': 830} (Hero: Zwonkie, Dealer: )
+
+--- HERO TURN DETECTED ---
+[Decision] Parsing thread execution path...
+[Decision] Range-aware equity vs ['Red', 'Yellow', 'Yellow', 'Red', 'Yellow']: 0.18
+[Vision] Facing bet! Parsed Call Amount: 20.0
+[Decision] DECIDED BRANCH: **FOLD**
+[Decision] Reason: V26 sampled (temp=0.50) -> FOLD: {FOLD 1.00, CALL 0.00, RAISE_33 0.00, RAISE_66 0.00, RAISE_POT 0.00, ALLIN 0.00}
+[Decision] Thinking: equity too low (18%) to continue profitably -- folding. Opponent read (experimental, weak signal): strength-read 66%, bluff-read 4%.
+[Automation] Invoking native call for FOLD...
+[Automation] Executing main action: Clicking FOLD...
+[Automation] Thread interrupt completed successfully.
+[SYSTEM] Parsing loop complete. Monitoring stream...
+[SYSTEM] Auto-parsed blinds from window title: SB=15, BB=30
+[SYSTEM] New hand detected. Resetting table state history.
+[XML Tracker] Loaded baseline stacks: {'Zwonkie': 800, 'Budddhaaah': 950, 'rexloyal274': 770, 'Frituurkok': 650, 'Wutang': 760, 'Vibrantsober12': 850} (Hero: Zwonkie, Dealer: )
+
+--- HERO TURN DETECTED ---
+[Decision] Parsing thread execution path...
+[Decision] Range-aware equity vs ['Red', 'Red', 'Green']: 0.44
+[Vision] No bet detected on Check/Call button. Text: 'TJEK'
+[Decision] DECIDED BRANCH: **CALL**
+[Decision] Reason: V26 sampled (temp=0.50, free-check fold-masked) -> CALL: {FOLD 0.15, CALL 0.84, RAISE_33 0.01, RAISE_66 0.00, RAISE_POT 0.00, ALLIN 0.00}
+[Decision] Thinking: 44% equity -- speculative call, playing for draws/implied odds rather than a made hand. Opponent read (experimental, weak signal): strength-read 66%.
+[Automation] Invoking native call for CALL...
+[Automation] Executing main action: Clicking CALL...
+[Automation] Thread interrupt completed successfully.
+[SYSTEM] Parsing loop complete. Monitoring stream...
+
+--- HERO TURN DETECTED ---
+[Decision] Parsing thread execution path...
+[Decision] Range-aware equity vs ['Red', 'Red', 'Green']: 0.52
+[Vision] No bet detected on Check/Call button. Text: 'TJEK'
+[Decision] DECIDED BRANCH: **RAISE_SLIDER_1.00**
+[Decision] Reason: V26 sampled (temp=0.50, free-check fold-masked) -> ALLIN -> raise-to 770 (slider 1.00): {FOLD 0.00, CALL 0.13, RAISE_33 0.11, RAISE_66 0.11, RAISE_POT 0.11, ALLIN 0.53}
+[Decision] Thinking: showdown-value hand (52% equity) -- betting for value/protection while ahead or close. Opponent read (experimental, weak signal): strength-read 58%.
+[Decision] Size Allocation: 770.0 units
+[Automation] Invoking native call for RAISE_SLIDER_1.00...
+[Automation][SliderCalib] window_pos=(1535, 0) window_size=(1024, 726) slider_fraction=1.000 center_anchored_track_ref=(1153 to 1508 @ y=970) -> start_px=(2303,646) target_px=(2540,646) drag_delta_px=237
+[Automation] Executing slider sizing: Moving to slider start...
+[Automation] Executing slider sizing: Dragging slider to fraction 1.00...
+[Automation] Executing main action: Clicking RAISE...
+[Automation] Thread interrupt completed successfully.
+[SYSTEM] Parsing loop complete. Monitoring stream...

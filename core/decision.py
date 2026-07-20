@@ -10,6 +10,11 @@ from core.models.v19_engine import V19ModelEngine
 from core.models.v20_engine import V20ModelEngine
 from core.models.v20_preflopEq_engine import V20PreflopEqModelEngine
 from core.models.v20_preflopEq_AI_engine import V20PreflopEqAIModelEngine
+from core.models.v21_auxhead_engine import V21AuxheadModelEngine
+from core.models.v25_engine import V25ModelEngine
+from core.models.v26_engine import V26ModelEngine
+from core.models.v28_engine import V28ModelEngine
+from core.models.v29_engine import V29ModelEngine
 
 # Live action selection: SAMPLE from the actor policy (matching training/eval, which sample rather
 # than argmax) but SHARPEN with a temperature < 1 so genuine mixing survives on close spots while
@@ -63,13 +68,37 @@ def _fmt_dist(d):
 # fed into the model as an input feature, plus the chosen action) rather than the model's
 # 'bluff'/'strength'/'equity' aux heads, which currently train against OPPONENT read labels
 # (opp_bluff_prob/opp_strength), not a hero self-assessment, and have aux_loss_weight=0.0 in
-# every active config (v15/v16*) -- untrained, so their live outputs would be pure noise.
+# every model EXCEPT v21_auxhead/V25 (inherited unchanged through V22-V25 -- see
+# _narrate_opponent_read below, gated on is_v21_auxhead_model or is_v25_model) -- for every other
+# model here, the heads are still untrained noise.
 _THINKING_BANDS = (0.30, 0.45, 0.60, 0.80)
 
+# [V21_auxhead/V25 only] aux-head opponent-read narration. Correlations are real (inspect_aux_heads.py
+# @ Phase 8: self_equity r=0.922, opp_strength r=0.171, opp_bluff r=0.091) but modest -- opp_strength
+# in particular has a predicted std (0.034) far narrower than its label's own (0.142), i.e. the head
+# barely swings from its mean. Deliberately reported as raw numbers with an explicit confidence
+# caveat, NOT confident categorical bands ("strong range", "clearly bluffing") -- inventing bands
+# out of a weak-correlation, compressed-range signal would overstate its reliability. opp_bluff is
+# only meaningful facing a real bet (its training label is last_raiser-gated -- see
+# versions/v21_auxhead/simulator.py::_mc_target_evs_sized), so it's omitted on free checks.
+def _narrate_opponent_read(aux, board_state):
+    if not aux:
+        return None
+    try:
+        strength = float(aux.get('opp_strength', 0.0))
+        bluff = float(aux.get('opp_bluff', 0.0))
+        facing_bet = float(getattr(board_state, 'call_amount', 0) or 0) > 0
+    except Exception:
+        return None
+    parts = [f"strength-read {strength:.0%}"]
+    if facing_bet:
+        parts.append(f"bluff-read {bluff:.0%}")
+    return "Opponent read (experimental, weak signal): " + ", ".join(parts) + "."
 
-def _narrate_thinking(action, board_state, evs):
-    """Human-readable read of WHY, built from equity (real input feature) + the chosen action.
-    Deliberately not sourced from the aux heads -- see comment above _THINKING_BANDS."""
+
+def _narrate_thinking(action, board_state, evs, aux=None):
+    """Human-readable read of WHY, built from equity (real input feature) + the chosen action,
+    plus an optional aux-head opponent-read line (v21_auxhead only, see _narrate_opponent_read)."""
     try:
         eq = float(getattr(board_state, 'equity', 0.0) or 0.0)
     except Exception:
@@ -80,30 +109,40 @@ def _narrate_thinking(action, board_state, evs):
     is_call = act in ('CALL', 'CHECK')
 
     if is_fold:
-        return f"Thinking: equity too low ({eq:.0%}) to continue profitably -- folding."
-    if is_aggro:
+        base = f"Thinking: equity too low ({eq:.0%}) to continue profitably -- folding."
+    elif is_aggro:
         if eq < _THINKING_BANDS[0]:
-            return f"Thinking: weak hand ({eq:.0%} equity) -- bluffing, betting on fold equity rather than hand strength."
+            base = f"Thinking: weak hand ({eq:.0%} equity) -- bluffing, betting on fold equity rather than hand strength."
+        elif eq < _THINKING_BANDS[1]:
+            base = f"Thinking: marginal hand ({eq:.0%} equity) -- semi-bluffing, betting for fold equity plus backup outs."
+        elif eq < _THINKING_BANDS[2]:
+            base = f"Thinking: showdown-value hand ({eq:.0%} equity) -- betting for value/protection while ahead or close."
+        elif eq < _THINKING_BANDS[3]:
+            base = f"Thinking: strong hand ({eq:.0%} equity) -- value betting to get called by worse."
+        else:
+            base = f"Thinking: near-nuts ({eq:.0%} equity) -- betting big for maximum value."
+    elif is_call:
         if eq < _THINKING_BANDS[1]:
-            return f"Thinking: marginal hand ({eq:.0%} equity) -- semi-bluffing, betting for fold equity plus backup outs."
-        if eq < _THINKING_BANDS[2]:
-            return f"Thinking: showdown-value hand ({eq:.0%} equity) -- betting for value/protection while ahead or close."
-        if eq < _THINKING_BANDS[3]:
-            return f"Thinking: strong hand ({eq:.0%} equity) -- value betting to get called by worse."
-        return f"Thinking: near-nuts ({eq:.0%} equity) -- betting big for maximum value."
-    if is_call:
-        if eq < _THINKING_BANDS[1]:
-            return f"Thinking: {eq:.0%} equity -- speculative call, playing for draws/implied odds rather than a made hand."
-        if eq < _THINKING_BANDS[2]:
-            return f"Thinking: {eq:.0%} equity -- calling to see the next card, not strong enough to raise."
-        return f"Thinking: {eq:.0%} equity -- flat-calling for value/deception, keeping weaker hands in."
-    return None
+            base = f"Thinking: {eq:.0%} equity -- speculative call, playing for draws/implied odds rather than a made hand."
+        elif eq < _THINKING_BANDS[2]:
+            base = f"Thinking: {eq:.0%} equity -- calling to see the next card, not strong enough to raise."
+        else:
+            base = f"Thinking: {eq:.0%} equity -- flat-calling for value/deception, keeping weaker hands in."
+    else:
+        base = None
+
+    read = _narrate_opponent_read(aux, board_state)
+    if base and read:
+        return base + " " + read
+    return base or read
 
 from core.bridge.contract_v8_v9 import ContractV8V9
 from core.bridge.v11.contract_v11 import ContractV8V9 as ContractV11
 from versions.v13.core.contract import ContractV12
 from versions.v20.core.contract import ContractV12 as ContractV12_v20
 from versions.v20_preflopEq.core.contract import ContractV12 as ContractV12_v20PreflopEq
+from versions.v25.core.contract import ContractV12 as ContractV12_v25
+from versions.v29.core.contract import ContractV12 as ContractV12_v29
 from core.board_state import BoardState
 from core.action import PokerAction
 
@@ -117,6 +156,97 @@ class PokerDecisionEngine:
         # loading garbage. They are pruned; their weight files remain on disk for reproducibility.
         # To re-enable a legacy model, first fix its weights/contract, THEN re-add it here.
         self.models = {
+            # V29: NEW contract (context_dim=54, contract_version=8 -- NOT V25/V26/V27/V28's shared
+            # 44/7) -- own bridge (self.bridge_v29 below), gated by is_v29_model, checked BEFORE the
+            # v25/v26/v28 combined branch. Two changes, both by explicit user direction (2026-07-20):
+            # [OPP-2] ten new appended per-opponent-seat raise-attribution features, now REAL and
+            # LIVE-FUNCTIONAL (2026-07-20) -- core/table_state.py gained per-seat raise/call
+            # classification (stack-drop diffs compared against the bet level actually faced, not
+            # just "any drop"), `committed`/`hero_committed` (start-of-hand stack minus current),
+            # and `pot_type` (live whole-hand raise-event counter), all previously silently inert
+            # since V22/V23 for `committed`/`hero_committed`/`pot_type` -- see
+            # `.agents/skills/OFK/references/known-shortcomings-backlog.md` [OPP-2]. Also fixed, as
+            # a direct byproduct: an opponent's stack going to a genuine 0 (all-in) wasn't updating
+            # (core/vision.py already emits a reliable state='All-In' text-match signal for
+            # opponents that table_state.py wasn't using); mirrored the same fix for HERO's own
+            # all-in by adding the equivalent 'ALL'/'IN' text-match to vision.py's hero-stack OCR
+            # (which previously lacked it, so a genuine hero all-in and a failed OCR read were
+            # indistinguishable). Second change: a critic-consistency filter + risk_aversion_
+            # coefficient bump (0.10->0.15) on the training target (training-loop-only, no live-
+            # serving impact). See versions/v29/SPECS.md for the full derivation, calibration, and
+            # model_verify --full results (21 PASS/2 WARN/0 FAIL/1 SKIP -- the cleanest scorecard in
+            # this lineage; deep_stack_ood_guard [STACK-1] PASSED for the first time since V22).
+            # DEPLOYED LIVE (2026-07-20) per explicit user request, on the strength of this result.
+            'Herocules (v29)': V29ModelEngine(weight_name="expert_main.pth"),
+            # V28: IDENTICAL architecture/tensor schema to V25/V26 (context_dim=44,
+            # contract_version=7) -- shares bridge_v25 below, gated by is_v28_model alongside
+            # is_v25_model/is_v26_model. Changed ONLY _mc_target_evs_sized's per-size EV target:
+            # adds a closed-form risk/variance penalty (risk_adjusted_ev = raw_ev - 0.10 *
+            # sqrt(Var[X])), applied UNIFORMLY to every sized action, not an is_allin special case
+            # -- see versions/v28/SPECS.md and core/models/v28_engine.py's own docstring for the
+            # full derivation, calibration, and results. model_verify --full: 19 PASS/4 WARN/1
+            # FAIL/0 SKIP -- the targeted allin_vs_nextbest_qgap [BET-1] metric shrank ~40-50% at
+            # every cell AND the pathological worse-with-stack-depth pattern from V27 is GONE.
+            # V27's own regression cluster (action_diversity collapse, stack_full_sweep all-allin,
+            # position_sweep flat) substantially resolved too. beats_frozen_predecessor PASSED
+            # vs a frozen V27 at +29.7 BB/100. deep_stack_ood_guard FAIL is the same persistent
+            # pre-existing issue every version since V19 carries ([STACK-1]), though at
+            # meaningfully lower confidence (0.33 -> 0.24). Deployed live 2026-07-19, superseded by
+            # V29 above (2026-07-20); kept as fallback.
+            'Herocules (v28)': V28ModelEngine(weight_name="expert_main.pth"),
+            # V26: IDENTICAL architecture/tensor schema to V25 (context_dim=44, contract_version=7)
+            # -- shares bridge_v25 below, gated by is_v26_model alongside is_v25_model. Changed ONLY
+            # the training opponent pool: 2 of 5 seats (maniac/nit) swapped from heuristic archetypes
+            # to TreeOpponent (XGBoost models fit on real Pluribus/WSOP hand-history decisions) --
+            # see versions/v26/SPECS.md and core/models/v26_engine.py's own docstring for the full
+            # pipeline. model_verify --full: 19 PASS/3 WARN/1 FAIL/0 SKIP -- beats_frozen_predecessor
+            # PASSED head-to-head vs a frozen V25 snapshot at +42.8 BB/100 (4000 hands). Two checks
+            # that were WARN at V25's own 100k (committed_sensitivity, position_sweep) recovered to
+            # PASS here -- not conclusively attributed to the real-data opponents specifically.
+            # allin_exploits_opponent_foldiness [OPP-8] unchanged (spread 0.011, same as V25).
+            # deep_stack_ood_guard FAIL is the same persistent pre-existing issue every version since
+            # V19 carries. Deployed live (2026-07-19) on a clean head-to-head win over V25, no new
+            # regressions. Superseded by V28 above (2026-07-19); kept as fallback.
+            'Herocules (v26)': V26ModelEngine(weight_name="expert_main.pth"),
+            # V25: multi-street EV rollout fix (see versions/v25/SPECS.md) on top of V21_auxhead's
+            # aux-head architecture, inherited unchanged through V22 (entry-sizing features) and
+            # V23 (pot_type) -- context_dim=44, contract_version=7, a DIFFERENT scale+width than
+            # V21_auxhead's 37/5, so it needs its own bridge (self.bridge_v25), gated by
+            # is_v25_model. Loads `expert_main.pth`, the 100k-hand from-scratch confirmatory run.
+            # model_verify --full @ 100k: 17 PASS/5 WARN/1 FAIL/0 SKIP -- MIXED vs. the 50k
+            # diagnostic that prompted this run (18/2/1/1): vpip_adapts_to_style held and
+            # strengthened (the core hypothesis this version tests), beats_frozen_predecessor ran
+            # for the first time and PASSED (+74.0 BB/100), but the direct allin-vs-next-best
+            # Q-gap widened back to 1.73-1.78x (from 50k's 1.35-1.36x) and two previously-clean
+            # checks (committed_sensitivity, position_sweep) drifted to WARN. deep_stack_ood_guard
+            # FAIL is the same persistent issue every version since V19 carries. Deployed live
+            # (2026-07-18) for user evaluation per explicit request despite the mixed verification --
+            # see core/models/v25_engine.py's own docstring for the full caveat.
+            # Superseded by V26 above (2026-07-19); kept as fallback.
+            'Herocules (v25)': V25ModelEngine(weight_name="expert_main.pth"),
+            # V21_auxhead: IDENTICAL architecture/tensor schema to V20_preflopEq/V20_preflopEq_AI
+            # (context_dim=37, contract_version=5 -- versions/v21_auxhead/core/contract.py and
+            # core/model.py are byte-identical to V20_preflopEq_AI's). Changed ONLY the training-time
+            # aux-head loss (bluff/strength/equity heads on the shared transformer trunk, previously
+            # trained at aux_loss_weight=0.0 since V14 -- genuinely inert). Shares bridge_v20_preflopEq
+            # (same contract class, no new bridge needed), gated by is_v21_auxhead_model below (checked
+            # BEFORE is_v20_preflopEq_AI_model/is_v20_preflopEq_model/is_v20_model -- no substring
+            # collision with those names, but kept first for clarity). Loads `expert_main.pth` (Phase 8:
+            # fresh 100k-hand run with the fully chosen aux config -- corrected opp_bluff_prob label
+            # gated on last_raiser, sqrt-dampened bluff-loss reweighting, per-head weights
+            # bluff=0.05/strength=0.10/equity=0.05). model_verify --full @ Phase 8: 15 PASS/3 WARN/
+            # 1 FAIL/0 SKIP -- same shape as V21/Phase 2, no new failures. inspect_aux_heads.py: equity
+            # r=0.922, strength r=0.171 (best of all 8 phases), bluff r=0.091 -- all three heads show
+            # real, non-collapsed correlation for the first time in this lineage. action_diversity
+            # recovered to 3 actions (fold/allin/raise_33, a real raise_33 plateau across 5/9 stack
+            # points) vs the continuation-damaged Phase 7a arm's 2-action collapse -- confirms training
+            # the final aux config FRESH (not warm-started) avoids a real, separate diversity
+            # regression traced to the continuation mechanism itself, not the aux tuning (see
+            # versions/v21_auxhead/SPECS.md Phase 7/8). deep_stack_ood_guard FAIL / opponent_style_sweep
+            # WARN are the SAME pre-existing issues every version in this lineage carries
+            # ([STACK-1]/[OPP-5]). Deployed live (2026-07-17), superseding V20_preflopEq_AI.
+            # Superseded by V25 above (2026-07-18); kept as fallback.
+            'Herocules (v21_auxhead)': V21AuxheadModelEngine(weight_name="expert_main.pth"),
             # V20_preflopEq_AI: IDENTICAL architecture/tensor schema to V20_preflopEq (context_dim=37,
             # contract_version=5) -- this version only changed the training opponent pool (shifted
             # toward real NN opponents: a lagged self-play mirror + V20_preflopEq's own 25k/50k
@@ -134,7 +264,8 @@ class PokerDecisionEngine:
             # this lineage has managed. Also beats V20_preflopEq's own bb100_vs_standard_fields
             # baseline in all 4 fields and shows stronger vpip_adapts_to_style deltas. Deployed for
             # user testing per explicit request (2026-07-17). V20_preflopEq and V20 both stay fully
-            # intact below as rollback options. ACTIVE.
+            # intact below as rollback options. Superseded by V21_auxhead above (2026-07-17); kept
+            # as fallback.
             'Herocules (v20_preflopEq_AI)': V20PreflopEqAIModelEngine(weight_name="expert_main.pth"),
             # V20_preflopEq: same PokerEVModelV4 arch + 6-action contract as V20, but WIDER context
             # (context_dim 35->37, contract_version 4->5) -- two new appended features (equity_edge,
@@ -217,7 +348,7 @@ class PokerDecisionEngine:
             # V13: equity-primary + range-aware equity. Kept as the tagged MILESTONE fallback.
             'Herocules (v13 Range-Aware)': V13ModelEngine(weight_name="expert_main.pth"),
         }
-        self.active_model_name = 'Herocules (v20_preflopEq_AI)'
+        self.active_model_name = 'Herocules (v29)'
         self.bridge_v9 = ContractV8V9()
         self.bridge_v11 = ContractV11()
         self.bridge_v13 = ContractV12(max_seq_len=20)
@@ -228,6 +359,14 @@ class PokerDecisionEngine:
         # V20_preflopEq uses a DIFFERENT scale+width again (contract_version 5, context_dim 37,
         # see the registry comment above) -- needs its own bridge, can't share bridge_v20 either.
         self.bridge_v20_preflopEq = ContractV12_v20PreflopEq(max_seq_len=20)
+        # V25 uses a DIFFERENT scale+width again (contract_version 7, context_dim 44 -- V22's
+        # entry-sizing features + V23's pot_type, inherited unchanged) -- needs its own bridge.
+        # V26/V28 are architecturally IDENTICAL to V25 (only the training opponent pool / target
+        # formula differ) -- share this same bridge, no separate bridge_v26/bridge_v28 needed.
+        self.bridge_v25 = ContractV12_v25(max_seq_len=20)
+        # [V29] NEW contract (context_dim=54, contract_version=8) -- own bridge, not shared with
+        # bridge_v25 above (V25/V26/V27/V28 all stay on the 44/7 contract untouched).
+        self.bridge_v29 = ContractV12_v29(max_seq_len=20)
         self.hand_history_buffer = []
         self._last_street = None
         self._last_hole_cards = None
@@ -305,21 +444,41 @@ class PokerDecisionEngine:
         # NOTE: resolution order matters -- 'v20_preflopeq' is a substring of 'v20_preflopeq_ai',
         # and 'v20' is a substring of both, so each must be checked BEFORE the shorter name it
         # contains or the naive name-based fallback misfires true for the wrong model.
+        # 'v25'/'v26'/'v28'/'v29' are substrings of nothing among each other, so order doesn't
+        # matter for THESE flags, but is_v29_model gets its OWN bridge branch below (checked
+        # BEFORE the v25/v26/v28 combined branch, since v29's contract is a different width/scale).
+        is_v29_model = getattr(active_model, 'is_v29', False) or 'v29' in self.active_model_name.lower()
+        is_v28_model = getattr(active_model, 'is_v28', False) or 'v28' in self.active_model_name.lower()
+        is_v26_model = getattr(active_model, 'is_v26', False) or 'v26' in self.active_model_name.lower()
+        is_v25_model = getattr(active_model, 'is_v25', False) or 'v25' in self.active_model_name.lower()
+        is_v21_auxhead_model = getattr(active_model, 'is_v21_auxhead', False) or 'v21_auxhead' in self.active_model_name.lower()
         is_v20_preflopEq_AI_model = getattr(active_model, 'is_v20_preflopEq_AI', False) or 'v20_preflopeq_ai' in self.active_model_name.lower()
         is_v20_preflopEq_model = (not is_v20_preflopEq_AI_model) and (getattr(active_model, 'is_v20_preflopEq', False) or 'v20_preflopeq' in self.active_model_name.lower())
         is_v20_model = (not is_v20_preflopEq_model) and (not is_v20_preflopEq_AI_model) and (getattr(active_model, 'is_v20', False) or 'v20' in self.active_model_name.lower())
         is_v11_model = getattr(active_model, 'is_v11', False) or 'v11' in self.active_model_name.lower()
-        # V14/V15/V17/V17_gauntlet/V19/V20/V20_preflopEq/V20_preflopEq_AI share the IDENTICAL
-        # 6-action sized contract -> one live path (selection + slider sizing). Anything gated on
-        # "the sized model" uses this flag.
-        is_sized_model = is_v14_model or is_v15_model or is_v17_model or is_v17_gauntlet_model or is_v19_model or is_v20_model or is_v20_preflopEq_model or is_v20_preflopEq_AI_model
+        # V14/V15/V17/V17_gauntlet/V19/V20/V20_preflopEq/V20_preflopEq_AI/V21_auxhead/V25 share the
+        # IDENTICAL 6-action sized contract -> one live path (selection + slider sizing). Anything
+        # gated on "the sized model" uses this flag.
+        is_sized_model = is_v14_model or is_v15_model or is_v17_model or is_v17_gauntlet_model or is_v19_model or is_v20_model or is_v20_preflopEq_model or is_v20_preflopEq_AI_model or is_v21_auxhead_model or is_v25_model or is_v26_model or is_v28_model or is_v29_model
         try:
-            if is_v20_preflopEq_model or is_v20_preflopEq_AI_model:
-                # V20_preflopEq / V20_preflopEq_AI (identical architecture, different training
-                # opponent pool only) were trained on a DIFFERENT context-feature WIDTH+scale
-                # (contract_version 5, context_dim 37) -- MUST use their shared bridge, not
-                # bridge_v13 or bridge_v20, or the two appended features (equity_edge,
-                # hand_strength) would be missing/misaligned (see
+            if is_v29_model:
+                # [V29] NEW contract (context_dim=54, contract_version=8) -- own bridge, NOT
+                # bridge_v25 (V25/V26/V28's shared 44/7 contract would silently misalign the 10
+                # new appended per-opponent-seat raise features).
+                hole, board, ctx, act = self.bridge_v29.to_tensors(self.hand_history_buffer, action_history_raw)
+            elif is_v25_model or is_v26_model or is_v28_model:
+                # V25/V26/V28 use a DIFFERENT context-feature WIDTH+scale again (contract_version 7,
+                # context_dim 44) -- MUST use their shared bridge, not bridge_v20_preflopEq or
+                # bridge_v13, or the entry-sizing (V22) + pot_type (V23) features would be
+                # missing/misaligned. V26/V28 are architecturally identical to V25 (only the
+                # training opponent pool / target formula differ), so they reuse this same bridge.
+                hole, board, ctx, act = self.bridge_v25.to_tensors(self.hand_history_buffer, action_history_raw)
+            elif is_v20_preflopEq_model or is_v20_preflopEq_AI_model or is_v21_auxhead_model:
+                # V20_preflopEq / V20_preflopEq_AI / V21_auxhead (identical architecture -- only the
+                # training opponent pool / aux-head loss differ) were trained on a DIFFERENT
+                # context-feature WIDTH+scale (contract_version 5, context_dim 37) -- MUST use their
+                # shared bridge, not bridge_v13 or bridge_v20, or the two appended features
+                # (equity_edge, hand_strength) would be missing/misaligned (see
                 # versions/v20_preflopEq/core/contract.py).
                 hole, board, ctx, act = self.bridge_v20_preflopEq.to_tensors(self.hand_history_buffer, action_history_raw)
             elif is_v20_model:
@@ -385,7 +544,7 @@ class PokerDecisionEngine:
             else:
                 action = choice   # FOLD / CALL
                 size_note = choice
-            _tag = "V20_preflopEq_AI" if is_v20_preflopEq_AI_model else ("V20_preflopEq" if is_v20_preflopEq_model else ("V20" if is_v20_model else ("V19" if is_v19_model else ("V17_gauntlet" if is_v17_gauntlet_model else ("V17" if is_v17_model else ("V15" if is_v15_model else "V14"))))))
+            _tag = "V29" if is_v29_model else ("V28" if is_v28_model else ("V26" if is_v26_model else ("V25" if is_v25_model else ("V21_auxhead" if is_v21_auxhead_model else ("V20_preflopEq_AI" if is_v20_preflopEq_AI_model else ("V20_preflopEq" if is_v20_preflopEq_model else ("V20" if is_v20_model else ("V19" if is_v19_model else ("V17_gauntlet" if is_v17_gauntlet_model else ("V17" if is_v17_model else ("V15" if is_v15_model else "V14")))))))))))
             reason = (f"{_tag} sampled (temp={temp:.2f}"
                       + (", free-check fold-masked" if free_check else "")
                       + (", raise-unavail" if not bet_raise_available else "")
@@ -478,7 +637,11 @@ class PokerDecisionEngine:
         
         ev_dict = evs.copy()
         ev_dict['decision_path'] = decision_path
-        ev_dict['thinking'] = _narrate_thinking(action, board_state, evs)
+        # Aux-head opponent read (v21_auxhead only -- see _narrate_opponent_read; every other
+        # model's aux heads are untrained noise at aux_loss_weight=0.0).
+        aux_read = getattr(active_model, 'last_aux', None) if (is_v21_auxhead_model or is_v25_model or is_v26_model or is_v28_model or is_v29_model) else None
+        ev_dict['aux_read'] = aux_read
+        ev_dict['thinking'] = _narrate_thinking(action, board_state, evs, aux=aux_read)
         # The raw policy bucket the sampler ("dice roll") actually picked, e.g. RAISE_66 or ALLIN --
         # distinct from `action`, which may be a translated slider string (RAISE_SLIDER_x) or later
         # overridden by a safety guardrail. Lets the UI highlight the sampled bar even when the

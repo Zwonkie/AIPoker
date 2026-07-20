@@ -250,11 +250,11 @@ class PHPHelpApp(ctk.CTk):
         self.mode_dropdown = ctk.CTkOptionMenu(self.sidebar, values=["Recommendation Only", "Automatic Play"], variable=self.mode_var)
         self.mode_dropdown.grid(row=4, column=0, padx=20, pady=5, sticky="ew")
         
-        # Model Selection. Default MUST match core/decision.py's active model (v20_preflopEq_AI) so
-        # the UI label reflects what actually runs — the engine defaults to v20_preflopEq_AI
+        # Model Selection. Default MUST match core/decision.py's active model (v29) so
+        # the UI label reflects what actually runs — the engine defaults to v29
         # regardless, but a stale label here would be misleading (this dropdown's values/default
         # do NOT update themselves when core/decision.py's registry changes — bump both here too).
-        self.model_var = ctk.StringVar(value="Herocules (v20_preflopEq_AI)")
+        self.model_var = ctk.StringVar(value="Herocules (v29)")
         self.model_label = ctk.CTkLabel(self.sidebar, text="Decision Model:", anchor="w")
         self.model_label.grid(row=5, column=0, padx=20, pady=(10, 0), sticky="w")
         self.model_dropdown = ctk.CTkOptionMenu(
@@ -262,9 +262,14 @@ class PHPHelpApp(ctk.CTk):
             # Only models that actually load are listed (see core/decision.py registry). The
             # legacy Pluribus/v8-v11 entries were pruned — their weights are missing or use the
             # old 159-feature contract, so selecting them would output random actions live.
-            # v20_preflopEq_AI/v20_preflopEq/v20/v19/v17_gauntlet/v17/v15/v14 = discretized
-            # bet-size action space (raises-to-X / all-in); v13 kept as fallback.
+            # v28/v26/v25/v21_auxhead/v20_preflopEq_AI/v20_preflopEq/v20/v19/v17_gauntlet/v17/v15/v14 =
+            # discretized bet-size action space (raises-to-X / all-in); v13 kept as fallback.
             values=[
+                "Herocules (v29)",
+                "Herocules (v28)",
+                "Herocules (v26)",
+                "Herocules (v25)",
+                "Herocules (v21_auxhead)",
                 "Herocules (v20_preflopEq_AI)",
                 "Herocules (v20_preflopEq)",
                 "Herocules (v20)",
@@ -801,7 +806,7 @@ class PHPHelpApp(ctk.CTk):
         # Setup coordinates/rect for capturing
         mss_instance = mss.MSS()
 
-        self.table_state.reset()
+        self.table_state.reset(big_blind=self.big_blind_var.get())
         self._awaiting_turn_clear = False   # fresh start -- don't inherit a stale gate from a prior run
 
         while self.bot_running:
@@ -916,7 +921,7 @@ class PHPHelpApp(ctk.CTk):
                 # Check for hand reset
                 if self.table_state.detect_hand_reset(raw_state):
                     self.append_log("[SYSTEM] New hand detected. Resetting table state history.")
-                    self.table_state.reset()
+                    self.table_state.reset(big_blind=self.big_blind_var.get())
                     
                     if not source.startswith("Mock:"):
                         try:
@@ -1055,13 +1060,28 @@ class PHPHelpApp(ctk.CTk):
                     # here would be a silent train/serve mismatch. Use the matching version's
                     # identical impl.
                     _active_lower = self.decision_engine.active_model_name.lower()
-                    if 'v20_preflopeq_ai' in _active_lower or 'v20_preflopeq' in _active_lower or 'v20' in _active_lower or 'v19' in _active_lower or 'v17' in _active_lower or 'v15' in _active_lower or 'v14' in _active_lower or 'v13' in _active_lower:
+                    if 'v29' in _active_lower or 'v28' in _active_lower or 'v26' in _active_lower or 'v25' in _active_lower or 'v21_auxhead' in _active_lower or 'v20_preflopeq_ai' in _active_lower or 'v20_preflopeq' in _active_lower or 'v20' in _active_lower or 'v19' in _active_lower or 'v17' in _active_lower or 'v15' in _active_lower or 'v14' in _active_lower or 'v13' in _active_lower:
                         try:
                             # NOTE: resolution order matters -- 'v20_preflopeq' is a substring of
                             # 'v20_preflopeq_ai', and 'v20' is a substring of both, so each must be
                             # checked before the shorter name it contains or the naive ordering
-                            # would always match the wrong (earlier-fix-less) branch.
-                            if 'v20_preflopeq_ai' in _active_lower:
+                            # would always match the wrong (earlier-fix-less) branch. 'v29'/'v28'/
+                            # 'v26'/'v25'/'v21_auxhead' don't collide with any of these, checked
+                            # first for clarity -- V29 has its OWN 54-feature contract (versions/
+                            # v29/core/contract.py, +10 per-opponent-seat raise features over V25/
+                            # V26/V28's shared 44); range-aware equity itself is UNCHANGED from V28
+                            # (this fn lives in simulator.py, untouched by the OPP-2/contract change).
+                            if 'v29' in _active_lower:
+                                from versions.v29.self_play.simulator import compute_range_aware_equity
+                            elif 'v28' in _active_lower:
+                                from versions.v28.self_play.simulator import compute_range_aware_equity
+                            elif 'v26' in _active_lower:
+                                from versions.v26.self_play.simulator import compute_range_aware_equity
+                            elif 'v25' in _active_lower:
+                                from versions.v25.self_play.simulator import compute_range_aware_equity
+                            elif 'v21_auxhead' in _active_lower:
+                                from versions.v21_auxhead.self_play.simulator import compute_range_aware_equity
+                            elif 'v20_preflopeq_ai' in _active_lower:
                                 from versions.v20_preflopEq_AI.self_play.simulator import compute_range_aware_equity
                             elif 'v20_preflopeq' in _active_lower:
                                 from versions.v20_preflopEq.self_play.simulator import compute_range_aware_equity
@@ -1104,7 +1124,7 @@ class PHPHelpApp(ctk.CTk):
                             # brings 2*SE down to ~6.3pp. Doesn't touch training's own sims=150 call
                             # (versions/*/self_play/simulator.py) or its default -- same formula
                             # either way, just less noise around the same expected value live.
-                            if 'v20_preflopeq' in _active_lower and colors_in_pot is not None:
+                            if ('v20_preflopeq' in _active_lower or 'v21_auxhead' in _active_lower or 'v25' in _active_lower or 'v26' in _active_lower or 'v28' in _active_lower or 'v29' in _active_lower) and colors_in_pot is not None:
                                 # [V20_preflopEq Finding 2] front (already acted this round,
                                 # guaranteed in -- no VPIP fold-roll) vs after (still to act,
                                 # normal roll), using the SAME positional classifier already
@@ -1139,14 +1159,25 @@ class PHPHelpApp(ctk.CTk):
 
                     # [V20_preflopEq] hand_strength: field-independent card-quality signal, only
                     # meaningful (and only computed, to avoid a needless live MC call for every
-                    # other model) when v20_preflopEq or v20_preflopEq_AI is active (identical
-                    # feature, both versions' own contract module). Preflop: O(1) lookup.
-                    # Postflop: a cheap vs-1-random MC call, same recipe as simulator.py's own
-                    # _hand_strength.
+                    # other model) when v20_preflopEq, v20_preflopEq_AI, v21_auxhead, v25, v26, or
+                    # v28 is active (identical feature -- V25/V26/V28's contract inherits it
+                    # unchanged, just appended new features after it, doesn't touch this one).
+                    # Preflop: O(1) lookup. Postflop: a cheap vs-1-random MC call, same recipe as
+                    # simulator.py's own _hand_strength.
                     hand_strength = 0.5
-                    if 'v20_preflopeq' in _active_lower:
+                    if 'v20_preflopeq' in _active_lower or 'v21_auxhead' in _active_lower or 'v25' in _active_lower or 'v26' in _active_lower or 'v28' in _active_lower or 'v29' in _active_lower:
                         try:
-                            if 'v20_preflopeq_ai' in _active_lower:
+                            if 'v29' in _active_lower:
+                                from versions.v29.core.contract import preflop_hand_strength
+                            elif 'v28' in _active_lower:
+                                from versions.v28.core.contract import preflop_hand_strength
+                            elif 'v26' in _active_lower:
+                                from versions.v26.core.contract import preflop_hand_strength
+                            elif 'v25' in _active_lower:
+                                from versions.v25.core.contract import preflop_hand_strength
+                            elif 'v21_auxhead' in _active_lower:
+                                from versions.v21_auxhead.core.contract import preflop_hand_strength
+                            elif 'v20_preflopeq_ai' in _active_lower:
                                 from versions.v20_preflopEq_AI.core.contract import preflop_hand_strength
                             else:
                                 from versions.v20_preflopEq.core.contract import preflop_hand_strength
@@ -1493,10 +1524,12 @@ class PHPHelpApp(ctk.CTk):
         # scheduled via self.after, so it's always the meta for THIS equity value.
         meta = self.last_equity_meta or {}
 
-        # [V20_preflopEq] Hand Win% / Eq Edge side stats -- only meaningful for this model (every
-        # other model neither computes hand_strength nor trains with equity_edge), so show "-"
-        # rather than a misleading number when a different model is active.
-        if 'v20_preflopeq' in self.decision_engine.active_model_name.lower():
+        # [V20_preflopEq] Hand Win% / Eq Edge side stats -- only meaningful for v20_preflopEq/
+        # v20_preflopEq_AI/v21_auxhead/v25/v26/v28 (every other model neither computes
+        # hand_strength nor trains with equity_edge), so show "-" rather than a misleading number
+        # otherwise.
+        _active_lower_ui = self.decision_engine.active_model_name.lower()
+        if 'v20_preflopeq' in _active_lower_ui or 'v21_auxhead' in _active_lower_ui or 'v25' in _active_lower_ui or 'v26' in _active_lower_ui or 'v28' in _active_lower_ui or 'v29' in _active_lower_ui:
             hs = meta.get("hand_strength")
             self.hand_strength_val.configure(text=f"{hs * 100:.1f}%" if hs is not None else "-")
             edge = meta.get("equity_edge")
@@ -1778,12 +1811,16 @@ class PHPHelpApp(ctk.CTk):
         of the context vector). Ground truth — unlike re-deriving from the raw vision state, which
         can diverge (a bridge bug).
 
-        Scale constants depend on which model family is active: v20/v20_preflopEq/v20_preflopEq_AI
-        share the money-feature rescale (STACK_SCALE=100, POT_SCALE=250, CALL_SCALE=100 -- see
-        versions/v20/core/contract.py and versions/v20_preflopEq/core/contract.py); every earlier
-        model (v13/v14/v15/v17/v19) uses the original bridge_v13 scale (/400 stack+call, /1000
-        pot). Decoding with the wrong constant silently produces plausible-but-wrong numbers --
-        this is what happened before this fix (see
+        Scale constants depend on which model family is active: v20/v20_preflopEq/v20_preflopEq_AI/
+        v21_auxhead/v25/v26/v28 share the money-feature rescale (STACK_SCALE=100, POT_SCALE=250,
+        CALL_SCALE=100 -- see versions/v20/core/contract.py and
+        versions/v20_preflopEq/core/contract.py, byte-identical in versions/v21_auxhead; V25's own
+        versions/v25/core/contract.py raised the CEILING (V22: 100bb/200bb/100bb) but kept these
+        same SCALE constants -- see that file's own docstring; V26/V28 are architecturally
+        identical to V25, only the training opponent pool / target formula differ); every
+        earlier model (v13/v14/v15/v17/v19) uses the original bridge_v13 scale (/400 stack+call,
+        /1000 pot). Decoding with the wrong constant silently produces plausible-but-wrong numbers
+        -- this is what happened before this fix (see
         history/Double_Or_Nothing_1171073366/flagged/turn_3_20260717_083117: displayed
         hero_stack=200BB/pot=6BB for a v20_preflopEq_AI turn that actually saw the clamped
         50BB/1.5BB, decoded with the stale /400,/1000 constants).
@@ -1792,7 +1829,7 @@ class PHPHelpApp(ctk.CTk):
             last = (ev or {}).get("model_input", {}).get("ctx")[0][-1]
             street = {0: "Preflop", 1: "Flop", 2: "Turn", 3: "River"}.get(round(last[6] * 3.0), "?")
             active_name = getattr(self.decision_engine, "active_model_name", "").lower()
-            is_v20_family = "v20" in active_name
+            is_v20_family = "v20" in active_name or "v21_auxhead" in active_name or "v25" in active_name or "v26" in active_name or "v28" in active_name or "v29" in active_name
             stack_scale = 100.0 if is_v20_family else 400.0
             pot_scale = 250.0 if is_v20_family else 1000.0
             call_scale = 100.0 if is_v20_family else 400.0

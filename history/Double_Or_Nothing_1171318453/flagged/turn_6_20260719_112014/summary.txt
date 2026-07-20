@@ -1,0 +1,31 @@
+=== TURN DIAGNOSTIC — 20260719_112014 ===
+Model : Herocules (v26)
+CHOSE : RAISE_SLIDER_1.00   bet=770.0   reason=V26 sampled (temp=0.50, free-check fold-masked) -> ALLIN -> raise-to 770 (slider 1.00): {FOLD 0.00, CALL 0.13, RAISE_33 0.11, RAISE_66 0.11, RAISE_POT 0.11, ALLIN 0.53}
+
+--- LAYER 1: PERCEPTION  (RAW vision read — cross-check vs screenshot.png) ---
+  Hero cards : ['Qd', 'Qh']
+  Board      : ['6c', '5d', '2h']   (Flop)
+  Position   : 2
+  Hero stack : 770  (25.7BB)
+  Pot        : 120  (4.0BB)
+  To call    : None  (?)
+  Opp colors : ['Red', 'Red', 'Green']   (num_opponents=3)
+  >> If any disagree with the screenshot -> OCR / PARSE bug (Layer 1).
+
+--- LAYER 2: FEATURES  (what the model ACTUALLY consumed — decoded from its input tensor) ---
+  street     : Flop     equity : 0.52   [method: range-aware]
+  pot        : 4.0BB    to_call : 0.0BB    pot_odds : 0.0
+  hero_stack : 25.7BB    position : 2.0    num_active : 3
+  equity_edge: 2.08    hand_strength : 0.73
+  >> These are the model's TRUE inputs. Wrong equity -> range/color bug;
+     wrong price/street here but right in Layer 1 -> BRIDGE bug (not OCR, not the model).
+
+--- LAYER 3: POLICY  (given correct inputs, did the model choose right?) ---
+  Actor policy P(action):
+  FOLD 0.00  CALL 0.13  RAISE_33 0.11  RAISE_66 0.11  RAISE_POT 0.11  ALLIN 0.53
+  Critic Q (EV vs fold, ~BB):
+  FOLD -0.00  CALL +0.83  RAISE_33 +0.81  RAISE_66 +0.67  RAISE_POT +0.71  ALLIN +2.75
+  Chosen action : RAISE_SLIDER_1.00
+  >> If Layers 1-2 are correct but this action is wrong -> MODEL / POLICY issue (Layer 3).
+
+Files: screenshot.png | telemetry.json | logs.txt | expected.txt

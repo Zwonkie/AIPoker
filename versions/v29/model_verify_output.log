@@ -1,0 +1,31 @@
+model_verify | version=v29 weights=expert_main.pth action_space=('fold', 'call', 'raise_33', 'raise_66', 'raise_pot', 'allin')
+  check                        status detail
+----------------------------------------------------------------------------------------------------
+  equity_ablation_monotonic    PASS   P(fold) 1.00->0.00, P(aggressive) 0.00->0.84
+  free_check_low_fold          WARN   max raw P(fold) when call_bb=0 across sweep: 1.000 (covered by decision.py's free-check mask, but worth tracking)
+  air_folds_mostly             PASS   avg P(fold) at ~12% equity facing a real bet: 1.00  (per-stack [1.0, 1.0, 1.0, 1.0])
+  nuts_aggressive_mostly       PASS   avg aggressive mass at ~92% equity: 0.81
+  deep_stack_ood_guard         PASS   no marginal-equity/deep-stack/single-modest-bet cell jams all-in
+  short_stack_polarization     PASS   avg P(call) in clear shove-or-fold spots: 0.14
+  action_diversity             PASS   argmax distribution across the equity x stack grid: {'fold': 11, 'call': 5, 'raise_pot': 5}
+  no_nan_or_crash              PASS   4 edge cases: no NaN/crash
+  hand_strength_sensitivity    PASS   avg policy shift (total variation) between hand_strength=0.15 vs 0.85 at fixed equity: 0.332
+  equity_edge_sensitivity      PASS   avg policy shift (total variation) between low vs high equity_edge at fixed equity/field: 0.694
+  committed_sensitivity        PASS   avg policy shift (total variation) between opp committed=0bb vs =60%stack at fixed equity/stack: 0.062
+  pot_type_sensitivity         PASS   avg policy shift (total variation) between pot_type=limped vs =3bet+ at fixed equity/stack: 0.038
+  stack_full_sweep             PASS   max action-probability range across the full stack sweep: 0.392  (argmax path: ['fold', 'fold', 'fold', 'fold', 'call', 'call', 'fold', 'fold', 'fold'])
+  position_sweep               PASS   P(fold) across position 0-5: [0.8, 0.86, 0.9, 0.93, 0.91, 0.86] (spread 0.133)
+  opponent_style_sweep         PASS   avg P(fold) spread across Blue->Red opponent archetypes (same bet, fixed equity): 0.107
+  allin_exploits_opponent_foldiness WARN   avg P(all-in) spread across NIT/TAG/LAG/CALLING_STATION at fixed equity: 0.008 -- [OPP-8] all-in frequency barely differs by real opponent archetype despite wildly different actual fold-to-pressure
+  allin_vs_nextbest_qgap       PASS   WORST-cell Q-gap (allin - next-best, as fraction of pot) by stack: 15bb=-1.00, 20bb=-1.16, 25bb=-1.35, 30bb=-1.56, 40bb=-1.97 | by archetype: NIT=-0.43, TAG=-0.43, LAG=-0.44, CALLING_STATION=-0.47 | worst overall: stack=15bb (-1.00), archetype=NIT (-0.43)
+  opponent_color_isolated_ablation PASS   table-scalar TV (0.0 vs 1.0): 0.085 | per-seat-block TV (0.0 vs 1.0): 0.150 -- responds at extremes but opponent_style_sweep found realistic-archetype values flat; reads as a training-population artifact (network CAN use this input, population never taught it to care within realistic bounds), not dead wiring
+  hand_strength_sweep          PASS   max action-probability range across the hand_strength=0.1-0.9 sweep: 0.539
+  equity_edge_sweep            PASS   max action-probability range across the equity_edge=0.4-3.2 sweep: 0.997
+----------------------------------------------------------------------------------------------------
+  vpip_adapts_to_style         PASS   short: tight=15.8% loose=21.8% (delta +6.0pts); deep: tight=20.0% loose=25.7% (delta +5.6pts)
+  beats_offformula_stress      PASS   short: +14.1 BB/100 (VPIP 22%); deep: +30.1 BB/100 (VPIP 27%)
+  bb100_vs_standard_fields     PASS   loose_short: +20.7 BB/100, no baseline recorded yet VPIP 23% | loose_deep: +72.5 BB/100, no baseline recorded yet VPIP 27% | tight_short: +32.4 BB/100, no baseline recorded yet VPIP 25% | tight_deep: +53.6 BB/100, no baseline recorded yet VPIP 31%
+  beats_frozen_predecessor     SKIP   could not load frozen_v28.pth: Checkpoint C:\REPO\Antigravity\AIPoker\versions/v29/weights\frozen_v28.pth is context_dim=44 (contract v7), but v29 expects context_dim=54. Refusing to load.
+----------------------------------------------------------------------------------------------------
+  21 PASS, 2 WARN, 0 FAIL, 1 SKIP
+  raw results written to C:\REPO\Antigravity\AIPoker\tools\model_verify\results\v29__expert_main.pth.json

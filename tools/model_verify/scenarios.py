@@ -31,6 +31,8 @@ def _money_scale(contract_version):
     contract_version <= 3 (v13-v19): legacy, uncapped /400 (stack, call) and /1000 (pot).
     contract_version >= 4 (V20+): stack/call clamped to 50bb, pot to 100bb, THEN /100
     (stack, call) or /250 (pot) -- see versions/v20/core/contract.py.
+    contract_version >= 6 (V22+): ceilings raised to 100bb/200bb/100bb (stack/pot/call), SCALE
+    constants unchanged -- see versions/v22/core/contract.py.
 
     FIX (2026-07-17, found while extending model_verify for v20_preflopEq): this function
     previously didn't exist -- build_ctx hardcoded the legacy /400,/1000 math unconditionally,
@@ -41,6 +43,9 @@ def _money_scale(contract_version):
     depths -- the check was silently exercising a different, out-of-distribution neighborhood
     than the one it claims to test. SLOW checks (which run the real simulator/contract.py) were
     NOT affected, only these FAST synthetic-context ones."""
+    if contract_version >= 6:
+        return dict(stack_ceil=100.0, pot_ceil=200.0, call_ceil=100.0,
+                    stack_scale=100.0, pot_scale=250.0, call_scale=100.0)
     if contract_version >= 4:
         return dict(stack_ceil=50.0, pot_ceil=100.0, call_ceil=50.0,
                     stack_scale=100.0, pot_scale=250.0, call_scale=100.0)
@@ -56,9 +61,12 @@ def _scaled(value_bb, ceil, scale):
 def build_ctx(equity, stack_bb, pot_bb, call_bb, position=2, street=0,
               num_active_opp=2, opp_vpip=0.30, opp_agg=0.40,
               per_opp_vpip=None, per_opp_agg=None, opp_stack_bb=None,
-              contract_version=3, hand_strength=None, equity_edge=None):
-    """One context vector (35-length for contract_version<=4, 37-length for >=5), index layout
-    identical to ContractV12.to_tensors for the matching contract_version.
+              contract_version=3, hand_strength=None, equity_edge=None,
+              per_opp_committed_bb=None, hero_committed_bb=None, pot_type=None,
+              per_opp_raised_this_hand=None, per_opp_raised_this_street=None):
+    """One context vector (35-length for contract_version<=4, 37-length for 5, 43-length for 6,
+    44-length for >=7), index layout identical to ContractV12.to_tensors for the matching
+    contract_version.
 
     `contract_version`: MUST be the manifest.contract_version of the model under test (see
     `_money_scale`) -- defaults to 3 (the legacy scale used by v13-v19) ONLY for backward
@@ -71,7 +79,21 @@ def build_ctx(equity, stack_bb, pot_bb, call_bb, position=2, street=0,
     explicitly overridden; `hand_strength` defaults to neutral (0.5) unless explicitly overridden
     -- pass an explicit value to probe the model's sensitivity to it in isolation (a synthetic
     ablation: in real play it's never decoupled from equity, but perturbing it alone here tests
-    whether the network actually reads that ctx slot)."""
+    whether the network actually reads that ctx slot).
+
+    `per_opp_committed_bb`/`hero_committed_bb`: only meaningful (appended) when
+    contract_version>=6 (V22's 43-feature contract -- see versions/v22/core/contract.py). Both
+    default to 0.0 (no money committed yet, matching a fresh street's start) unless explicitly
+    overridden -- same isolate-one-slot ablation pattern as hand_strength/equity_edge above.
+
+    `pot_type`: only meaningful (appended) when contract_version>=7 (V23's 44-feature contract --
+    see versions/v23/core/contract.py). Raw bucket value 0/1/2 (limped/single-raised/3-bet+),
+    normalized /2.0 same as the real contract; defaults to 0 (limped) unless overridden.
+
+    `per_opp_raised_this_hand`/`per_opp_raised_this_street`: only meaningful (appended) when
+    contract_version>=8 (V29's 54-feature contract, [OPP-2] -- see versions/v29/core/contract.py).
+    Both default to all-0.0 (no seat has raised) unless explicitly overridden -- same isolate-one-
+    slot ablation pattern as per_opp_committed_bb above."""
     scale = _money_scale(contract_version)
     pot_odds = call_bb / (pot_bb + call_bb) if (pot_bb + call_bb) > 0 else 0.0
     ctx = [
@@ -103,7 +125,33 @@ def build_ctx(equity, stack_bb, pot_bb, call_bb, position=2, street=0,
         ctx.append(eff_equity_edge)
         ctx.append(eff_hand_strength)
 
-    expected_len = 37 if contract_version >= 5 else 35
+    if contract_version >= 6:
+        for j in range(5):
+            committed_bb = per_opp_committed_bb[j] if per_opp_committed_bb and j < len(per_opp_committed_bb) else 0.0
+            ctx.append(_scaled(committed_bb, scale['stack_ceil'], scale['stack_scale']))
+        eff_hero_committed = 0.0 if hero_committed_bb is None else hero_committed_bb
+        ctx.append(_scaled(eff_hero_committed, scale['stack_ceil'], scale['stack_scale']))
+
+    if contract_version >= 7:
+        eff_pot_type = 0 if pot_type is None else pot_type
+        ctx.append(float(eff_pot_type) / 2.0)
+
+    if contract_version >= 8:
+        for j in range(5):
+            ctx.append(per_opp_raised_this_hand[j] if per_opp_raised_this_hand and j < len(per_opp_raised_this_hand) else 0.0)
+        for j in range(5):
+            ctx.append(per_opp_raised_this_street[j] if per_opp_raised_this_street and j < len(per_opp_raised_this_street) else 0.0)
+
+    if contract_version >= 8:
+        expected_len = 54
+    elif contract_version >= 7:
+        expected_len = 44
+    elif contract_version >= 6:
+        expected_len = 43
+    elif contract_version >= 5:
+        expected_len = 37
+    else:
+        expected_len = 35
     assert len(ctx) == expected_len, f"context vector drifted from the contract: len={len(ctx)}, expected {expected_len}"
     return ctx
 

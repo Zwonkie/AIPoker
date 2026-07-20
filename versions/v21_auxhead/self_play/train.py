@@ -741,10 +741,21 @@ def run_training(personality, num_hands=100000, batch_size=256, epochs_per_batch
                  opp_pool_config=None, live_players=6, disable_focus_rounds=False,
                  disable_extreme_stacks=False, fixed_stack_bb=None, disable_exploration=False,
                  disable_bootstrap=False, aux_loss_weight=10.0,
+                 aux_loss_weight_bluff=None, aux_loss_weight_strength=None, aux_loss_weight_equity=None,
                  target_clip_bb=None, policy_target_temp=1.0, policy_entropy_penalty=0.0,
                  policy_target_source='realized', ablate_hole_cards=False,
                  policy_tightness_bb=0.0, range_aware_equity=False,
                  stack_depth_mix=None):
+    # [V21_auxhead Phase 6] Per-head aux weights, defaulting to the shared `aux_loss_weight` for
+    # backward compat. Motivated by Phases 3-5: sharing ONE scalar across bluff/strength/equity's
+    # summed loss let bluff's now-properly-reweighted (larger) loss claim a growing share of the
+    # shared gradient -- strength's correlation declined MONOTONICALLY across every subsequent
+    # phase (0.151->0.065->0.047->0.033), never recovering with more hands, unlike equity's mostly-
+    # transient dip. Decoupling the weights lets strength get its own (typically higher) budget
+    # instead of being crowded out by bluff. See SPECS.md Phase 6.
+    w_bluff = aux_loss_weight if aux_loss_weight_bluff is None else aux_loss_weight_bluff
+    w_strength = aux_loss_weight if aux_loss_weight_strength is None else aux_loss_weight_strength
+    w_equity = aux_loss_weight if aux_loss_weight_equity is None else aux_loss_weight_equity
     # Overrides the module globals that vectorize_hand_samples reads at call time (it runs
     # in THIS process, not the workers). Two SEPARATE concerns:
     #  * target_clip_bb = VARIANCE control (load-bearing). Unclipped realized returns are
@@ -1209,9 +1220,8 @@ def run_training(personality, num_hands=100000, batch_size=256, epochs_per_batch
                         sc_str = loss_str.sum() / b_m.sum().clamp(min=1.0)
                         sc_eq = loss_eq.sum() / b_m.sum().clamp(min=1.0)
 
-                        final_loss_aux = sc_bluff + sc_str + sc_eq
-
-                        final_loss = final_loss_q + POLICY_LOSS_WEIGHT * final_loss_pi + aux_loss_weight * final_loss_aux
+                        final_loss = (final_loss_q + POLICY_LOSS_WEIGHT * final_loss_pi
+                                      + w_bluff * sc_bluff + w_strength * sc_str + w_equity * sc_eq)
 
                     scaler.scale(final_loss).backward()
                     scaler.unscale_(optimizer)
@@ -1286,9 +1296,12 @@ def run_training(personality, num_hands=100000, batch_size=256, epochs_per_batch
                         loss_bluff = nn.functional.mse_loss(pred_bluff, b_bluff, reduction='none') * b_m * bluff_w
                         loss_str = nn.functional.mse_loss(pred_str, b_str, reduction='none') * b_m
                         loss_eq = nn.functional.mse_loss(pred_eq, b_eq, reduction='none') * b_m
-                        final_loss_aux = (loss_bluff + loss_str + loss_eq).sum() / b_m.sum().clamp(min=1.0)
+                        sc_bluff_v = loss_bluff.sum() / (b_m * bluff_w).sum().clamp(min=1.0)
+                        sc_str_v = loss_str.sum() / b_m.sum().clamp(min=1.0)
+                        sc_eq_v = loss_eq.sum() / b_m.sum().clamp(min=1.0)
 
-                        final_loss = final_loss_q + POLICY_LOSS_WEIGHT * final_loss_pi + aux_loss_weight * final_loss_aux
+                        final_loss = (final_loss_q + POLICY_LOSS_WEIGHT * final_loss_pi
+                                      + w_bluff * sc_bluff_v + w_strength * sc_str_v + w_equity * sc_eq_v)
 
                     val_epoch_loss += final_loss.item() * len(b_h)
                     val_items += len(b_h)
@@ -1379,6 +1392,13 @@ if __name__ == '__main__':
     disable_bootstrap = bool(t_cfg.get('disable_bootstrap', False))
     disable_exploration = bool(t_cfg.get('disable_exploration', False))
     aux_loss_weight = float(t_cfg.get('aux_loss_weight', 10.0))
+    # [V21_auxhead Phase 6] per-head overrides; None (unset in config) falls back to aux_loss_weight.
+    _alw_bluff = t_cfg.get('aux_loss_weight_bluff')
+    _alw_strength = t_cfg.get('aux_loss_weight_strength')
+    _alw_equity = t_cfg.get('aux_loss_weight_equity')
+    aux_loss_weight_bluff = float(_alw_bluff) if _alw_bluff is not None else None
+    aux_loss_weight_strength = float(_alw_strength) if _alw_strength is not None else None
+    aux_loss_weight_equity = float(_alw_equity) if _alw_equity is not None else None
     target_clip_bb = float(t_cfg.get('target_clip_bb', 40.0))  # variance clip; keep ON
     policy_target_temp = float(t_cfg.get('policy_target_temperature', 1.0))  # <1 sharpens actor target
     policy_entropy_penalty = float(t_cfg.get('policy_entropy_penalty', 0.0))  # +beta*H(pred) in actor loss
@@ -1420,7 +1440,10 @@ if __name__ == '__main__':
         print(f"  Stack depth mix: {stack_depth_mix} (V15 DoN-shaped per-hand bands)")
     if fixed_stack_bb is not None:
         print(f"  Fixed stacks:    {fixed_stack_bb} bb (all curriculum stack sizing OFF)")
-    print(f"  Aux loss weight: {aux_loss_weight}{'  (aux heads OFF)' if aux_loss_weight == 0 else ''}")
+    print(f"  Aux loss weight: {aux_loss_weight}{'  (aux heads OFF)' if aux_loss_weight == 0 else ''}"
+          f"  [bluff={aux_loss_weight_bluff if aux_loss_weight_bluff is not None else aux_loss_weight}, "
+          f"strength={aux_loss_weight_strength if aux_loss_weight_strength is not None else aux_loss_weight}, "
+          f"equity={aux_loss_weight_equity if aux_loss_weight_equity is not None else aux_loss_weight}]")
     print(f"  Target clip:     {target_clip_bb} bb")
     print(f"  Actor sharpen:   target_temp={policy_target_temp}  entropy_penalty={policy_entropy_penalty}")
     print(f"  Policy target:   {policy_target_source}  (actor regresses toward this action-value source)")
@@ -1451,6 +1474,8 @@ if __name__ == '__main__':
         disable_extreme_stacks=disable_extreme_stacks, fixed_stack_bb=fixed_stack_bb,
         disable_exploration=disable_exploration, disable_bootstrap=disable_bootstrap,
         aux_loss_weight=aux_loss_weight,
+        aux_loss_weight_bluff=aux_loss_weight_bluff, aux_loss_weight_strength=aux_loss_weight_strength,
+        aux_loss_weight_equity=aux_loss_weight_equity,
         target_clip_bb=target_clip_bb, policy_target_temp=policy_target_temp,
         policy_entropy_penalty=policy_entropy_penalty, policy_target_source=policy_target_source,
         ablate_hole_cards=ablate_hole_cards, policy_tightness_bb=policy_tightness_bb,

@@ -10,12 +10,17 @@ training:
   # unchanged here. This version (V21_auxhead) changes exactly TWO things on top of that:
   # aux_loss_weight on, and the opp_bluff_prob label fix (see simulator.py::_mc_target_evs_sized,
   # 2026-07-17 -- gated on the actual last-raiser's equity, not just "someone at the table is
-  # weak"). Phase 1 was a warm-started ~20k-hand continuation (rationality check, see SPECS.md
-  # Results) -- self_equity correlated well (r=0.894), strength/bluff were weak, and the bluff
-  # label bug was found immediately after. This is Phase 2: a FRESH from-scratch 100k-hand run
-  # (matching V21's own target_hands exactly) so it's a fair, comparable ablation against V21's
-  # own aux_loss_weight=0.0 baseline, now training the CORRECTED bluff label from hand 0 -- not a
-  # continuation, no --resume_path.
+  # weak"). Phases 1-7 (see SPECS.md) diagnosed and fixed the bluff label, found+fixed the bluff
+  # loss's class imbalance (sqrt-dampened reweighting), and mapped the per-head aux weight response
+  # curve (strength=0.10 is the chosen best-overall-balance point). Phases 5-7's warm-started
+  # continuations (100k->150k) ALSO revealed a real, separate finding: continuation itself
+  # (independent of aux weights -- it showed up at every weight tested) collapsed action_diversity/
+  # stack_full_sweep back toward degenerate shove-only behavior, which Phase 2's own FRESH 100k run
+  # never showed (that run had the best bet-sizing diversity of the whole investigation). This run
+  # (Phase 8) is the actual final candidate: FRESH from-scratch 100k hands (matching V21's own
+  # target_hands, no --resume_path) with the FULLY chosen aux configuration (corrected bluff label
+  # + sqrt-dampened reweighting + strength=0.10 per-head weight) all trained together from hand 0,
+  # to get the aux-head benefits without the continuation-induced diversity cost.
   target_hands: 100000
   batch_size: 256
   epochs_per_batch: 3
@@ -27,7 +32,18 @@ training:
   # --- Training knobs ---
   # [V21_auxhead] THE change under test: was 0.0 (heads OFF) since V14. See SPECS.md item 7 /
   # versions/v21/SPECS.md item 7 for the full rationale and what "rational" is being checked for.
-  aux_loss_weight: 0.05
+  aux_loss_weight: 0.05    # fallback default for any head without its own override below
+  # [Phase 6] Per-head overrides. Phases 3-5 (one shared aux_loss_weight for all three heads --
+  # NOTE: mathematically identical to per-head weights that all happen to be equal, w*(a+b+c) ==
+  # w*a+w*b+w*c; the earlier "shared sum" framing was imprecise, only unequal WEIGHT VALUES matter)
+  # showed strength's correlation declining monotonically (0.151->0.033) across every phase, never
+  # recovering with more hands, while equity/bluff stayed stable or improved. Phase 6 confirmed
+  # boosting strength's own coefficient to 0.20 (4x) fixed it (0.033->0.144) without hurting the
+  # other two. Phase 7 maps the response curve properly (0.10/0.20/0.35) instead of trusting one
+  # data point. bluff/equity left at the fallback (0.05) throughout -- both already stable/strong.
+  aux_loss_weight_strength: 0.10   # [Phase 7 conclusion] best overall balance across all three heads -- see SPECS.md
+  aux_loss_weight_bluff: 0.05
+  aux_loss_weight_equity: 0.05
   # [V21] disable_target_shaping REMOVED -- the preflop-entry tightness prior it gated
   # (TIGHTNESS_PENALTY_BB/ENTRY_EQUITY_MARGIN) has been deleted outright, not just left at 0. See
   # SPECS.md item 1: superseded by range-aware equity, and validated dormant since V17 anyway.

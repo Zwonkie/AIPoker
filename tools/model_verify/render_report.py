@@ -492,6 +492,41 @@ addCard('hand_strength_sweep', 'Sensitivity sweep — full policy vs hand_streng
 addCard('equity_edge_sweep', 'Sensitivity sweep — full policy vs equity_edge', 'equity_edge', null, null, null, 'line', {{xField: 'equity_edge'}});
 addCard('opponent_style_sweep', 'Sensitivity sweep — P(Fold) vs opponent style (Blue=nit .. Red=maniac)', 'equity', 'opponent style', 'policy.fold', null, 'heatmap',
   {{xField: 'equity', yField: 'style_idx', yFormat: y => (['Blue', 'Green', 'Yellow', 'Red'][y] || String(y))}});
+addCard('allin_exploits_opponent_foldiness', 'Sensitivity sweep — P(All-In) vs REAL opponent archetype (NIT .. CALLING_STATION), ring = All-In is argmax', 'equity', 'opponent archetype', 'policy.allin', 'argmax_is_allin', 'heatmap',
+  {{xField: 'equity', yField: 'archetype_idx', yFormat: y => (['NIT', 'TAG', 'LAG', 'CALLING_STATION'][y] || String(y))}});
+
+// [BET-1/V28] all-in vs next-best Q-gap: one check's data holds TWO independent 2D grids (by
+// stack depth, by opponent archetype), split by which shape each record has -- same "paired
+// two-col card" pattern as air/nuts below, since the generic single-shot addCard can't render
+// two heatmaps from one dataset.
+(function() {{
+  const qgap = byId['allin_vs_nextbest_qgap'];
+  if (!qgap) return;
+  consumed.add('allin_vs_nextbest_qgap');
+  const stackRows = qgap.data.filter(d => d.stack_bb !== undefined);
+  const archRows = qgap.data.filter(d => d.archetype !== undefined);
+  const wrap = htmlEl('div', {{class: 'card'}});
+  wrap.appendChild(htmlEl('h2', {{}}, `All-in vs next-best Q-gap [BET-1]`));
+  wrap.appendChild(htmlEl('p', {{class: 'issue'}}, 'guards: BET-1 diagnostic, V28 -- first permanent/reproducible measurement of the shove-preference gap'));
+  wrap.appendChild(htmlEl('p', {{class: 'detail'}}, `<span class="badge ${{qgap.status}}">${{qgap.status}}</span> ${{qgap.detail}}`));
+  if (qgap.doc) {{
+    const box = htmlEl('div', {{class: 'explainer'}});
+    box.appendChild(htmlEl('p', {{}}, `<b>What this tests:</b> ${{qgap.doc.what}}`));
+    box.appendChild(htmlEl('p', {{}}, `<b>Expected:</b> ${{qgap.doc.expect}} <b>If it doesn't:</b> ${{qgap.doc.if_not}}`));
+    wrap.appendChild(box);
+  }}
+  const two = htmlEl('div', {{class: 'two-col'}});
+  const stackCol = htmlEl('div');
+  stackCol.appendChild(htmlEl('p', {{class: 'detail'}}, `By stack depth (gap as fraction of pot)`));
+  stackCol.appendChild(heatmap(stackRows, 'stack_bb', 'equity', 'gap_frac_of_pot', {{xLabel: 'stack (bb)', yLabel: 'equity'}}));
+  const archCol = htmlEl('div');
+  archCol.appendChild(htmlEl('p', {{class: 'detail'}}, `By opponent archetype (gap as fraction of pot)`));
+  archCol.appendChild(heatmap(archRows, 'equity', 'archetype_idx', 'gap_frac_of_pot',
+    {{xLabel: 'equity', yLabel: 'opponent archetype', yFormat: y => (['NIT', 'TAG', 'LAG', 'CALLING_STATION'][y] || String(y))}}));
+  two.appendChild(stackCol); two.appendChild(archCol);
+  wrap.appendChild(two);
+  root.appendChild(wrap);
+}})();
 
 // air/nuts as a paired two-col card
 (function() {{

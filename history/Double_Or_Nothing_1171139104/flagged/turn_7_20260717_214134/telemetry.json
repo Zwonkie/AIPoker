@@ -1,0 +1,161 @@
+{
+    "timestamp": "20260717_214134",
+    "chosen_action": "RAISE_SLIDER_1.00",
+    "bet_size": 690.0,
+    "reason": "V21_auxhead sampled (temp=0.50, free-check fold-masked) -> ALLIN -> raise-to 690 (slider 1.00): {FOLD 0.00, CALL 0.12, RAISE_33 0.16, RAISE_66 0.16, RAISE_POT 0.18, ALLIN 0.38}",
+    "actor_policy": {
+        "FOLD": 0.0002222895564045757,
+        "CALL": 0.12365706264972687,
+        "RAISE_33": 0.15779100358486176,
+        "RAISE_66": 0.16338597238063812,
+        "RAISE_POT": 0.178411066532135,
+        "ALLIN": 0.376532644033432
+    },
+    "critic_q_vals": {
+        "FOLD": 0.011025672778487206,
+        "CALL": 1.495458960533142,
+        "RAISE_33": 1.712489366531372,
+        "RAISE_66": 1.7733592987060547,
+        "RAISE_POT": 1.7782014608383179,
+        "ALLIN": 3.6212668418884277
+    },
+    "equity": 0.67,
+    "equity_meta": {
+        "method": "range-aware",
+        "opp_colors": [
+            "Blue",
+            "Yellow"
+        ],
+        "num_opponents": 2,
+        "opp_colors_in_pot": [],
+        "opp_colors_still_to_act": [
+            "Blue",
+            "Yellow"
+        ],
+        "hand_strength": 0.8825,
+        "value": 0.67,
+        "equity_edge": 2.0100000000000002
+    },
+    "context_vector": [
+        0.1,
+        0.046,
+        0.014,
+        0.67,
+        0.0,
+        0.2,
+        0.3333333333333333,
+        0.3,
+        0.18
+    ],
+    "context_labeled": {
+        "position": 0.1,
+        "bankroll": 0.046,
+        "pot": 0.014,
+        "equity": 0.67,
+        "pot_odds": 0.0,
+        "num_opponents": 0.2,
+        "street_level": 0.3333333333333333,
+        "opp_vpip_norm": 0.3,
+        "opp_agg_norm": 0.18
+    },
+    "model_seen": {
+        "position": 1.0,
+        "hero_stack_bb": 23.0,
+        "pot_bb": 7.0,
+        "equity": 0.67,
+        "pot_odds": 0.0,
+        "num_active": 2,
+        "street": "Flop",
+        "to_call_bb": 0.0,
+        "equity_edge": 2.01,
+        "hand_strength": 0.882
+    },
+    "decision_path": {
+        "preflop_chart": {
+            "status": "Bypassed",
+            "details": "Deprecated in V8/V9"
+        },
+        "active_model": {
+            "status": "Active",
+            "details": "Loaded Herocules (v21_auxhead)"
+        },
+        "bluff_engine": {
+            "status": "Passed",
+            "details": "Handled natively by V8/V9"
+        },
+        "math_engine": {
+            "status": "Passed",
+            "details": "Math checks out OK"
+        }
+    },
+    "table_state": {
+        "community_cards": [
+            "Jh",
+            "9d",
+            "Ah"
+        ],
+        "hero_cards": [
+            "Ac",
+            "9c"
+        ],
+        "pot_size": 210,
+        "hero_stack": 690,
+        "opponents": {
+            "seat_1": {
+                "name": "omSha1",
+                "stack": 710,
+                "is_active": true,
+                "state": "Active",
+                "vpip_color": "Blue",
+                "agg_color": "Blue"
+            },
+            "seat_2": {
+                "name": "Tid: 11",
+                "stack": 1590,
+                "is_active": false,
+                "state": "Folded",
+                "vpip_color": "Yellow",
+                "agg_color": null
+            },
+            "seat_3": {
+                "name": "TagDog",
+                "stack": 820,
+                "is_active": false,
+                "state": "Folded",
+                "vpip_color": "Green",
+                "agg_color": "Green"
+            },
+            "seat_4": {
+                "name": "Ucampeon",
+                "stack": 720,
+                "is_active": true,
+                "state": "Active",
+                "vpip_color": "Yellow",
+                "agg_color": null
+            },
+            "seat_5": {
+                "name": "4\n4",
+                "stack": 0,
+                "is_active": false,
+                "state": "Folded",
+                "vpip_color": null,
+                "agg_color": null
+            }
+        },
+        "num_active_players": 2,
+        "active_buttons": [
+            "button_fold"
+        ],
+        "street": "Flop",
+        "dealer_name": "4\n4",
+        "dealer_idx": 5,
+        "hero_position": 1,
+        "action_history": [
+            "c"
+        ],
+        "opp_vpip_norm": 0.3,
+        "opp_agg_norm": 0.18,
+        "big_blind": 30.0
+    },
+    "hand_history_len": 2
+}

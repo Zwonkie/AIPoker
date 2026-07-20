@@ -472,13 +472,31 @@ class PokerVision:
         
         # Hero Stack using robust ocr_roi (matching opponent seats approach)
         hero_stack_text = self.ocr_roi(img, (hcx-65, hcy+50, 130, 34), whitelist='0123456789.ALLIN-')
-        
+
         hero_stack_val = 0
+        hero_all_in = False
         h_stack_line = hero_stack_text.strip()
         if h_stack_line:
-            hero_stack_val = self.clean_stack_string(h_stack_line)
-            
+            # [V29 live-info expansion] Mirrors the opponent-seat 'ALL'/'IN' text-match above
+            # (lines ~417-419) -- checked BEFORE `clean_stack_string`'s digit-mangling character
+            # replacement, which otherwise turns literal "ALL IN" text into a garbage digit string
+            # (A->4, L->L(unchanged, filtered out), I->4, N->0 -> "440", not a real stack value).
+            # Without this, hero's own all-in was indistinguishable from a failed OCR read (both
+            # produced a bare 0), so core/table_state.py's stack tracker had to reject ALL zero
+            # reads defensively -- silently keeping hero's stack stuck at its last nonzero value
+            # through hero's own all-in specifically (found while wiring [OPP-2]/`hero_committed`
+            # live tracking; see .agents/skills/OFK/references/known-shortcomings-backlog.md).
+            h_stack_upper = h_stack_line.upper()
+            if 'ALL' in h_stack_upper or 'IN' in h_stack_upper:
+                hero_all_in = True
+                hero_stack_val = 0
+            else:
+                hero_stack_val = self.clean_stack_string(h_stack_line)
+                if hero_stack_val == 0 and '0' in h_stack_line:
+                    hero_all_in = True
+
         state['hero_stack'] = hero_stack_val
+        state['hero_all_in'] = hero_all_in
                 
         # Parse Hero Cards dynamically based on anchor
         dynamic_hero_cards_roi = (max(0, hcx - 127), max(0, hcy - 112), 230, 95)

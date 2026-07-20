@@ -1,0 +1,1499 @@
+  Opponent Pool:
+    past     weight=0.25  lagged self-play mirror
+    maniac   weight=0.2   heuristic archetype
+    fish     weight=0.15  heuristic archetype
+    tag      weight=0.25  heuristic archetype
+    nit      weight=0.15  heuristic archetype
+  Live Players:    6  (Hero + 5 opponents)
+  Focus rounds:    DISABLED
+  Extreme stacks:  DISABLED (flat moderate band)
+  Stack depth mix: [[5, 14, 0.4], [14, 30, 0.3], [30, 60, 0.2], [10, 100, 0.1]] (V15 DoN-shaped per-hand bands)
+  Aux loss weight: 0.05  [bluff=0.05, strength=0.1, equity=0.05]
+  Target clip:     40.0 bb
+  Actor sharpen:   target_temp=1.0  entropy_penalty=0.0
+  Policy target:   counterfactual  (actor regresses toward this action-value source)
+  Policy tightness:2.0 bb (realization discount below eq 0.45)
+  Range-aware eq:  ON (hero equity vs opp VPIP-color ranges)
+  Bootstrap:       enabled   Exploration: enabled
+  Checkpoint dump: every 20,000 hands (restore points in weights/checkpoints/)
+============================================================
+  SELF-PLAY RL TRAINING SYSTEM (PLURIBUS V8)
+============================================================
+  Target Hands:    50,000
+  Personality:     MAIN
+  Sim Batch Size:  2,000
+  Epochs/Batch:    3
+  Learning Rate:   0.001
+  Save File Name:  expert_main.pth
+============================================================
+WARNING: V7 baseline weights not found. Initializing random weights.
+
+Launching simulation batch workers...
+  Building preflop range ranking (range-aware equity)...
++========================================================================================+
+|  SELF-PLAY V8 MULTI-PERSONALITY LEAGUE SYSTEM (RTX 4080 GPU)                           |
++========================================================================================+
+|  Active Personality: MAIN                                                               |
+|  Hands Simulated:         1,919 /     50,000   (  3.8%)                            |
+|  Training Epoch:        3                                                              |
+|  Bootstrap Alpha:      1.00                                                            |
+|  Curriculum Stage:   Phase 1: Heuristic Bootstrap                                      |
+|  Elapsed Time:       1m 8s                                                            |
+|  Sim Speed:              28 hands/sec                                                 |
+|  ETA:                28m 32s                                                          |
+|  Training Samples:        1,919                                                        |
++----------------------------------------------------------------------------------------+
+|  CUMULATIVE PERFORMANCE BY SEAT:                                                       |
+|  - Seat 0 Hero (Main)                       :   +8.9 BB/100 (VPIP:23.6% AGG:49.2%) [R:689   F:1521  AI:195 ]|
+|  - Seat 1 Opp 1: LAG (Heuristic)            :   -1.0 BB/100 (VPIP:31.8% AGG:64.4%) [R:1080  F:1346  AI:265 ]|
+|  - Seat 2 Opp 2: Nit (Heuristic)            :  +16.0 BB/100 (VPIP:27.1% AGG:21.3%) [R:393   F:1494  AI:99  ]|
+|  - Seat 3 Opp 3: Calling Station (Heuristic):  -24.2 BB/100 (VPIP:45.8% AGG:17.6%) [R:460   F:1111  AI:212 ]|
+|  - Seat 4 Opp 4: Lagged-Self (NN)           :   -0.9 BB/100 (VPIP:31.4% AGG:53.5%) [R:969   F:1372  AI:223 ]|
+|  - Seat 5 Opp 5: TAG (Heuristic)            :   +1.1 BB/100 (VPIP:32.1% AGG:49.3%) [R:927   F:1356  AI:205 ]|
++----------------------------------------------------------------------------------------+
+|  Global Post-Flop Avg Active Players: 2.12                                             |
++----------------------------------------------------------------------------------------+
+|  EXPLOITATION SCOREBOARD (Net BB/100 Matrix):                                          |
+|  [Winner \ Loser] | Hero  | S1    | S2    | S3    | S4    | S5    |                    |
+|  Hero (Main)      |   -   |  -3.7 |  -2.6 |  -5.9 | +21.5 |  -0.3 |                    |
+|  Opp 1: LAG (Heuristic) |  +3.7 |   -   |  -8.3 | +15.9 | -19.6 |  +7.4 |                    |
+|  Opp 2: Nit (Heuristic) |  +2.6 |  +8.3 |   -   |  +1.6 |  -0.4 |  +3.8 |                    |
+|  Opp 3: Calling Station (Heuristic) |  +5.9 | -15.9 |  -1.6 |   -   |  -3.1 |  -9.5 |                    |
+|  Opp 4: Lagged-Self (NN) | -21.5 | +19.6 |  +0.4 |  +3.1 |   -   |  -2.4 |                    |
+|  Opp 5: TAG (Heuristic) |  +0.3 |  -7.4 |  -3.8 |  +9.5 |  +2.4 |   -   |                    |
++----------------------------------------------------------------------------------------+
+|  Action Entropy:       1.7449                                                        |
++------------------------------------------------------------------------------------------------------------------------+
+|  Equity Matrix (FACING A BET ONLY -- free checks tallied separately, see Free col)                                    |
+|  Equity Bucket     | Fold  | Call  | r33   | r66   | rPot  | All-In | N Hands | Free  | Avg St | Net Chips | Won    | Lost  |
++------------------------------------------------------------------------------------------------------------------------+
+|  <20% (Pure Air)   | 89.1% |  2.0% |  2.0% |  0.0% |  3.0% |  4.0%  |     101 |    40 |   1.2  | -2261.4   |   +208 |  -2469 |
+|  20-40% (Draws)    | 93.5% |  2.4% |  0.0% |  0.3% |  0.9% |  3.0%  |   1,170 |    33 |   0.1  | -3795.6   |  +3848 |  -7644 |
+|  40-60% (Marginal) | 78.7% |  7.4% |  0.7% |  0.0% |  5.0% |  8.2%  |     403 |    38 |   0.2  |  -833.1   |  +6684 |  -7517 |
+|  60-80% (Strong)   | 22.5% |  7.0% |  0.0% |  0.0% | 18.3% | 52.1%  |      71 |    21 |   0.8  | +4080.6   |  +7666 |  -3585 |
+|  >80% (Nuts)       |  0.0% | 19.0% |  0.0% |  0.0% | 23.8% | 57.1%  |      21 |    21 |   1.4  | +2730.0   |  +3651 |   -921 |
++------------------------------------------------------------------------------------------------------------------------+
+|  ACTION USAGE (all decisions) | Fold 55.7% | Call 19.0% | r33  0.8% | r66  0.7% | rPot 22.9% | All-In  0.9% |
+|  ALL-IN WinRate 47.6% (n=145) | JAM by Opp-Color: Blue  2.7% Green  9.0% Yellow 14.0% Red 13.1% |
++------------------------------------------------------------------------------------------------------------------------+
+|  Train Loss:           8.8270  |  Val Loss:   8.2616                                |
+|  Loss Q: 7.0818 | Pi: 1.7368 | Bluff: 0.0931 | Str: 0.0247 | Eq: 0.0263        |
++========================================================================================+
++========================================================================================+
+|  SELF-PLAY V8 MULTI-PERSONALITY LEAGUE SYSTEM (RTX 4080 GPU)                           |
++========================================================================================+
+|  Active Personality: MAIN                                                               |
+|  Hands Simulated:         3,843 /     50,000   (  7.7%)                            |
+|  Training Epoch:        6                                                              |
+|  Bootstrap Alpha:      1.00                                                            |
+|  Curriculum Stage:   Phase 1: Heuristic Bootstrap                                      |
+|  Elapsed Time:       2m 15s                                                           |
+|  Sim Speed:              28 hands/sec                                                 |
+|  ETA:                27m 12s                                                          |
+|  Training Samples:        3,843                                                        |
++----------------------------------------------------------------------------------------+
+|  CUMULATIVE PERFORMANCE BY SEAT:                                                       |
+|  - Seat 0 Hero (Main)                       :  -14.0 BB/100 (VPIP:23.7% AGG:47.8%) [R:1308  F:3036  AI:377 ]|
+|  - Seat 1 Opp 1: LAG (Heuristic)            :  +10.3 BB/100 (VPIP:32.7% AGG:65.1%) [R:2312  F:2612  AI:556 ]|
+|  - Seat 2 Opp 2: Nit (Heuristic)            :  +10.6 BB/100 (VPIP:26.7% AGG:21.3%) [R:754   F:3008  AI:177 ]|
+|  - Seat 3 Opp 3: Calling Station (Heuristic):  -35.8 BB/100 (VPIP:45.9% AGG:17.3%) [R:936   F:2215  AI:433 ]|
+|  - Seat 4 Opp 4: Lagged-Self (NN)           :  +11.1 BB/100 (VPIP:31.0% AGG:52.8%) [R:1853  F:2784  AI:425 ]|
+|  - Seat 5 Opp 5: TAG (Heuristic)            :  +17.8 BB/100 (VPIP:31.7% AGG:49.9%) [R:1834  F:2745  AI:426 ]|
++----------------------------------------------------------------------------------------+
+|  Global Post-Flop Avg Active Players: 2.13                                             |
++----------------------------------------------------------------------------------------+
+|  EXPLOITATION SCOREBOARD (Net BB/100 Matrix):                                          |
+|  [Winner \ Loser] | Hero  | S1    | S2    | S3    | S4    | S5    |                    |
+|  Hero (Main)      |   -   | -10.4 |  -3.1 |  -5.9 | +10.6 |  -5.2 |                    |
+|  Opp 1: LAG (Heuristic) | +10.4 |   -   |  -3.9 |  +9.4 |  -5.8 |  +0.2 |                    |
+|  Opp 2: Nit (Heuristic) |  +3.1 |  +3.9 |   -   |  +0.6 |  -3.4 |  +6.5 |                    |
+|  Opp 3: Calling Station (Heuristic) |  +5.9 |  -9.4 |  -0.6 |   -   | -12.2 | -19.6 |                    |
+|  Opp 4: Lagged-Self (NN) | -10.6 |  +5.8 |  +3.4 | +12.2 |   -   |  +0.3 |                    |
+|  Opp 5: TAG (Heuristic) |  +5.2 |  -0.2 |  -6.5 | +19.6 |  -0.3 |   -   |                    |
++----------------------------------------------------------------------------------------+
+|  Action Entropy:       1.7223                                                        |
++------------------------------------------------------------------------------------------------------------------------+
+|  Equity Matrix (FACING A BET ONLY -- free checks tallied separately, see Free col)                                    |
+|  Equity Bucket     | Fold  | Call  | r33   | r66   | rPot  | All-In | N Hands | Free  | Avg St | Net Chips | Won    | Lost  |
++------------------------------------------------------------------------------------------------------------------------+
+|  <20% (Pure Air)   | 87.6% |  2.0% |  1.5% |  0.0% |  3.0% |  5.9%  |     202 |    97 |   1.1  | -3927.7   |   +858 |  -4785 |
+|  20-40% (Draws)    | 93.4% |  2.6% |  0.3% |  0.3% |  1.0% |  2.5%  |   2,377 |    67 |   0.1  | -10539.4   |  +5733 | -16273 |
+|  40-60% (Marginal) | 77.9% |  8.5% |  0.4% |  0.4% |  4.0% |  8.9%  |     778 |    65 |   0.1  |  -880.4   | +11619 | -12499 |
+|  60-80% (Strong)   | 19.4% | 11.6% |  0.0% |  0.0% | 17.8% | 51.2%  |     129 |    41 |   0.8  | +3520.6   | +12153 |  -8632 |
+|  >80% (Nuts)       |  0.0% | 11.4% |  0.0% |  0.0% | 22.7% | 65.9%  |      44 |    43 |   1.6  | +4468.4   |  +6100 |  -1631 |
++------------------------------------------------------------------------------------------------------------------------+
+|  ACTION USAGE (all decisions) | Fold 55.6% | Call 20.5% | r33  0.9% | r66  0.7% | rPot 21.4% | All-In  1.0% |
+|  ALL-IN WinRate 45.5% (n=277) | JAM by Opp-Color: Blue  2.2% Green  8.4% Yellow 14.3% Red 13.4% |
++------------------------------------------------------------------------------------------------------------------------+
+|  Train Loss:           7.4515  |  Val Loss:   7.6090                                |
+|  Loss Q: 5.7495 | Pi: 1.6929 | Bluff: 0.0926 | Str: 0.0282 | Eq: 0.0326        |
++========================================================================================+
++========================================================================================+
+|  SELF-PLAY V8 MULTI-PERSONALITY LEAGUE SYSTEM (RTX 4080 GPU)                           |
++========================================================================================+
+|  Active Personality: MAIN                                                               |
+|  Hands Simulated:         5,767 /     50,000   ( 11.5%)                            |
+|  Training Epoch:        9                                                              |
+|  Bootstrap Alpha:      1.00                                                            |
+|  Curriculum Stage:   Phase 2: Bootstrap Decay -> Actor-Critic Cutover                                      |
+|  Elapsed Time:       3m 21s                                                           |
+|  Sim Speed:              29 hands/sec                                                 |
+|  ETA:                25m 45s                                                          |
+|  Training Samples:        5,767                                                        |
++----------------------------------------------------------------------------------------+
+|  CUMULATIVE PERFORMANCE BY SEAT:                                                       |
+|  - Seat 0 Hero (Main)                       :   -6.9 BB/100 (VPIP:23.4% AGG:47.0%) [R:1899  F:4580  AI:542 ]|
+|  - Seat 1 Opp 1: LAG (Heuristic)            :   +2.5 BB/100 (VPIP:33.3% AGG:65.2%) [R:3501  F:3881  AI:847 ]|
+|  - Seat 2 Opp 2: Nit (Heuristic)            :  +12.2 BB/100 (VPIP:26.6% AGG:20.8%) [R:1117  F:4512  AI:267 ]|
+|  - Seat 3 Opp 3: Calling Station (Heuristic):  -25.6 BB/100 (VPIP:46.3% AGG:17.4%) [R:1440  F:3295  AI:649 ]|
+|  - Seat 4 Opp 4: Lagged-Self (NN)           :  +14.8 BB/100 (VPIP:31.1% AGG:52.2%) [R:2758  F:4157  AI:646 ]|
+|  - Seat 5 Opp 5: TAG (Heuristic)            :   +3.1 BB/100 (VPIP:31.7% AGG:49.8%) [R:2745  F:4110  AI:645 ]|
++----------------------------------------------------------------------------------------+
+|  Global Post-Flop Avg Active Players: 2.13                                             |
++----------------------------------------------------------------------------------------+
+|  EXPLOITATION SCOREBOARD (Net BB/100 Matrix):                                          |
+|  [Winner \ Loser] | Hero  | S1    | S2    | S3    | S4    | S5    |                    |
+|  Hero (Main)      |   -   |  -8.3 |  -2.1 |  -1.4 |  +7.4 |  -2.6 |                    |
+|  Opp 1: LAG (Heuristic) |  +8.3 |   -   |  -0.8 |  +6.5 | -10.2 |  -1.5 |                    |
+|  Opp 2: Nit (Heuristic) |  +2.1 |  +0.8 |   -   |  +2.1 |  -0.4 |  +7.6 |                    |
+|  Opp 3: Calling Station (Heuristic) |  +1.4 |  -6.5 |  -2.1 |   -   |  -6.3 | -12.0 |                    |
+|  Opp 4: Lagged-Self (NN) |  -7.4 | +10.2 |  +0.4 |  +6.3 |   -   |  +5.3 |                    |
+|  Opp 5: TAG (Heuristic) |  +2.6 |  +1.5 |  -7.6 | +12.0 |  -5.3 |   -   |                    |
++----------------------------------------------------------------------------------------+
+|  Action Entropy:       1.6797                                                        |
++------------------------------------------------------------------------------------------------------------------------+
+|  Equity Matrix (FACING A BET ONLY -- free checks tallied separately, see Free col)                                    |
+|  Equity Bucket     | Fold  | Call  | r33   | r66   | rPot  | All-In | N Hands | Free  | Avg St | Net Chips | Won    | Lost  |
++------------------------------------------------------------------------------------------------------------------------+
+|  <20% (Pure Air)   | 89.0% |  1.7% |  1.0% |  0.0% |  2.4% |  5.8%  |     292 |   151 |   1.1  | -6087.5   |   +902 |  -6990 |
+|  20-40% (Draws)    | 93.4% |  2.6% |  0.3% |  0.3% |  0.9% |  2.5%  |   3,586 |    98 |   0.1  | -14244.1   |  +9552 | -23796 |
+|  40-60% (Marginal) | 79.3% |  8.3% |  0.3% |  0.5% |  4.2% |  7.4%  |   1,155 |   104 |   0.1  | -1190.7   | +15026 | -16217 |
+|  60-80% (Strong)   | 20.8% |  9.8% |  0.0% |  0.5% | 18.0% | 50.8%  |     183 |    64 |   0.8  | +5152.2   | +16082 | -10930 |
+|  >80% (Nuts)       |  0.0% | 10.5% |  0.0% |  0.0% | 23.7% | 65.8%  |      76 |    58 |   1.6  | +11885.9   | +13717 |  -1831 |
++------------------------------------------------------------------------------------------------------------------------+
+|  ACTION USAGE (all decisions) | Fold 56.1% | Call 20.6% | r33  0.8% | r66  0.7% | rPot 20.9% | All-In  0.9% |
+|  ALL-IN WinRate 48.0% (n=394) | JAM by Opp-Color: Blue  2.1% Green  8.0% Yellow 14.0% Red 13.3% |
++------------------------------------------------------------------------------------------------------------------------+
+|  Train Loss:           7.3762  |  Val Loss:   8.0825                                |
+|  Loss Q: 5.7092 | Pi: 1.6582 | Bluff: 0.0968 | Str: 0.0257 | Eq: 0.0281        |
++========================================================================================+
+
+==================================================
+--- INTERMEDIATE SENSITIVITY CHECK AT 5k Hands ---
+| Hand | Equity | P(Fold) | P(Call) | P(Raise) | Action |
+| :--- | :---: | :---: | :---: | :---: | :---: |
+| 7d 2s (Garbage)      | 0.30 |   0.44 |   0.24 |    0.12 | **FOLD** |
+| Jh Ts (Medium)       | 0.46 |   0.41 |   0.24 |    0.13 | **FOLD** |
+| Ad Qo (Strong)       | 0.60 |   0.22 |   0.19 |    0.19 | **FOLD** |
+| Qd Qs (Premium)      | 0.78 |   0.36 |   0.23 |    0.15 | **FOLD** |
+| Ah As (Nuts)         | 0.85 |   0.18 |   0.16 |    0.19 | **RAISE** |
+==================================================
+
+
+[DIAGNOSTICS] Mid-flight checkpoint at 5767 hands...
++========================================================================================+
+|  SELF-PLAY V8 MULTI-PERSONALITY LEAGUE SYSTEM (RTX 4080 GPU)                           |
++========================================================================================+
+|  Active Personality: MAIN                                                               |
+|  Hands Simulated:         7,699 /     50,000   ( 15.4%)                            |
+|  Training Epoch:       12                                                              |
+|  Bootstrap Alpha:      0.95                                                            |
+|  Curriculum Stage:   Phase 2: Bootstrap Decay -> Actor-Critic Cutover                                      |
+|  Elapsed Time:       5m 1s                                                            |
+|  Sim Speed:              26 hands/sec                                                 |
+|  ETA:                27m 38s                                                          |
+|  Training Samples:        7,699                                                        |
++----------------------------------------------------------------------------------------+
+|  CUMULATIVE PERFORMANCE BY SEAT:                                                       |
+|  - Seat 0 Hero (Main)                       :   +4.6 BB/100 (VPIP:23.9% AGG:46.6%) [R:2538  F:6090  AI:730 ]|
+|  - Seat 1 Opp 1: LAG (Heuristic)            :  +13.2 BB/100 (VPIP:33.5% AGG:65.5%) [R:4634  F:5169  AI:1131]|
+|  - Seat 2 Opp 2: Nit (Heuristic)            :  +13.1 BB/100 (VPIP:26.1% AGG:20.7%) [R:1463  F:6058  AI:359 ]|
+|  - Seat 3 Opp 3: Calling Station (Heuristic):  -31.8 BB/100 (VPIP:46.8% AGG:17.4%) [R:1942  F:4372  AI:881 ]|
+|  - Seat 4 Opp 4: Lagged-Self (NN)           :  -13.2 BB/100 (VPIP:31.0% AGG:54.9%) [R:3764  F:5558  AI:876 ]|
+|  - Seat 5 Opp 5: TAG (Heuristic)            :  +14.1 BB/100 (VPIP:31.6% AGG:49.6%) [R:3672  F:5485  AI:885 ]|
++----------------------------------------------------------------------------------------+
+|  Global Post-Flop Avg Active Players: 2.14                                             |
++----------------------------------------------------------------------------------------+
+|  EXPLOITATION SCOREBOARD (Net BB/100 Matrix):                                          |
+|  [Winner \ Loser] | Hero  | S1    | S2    | S3    | S4    | S5    |                    |
+|  Hero (Main)      |   -   |  -7.0 |  -1.7 |  +3.2 |  +7.2 |  +2.9 |                    |
+|  Opp 1: LAG (Heuristic) |  +7.0 |   -   |  +1.8 |  +8.0 |  -0.2 |  -3.4 |                    |
+|  Opp 2: Nit (Heuristic) |  +1.7 |  -1.8 |   -   |  +4.5 |  +3.3 |  +5.5 |                    |
+|  Opp 3: Calling Station (Heuristic) |  -3.2 |  -8.0 |  -4.5 |   -   |  -2.6 | -13.6 |                    |
+|  Opp 4: Lagged-Self (NN) |  -7.2 |  +0.2 |  -3.3 |  +2.6 |   -   |  -5.4 |                    |
+|  Opp 5: TAG (Heuristic) |  -2.9 |  +3.4 |  -5.5 | +13.6 |  +5.4 |   -   |                    |
++----------------------------------------------------------------------------------------+
+|  Action Entropy:       1.6594                                                        |
++------------------------------------------------------------------------------------------------------------------------+
+|  Equity Matrix (FACING A BET ONLY -- free checks tallied separately, see Free col)                                    |
+|  Equity Bucket     | Fold  | Call  | r33   | r66   | rPot  | All-In | N Hands | Free  | Avg St | Net Chips | Won    | Lost  |
++------------------------------------------------------------------------------------------------------------------------+
+|  <20% (Pure Air)   | 89.5% |  1.3% |  0.8% |  0.0% |  2.6% |  5.9%  |     392 |   192 |   1.1  | -8448.2   |   +972 |  -9421 |
+|  20-40% (Draws)    | 93.0% |  2.6% |  0.4% |  0.2% |  1.0% |  2.8%  |   4,816 |   122 |   0.1  | -19285.8   | +13130 | -32416 |
+|  40-60% (Marginal) | 77.8% |  9.5% |  0.3% |  0.6% |  4.1% |  7.7%  |   1,529 |   126 |   0.2  |  -163.6   | +21531 | -21694 |
+|  60-80% (Strong)   | 20.6% | 10.1% |  0.0% |  1.2% | 19.1% | 49.0%  |     257 |    85 |   0.8  | +9844.4   | +23792 | -13948 |
+|  >80% (Nuts)       |  0.0% |  8.6% |  0.0% |  0.0% | 25.7% | 65.7%  |     105 |    75 |   1.7  | +16632.8   | +19084 |  -2451 |
++------------------------------------------------------------------------------------------------------------------------+
+|  ACTION USAGE (all decisions) | Fold 56.0% | Call 20.6% | r33  1.0% | r66  0.9% | rPot 20.5% | All-In  1.0% |
+|  ALL-IN WinRate 49.3% (n=546) | JAM by Opp-Color: Blue  2.2% Green  8.5% Yellow 13.8% Red 12.1% |
++------------------------------------------------------------------------------------------------------------------------+
+|  Train Loss:           7.3623  |  Val Loss:   8.1205                                |
+|  Loss Q: 5.7052 | Pi: 1.6479 | Bluff: 0.1099 | Str: 0.0248 | Eq: 0.0247        |
++========================================================================================+
++========================================================================================+
+|  SELF-PLAY V8 MULTI-PERSONALITY LEAGUE SYSTEM (RTX 4080 GPU)                           |
++========================================================================================+
+|  Active Personality: MAIN                                                               |
+|  Hands Simulated:         9,619 /     50,000   ( 19.2%)                            |
+|  Training Epoch:       15                                                              |
+|  Bootstrap Alpha:      0.82                                                            |
+|  Curriculum Stage:   Phase 2: Bootstrap Decay -> Actor-Critic Cutover                                      |
+|  Elapsed Time:       6m 41s                                                           |
+|  Sim Speed:              24 hands/sec                                                 |
+|  ETA:                28m 6s                                                           |
+|  Training Samples:        9,619                                                        |
++----------------------------------------------------------------------------------------+
+|  CUMULATIVE PERFORMANCE BY SEAT:                                                       |
+|  - Seat 0 Hero (Main)                       :   +4.7 BB/100 (VPIP:25.5% AGG:47.0%) [R:3337  F:7516  AI:971 ]|
+|  - Seat 1 Opp 1: LAG (Heuristic)            :  +13.4 BB/100 (VPIP:34.6% AGG:65.9%) [R:5918  F:6398  AI:1449]|
+|  - Seat 2 Opp 2: Nit (Heuristic)            :  +11.7 BB/100 (VPIP:24.9% AGG:20.7%) [R:1755  F:7689  AI:420 ]|
+|  - Seat 3 Opp 3: Calling Station (Heuristic):  -20.3 BB/100 (VPIP:47.6% AGG:17.2%) [R:2441  F:5408  AI:1143]|
+|  - Seat 4 Opp 4: Lagged-Self (NN)           :  -20.4 BB/100 (VPIP:31.8% AGG:56.3%) [R:4803  F:6938  AI:1126]|
+|  - Seat 5 Opp 5: TAG (Heuristic)            :  +10.9 BB/100 (VPIP:30.9% AGG:50.3%) [R:4519  F:6928  AI:1096]|
++----------------------------------------------------------------------------------------+
+|  Global Post-Flop Avg Active Players: 2.15                                             |
++----------------------------------------------------------------------------------------+
+|  EXPLOITATION SCOREBOARD (Net BB/100 Matrix):                                          |
+|  [Winner \ Loser] | Hero  | S1    | S2    | S3    | S4    | S5    |                    |
+|  Hero (Main)      |   -   |  -3.9 |  -1.6 |  +3.3 |  +6.4 |  +0.5 |                    |
+|  Opp 1: LAG (Heuristic) |  +3.9 |   -   |  +0.6 |  +9.6 |  +4.4 |  -5.2 |                    |
+|  Opp 2: Nit (Heuristic) |  +1.6 |  -0.6 |   -   |  +2.3 |  +4.0 |  +4.4 |                    |
+|  Opp 3: Calling Station (Heuristic) |  -3.3 |  -9.6 |  -2.3 |   -   |  +4.1 |  -9.1 |                    |
+|  Opp 4: Lagged-Self (NN) |  -6.4 |  -4.4 |  -4.0 |  -4.1 |   -   |  -1.4 |                    |
+|  Opp 5: TAG (Heuristic) |  -0.5 |  +5.2 |  -4.4 |  +9.1 |  +1.4 |   -   |                    |
++----------------------------------------------------------------------------------------+
+|  Action Entropy:       1.6436                                                        |
++------------------------------------------------------------------------------------------------------------------------+
+|  Equity Matrix (FACING A BET ONLY -- free checks tallied separately, see Free col)                                    |
+|  Equity Bucket     | Fold  | Call  | r33   | r66   | rPot  | All-In | N Hands | Free  | Avg St | Net Chips | Won    | Lost  |
++------------------------------------------------------------------------------------------------------------------------+
+|  <20% (Pure Air)   | 88.7% |  1.6% |  0.6% |  0.2% |  2.2% |  6.7%  |     505 |   237 |   1.1  | -11991.6   |  +1168 | -13159 |
+|  20-40% (Draws)    | 92.1% |  2.8% |  0.5% |  0.4% |  1.1% |  3.1%  |   5,985 |   148 |   0.1  | -23426.1   | +18603 | -42029 |
+|  40-60% (Marginal) | 76.3% |  9.7% |  0.7% |  0.6% |  4.2% |  8.5%  |   1,914 |   160 |   0.2  |  -675.0   | +30178 | -30853 |
+|  60-80% (Strong)   | 21.1% | 10.6% |  0.3% |  0.9% | 17.2% | 49.8%  |     331 |   113 |   0.8  | +11161.2   | +29491 | -18330 |
+|  >80% (Nuts)       |  1.4% |  8.5% |  0.7% |  0.0% | 26.2% | 63.1%  |     141 |    85 |   1.6  | +20651.0   | +24182 |  -3531 |
++------------------------------------------------------------------------------------------------------------------------+
+|  ACTION USAGE (all decisions) | Fold 54.9% | Call 20.7% | r33  1.4% | r66  1.5% | rPot 20.2% | All-In  1.3% |
+|  ALL-IN WinRate 48.3% (n=733) | JAM by Opp-Color: Blue  2.2% Green  9.1% Yellow 14.4% Red 12.8% |
++------------------------------------------------------------------------------------------------------------------------+
+|  Train Loss:           7.6626  |  Val Loss:   7.8380                                |
+|  Loss Q: 6.0184 | Pi: 1.6362 | Bluff: 0.0901 | Str: 0.0245 | Eq: 0.0200        |
++========================================================================================+
++========================================================================================+
+|  SELF-PLAY V8 MULTI-PERSONALITY LEAGUE SYSTEM (RTX 4080 GPU)                           |
++========================================================================================+
+|  Active Personality: MAIN                                                               |
+|  Hands Simulated:        11,552 /     50,000   ( 23.1%)                            |
+|  Training Epoch:       18                                                              |
+|  Bootstrap Alpha:      0.69                                                            |
+|  Curriculum Stage:   Phase 2: Bootstrap Decay -> Actor-Critic Cutover                                      |
+|  Elapsed Time:       8m 36s                                                           |
+|  Sim Speed:              22 hands/sec                                                 |
+|  ETA:                28m 40s                                                          |
+|  Training Samples:       11,552                                                        |
++----------------------------------------------------------------------------------------+
+|  CUMULATIVE PERFORMANCE BY SEAT:                                                       |
+|  - Seat 0 Hero (Main)                       :   -0.1 BB/100 (VPIP:28.0% AGG:48.2%) [R:4284  F:8850  AI:1275]|
+|  - Seat 1 Opp 1: LAG (Heuristic)            :  +19.6 BB/100 (VPIP:36.5% AGG:65.7%) [R:7275  F:7542  AI:1813]|
+|  - Seat 2 Opp 2: Nit (Heuristic)            :  +11.8 BB/100 (VPIP:23.5% AGG:21.1%) [R:2008  F:9365  AI:489 ]|
+|  - Seat 3 Opp 3: Calling Station (Heuristic):  -14.9 BB/100 (VPIP:48.2% AGG:16.9%) [R:2937  F:6436  AI:1456]|
+|  - Seat 4 Opp 4: Lagged-Self (NN)           :  -32.2 BB/100 (VPIP:33.5% AGG:58.3%) [R:5973  F:8244  AI:1416]|
+|  - Seat 5 Opp 5: TAG (Heuristic)            :  +15.8 BB/100 (VPIP:30.1% AGG:50.3%) [R:5279  F:8406  AI:1304]|
++----------------------------------------------------------------------------------------+
+|  Global Post-Flop Avg Active Players: 2.16                                             |
++----------------------------------------------------------------------------------------+
+|  EXPLOITATION SCOREBOARD (Net BB/100 Matrix):                                          |
+|  [Winner \ Loser] | Hero  | S1    | S2    | S3    | S4    | S5    |                    |
+|  Hero (Main)      |   -   |  -2.5 |  -1.9 |  +1.7 |  +6.2 |  -3.5 |                    |
+|  Opp 1: LAG (Heuristic) |  +2.5 |   -   |  +0.3 |  +9.7 |  +9.5 |  -2.4 |                    |
+|  Opp 2: Nit (Heuristic) |  +1.9 |  -0.3 |   -   |  +2.1 |  +4.4 |  +3.7 |                    |
+|  Opp 3: Calling Station (Heuristic) |  -1.7 |  -9.7 |  -2.1 |   -   |  +6.3 |  -7.7 |                    |
+|  Opp 4: Lagged-Self (NN) |  -6.2 |  -9.5 |  -4.4 |  -6.3 |   -   |  -5.8 |                    |
+|  Opp 5: TAG (Heuristic) |  +3.5 |  +2.4 |  -3.7 |  +7.7 |  +5.8 |   -   |                    |
++----------------------------------------------------------------------------------------+
+|  Action Entropy:       1.6257                                                        |
++------------------------------------------------------------------------------------------------------------------------+
+|  Equity Matrix (FACING A BET ONLY -- free checks tallied separately, see Free col)                                    |
+|  Equity Bucket     | Fold  | Call  | r33   | r66   | rPot  | All-In | N Hands | Free  | Avg St | Net Chips | Won    | Lost  |
++------------------------------------------------------------------------------------------------------------------------+
+|  <20% (Pure Air)   | 87.3% |  2.6% |  0.8% |  0.3% |  2.4% |  6.6%  |     623 |   276 |   1.1  | -15766.9   |  +1870 | -17637 |
+|  20-40% (Draws)    | 90.6% |  3.3% |  0.6% |  0.6% |  1.3% |  3.5%  |   7,154 |   177 |   0.1  | -32669.0   | +24697 | -57366 |
+|  40-60% (Marginal) | 73.3% | 10.6% |  0.8% |  0.8% |  4.4% | 10.1%  |   2,330 |   184 |   0.2  | +3176.6   | +43385 | -40209 |
+|  60-80% (Strong)   | 21.3% | 10.0% |  0.2% |  1.0% | 15.9% | 51.5%  |     408 |   133 |   0.8  | +14096.9   | +35690 | -21593 |
+|  >80% (Nuts)       |  1.8% |  9.1% |  1.2% |  0.0% | 24.8% | 63.0%  |     165 |   102 |   1.6  | +24917.2   | +29286 |  -4369 |
++------------------------------------------------------------------------------------------------------------------------+
+|  ACTION USAGE (all decisions) | Fold 53.4% | Call 20.7% | r33  1.9% | r66  2.2% | rPot 20.0% | All-In  1.8% |
+|  ALL-IN WinRate 48.5% (n=977) | JAM by Opp-Color: Blue  2.4% Green  9.7% Yellow 16.0% Red 13.5% |
++------------------------------------------------------------------------------------------------------------------------+
+|  Train Loss:           7.8914  |  Val Loss:   7.6579                                |
+|  Loss Q: 6.2684 | Pi: 1.6151 | Bluff: 0.0980 | Str: 0.0217 | Eq: 0.0180        |
++========================================================================================+
+
+[DIAGNOSTICS] Mid-flight checkpoint at 11552 hands...
++========================================================================================+
+|  SELF-PLAY V8 MULTI-PERSONALITY LEAGUE SYSTEM (RTX 4080 GPU)                           |
++========================================================================================+
+|  Active Personality: MAIN                                                               |
+|  Hands Simulated:        13,478 /     50,000   ( 27.0%)                            |
+|  Training Epoch:       21                                                              |
+|  Bootstrap Alpha:      0.56                                                            |
+|  Curriculum Stage:   Phase 2: Bootstrap Decay -> Actor-Critic Cutover                                      |
+|  Elapsed Time:       10m 50s                                                          |
+|  Sim Speed:              21 hands/sec                                                 |
+|  ETA:                29m 22s                                                          |
+|  Training Samples:       13,478                                                        |
++----------------------------------------------------------------------------------------+
+|  CUMULATIVE PERFORMANCE BY SEAT:                                                       |
+|  - Seat 0 Hero (Main)                       :   -1.7 BB/100 (VPIP:31.0% AGG:49.0%) [R:5312  F:10119 AI:1603]|
+|  - Seat 1 Opp 1: LAG (Heuristic)            :  +18.4 BB/100 (VPIP:38.7% AGG:65.6%) [R:8637  F:8645  AI:2207]|
+|  - Seat 2 Opp 2: Nit (Heuristic)            :  +11.3 BB/100 (VPIP:21.9% AGG:20.8%) [R:2211  F:11077 AI:544 ]|
+|  - Seat 3 Opp 3: Calling Station (Heuristic):   -9.2 BB/100 (VPIP:48.7% AGG:16.9%) [R:3396  F:7475  AI:1775]|
+|  - Seat 4 Opp 4: Lagged-Self (NN)           :  -35.4 BB/100 (VPIP:35.9% AGG:59.4%) [R:7151  F:9500  AI:1706]|
+|  - Seat 5 Opp 5: TAG (Heuristic)            :  +16.6 BB/100 (VPIP:29.7% AGG:49.7%) [R:5997  F:9856  AI:1511]|
++----------------------------------------------------------------------------------------+
+|  Global Post-Flop Avg Active Players: 2.19                                             |
++----------------------------------------------------------------------------------------+
+|  EXPLOITATION SCOREBOARD (Net BB/100 Matrix):                                          |
+|  [Winner \ Loser] | Hero  | S1    | S2    | S3    | S4    | S5    |                    |
+|  Hero (Main)      |   -   |  -4.2 |  -2.1 |  +1.4 |  +8.5 |  -5.1 |                    |
+|  Opp 1: LAG (Heuristic) |  +4.2 |   -   |  +0.1 |  +5.1 | +10.6 |  -1.7 |                    |
+|  Opp 2: Nit (Heuristic) |  +2.1 |  -0.1 |   -   |  +2.3 |  +3.6 |  +3.5 |                    |
+|  Opp 3: Calling Station (Heuristic) |  -1.4 |  -5.1 |  -2.3 |   -   |  +5.9 |  -6.4 |                    |
+|  Opp 4: Lagged-Self (NN) |  -8.5 | -10.6 |  -3.6 |  -5.9 |   -   |  -6.9 |                    |
+|  Opp 5: TAG (Heuristic) |  +5.1 |  +1.7 |  -3.5 |  +6.4 |  +6.9 |   -   |                    |
++----------------------------------------------------------------------------------------+
+|  Action Entropy:       1.6206                                                        |
++------------------------------------------------------------------------------------------------------------------------+
+|  Equity Matrix (FACING A BET ONLY -- free checks tallied separately, see Free col)                                    |
+|  Equity Bucket     | Fold  | Call  | r33   | r66   | rPot  | All-In | N Hands | Free  | Avg St | Net Chips | Won    | Lost  |
++------------------------------------------------------------------------------------------------------------------------+
+|  <20% (Pure Air)   | 84.5% |  4.2% |  1.3% |  0.4% |  2.2% |  7.4%  |     770 |   304 |   1.0  | -19282.9   |  +3445 | -22728 |
+|  20-40% (Draws)    | 88.8% |  4.0% |  0.8% |  0.8% |  1.5% |  4.0%  |   8,325 |   204 |   0.1  | -37666.6   | +38401 | -76068 |
+|  40-60% (Marginal) | 71.3% | 10.7% |  0.9% |  1.0% |  4.5% | 11.6%  |   2,729 |   212 |   0.2  |   -43.7   | +52604 | -52648 |
+|  60-80% (Strong)   | 21.0% | 10.3% |  1.0% |  1.0% | 15.1% | 51.5%  |     485 |   149 |   0.8  | +20825.6   | +44218 | -23392 |
+|  >80% (Nuts)       |  1.6% |  8.5% |  2.1% |  0.5% | 23.8% | 63.5%  |     189 |   111 |   1.6  | +28634.7   | +33258 |  -4624 |
++------------------------------------------------------------------------------------------------------------------------+
+|  ACTION USAGE (all decisions) | Fold 51.9% | Call 20.9% | r33  2.6% | r66  2.8% | rPot 19.8% | All-In  2.1% |
+|  ALL-IN WinRate 48.8% (n=1247) | JAM by Opp-Color: Blue  2.5% Green 10.2% Yellow 17.1% Red 14.5% |
++------------------------------------------------------------------------------------------------------------------------+
+|  Train Loss:           7.4575  |  Val Loss:   8.6292                                |
+|  Loss Q: 5.8305 | Pi: 1.6190 | Bluff: 0.0965 | Str: 0.0238 | Eq: 0.0160        |
++========================================================================================+
++========================================================================================+
+|  SELF-PLAY V8 MULTI-PERSONALITY LEAGUE SYSTEM (RTX 4080 GPU)                           |
++========================================================================================+
+|  Active Personality: MAIN                                                               |
+|  Hands Simulated:        15,405 /     50,000   ( 30.8%)                            |
+|  Training Epoch:       24                                                              |
+|  Bootstrap Alpha:      0.43                                                            |
+|  Curriculum Stage:   Phase 2: Bootstrap Decay -> Actor-Critic Cutover                                      |
+|  Elapsed Time:       13m 17s                                                          |
+|  Sim Speed:              19 hands/sec                                                 |
+|  ETA:                29m 51s                                                          |
+|  Training Samples:       15,405                                                        |
++----------------------------------------------------------------------------------------+
+|  CUMULATIVE PERFORMANCE BY SEAT:                                                       |
+|  - Seat 0 Hero (Main)                       :   -8.4 BB/100 (VPIP:34.8% AGG:50.5%) [R:6519  F:11280 AI:2012]|
+|  - Seat 1 Opp 1: LAG (Heuristic)            :  +21.3 BB/100 (VPIP:41.5% AGG:65.3%) [R:10141 F:9645  AI:2668]|
+|  - Seat 2 Opp 2: Nit (Heuristic)            :  +10.4 BB/100 (VPIP:20.6% AGG:20.8%) [R:2407  F:12795 AI:612 ]|
+|  - Seat 3 Opp 3: Calling Station (Heuristic):   -6.0 BB/100 (VPIP:49.0% AGG:16.7%) [R:3819  F:8524  AI:2081]|
+|  - Seat 4 Opp 4: Lagged-Self (NN)           :  -40.1 BB/100 (VPIP:38.7% AGG:60.5%) [R:8445  F:10710 AI:2081]|
+|  - Seat 5 Opp 5: TAG (Heuristic)            :  +22.8 BB/100 (VPIP:29.1% AGG:48.7%) [R:6658  F:11358 AI:1708]|
++----------------------------------------------------------------------------------------+
+|  Global Post-Flop Avg Active Players: 2.22                                             |
++----------------------------------------------------------------------------------------+
+|  EXPLOITATION SCOREBOARD (Net BB/100 Matrix):                                          |
+|  [Winner \ Loser] | Hero  | S1    | S2    | S3    | S4    | S5    |                    |
+|  Hero (Main)      |   -   |  -5.3 |  -1.2 |  -1.8 |  +6.5 |  -6.6 |                    |
+|  Opp 1: LAG (Heuristic) |  +5.3 |   -   |  +0.8 |  +5.8 | +11.4 |  -2.0 |                    |
+|  Opp 2: Nit (Heuristic) |  +1.2 |  -0.8 |   -   |  +2.3 |  +4.5 |  +3.1 |                    |
+|  Opp 3: Calling Station (Heuristic) |  +1.8 |  -5.8 |  -2.3 |   -   |  +7.3 |  -7.0 |                    |
+|  Opp 4: Lagged-Self (NN) |  -6.5 | -11.4 |  -4.5 |  -7.3 |   -   | -10.2 |                    |
+|  Opp 5: TAG (Heuristic) |  +6.6 |  +2.0 |  -3.1 |  +7.0 | +10.2 |   -   |                    |
++----------------------------------------------------------------------------------------+
+|  Action Entropy:       1.6187                                                        |
++------------------------------------------------------------------------------------------------------------------------+
+|  Equity Matrix (FACING A BET ONLY -- free checks tallied separately, see Free col)                                    |
+|  Equity Bucket     | Fold  | Call  | r33   | r66   | rPot  | All-In | N Hands | Free  | Avg St | Net Chips | Won    | Lost  |
++------------------------------------------------------------------------------------------------------------------------+
+|  <20% (Pure Air)   | 82.6% |  4.7% |  1.3% |  0.4% |  2.1% |  8.8%  |     898 |   329 |   1.0  | -27735.8   |  +4307 | -32043 |
+|  20-40% (Draws)    | 87.0% |  4.9% |  1.0% |  0.9% |  1.6% |  4.6%  |   9,502 |   232 |   0.1  | -49261.6   | +52300 | -101562 |
+|  40-60% (Marginal) | 67.3% | 11.2% |  1.2% |  1.3% |  4.7% | 14.4%  |   3,164 |   232 |   0.2  | +3465.5   | +72478 | -69012 |
+|  60-80% (Strong)   | 19.6% | 11.2% |  1.4% |  1.1% | 14.8% | 51.8%  |     560 |   163 |   0.8  | +27604.7   | +55179 | -27574 |
+|  >80% (Nuts)       |  2.0% |  8.4% |  2.0% |  0.5% | 22.7% | 64.5%  |     203 |   122 |   1.6  | +28775.6   | +34843 |  -6068 |
++------------------------------------------------------------------------------------------------------------------------+
+|  ACTION USAGE (all decisions) | Fold 50.1% | Call 20.9% | r33  3.5% | r66  3.4% | rPot 19.3% | All-In  2.7% |
+|  ALL-IN WinRate 47.9% (n=1602) | JAM by Opp-Color: Blue  3.0% Green 11.0% Yellow 18.2% Red 15.2% |
++------------------------------------------------------------------------------------------------------------------------+
+|  Train Loss:           8.3778  |  Val Loss:   8.4629                                |
+|  Loss Q: 6.7789 | Pi: 1.5919 | Bluff: 0.0913 | Str: 0.0187 | Eq: 0.0129        |
++========================================================================================+
++========================================================================================+
+|  SELF-PLAY V8 MULTI-PERSONALITY LEAGUE SYSTEM (RTX 4080 GPU)                           |
++========================================================================================+
+|  Active Personality: MAIN                                                               |
+|  Hands Simulated:        17,335 /     50,000   ( 34.7%)                            |
+|  Training Epoch:       27                                                              |
+|  Bootstrap Alpha:      0.31                                                            |
+|  Curriculum Stage:   Phase 2: Bootstrap Decay -> Actor-Critic Cutover                                      |
+|  Elapsed Time:       16m 0s                                                           |
+|  Sim Speed:              18 hands/sec                                                 |
+|  ETA:                30m 10s                                                          |
+|  Training Samples:       17,335                                                        |
++----------------------------------------------------------------------------------------+
+|  CUMULATIVE PERFORMANCE BY SEAT:                                                       |
+|  - Seat 0 Hero (Main)                       :  -10.0 BB/100 (VPIP:38.4% AGG:52.5%) [R:7826  F:12413 AI:2475]|
+|  - Seat 1 Opp 1: LAG (Heuristic)            :  +19.3 BB/100 (VPIP:44.3% AGG:65.3%) [R:11708 F:10621 AI:3171]|
+|  - Seat 2 Opp 2: Nit (Heuristic)            :  +11.7 BB/100 (VPIP:19.2% AGG:20.5%) [R:2590  F:14559 AI:669 ]|
+|  - Seat 3 Opp 3: Calling Station (Heuristic):   +3.5 BB/100 (VPIP:49.4% AGG:16.5%) [R:4263  F:9574  AI:2459]|
+|  - Seat 4 Opp 4: Lagged-Self (NN)           :  -43.7 BB/100 (VPIP:41.6% AGG:61.9%) [R:9906  F:11845 AI:2488]|
+|  - Seat 5 Opp 5: TAG (Heuristic)            :  +19.2 BB/100 (VPIP:28.2% AGG:47.6%) [R:7256  F:12884 AI:1908]|
++----------------------------------------------------------------------------------------+
+|  Global Post-Flop Avg Active Players: 2.24                                             |
++----------------------------------------------------------------------------------------+
+|  EXPLOITATION SCOREBOARD (Net BB/100 Matrix):                                          |
+|  [Winner \ Loser] | Hero  | S1    | S2    | S3    | S4    | S5    |                    |
+|  Hero (Main)      |   -   |  -7.7 |  -1.9 |  -2.8 |  +6.9 |  -4.6 |                    |
+|  Opp 1: LAG (Heuristic) |  +7.7 |   -   |  -0.3 |  +0.6 | +13.2 |  -1.9 |                    |
+|  Opp 2: Nit (Heuristic) |  +1.9 |  +0.3 |   -   |  +2.2 |  +4.4 |  +3.0 |                    |
+|  Opp 3: Calling Station (Heuristic) |  +2.8 |  -0.6 |  -2.2 |   -   |  +8.8 |  -5.4 |                    |
+|  Opp 4: Lagged-Self (NN) |  -6.9 | -13.2 |  -4.4 |  -8.8 |   -   | -10.4 |                    |
+|  Opp 5: TAG (Heuristic) |  +4.6 |  +1.9 |  -3.0 |  +5.4 | +10.4 |   -   |                    |
++----------------------------------------------------------------------------------------+
+|  Action Entropy:       1.6206                                                        |
++------------------------------------------------------------------------------------------------------------------------+
+|  Equity Matrix (FACING A BET ONLY -- free checks tallied separately, see Free col)                                    |
+|  Equity Bucket     | Fold  | Call  | r33   | r66   | rPot  | All-In | N Hands | Free  | Avg St | Net Chips | Won    | Lost  |
++------------------------------------------------------------------------------------------------------------------------+
+|  <20% (Pure Air)   | 80.0% |  5.2% |  1.6% |  0.7% |  2.2% | 10.4%  |   1,048 |   355 |   1.0  | -33643.2   |  +8144 | -41787 |
+|  20-40% (Draws)    | 85.1% |  5.6% |  1.1% |  1.0% |  1.7% |  5.5%  |  10,662 |   256 |   0.1  | -62840.1   | +72861 | -135701 |
+|  40-60% (Marginal) | 65.1% | 11.4% |  1.5% |  1.5% |  4.6% | 16.0%  |   3,604 |   242 |   0.2  | +8218.3   | +94060 | -85842 |
+|  60-80% (Strong)   | 19.2% | 10.5% |  1.4% |  1.3% | 13.8% | 53.9%  |     631 |   175 |   0.8  | +32407.6   | +64512 | -32105 |
+|  >80% (Nuts)       |  1.7% |  8.3% |  2.2% |  1.3% | 20.5% | 65.9%  |     229 |   133 |   1.6  | +33243.0   | +40501 |  -7258 |
++------------------------------------------------------------------------------------------------------------------------+
+|  ACTION USAGE (all decisions) | Fold 48.4% | Call 21.0% | r33  4.2% | r66  4.3% | rPot 18.7% | All-In  3.3% |
+|  ALL-IN WinRate 47.8% (n=2012) | JAM by Opp-Color: Blue  3.2% Green 12.1% Yellow 18.8% Red 16.1% |
++------------------------------------------------------------------------------------------------------------------------+
+|  Train Loss:           9.0231  |  Val Loss:   8.7412                                |
+|  Loss Q: 7.4298 | Pi: 1.5856 | Bluff: 0.1028 | Str: 0.0198 | Eq: 0.0114        |
++========================================================================================+
+
+[DIAGNOSTICS] Mid-flight checkpoint at 17335 hands...
++========================================================================================+
+|  SELF-PLAY V8 MULTI-PERSONALITY LEAGUE SYSTEM (RTX 4080 GPU)                           |
++========================================================================================+
+|  Active Personality: MAIN                                                               |
+|  Hands Simulated:        19,282 /     50,000   ( 38.6%)                            |
+|  Training Epoch:       30                                                              |
+|  Bootstrap Alpha:      0.18                                                            |
+|  Curriculum Stage:   Phase 2: Bootstrap Decay -> Actor-Critic Cutover                                      |
+|  Elapsed Time:       19m 16s                                                          |
+|  Sim Speed:              17 hands/sec                                                 |
+|  ETA:                30m 43s                                                          |
+|  Training Samples:       19,282                                                        |
++----------------------------------------------------------------------------------------+
+|  CUMULATIVE PERFORMANCE BY SEAT:                                                       |
+|  - Seat 0 Hero (Main)                       :  -10.8 BB/100 (VPIP:43.2% AGG:53.8%) [R:9508  F:13445 AI:3022]|
+|  - Seat 1 Opp 1: LAG (Heuristic)            :  +14.9 BB/100 (VPIP:47.0% AGG:65.1%) [R:13300 F:11552 AI:3741]|
+|  - Seat 2 Opp 2: Nit (Heuristic)            :  +16.2 BB/100 (VPIP:18.3% AGG:20.2%) [R:2770  F:16298 AI:753 ]|
+|  - Seat 3 Opp 3: Calling Station (Heuristic):   +5.8 BB/100 (VPIP:49.6% AGG:15.9%) [R:4646  F:10634 AI:2846]|
+|  - Seat 4 Opp 4: Lagged-Self (NN)           :  -48.1 BB/100 (VPIP:45.2% AGG:62.7%) [R:11521 F:12903 AI:2965]|
+|  - Seat 5 Opp 5: TAG (Heuristic)            :  +22.0 BB/100 (VPIP:27.8% AGG:47.9%) [R:7968  F:14416 AI:2142]|
++----------------------------------------------------------------------------------------+
+|  Global Post-Flop Avg Active Players: 2.27                                             |
++----------------------------------------------------------------------------------------+
+|  EXPLOITATION SCOREBOARD (Net BB/100 Matrix):                                          |
+|  [Winner \ Loser] | Hero  | S1    | S2    | S3    | S4    | S5    |                    |
+|  Hero (Main)      |   -   |  -6.3 |  -3.2 |  -4.4 |  +7.4 |  -4.4 |                    |
+|  Opp 1: LAG (Heuristic) |  +6.3 |   -   |  -2.3 |  -1.9 | +14.4 |  -1.6 |                    |
+|  Opp 2: Nit (Heuristic) |  +3.2 |  +2.3 |   -   |  +2.7 |  +5.7 |  +2.3 |                    |
+|  Opp 3: Calling Station (Heuristic) |  +4.4 |  +1.9 |  -2.7 |   -   |  +9.6 |  -7.3 |                    |
+|  Opp 4: Lagged-Self (NN) |  -7.4 | -14.4 |  -5.7 |  -9.6 |   -   | -11.0 |                    |
+|  Opp 5: TAG (Heuristic) |  +4.4 |  +1.6 |  -2.3 |  +7.3 | +11.0 |   -   |                    |
++----------------------------------------------------------------------------------------+
+|  Action Entropy:       1.6232                                                        |
++------------------------------------------------------------------------------------------------------------------------+
+|  Equity Matrix (FACING A BET ONLY -- free checks tallied separately, see Free col)                                    |
+|  Equity Bucket     | Fold  | Call  | r33   | r66   | rPot  | All-In | N Hands | Free  | Avg St | Net Chips | Won    | Lost  |
++------------------------------------------------------------------------------------------------------------------------+
+|  <20% (Pure Air)   | 78.7% |  5.9% |  1.7% |  0.7% |  2.0% | 11.1%  |   1,221 |   381 |   1.0  | -40202.3   | +11170 | -51373 |
+|  20-40% (Draws)    | 82.9% |  6.1% |  1.4% |  1.3% |  1.9% |  6.5%  |  11,833 |   288 |   0.1  | -80638.2   | +101208 | -181846 |
+|  40-60% (Marginal) | 62.3% | 11.4% |  1.7% |  1.7% |  4.6% | 18.3%  |   4,024 |   259 |   0.2  | +16560.8   | +122928 | -106367 |
+|  60-80% (Strong)   | 18.3% | 10.3% |  1.5% |  1.9% | 13.6% | 54.4%  |     689 |   190 |   0.8  | +37707.6   | +72056 | -34348 |
+|  >80% (Nuts)       |  2.0% |  7.4% |  2.0% |  1.6% | 18.8% | 68.4%  |     256 |   141 |   1.6  | +37793.4   | +45814 |  -8021 |
++------------------------------------------------------------------------------------------------------------------------+
+|  ACTION USAGE (all decisions) | Fold 46.3% | Call 20.9% | r33  5.2% | r66  5.3% | rPot 18.5% | All-In  3.8% |
+|  ALL-IN WinRate 47.8% (n=2489) | JAM by Opp-Color: Blue  3.6% Green 13.0% Yellow 20.0% Red 16.8% |
++------------------------------------------------------------------------------------------------------------------------+
+|  Train Loss:           9.5272  |  Val Loss:   9.0958                                |
+|  Loss Q: 7.9353 | Pi: 1.5846 | Bluff: 0.0971 | Str: 0.0194 | Eq: 0.0103        |
++========================================================================================+
++========================================================================================+
+|  SELF-PLAY V8 MULTI-PERSONALITY LEAGUE SYSTEM (RTX 4080 GPU)                           |
++========================================================================================+
+|  Active Personality: MAIN                                                               |
+|  Hands Simulated:        21,221 /     50,000   ( 42.4%)                            |
+|  Training Epoch:       33                                                              |
+|  Bootstrap Alpha:      0.05                                                            |
+|  Curriculum Stage:   Phase 3: Pure Actor-Critic                                      |
+|  Elapsed Time:       22m 45s                                                          |
+|  Sim Speed:              16 hands/sec                                                 |
+|  ETA:                30m 52s                                                          |
+|  Training Samples:       21,221                                                        |
++----------------------------------------------------------------------------------------+
+|  CUMULATIVE PERFORMANCE BY SEAT:                                                       |
+|  - Seat 0 Hero (Main)                       :  -14.7 BB/100 (VPIP:47.6% AGG:54.7%) [R:11234 F:14400 AI:3654]|
+|  - Seat 1 Opp 1: LAG (Heuristic)            :  +14.7 BB/100 (VPIP:50.1% AGG:65.0%) [R:14968 F:12406 AI:4355]|
+|  - Seat 2 Opp 2: Nit (Heuristic)            :  +14.9 BB/100 (VPIP:17.3% AGG:19.0%) [R:2929  F:18072 AI:822 ]|
+|  - Seat 3 Opp 3: Calling Station (Heuristic):  +14.9 BB/100 (VPIP:49.9% AGG:16.2%) [R:5078  F:11676 AI:3260]|
+|  - Seat 4 Opp 4: Lagged-Self (NN)           :  -53.2 BB/100 (VPIP:48.9% AGG:63.2%) [R:13347 F:13897 AI:3534]|
+|  - Seat 5 Opp 5: TAG (Heuristic)            :  +23.5 BB/100 (VPIP:26.8% AGG:47.1%) [R:8532  F:15990 AI:2344]|
++----------------------------------------------------------------------------------------+
+|  Global Post-Flop Avg Active Players: 2.30                                             |
++----------------------------------------------------------------------------------------+
+|  EXPLOITATION SCOREBOARD (Net BB/100 Matrix):                                          |
+|  [Winner \ Loser] | Hero  | S1    | S2    | S3    | S4    | S5    |                    |
+|  Hero (Main)      |   -   |  -6.5 |  -2.9 |  -6.3 |  +6.4 |  -5.4 |                    |
+|  Opp 1: LAG (Heuristic) |  +6.5 |   -   |  -2.2 |  -4.8 | +17.4 |  -2.2 |                    |
+|  Opp 2: Nit (Heuristic) |  +2.9 |  +2.2 |   -   |  +2.1 |  +5.4 |  +2.2 |                    |
+|  Opp 3: Calling Station (Heuristic) |  +6.3 |  +4.8 |  -2.1 |   -   | +13.5 |  -7.6 |                    |
+|  Opp 4: Lagged-Self (NN) |  -6.4 | -17.4 |  -5.4 | -13.5 |   -   | -10.5 |                    |
+|  Opp 5: TAG (Heuristic) |  +5.4 |  +2.2 |  -2.2 |  +7.6 | +10.5 |   -   |                    |
++----------------------------------------------------------------------------------------+
+|  Action Entropy:       1.5212                                                        |
++------------------------------------------------------------------------------------------------------------------------+
+|  Equity Matrix (FACING A BET ONLY -- free checks tallied separately, see Free col)                                    |
+|  Equity Bucket     | Fold  | Call  | r33   | r66   | rPot  | All-In | N Hands | Free  | Avg St | Net Chips | Won    | Lost  |
++------------------------------------------------------------------------------------------------------------------------+
+|  <20% (Pure Air)   | 75.7% |  7.1% |  1.8% |  0.8% |  1.9% | 12.8%  |   1,398 |   418 |   1.0  | -52229.8   | +13861 | -66091 |
+|  20-40% (Draws)    | 81.1% |  6.5% |  1.5% |  1.4% |  1.9% |  7.6%  |  12,985 |   301 |   0.1  | -97954.5   | +131524 | -229479 |
+|  40-60% (Marginal) | 59.6% | 11.4% |  2.0% |  1.9% |  4.5% | 20.6%  |   4,431 |   275 |   0.2  | +17165.2   | +150809 | -133644 |
+|  60-80% (Strong)   | 16.8% |  9.9% |  1.4% |  1.7% | 12.7% | 57.5%  |     778 |   202 |   0.8  | +46950.9   | +87952 | -41001 |
+|  >80% (Nuts)       |  2.5% |  7.0% |  1.8% |  2.1% | 16.9% | 69.7%  |     284 |   149 |   1.6  | +47720.6   | +56072 |  -8351 |
++------------------------------------------------------------------------------------------------------------------------+
+|  ACTION USAGE (all decisions) | Fold 44.3% | Call 21.1% | r33  6.2% | r66  6.1% | rPot 18.1% | All-In  4.3% |
+|  ALL-IN WinRate 46.5% (n=3069) | JAM by Opp-Color: Blue  3.9% Green 14.1% Yellow 21.3% Red 17.4% |
++------------------------------------------------------------------------------------------------------------------------+
+|  Train Loss:           9.0004  |  Val Loss:   9.0728                                |
+|  Loss Q: 8.4049 | Pi: 0.5880 | Bluff: 0.0991 | Str: 0.0188 | Eq: 0.0132        |
++========================================================================================+
+
+==================================================
+--- INTERMEDIATE SENSITIVITY CHECK AT 20k Hands ---
+| Hand | Equity | P(Fold) | P(Call) | P(Raise) | Action |
+| :--- | :---: | :---: | :---: | :---: | :---: |
+| 7d 2s (Garbage)      | 0.30 |   0.99 |   0.01 |    0.00 | **FOLD** |
+| Jh Ts (Medium)       | 0.46 |   1.00 |   0.00 |    0.00 | **FOLD** |
+| Ad Qo (Strong)       | 0.60 |   0.94 |   0.04 |    0.01 | **FOLD** |
+| Qd Qs (Premium)      | 0.78 |   0.99 |   0.01 |    0.00 | **FOLD** |
+| Ah As (Nuts)         | 0.85 |   0.75 |   0.12 |    0.05 | **FOLD** |
+==================================================
+
+
+[CHECKPOINT] Restore-point dump saved: C:\REPO\Antigravity\AIPoker\versions\v25\weights\checkpoints\main_hands21221.pth
++========================================================================================+
+|  SELF-PLAY V8 MULTI-PERSONALITY LEAGUE SYSTEM (RTX 4080 GPU)                           |
++========================================================================================+
+|  Active Personality: MAIN                                                               |
+|  Hands Simulated:        23,139 /     50,000   ( 46.3%)                            |
+|  Training Epoch:       36                                                              |
+|  Bootstrap Alpha:      0.00                                                            |
+|  Curriculum Stage:   Phase 3: Pure Actor-Critic                                      |
+|  Elapsed Time:       25m 16s                                                          |
+|  Sim Speed:              15 hands/sec                                                 |
+|  ETA:                29m 20s                                                          |
+|  Training Samples:       23,139                                                        |
++----------------------------------------------------------------------------------------+
+|  CUMULATIVE PERFORMANCE BY SEAT:                                                       |
+|  - Seat 0 Hero (Main)                       :  -11.7 BB/100 (VPIP:43.7% AGG:52.5%) [R:11886 F:15867 AI:3908]|
+|  - Seat 1 Opp 1: LAG (Heuristic)            :   +8.4 BB/100 (VPIP:52.7% AGG:65.3%) [R:16551 F:13183 AI:4765]|
+|  - Seat 2 Opp 2: Nit (Heuristic)            :  +12.6 BB/100 (VPIP:16.9% AGG:19.4%) [R:3133  F:19758 AI:876 ]|
+|  - Seat 3 Opp 3: Calling Station (Heuristic):  +12.7 BB/100 (VPIP:50.0% AGG:16.4%) [R:5512  F:12680 AI:3511]|
+|  - Seat 4 Opp 4: Lagged-Self (NN)           :  -47.7 BB/100 (VPIP:42.7% AGG:61.8%) [R:13853 F:15519 AI:3662]|
+|  - Seat 5 Opp 5: TAG (Heuristic)            :  +25.7 BB/100 (VPIP:27.2% AGG:48.0%) [R:9336  F:17378 AI:2584]|
++----------------------------------------------------------------------------------------+
+|  Global Post-Flop Avg Active Players: 2.29                                             |
++----------------------------------------------------------------------------------------+
+|  EXPLOITATION SCOREBOARD (Net BB/100 Matrix):                                          |
+|  [Winner \ Loser] | Hero  | S1    | S2    | S3    | S4    | S5    |                    |
+|  Hero (Main)      |   -   |  -3.7 |  -2.4 |  -5.9 |  +5.3 |  -5.0 |                    |
+|  Opp 1: LAG (Heuristic) |  +3.7 |   -   |  -2.5 |  -3.6 | +15.8 |  -4.9 |                    |
+|  Opp 2: Nit (Heuristic) |  +2.4 |  +2.5 |   -   |  +1.6 |  +4.4 |  +1.6 |                    |
+|  Opp 3: Calling Station (Heuristic) |  +5.9 |  +3.6 |  -1.6 |   -   | +12.4 |  -7.6 |                    |
+|  Opp 4: Lagged-Self (NN) |  -5.3 | -15.8 |  -4.4 | -12.4 |   -   |  -9.8 |                    |
+|  Opp 5: TAG (Heuristic) |  +5.0 |  +4.9 |  -1.6 |  +7.6 |  +9.8 |   -   |                    |
++----------------------------------------------------------------------------------------+
+|  Action Entropy:       1.4236                                                        |
++------------------------------------------------------------------------------------------------------------------------+
+|  Equity Matrix (FACING A BET ONLY -- free checks tallied separately, see Free col)                                    |
+|  Equity Bucket     | Fold  | Call  | r33   | r66   | rPot  | All-In | N Hands | Free  | Avg St | Net Chips | Won    | Lost  |
++------------------------------------------------------------------------------------------------------------------------+
+|  <20% (Pure Air)   | 76.9% |  6.7% |  1.7% |  0.7% |  1.7% | 12.2%  |   1,486 |   438 |   1.0  | -53149.8   | +14011 | -67161 |
+|  20-40% (Draws)    | 82.1% |  6.2% |  1.4% |  1.3% |  1.8% |  7.2%  |  14,248 |   310 |   0.1  | -101684.5   | +135669 | -237354 |
+|  40-60% (Marginal) | 58.8% | 11.3% |  2.2% |  2.0% |  4.4% | 21.2%  |   4,839 |   293 |   0.2  | +16841.2   | +162489 | -145647 |
+|  60-80% (Strong)   | 15.7% | 10.3% |  2.0% |  2.2% | 12.3% | 57.4%  |     852 |   211 |   0.8  | +50778.5   | +94802 | -44023 |
+|  >80% (Nuts)       |  2.3% |  7.6% |  1.6% |  2.3% | 15.8% | 70.4%  |     304 |   158 |   1.6  | +50485.2   | +60056 |  -9571 |
++------------------------------------------------------------------------------------------------------------------------+
+|  ACTION USAGE (all decisions) | Fold 45.4% | Call 20.6% | r33  6.2% | r66  6.2% | rPot 17.2% | All-In  4.5% |
+|  ALL-IN WinRate 47.0% (n=3294) | JAM by Opp-Color: Blue  3.9% Green 13.9% Yellow 21.3% Red 17.4% |
++------------------------------------------------------------------------------------------------------------------------+
+|  Train Loss:           4.6262  |  Val Loss:   3.4848                                |
+|  Loss Q: 4.0632 | Pi: 0.5575 | Bluff: 0.0639 | Str: 0.0188 | Eq: 0.0078        |
++========================================================================================+
+
+[DIAGNOSTICS] Mid-flight checkpoint at 23139 hands...
++========================================================================================+
+|  SELF-PLAY V8 MULTI-PERSONALITY LEAGUE SYSTEM (RTX 4080 GPU)                           |
++========================================================================================+
+|  Active Personality: MAIN                                                               |
+|  Hands Simulated:        25,048 /     50,000   ( 50.1%)                            |
+|  Training Epoch:       39                                                              |
+|  Bootstrap Alpha:      0.00                                                            |
+|  Curriculum Stage:   Phase 3: Pure Actor-Critic                                      |
+|  Elapsed Time:       27m 40s                                                          |
+|  Sim Speed:              15 hands/sec                                                 |
+|  ETA:                27m 34s                                                          |
+|  Training Samples:       25,048                                                        |
++----------------------------------------------------------------------------------------+
+|  CUMULATIVE PERFORMANCE BY SEAT:                                                       |
+|  - Seat 0 Hero (Main)                       :   -6.1 BB/100 (VPIP:42.4% AGG:51.3%) [R:12611 F:17176 AI:4217]|
+|  - Seat 1 Opp 1: LAG (Heuristic)            :   +5.7 BB/100 (VPIP:54.7% AGG:65.2%) [R:18144 F:13953 AI:5174]|
+|  - Seat 2 Opp 2: Nit (Heuristic)            :  +11.9 BB/100 (VPIP:16.5% AGG:20.2%) [R:3345  F:21453 AI:952 ]|
+|  - Seat 3 Opp 3: Calling Station (Heuristic):   +9.0 BB/100 (VPIP:50.4% AGG:16.4%) [R:5939  F:13663 AI:3770]|
+|  - Seat 4 Opp 4: Lagged-Self (NN)           :  -44.1 BB/100 (VPIP:37.6% AGG:59.8%) [R:14365 F:17162 AI:3788]|
+|  - Seat 5 Opp 5: TAG (Heuristic)            :  +23.6 BB/100 (VPIP:27.6% AGG:48.0%) [R:10079 F:18765 AI:2799]|
++----------------------------------------------------------------------------------------+
+|  Global Post-Flop Avg Active Players: 2.30                                             |
++----------------------------------------------------------------------------------------+
+|  EXPLOITATION SCOREBOARD (Net BB/100 Matrix):                                          |
+|  [Winner \ Loser] | Hero  | S1    | S2    | S3    | S4    | S5    |                    |
+|  Hero (Main)      |   -   |  -1.8 |  -1.7 |  -4.3 |  +5.3 |  -3.6 |                    |
+|  Opp 1: LAG (Heuristic) |  +1.8 |   -   |  -2.9 |  -3.2 | +14.7 |  -4.6 |                    |
+|  Opp 2: Nit (Heuristic) |  +1.7 |  +2.9 |   -   |  +2.0 |  +4.3 |  +1.1 |                    |
+|  Opp 3: Calling Station (Heuristic) |  +4.3 |  +3.2 |  -2.0 |   -   | +11.2 |  -7.8 |                    |
+|  Opp 4: Lagged-Self (NN) |  -5.3 | -14.7 |  -4.3 | -11.2 |   -   |  -8.6 |                    |
+|  Opp 5: TAG (Heuristic) |  +3.6 |  +4.6 |  -1.1 |  +7.8 |  +8.6 |   -   |                    |
++----------------------------------------------------------------------------------------+
+|  Action Entropy:       1.3413                                                        |
++------------------------------------------------------------------------------------------------------------------------+
+|  Equity Matrix (FACING A BET ONLY -- free checks tallied separately, see Free col)                                    |
+|  Equity Bucket     | Fold  | Call  | r33   | r66   | rPot  | All-In | N Hands | Free  | Avg St | Net Chips | Won    | Lost  |
++------------------------------------------------------------------------------------------------------------------------+
+|  <20% (Pure Air)   | 78.1% |  6.4% |  1.6% |  0.7% |  1.6% | 11.6%  |   1,597 |   470 |   1.0  | -55066.6   | +14011 | -69078 |
+|  20-40% (Draws)    | 82.8% |  6.1% |  1.3% |  1.3% |  1.7% |  6.9%  |  15,445 |   339 |   0.1  | -105927.8   | +140008 | -245936 |
+|  40-60% (Marginal) | 56.8% | 12.5% |  2.3% |  2.1% |  4.4% | 22.0%  |   5,221 |   315 |   0.2  | +20028.3   | +176603 | -156575 |
+|  60-80% (Strong)   | 14.7% | 11.8% |  2.1% |  2.6% | 11.6% | 57.2%  |     933 |   225 |   0.7  | +55663.8   | +103236 | -47573 |
+|  >80% (Nuts)       |  2.1% |  8.3% |  1.8% |  3.0% | 14.6% | 70.2%  |     336 |   167 |   1.6  | +55890.9   | +66362 | -10471 |
++------------------------------------------------------------------------------------------------------------------------+
+|  ACTION USAGE (all decisions) | Fold 45.6% | Call 20.8% | r33  6.3% | r66  6.2% | rPot 16.4% | All-In  4.6% |
+|  ALL-IN WinRate 47.7% (n=3554) | JAM by Opp-Color: Blue  4.0% Green 13.8% Yellow 21.4% Red 17.6% |
++------------------------------------------------------------------------------------------------------------------------+
+|  Train Loss:           5.5036  |  Val Loss:   5.9808                                |
+|  Loss Q: 4.8499 | Pi: 0.6461 | Bluff: 0.0979 | Str: 0.0213 | Eq: 0.0090        |
++========================================================================================+
++========================================================================================+
+|  SELF-PLAY V8 MULTI-PERSONALITY LEAGUE SYSTEM (RTX 4080 GPU)                           |
++========================================================================================+
+|  Active Personality: MAIN                                                               |
+|  Hands Simulated:        26,969 /     50,000   ( 53.9%)                            |
+|  Training Epoch:       42                                                              |
+|  Bootstrap Alpha:      0.00                                                            |
+|  Curriculum Stage:   Phase 3: Pure Actor-Critic                                      |
+|  Elapsed Time:       30m 8s                                                           |
+|  Sim Speed:              15 hands/sec                                                 |
+|  ETA:                25m 44s                                                          |
+|  Training Samples:       26,969                                                        |
++----------------------------------------------------------------------------------------+
+|  CUMULATIVE PERFORMANCE BY SEAT:                                                       |
+|  - Seat 0 Hero (Main)                       :   -6.1 BB/100 (VPIP:41.5% AGG:50.5%) [R:13441 F:18497 AI:4501]|
+|  - Seat 1 Opp 1: LAG (Heuristic)            :   +3.3 BB/100 (VPIP:56.6% AGG:65.2%) [R:19828 F:14713 AI:5601]|
+|  - Seat 2 Opp 2: Nit (Heuristic)            :   +9.8 BB/100 (VPIP:16.1% AGG:19.9%) [R:3540  F:23163 AI:996 ]|
+|  - Seat 3 Opp 3: Calling Station (Heuristic):   +7.5 BB/100 (VPIP:50.4% AGG:16.1%) [R:6322  F:14701 AI:4014]|
+|  - Seat 4 Opp 4: Lagged-Self (NN)           :  -38.7 BB/100 (VPIP:35.1% AGG:60.0%) [R:15156 F:18673 AI:3988]|
+|  - Seat 5 Opp 5: TAG (Heuristic)            :  +24.2 BB/100 (VPIP:27.6% AGG:47.5%) [R:10813 F:20183 AI:3014]|
++----------------------------------------------------------------------------------------+
+|  Global Post-Flop Avg Active Players: 2.30                                             |
++----------------------------------------------------------------------------------------+
+|  EXPLOITATION SCOREBOARD (Net BB/100 Matrix):                                          |
+|  [Winner \ Loser] | Hero  | S1    | S2    | S3    | S4    | S5    |                    |
+|  Hero (Main)      |   -   |  -1.7 |  -1.1 |  -4.1 |  +4.4 |  -3.5 |                    |
+|  Opp 1: LAG (Heuristic) |  +1.7 |   -   |  -2.4 |  -3.4 | +13.1 |  -5.7 |                    |
+|  Opp 2: Nit (Heuristic) |  +1.1 |  +2.4 |   -   |  +1.9 |  +3.8 |  +0.6 |                    |
+|  Opp 3: Calling Station (Heuristic) |  +4.1 |  +3.4 |  -1.9 |   -   |  +9.1 |  -7.2 |                    |
+|  Opp 4: Lagged-Self (NN) |  -4.4 | -13.1 |  -3.8 |  -9.1 |   -   |  -8.4 |                    |
+|  Opp 5: TAG (Heuristic) |  +3.5 |  +5.7 |  -0.6 |  +7.2 |  +8.4 |   -   |                    |
++----------------------------------------------------------------------------------------+
+|  Action Entropy:       1.2667                                                        |
++------------------------------------------------------------------------------------------------------------------------+
+|  Equity Matrix (FACING A BET ONLY -- free checks tallied separately, see Free col)                                    |
+|  Equity Bucket     | Fold  | Call  | r33   | r66   | rPot  | All-In | N Hands | Free  | Avg St | Net Chips | Won    | Lost  |
++------------------------------------------------------------------------------------------------------------------------+
+|  <20% (Pure Air)   | 79.4% |  6.1% |  1.5% |  0.6% |  1.6% | 10.9%  |   1,701 |   507 |   1.0  | -57029.0   | +14163 | -71192 |
+|  20-40% (Draws)    | 83.2% |  6.0% |  1.3% |  1.2% |  1.6% |  6.6%  |  16,677 |   361 |   0.1  | -113278.4   | +144444 | -257722 |
+|  40-60% (Marginal) | 54.8% | 13.4% |  2.5% |  2.2% |  4.3% | 22.8%  |   5,617 |   327 |   0.2  | +20744.6   | +194116 | -173371 |
+|  60-80% (Strong)   | 13.7% | 12.3% |  2.8% |  2.8% | 11.0% | 57.4%  |   1,007 |   239 |   0.7  | +61286.1   | +112821 | -51535 |
+|  >80% (Nuts)       |  2.0% |  8.5% |  2.5% |  3.4% | 13.8% | 69.9%  |     355 |   178 |   1.6  | +58283.9   | +69126 | -10842 |
++------------------------------------------------------------------------------------------------------------------------+
+|  ACTION USAGE (all decisions) | Fold 45.9% | Call 20.8% | r33  6.4% | r66  6.3% | rPot 15.8% | All-In  4.8% |
+|  ALL-IN WinRate 47.8% (n=3803) | JAM by Opp-Color: Blue  4.0% Green 13.6% Yellow 21.4% Red 17.8% |
++------------------------------------------------------------------------------------------------------------------------+
+|  Train Loss:           5.7894  |  Val Loss:   5.8056                                |
+|  Loss Q: 5.1634 | Pi: 0.6199 | Bluff: 0.0801 | Str: 0.0174 | Eq: 0.0069        |
++========================================================================================+
++========================================================================================+
+|  SELF-PLAY V8 MULTI-PERSONALITY LEAGUE SYSTEM (RTX 4080 GPU)                           |
++========================================================================================+
+|  Active Personality: MAIN                                                               |
+|  Hands Simulated:        28,879 /     50,000   ( 57.8%)                            |
+|  Training Epoch:       45                                                              |
+|  Bootstrap Alpha:      0.00                                                            |
+|  Curriculum Stage:   Phase 3: Pure Actor-Critic                                      |
+|  Elapsed Time:       32m 34s                                                          |
+|  Sim Speed:              15 hands/sec                                                 |
+|  ETA:                23m 49s                                                          |
+|  Training Samples:       28,879                                                        |
++----------------------------------------------------------------------------------------+
+|  CUMULATIVE PERFORMANCE BY SEAT:                                                       |
+|  - Seat 0 Hero (Main)                       :   -4.3 BB/100 (VPIP:39.1% AGG:48.8%) [R:14047 F:19927 AI:4752]|
+|  - Seat 1 Opp 1: LAG (Heuristic)            :   +2.0 BB/100 (VPIP:57.9% AGG:65.6%) [R:21504 F:15491 AI:6043]|
+|  - Seat 2 Opp 2: Nit (Heuristic)            :   +7.5 BB/100 (VPIP:15.9% AGG:19.6%) [R:3729  F:24852 AI:1044]|
+|  - Seat 3 Opp 3: Calling Station (Heuristic):   +8.2 BB/100 (VPIP:50.5% AGG:15.9%) [R:6768  F:15707 AI:4265]|
+|  - Seat 4 Opp 4: Lagged-Self (NN)           :  -34.8 BB/100 (VPIP:33.6% AGG:61.2%) [R:15980 F:20125 AI:4195]|
+|  - Seat 5 Opp 5: TAG (Heuristic)            :  +21.4 BB/100 (VPIP:27.4% AGG:47.3%) [R:11516 F:21651 AI:3205]|
++----------------------------------------------------------------------------------------+
+|  Global Post-Flop Avg Active Players: 2.29                                             |
++----------------------------------------------------------------------------------------+
+|  EXPLOITATION SCOREBOARD (Net BB/100 Matrix):                                          |
+|  [Winner \ Loser] | Hero  | S1    | S2    | S3    | S4    | S5    |                    |
+|  Hero (Main)      |   -   |  -0.5 |  -0.7 |  -4.7 |  +4.1 |  -2.5 |                    |
+|  Opp 1: LAG (Heuristic) |  +0.5 |   -   |  -1.7 |  -3.6 | +11.6 |  -4.8 |                    |
+|  Opp 2: Nit (Heuristic) |  +0.7 |  +1.7 |   -   |  +1.3 |  +3.2 |  +0.4 |                    |
+|  Opp 3: Calling Station (Heuristic) |  +4.7 |  +3.6 |  -1.3 |   -   |  +7.6 |  -6.4 |                    |
+|  Opp 4: Lagged-Self (NN) |  -4.1 | -11.6 |  -3.2 |  -7.6 |   -   |  -8.2 |                    |
+|  Opp 5: TAG (Heuristic) |  +2.5 |  +4.8 |  -0.4 |  +6.4 |  +8.2 |   -   |                    |
++----------------------------------------------------------------------------------------+
+|  Action Entropy:       1.1978                                                        |
++------------------------------------------------------------------------------------------------------------------------+
+|  Equity Matrix (FACING A BET ONLY -- free checks tallied separately, see Free col)                                    |
+|  Equity Bucket     | Fold  | Call  | r33   | r66   | rPot  | All-In | N Hands | Free  | Avg St | Net Chips | Won    | Lost  |
++------------------------------------------------------------------------------------------------------------------------+
+|  <20% (Pure Air)   | 80.3% |  5.8% |  1.4% |  0.6% |  1.5% | 10.3%  |   1,788 |   540 |   1.0  | -58042.0   | +14163 | -72205 |
+|  20-40% (Draws)    | 83.9% |  5.8% |  1.2% |  1.2% |  1.5% |  6.4%  |  17,957 |   370 |   0.1  | -119456.6   | +148364 | -267820 |
+|  40-60% (Marginal) | 54.0% | 14.0% |  2.6% |  2.2% |  4.2% | 23.1%  |   6,009 |   343 |   0.1  | +24049.2   | +210344 | -186295 |
+|  60-80% (Strong)   | 13.1% | 12.3% |  3.3% |  2.8% | 10.7% | 57.8%  |   1,060 |   249 |   0.7  | +65555.0   | +119663 | -54108 |
+|  >80% (Nuts)       |  1.9% |  8.0% |  2.7% |  3.5% | 13.6% | 70.3%  |     374 |   189 |   1.6  | +61551.8   | +72634 | -11082 |
++------------------------------------------------------------------------------------------------------------------------+
+|  ACTION USAGE (all decisions) | Fold 46.5% | Call 20.6% | r33  6.4% | r66  6.3% | rPot 15.2% | All-In  4.9% |
+|  ALL-IN WinRate 48.3% (n=4016) | JAM by Opp-Color: Blue  4.1% Green 13.5% Yellow 21.3% Red 17.8% |
++------------------------------------------------------------------------------------------------------------------------+
+|  Train Loss:           4.6718  |  Val Loss:   3.8306                                |
+|  Loss Q: 4.1085 | Pi: 0.5572 | Bluff: 0.0786 | Str: 0.0186 | Eq: 0.0064        |
++========================================================================================+
+
+[DIAGNOSTICS] Mid-flight checkpoint at 28879 hands...
++========================================================================================+
+|  SELF-PLAY V8 MULTI-PERSONALITY LEAGUE SYSTEM (RTX 4080 GPU)                           |
++========================================================================================+
+|  Active Personality: MAIN                                                               |
+|  Hands Simulated:        30,800 /     50,000   ( 61.6%)                            |
+|  Training Epoch:       48                                                              |
+|  Bootstrap Alpha:      0.00                                                            |
+|  Curriculum Stage:   Phase 3: Pure Actor-Critic                                      |
+|  Elapsed Time:       35m 12s                                                          |
+|  Sim Speed:              15 hands/sec                                                 |
+|  ETA:                21m 56s                                                          |
+|  Training Samples:       30,800                                                        |
++----------------------------------------------------------------------------------------+
+|  CUMULATIVE PERFORMANCE BY SEAT:                                                       |
+|  - Seat 0 Hero (Main)                       :   -3.5 BB/100 (VPIP:36.3% AGG:49.8%) [R:14706 F:21463 AI:4968]|
+|  - Seat 1 Opp 1: LAG (Heuristic)            :   -0.8 BB/100 (VPIP:59.0% AGG:65.2%) [R:23070 F:16269 AI:6435]|
+|  - Seat 2 Opp 2: Nit (Heuristic)            :   +6.9 BB/100 (VPIP:15.7% AGG:19.1%) [R:3902  F:26545 AI:1083]|
+|  - Seat 3 Opp 3: Calling Station (Heuristic):   +8.4 BB/100 (VPIP:50.7% AGG:15.7%) [R:7196  F:16679 AI:4476]|
+|  - Seat 4 Opp 4: Lagged-Self (NN)           :  -31.0 BB/100 (VPIP:32.2% AGG:62.2%) [R:16813 F:21570 AI:4399]|
+|  - Seat 5 Opp 5: TAG (Heuristic)            :  +20.1 BB/100 (VPIP:27.3% AGG:47.4%) [R:12273 F:23089 AI:3401]|
++----------------------------------------------------------------------------------------+
+|  Global Post-Flop Avg Active Players: 2.29                                             |
++----------------------------------------------------------------------------------------+
+|  EXPLOITATION SCOREBOARD (Net BB/100 Matrix):                                          |
+|  [Winner \ Loser] | Hero  | S1    | S2    | S3    | S4    | S5    |                    |
+|  Hero (Main)      |   -   |  -1.0 |  -0.5 |  -4.6 |  +4.3 |  -1.7 |                    |
+|  Opp 1: LAG (Heuristic) |  +1.0 |   -   |  -1.7 |  -4.6 |  +9.2 |  -4.8 |                    |
+|  Opp 2: Nit (Heuristic) |  +0.5 |  +1.7 |   -   |  +1.3 |  +2.9 |  +0.6 |                    |
+|  Opp 3: Calling Station (Heuristic) |  +4.6 |  +4.6 |  -1.3 |   -   |  +7.3 |  -6.8 |                    |
+|  Opp 4: Lagged-Self (NN) |  -4.3 |  -9.2 |  -2.9 |  -7.3 |   -   |  -7.3 |                    |
+|  Opp 5: TAG (Heuristic) |  +1.7 |  +4.8 |  -0.6 |  +6.8 |  +7.3 |   -   |                    |
++----------------------------------------------------------------------------------------+
+|  Action Entropy:       1.1354                                                        |
++------------------------------------------------------------------------------------------------------------------------+
+|  Equity Matrix (FACING A BET ONLY -- free checks tallied separately, see Free col)                                    |
+|  Equity Bucket     | Fold  | Call  | r33   | r66   | rPot  | All-In | N Hands | Free  | Avg St | Net Chips | Won    | Lost  |
++------------------------------------------------------------------------------------------------------------------------+
+|  <20% (Pure Air)   | 81.1% |  5.6% |  1.3% |  0.6% |  1.4% |  9.9%  |   1,870 |   561 |   1.0  | -59244.7   | +14163 | -73408 |
+|  20-40% (Draws)    | 84.6% |  5.5% |  1.2% |  1.1% |  1.4% |  6.2%  |  19,232 |   380 |   0.1  | -125323.1   | +152319 | -277642 |
+|  40-60% (Marginal) | 54.3% | 13.9% |  2.6% |  2.3% |  4.1% | 22.8%  |   6,422 |   359 |   0.1  | +23435.6   | +224613 | -201178 |
+|  60-80% (Strong)   | 12.4% | 12.0% |  3.3% |  2.8% | 10.6% | 59.0%  |   1,126 |   262 |   0.7  | +71747.6   | +130568 | -58821 |
+|  >80% (Nuts)       |  1.8% |  7.7% |  2.6% |  3.6% | 13.5% | 70.9%  |     392 |   196 |   1.6  | +65551.7   | +76884 | -11332 |
++------------------------------------------------------------------------------------------------------------------------+
+|  ACTION USAGE (all decisions) | Fold 47.3% | Call 20.2% | r33  6.4% | r66  6.4% | rPot 14.7% | All-In  5.0% |
+|  ALL-IN WinRate 48.6% (n=4198) | JAM by Opp-Color: Blue  4.0% Green 13.3% Yellow 21.1% Red 17.7% |
++------------------------------------------------------------------------------------------------------------------------+
+|  Train Loss:           5.8765  |  Val Loss:   4.9305                                |
+|  Loss Q: 5.2395 | Pi: 0.6307 | Bluff: 0.0846 | Str: 0.0181 | Eq: 0.0057        |
++========================================================================================+
++========================================================================================+
+|  SELF-PLAY V8 MULTI-PERSONALITY LEAGUE SYSTEM (RTX 4080 GPU)                           |
++========================================================================================+
+|  Active Personality: MAIN                                                               |
+|  Hands Simulated:        32,708 /     50,000   ( 65.4%)                            |
+|  Training Epoch:       51                                                              |
+|  Bootstrap Alpha:      0.00                                                            |
+|  Curriculum Stage:   Phase 3: Pure Actor-Critic                                      |
+|  Elapsed Time:       37m 43s                                                          |
+|  Sim Speed:              14 hands/sec                                                 |
+|  ETA:                19m 56s                                                          |
+|  Training Samples:       32,708                                                        |
++----------------------------------------------------------------------------------------+
+|  CUMULATIVE PERFORMANCE BY SEAT:                                                       |
+|  - Seat 0 Hero (Main)                       :   -2.4 BB/100 (VPIP:36.6% AGG:48.7%) [R:15559 F:22765 AI:5296]|
+|  - Seat 1 Opp 1: LAG (Heuristic)            :   -3.0 BB/100 (VPIP:59.9% AGG:65.2%) [R:24732 F:17036 AI:6898]|
+|  - Seat 2 Opp 2: Nit (Heuristic)            :   +6.3 BB/100 (VPIP:15.5% AGG:18.7%) [R:4081  F:28242 AI:1136]|
+|  - Seat 3 Opp 3: Calling Station (Heuristic):   +8.9 BB/100 (VPIP:50.7% AGG:15.8%) [R:7595  F:17700 AI:4740]|
+|  - Seat 4 Opp 4: Lagged-Self (NN)           :  -28.7 BB/100 (VPIP:30.3% AGG:61.5%) [R:17503 F:23127 AI:4588]|
+|  - Seat 5 Opp 5: TAG (Heuristic)            :  +19.0 BB/100 (VPIP:26.9% AGG:47.1%) [R:12918 F:24553 AI:3583]|
++----------------------------------------------------------------------------------------+
+|  Global Post-Flop Avg Active Players: 2.29                                             |
++----------------------------------------------------------------------------------------+
+|  EXPLOITATION SCOREBOARD (Net BB/100 Matrix):                                          |
+|  [Winner \ Loser] | Hero  | S1    | S2    | S3    | S4    | S5    |                    |
+|  Hero (Main)      |   -   |  -0.2 |  -0.5 |  -4.2 |  +4.2 |  -1.7 |                    |
+|  Opp 1: LAG (Heuristic) |  +0.2 |   -   |  -1.8 |  -5.8 |  +8.6 |  -4.3 |                    |
+|  Opp 2: Nit (Heuristic) |  +0.5 |  +1.8 |   -   |  +0.9 |  +2.5 |  +0.6 |                    |
+|  Opp 3: Calling Station (Heuristic) |  +4.2 |  +5.8 |  -0.9 |   -   |  +6.5 |  -6.6 |                    |
+|  Opp 4: Lagged-Self (NN) |  -4.2 |  -8.6 |  -2.5 |  -6.5 |   -   |  -7.0 |                    |
+|  Opp 5: TAG (Heuristic) |  +1.7 |  +4.3 |  -0.6 |  +6.6 |  +7.0 |   -   |                    |
++----------------------------------------------------------------------------------------+
+|  Action Entropy:       1.0791                                                        |
++------------------------------------------------------------------------------------------------------------------------+
+|  Equity Matrix (FACING A BET ONLY -- free checks tallied separately, see Free col)                                    |
+|  Equity Bucket     | Fold  | Call  | r33   | r66   | rPot  | All-In | N Hands | Free  | Avg St | Net Chips | Won    | Lost  |
++------------------------------------------------------------------------------------------------------------------------+
+|  <20% (Pure Air)   | 81.8% |  5.4% |  1.3% |  0.6% |  1.4% |  9.5%  |   1,961 |   598 |   1.0  | -60636.7   | +14163 | -74800 |
+|  20-40% (Draws)    | 84.9% |  5.4% |  1.2% |  1.1% |  1.4% |  6.0%  |  20,485 |   403 |   0.1  | -135141.9   | +158019 | -293161 |
+|  40-60% (Marginal) | 52.6% | 14.2% |  2.7% |  2.5% |  4.3% | 23.7%  |   6,788 |   378 |   0.1  | +22569.5   | +242739 | -220170 |
+|  60-80% (Strong)   | 11.7% | 11.9% |  3.4% |  2.7% |  9.9% | 60.4%  |   1,203 |   276 |   0.7  | +79768.0   | +143930 | -64162 |
+|  >80% (Nuts)       |  1.7% |  7.8% |  2.4% |  3.4% | 13.4% | 71.1%  |     409 |   207 |   1.6  | +68995.4   | +80458 | -11462 |
++------------------------------------------------------------------------------------------------------------------------+
+|  ACTION USAGE (all decisions) | Fold 47.4% | Call 20.3% | r33  6.4% | r66  6.5% | rPot 14.3% | All-In  5.2% |
+|  ALL-IN WinRate 48.7% (n=4486) | JAM by Opp-Color: Blue  4.1% Green 13.3% Yellow 21.1% Red 17.8% |
++------------------------------------------------------------------------------------------------------------------------+
+|  Train Loss:           6.1798  |  Val Loss:   5.5309                                |
+|  Loss Q: 5.6194 | Pi: 0.5540 | Bluff: 0.0768 | Str: 0.0211 | Eq: 0.0079        |
++========================================================================================+
++========================================================================================+
+|  SELF-PLAY V8 MULTI-PERSONALITY LEAGUE SYSTEM (RTX 4080 GPU)                           |
++========================================================================================+
+|  Active Personality: MAIN                                                               |
+|  Hands Simulated:        34,625 /     50,000   ( 69.2%)                            |
+|  Training Epoch:       54                                                              |
+|  Bootstrap Alpha:      0.00                                                            |
+|  Curriculum Stage:   Phase 3: Pure Actor-Critic                                      |
+|  Elapsed Time:       40m 5s                                                           |
+|  Sim Speed:              14 hands/sec                                                 |
+|  ETA:                17m 48s                                                          |
+|  Training Samples:       34,625                                                        |
++----------------------------------------------------------------------------------------+
+|  CUMULATIVE PERFORMANCE BY SEAT:                                                       |
+|  - Seat 0 Hero (Main)                       :   +1.1 BB/100 (VPIP:35.5% AGG:49.3%) [R:16255 F:24159 AI:5663]|
+|  - Seat 1 Opp 1: LAG (Heuristic)            :   -7.7 BB/100 (VPIP:60.6% AGG:65.8%) [R:26375 F:17797 AI:7368]|
+|  - Seat 2 Opp 2: Nit (Heuristic)            :   +5.5 BB/100 (VPIP:15.4% AGG:18.8%) [R:4272  F:29948 AI:1191]|
+|  - Seat 3 Opp 3: Calling Station (Heuristic):   +6.7 BB/100 (VPIP:50.7% AGG:16.1%) [R:7994  F:18708 AI:5018]|
+|  - Seat 4 Opp 4: Lagged-Self (NN)           :  -26.2 BB/100 (VPIP:28.3% AGG:59.5%) [R:18103 F:24710 AI:4758]|
+|  - Seat 5 Opp 5: TAG (Heuristic)            :  +20.6 BB/100 (VPIP:26.6% AGG:47.4%) [R:13559 F:26012 AI:3762]|
++----------------------------------------------------------------------------------------+
+|  Global Post-Flop Avg Active Players: 2.29                                             |
++----------------------------------------------------------------------------------------+
+|  EXPLOITATION SCOREBOARD (Net BB/100 Matrix):                                          |
+|  [Winner \ Loser] | Hero  | S1    | S2    | S3    | S4    | S5    |                    |
+|  Hero (Main)      |   -   |  +2.4 |  +0.0 |  -3.5 |  +4.0 |  -1.8 |                    |
+|  Opp 1: LAG (Heuristic) |  -2.4 |   -   |  -2.0 |  -5.9 |  +7.6 |  -5.0 |                    |
+|  Opp 2: Nit (Heuristic) |  -0.0 |  +2.0 |   -   |  +1.0 |  +2.1 |  +0.4 |                    |
+|  Opp 3: Calling Station (Heuristic) |  +3.5 |  +5.9 |  -1.0 |   -   |  +5.9 |  -7.6 |                    |
+|  Opp 4: Lagged-Self (NN) |  -4.0 |  -7.6 |  -2.1 |  -5.9 |   -   |  -6.6 |                    |
+|  Opp 5: TAG (Heuristic) |  +1.8 |  +5.0 |  -0.4 |  +7.6 |  +6.6 |   -   |                    |
++----------------------------------------------------------------------------------------+
+|  Action Entropy:       1.0283                                                        |
++------------------------------------------------------------------------------------------------------------------------+
+|  Equity Matrix (FACING A BET ONLY -- free checks tallied separately, see Free col)                                    |
+|  Equity Bucket     | Fold  | Call  | r33   | r66   | rPot  | All-In | N Hands | Free  | Avg St | Net Chips | Won    | Lost  |
++------------------------------------------------------------------------------------------------------------------------+
+|  <20% (Pure Air)   | 82.5% |  5.2% |  1.2% |  0.5% |  1.3% |  9.3%  |   2,040 |   616 |   1.0  | -62530.3   | +14163 | -76694 |
+|  20-40% (Draws)    | 85.4% |  5.2% |  1.1% |  1.1% |  1.3% |  5.9%  |  21,741 |   410 |   0.1  | -138611.3   | +161718 | -300329 |
+|  40-60% (Marginal) | 51.3% | 14.0% |  2.7% |  2.5% |  4.1% | 25.5%  |   7,230 |   398 |   0.1  | +26591.3   | +266063 | -239471 |
+|  60-80% (Strong)   | 11.3% | 11.6% |  3.6% |  2.9% |  9.6% | 61.0%  |   1,272 |   282 |   0.7  | +85998.3   | +153581 | -67583 |
+|  >80% (Nuts)       |  1.6% |  7.8% |  2.4% |  3.5% | 12.9% | 71.8%  |     425 |   211 |   1.6  | +73706.6   | +85599 | -11892 |
++------------------------------------------------------------------------------------------------------------------------+
+|  ACTION USAGE (all decisions) | Fold 47.9% | Call 19.9% | r33  6.4% | r66  6.4% | rPot 13.8% | All-In  5.5% |
+|  ALL-IN WinRate 49.2% (n=4831) | JAM by Opp-Color: Blue  4.5% Green 13.4% Yellow 21.1% Red 18.0% |
++------------------------------------------------------------------------------------------------------------------------+
+|  Train Loss:           4.9926  |  Val Loss:   5.3596                                |
+|  Loss Q: 4.4600 | Pi: 0.5273 | Bluff: 0.0655 | Str: 0.0179 | Eq: 0.0053        |
++========================================================================================+
+
+[DIAGNOSTICS] Mid-flight checkpoint at 34625 hands...
++========================================================================================+
+|  SELF-PLAY V8 MULTI-PERSONALITY LEAGUE SYSTEM (RTX 4080 GPU)                           |
++========================================================================================+
+|  Active Personality: MAIN                                                               |
+|  Hands Simulated:        36,541 /     50,000   ( 73.1%)                            |
+|  Training Epoch:       57                                                              |
+|  Bootstrap Alpha:      0.00                                                            |
+|  Curriculum Stage:   Phase 3: Pure Actor-Critic                                      |
+|  Elapsed Time:       42m 18s                                                          |
+|  Sim Speed:              14 hands/sec                                                 |
+|  ETA:                15m 34s                                                          |
+|  Training Samples:       36,541                                                        |
++----------------------------------------------------------------------------------------+
+|  CUMULATIVE PERFORMANCE BY SEAT:                                                       |
+|  - Seat 0 Hero (Main)                       :   +2.7 BB/100 (VPIP:34.1% AGG:48.6%) [R:16911 F:25611 AI:5965]|
+|  - Seat 1 Opp 1: LAG (Heuristic)            :  -11.6 BB/100 (VPIP:61.2% AGG:66.0%) [R:28029 F:18571 AI:7796]|
+|  - Seat 2 Opp 2: Nit (Heuristic)            :   +4.2 BB/100 (VPIP:15.2% AGG:19.3%) [R:4448  F:31652 AI:1240]|
+|  - Seat 3 Opp 3: Calling Station (Heuristic):   +7.4 BB/100 (VPIP:50.6% AGG:16.0%) [R:8407  F:19720 AI:5277]|
+|  - Seat 4 Opp 4: Lagged-Self (NN)           :  -24.0 BB/100 (VPIP:27.2% AGG:58.5%) [R:18775 F:26237 AI:4932]|
+|  - Seat 5 Opp 5: TAG (Heuristic)            :  +21.3 BB/100 (VPIP:26.9% AGG:47.4%) [R:14282 F:27434 AI:3950]|
++----------------------------------------------------------------------------------------+
+|  Global Post-Flop Avg Active Players: 2.28                                             |
++----------------------------------------------------------------------------------------+
+|  EXPLOITATION SCOREBOARD (Net BB/100 Matrix):                                          |
+|  [Winner \ Loser] | Hero  | S1    | S2    | S3    | S4    | S5    |                    |
+|  Hero (Main)      |   -   |  +3.7 |  +0.6 |  -3.4 |  +4.2 |  -2.4 |                    |
+|  Opp 1: LAG (Heuristic) |  -3.7 |   -   |  -1.8 |  -6.4 |  +6.1 |  -5.8 |                    |
+|  Opp 2: Nit (Heuristic) |  -0.6 |  +1.8 |   -   |  +0.7 |  +1.7 |  +0.5 |                    |
+|  Opp 3: Calling Station (Heuristic) |  +3.4 |  +6.4 |  -0.7 |   -   |  +5.7 |  -7.3 |                    |
+|  Opp 4: Lagged-Self (NN) |  -4.2 |  -6.1 |  -1.7 |  -5.7 |   -   |  -6.3 |                    |
+|  Opp 5: TAG (Heuristic) |  +2.4 |  +5.8 |  -0.5 |  +7.3 |  +6.3 |   -   |                    |
++----------------------------------------------------------------------------------------+
+|  Action Entropy:       0.9835                                                        |
++------------------------------------------------------------------------------------------------------------------------+
+|  Equity Matrix (FACING A BET ONLY -- free checks tallied separately, see Free col)                                    |
+|  Equity Bucket     | Fold  | Call  | r33   | r66   | rPot  | All-In | N Hands | Free  | Avg St | Net Chips | Won    | Lost  |
++------------------------------------------------------------------------------------------------------------------------+
+|  <20% (Pure Air)   | 83.2% |  5.0% |  1.2% |  0.5% |  1.3% |  8.9%  |   2,128 |   642 |   1.0  | -63672.1   | +14163 | -77835 |
+|  20-40% (Draws)    | 86.0% |  5.0% |  1.1% |  1.1% |  1.2% |  5.7%  |  23,027 |   422 |   0.1  | -138777.9   | +168662 | -307440 |
+|  40-60% (Marginal) | 50.4% | 13.9% |  2.7% |  2.5% |  4.0% | 26.5%  |   7,621 |   413 |   0.1  | +27044.5   | +285073 | -258028 |
+|  60-80% (Strong)   | 10.8% | 11.6% |  3.5% |  2.9% |  9.5% | 61.7%  |   1,333 |   293 |   0.7  | +87756.6   | +160206 | -72449 |
+|  >80% (Nuts)       |  1.6% |  8.5% |  2.5% |  3.6% | 12.6% | 71.2%  |     445 |   217 |   1.6  | +76444.8   | +89267 | -12822 |
++------------------------------------------------------------------------------------------------------------------------+
+|  ACTION USAGE (all decisions) | Fold 48.4% | Call 19.7% | r33  6.4% | r66  6.4% | rPot 13.4% | All-In  5.7% |
+|  ALL-IN WinRate 49.3% (n=5102) | JAM by Opp-Color: Blue  4.7% Green 13.4% Yellow 21.0% Red 18.0% |
++------------------------------------------------------------------------------------------------------------------------+
+|  Train Loss:           5.3851  |  Val Loss:   4.0729                                |
+|  Loss Q: 4.8267 | Pi: 0.5530 | Bluff: 0.0664 | Str: 0.0174 | Eq: 0.0068        |
++========================================================================================+
++========================================================================================+
+|  SELF-PLAY V8 MULTI-PERSONALITY LEAGUE SYSTEM (RTX 4080 GPU)                           |
++========================================================================================+
+|  Active Personality: MAIN                                                               |
+|  Hands Simulated:        38,460 /     50,000   ( 76.9%)                            |
+|  Training Epoch:       60                                                              |
+|  Bootstrap Alpha:      0.00                                                            |
+|  Curriculum Stage:   Phase 3: Pure Actor-Critic                                      |
+|  Elapsed Time:       44m 45s                                                          |
+|  Sim Speed:              14 hands/sec                                                 |
+|  ETA:                13m 25s                                                          |
+|  Training Samples:       38,460                                                        |
++----------------------------------------------------------------------------------------+
+|  CUMULATIVE PERFORMANCE BY SEAT:                                                       |
+|  - Seat 0 Hero (Main)                       :   +6.2 BB/100 (VPIP:31.3% AGG:47.6%) [R:17337 F:27200 AI:6129]|
+|  - Seat 1 Opp 1: LAG (Heuristic)            :  -13.4 BB/100 (VPIP:61.6% AGG:65.6%) [R:29569 F:19336 AI:8159]|
+|  - Seat 2 Opp 2: Nit (Heuristic)            :   +4.0 BB/100 (VPIP:15.2% AGG:19.8%) [R:4646  F:33334 AI:1294]|
+|  - Seat 3 Opp 3: Calling Station (Heuristic):   +7.1 BB/100 (VPIP:50.7% AGG:15.8%) [R:8780  F:20701 AI:5485]|
+|  - Seat 4 Opp 4: Lagged-Self (NN)           :  -23.2 BB/100 (VPIP:24.9% AGG:58.0%) [R:19195 F:27911 AI:5037]|
+|  - Seat 5 Opp 5: TAG (Heuristic)            :  +19.3 BB/100 (VPIP:27.3% AGG:48.2%) [R:15089 F:28803 AI:4144]|
++----------------------------------------------------------------------------------------+
+|  Global Post-Flop Avg Active Players: 2.28                                             |
++----------------------------------------------------------------------------------------+
+|  EXPLOITATION SCOREBOARD (Net BB/100 Matrix):                                          |
+|  [Winner \ Loser] | Hero  | S1    | S2    | S3    | S4    | S5    |                    |
+|  Hero (Main)      |   -   |  +4.7 |  +0.6 |  -2.1 |  +4.5 |  -1.5 |                    |
+|  Opp 1: LAG (Heuristic) |  -4.7 |   -   |  -1.8 |  -6.6 |  +5.8 |  -6.1 |                    |
+|  Opp 2: Nit (Heuristic) |  -0.6 |  +1.8 |   -   |  +0.6 |  +1.7 |  +0.6 |                    |
+|  Opp 3: Calling Station (Heuristic) |  +2.1 |  +6.6 |  -0.6 |   -   |  +5.3 |  -6.4 |                    |
+|  Opp 4: Lagged-Self (NN) |  -4.5 |  -5.8 |  -1.7 |  -5.3 |   -   |  -5.9 |                    |
+|  Opp 5: TAG (Heuristic) |  +1.5 |  +6.1 |  -0.6 |  +6.4 |  +5.9 |   -   |                    |
++----------------------------------------------------------------------------------------+
+|  Action Entropy:       0.9413                                                        |
++------------------------------------------------------------------------------------------------------------------------+
+|  Equity Matrix (FACING A BET ONLY -- free checks tallied separately, see Free col)                                    |
+|  Equity Bucket     | Fold  | Call  | r33   | r66   | rPot  | All-In | N Hands | Free  | Avg St | Net Chips | Won    | Lost  |
++------------------------------------------------------------------------------------------------------------------------+
+|  <20% (Pure Air)   | 83.7% |  4.8% |  1.1% |  0.5% |  1.2% |  8.6%  |   2,208 |   668 |   1.0  | -64489.4   | +14223 | -78713 |
+|  20-40% (Draws)    | 86.5% |  4.8% |  1.0% |  1.0% |  1.2% |  5.4%  |  24,273 |   433 |   0.1  | -140906.0   | +171386 | -312292 |
+|  40-60% (Marginal) | 51.5% | 13.9% |  2.6% |  2.4% |  3.8% | 25.8%  |   8,050 |   425 |   0.1  | +29631.2   | +292960 | -263328 |
+|  60-80% (Strong)   | 10.4% | 11.7% |  3.5% |  3.1% |  9.3% | 61.9%  |   1,405 |   305 |   0.7  | +94883.0   | +170679 | -75796 |
+|  >80% (Nuts)       |  1.5% |  8.7% |  2.6% |  3.6% | 12.6% | 71.1%  |     470 |   223 |   1.6  | +81885.6   | +94843 | -12957 |
++------------------------------------------------------------------------------------------------------------------------+
+|  ACTION USAGE (all decisions) | Fold 49.2% | Call 19.4% | r33  6.3% | r66  6.3% | rPot 13.1% | All-In  5.7% |
+|  ALL-IN WinRate 49.7% (n=5242) | JAM by Opp-Color: Blue  4.6% Green 13.1% Yellow 20.8% Red 18.0% |
++------------------------------------------------------------------------------------------------------------------------+
+|  Train Loss:           3.8902  |  Val Loss:   4.2860                                |
+|  Loss Q: 3.3481 | Pi: 0.5366 | Bluff: 0.0701 | Str: 0.0171 | Eq: 0.0060        |
++========================================================================================+
++========================================================================================+
+|  SELF-PLAY V8 MULTI-PERSONALITY LEAGUE SYSTEM (RTX 4080 GPU)                           |
++========================================================================================+
+|  Active Personality: MAIN                                                               |
+|  Hands Simulated:        40,356 /     50,000   ( 80.7%)                            |
+|  Training Epoch:       63                                                              |
+|  Bootstrap Alpha:      0.00                                                            |
+|  Curriculum Stage:   Phase 4: Dynamic Table Sizes                                      |
+|  Elapsed Time:       46m 47s                                                          |
+|  Sim Speed:              14 hands/sec                                                 |
+|  ETA:                11m 10s                                                          |
+|  Training Samples:       40,356                                                        |
++----------------------------------------------------------------------------------------+
+|  CUMULATIVE PERFORMANCE BY SEAT:                                                       |
+|  - Seat 0 Hero (Main)                       :   +5.8 BB/100 (VPIP:32.2% AGG:47.2%) [R:18056 F:28513 AI:6425]|
+|  - Seat 1 Opp 1: LAG (Heuristic)            :  -14.9 BB/100 (VPIP:62.0% AGG:65.7%) [R:31148 F:20112 AI:8569]|
+|  - Seat 2 Opp 2: Nit (Heuristic)            :   +2.7 BB/100 (VPIP:15.1% AGG:19.6%) [R:4828  F:35018 AI:1350]|
+|  - Seat 3 Opp 3: Calling Station (Heuristic):   +5.9 BB/100 (VPIP:50.9% AGG:15.7%) [R:9212  F:21686 AI:5728]|
+|  - Seat 4 Opp 4: Lagged-Self (NN)           :  -19.8 BB/100 (VPIP:22.9% AGG:57.0%) [R:19611 F:29584 AI:5139]|
+|  - Seat 5 Opp 5: TAG (Heuristic)            :  +20.4 BB/100 (VPIP:27.3% AGG:48.5%) [R:15811 F:30234 AI:4330]|
++----------------------------------------------------------------------------------------+
+|  Global Post-Flop Avg Active Players: 2.28                                             |
++----------------------------------------------------------------------------------------+
+|  EXPLOITATION SCOREBOARD (Net BB/100 Matrix):                                          |
+|  [Winner \ Loser] | Hero  | S1    | S2    | S3    | S4    | S5    |                    |
+|  Hero (Main)      |   -   |  +4.3 |  +0.8 |  -1.5 |  +3.9 |  -1.8 |                    |
+|  Opp 1: LAG (Heuristic) |  -4.3 |   -   |  -1.1 |  -6.9 |  +4.5 |  -7.0 |                    |
+|  Opp 2: Nit (Heuristic) |  -0.8 |  +1.1 |   -   |  +0.4 |  +1.5 |  +0.5 |                    |
+|  Opp 3: Calling Station (Heuristic) |  +1.5 |  +6.9 |  -0.4 |   -   |  +4.4 |  -6.5 |                    |
+|  Opp 4: Lagged-Self (NN) |  -3.9 |  -4.5 |  -1.5 |  -4.4 |   -   |  -5.5 |                    |
+|  Opp 5: TAG (Heuristic) |  +1.8 |  +7.0 |  -0.5 |  +6.5 |  +5.5 |   -   |                    |
++----------------------------------------------------------------------------------------+
+|  Action Entropy:       0.9041                                                        |
++------------------------------------------------------------------------------------------------------------------------+
+|  Equity Matrix (FACING A BET ONLY -- free checks tallied separately, see Free col)                                    |
+|  Equity Bucket     | Fold  | Call  | r33   | r66   | rPot  | All-In | N Hands | Free  | Avg St | Net Chips | Won    | Lost  |
++------------------------------------------------------------------------------------------------------------------------+
+|  <20% (Pure Air)   | 84.1% |  4.8% |  1.1% |  0.5% |  1.2% |  8.3%  |   2,301 |   700 |   1.0  | -67266.9   | +14223 | -81490 |
+|  20-40% (Draws)    | 86.7% |  4.8% |  1.0% |  1.0% |  1.2% |  5.3%  |  25,505 |   447 |   0.1  | -147594.4   | +175586 | -323181 |
+|  40-60% (Marginal) | 50.4% | 14.3% |  2.7% |  2.5% |  3.9% | 26.3%  |   8,440 |   435 |   0.1  | +31101.6   | +311306 | -280205 |
+|  60-80% (Strong)   | 10.1% | 11.5% |  3.6% |  3.7% |  9.2% | 61.8%  |   1,473 |   322 |   0.7  | +98629.8   | +177451 | -78821 |
+|  >80% (Nuts)       |  1.4% |  9.6% |  2.6% |  3.5% | 12.2% | 70.7%  |     491 |   242 |   1.6  | +85425.7   | +99028 | -13603 |
++------------------------------------------------------------------------------------------------------------------------+
+|  ACTION USAGE (all decisions) | Fold 49.3% | Call 19.5% | r33  6.3% | r66  6.3% | rPot 12.8% | All-In  5.8% |
+|  ALL-IN WinRate 49.7% (n=5503) | JAM by Opp-Color: Blue  4.7% Green 13.0% Yellow 20.9% Red 18.1% |
++------------------------------------------------------------------------------------------------------------------------+
+|  Train Loss:           5.5046  |  Val Loss:   5.4415                                |
+|  Loss Q: 4.9796 | Pi: 0.5194 | Bluff: 0.0683 | Str: 0.0191 | Eq: 0.0060        |
++========================================================================================+
+
+[DIAGNOSTICS] Mid-flight checkpoint at 40356 hands...
++========================================================================================+
+|  SELF-PLAY V8 MULTI-PERSONALITY LEAGUE SYSTEM (RTX 4080 GPU)                           |
++========================================================================================+
+|  Active Personality: MAIN                                                               |
+|  Hands Simulated:        42,197 /     50,000   ( 84.4%)                            |
+|  Training Epoch:       66                                                              |
+|  Bootstrap Alpha:      0.00                                                            |
+|  Curriculum Stage:   Phase 4: Dynamic Table Sizes                                      |
+|  Elapsed Time:       48m 39s                                                          |
+|  Sim Speed:              14 hands/sec                                                 |
+|  ETA:                8m 59s                                                           |
+|  Training Samples:       42,197                                                        |
++----------------------------------------------------------------------------------------+
+|  CUMULATIVE PERFORMANCE BY SEAT:                                                       |
+|  - Seat 0 Hero (Main)                       :   +8.3 BB/100 (VPIP:34.0% AGG:50.8%) [R:19048 F:29645 AI:6882]|
+|  - Seat 1 Opp 1: LAG (Heuristic)            :  -14.2 BB/100 (VPIP:62.4% AGG:66.0%) [R:32159 F:20554 AI:8877]|
+|  - Seat 2 Opp 2: Nit (Heuristic)            :   +2.6 BB/100 (VPIP:15.1% AGG:20.2%) [R:4912  F:35784 AI:1373]|
+|  - Seat 3 Opp 3: Calling Station (Heuristic):   +5.4 BB/100 (VPIP:53.0% AGG:15.8%) [R:9433  F:22057 AI:5895]|
+|  - Seat 4 Opp 4: Lagged-Self (NN)           :  -22.7 BB/100 (VPIP:25.0% AGG:58.5%) [R:20392 F:30496 AI:5367]|
+|  - Seat 5 Opp 5: TAG (Heuristic)            :  +20.5 BB/100 (VPIP:29.5% AGG:48.5%) [R:16471 F:31101 AI:4532]|
++----------------------------------------------------------------------------------------+
+|  Global Post-Flop Avg Active Players: 2.26                                             |
++----------------------------------------------------------------------------------------+
+|  EXPLOITATION SCOREBOARD (Net BB/100 Matrix):                                          |
+|  [Winner \ Loser] | Hero  | S1    | S2    | S3    | S4    | S5    |                    |
+|  Hero (Main)      |   -   |  +4.2 |  +0.9 |  -0.6 |  +5.2 |  -1.4 |                    |
+|  Opp 1: LAG (Heuristic) |  -4.2 |   -   |  -1.0 |  -6.5 |  +4.7 |  -7.2 |                    |
+|  Opp 2: Nit (Heuristic) |  -0.9 |  +1.0 |   -   |  +0.3 |  +1.7 |  +0.6 |                    |
+|  Opp 3: Calling Station (Heuristic) |  +0.6 |  +6.5 |  -0.3 |   -   |  +4.9 |  -6.2 |                    |
+|  Opp 4: Lagged-Self (NN) |  -5.2 |  -4.7 |  -1.7 |  -4.9 |   -   |  -6.2 |                    |
+|  Opp 5: TAG (Heuristic) |  +1.4 |  +7.2 |  -0.6 |  +6.2 |  +6.2 |   -   |                    |
++----------------------------------------------------------------------------------------+
+|  Action Entropy:       0.8809                                                        |
++------------------------------------------------------------------------------------------------------------------------+
+|  Equity Matrix (FACING A BET ONLY -- free checks tallied separately, see Free col)                                    |
+|  Equity Bucket     | Fold  | Call  | r33   | r66   | rPot  | All-In | N Hands | Free  | Avg St | Net Chips | Won    | Lost  |
++------------------------------------------------------------------------------------------------------------------------+
+|  <20% (Pure Air)   | 84.4% |  4.7% |  1.1% |  0.5% |  1.2% |  8.1%  |   2,343 |   712 |   1.0  | -67651.2   | +14223 | -81874 |
+|  20-40% (Draws)    | 86.9% |  4.7% |  1.0% |  1.0% |  1.1% |  5.3%  |  26,521 |   460 |   0.1  | -151387.9   | +179927 | -331315 |
+|  40-60% (Marginal) | 49.0% | 14.2% |  2.7% |  2.6% |  3.9% | 27.8%  |   9,026 |   453 |   0.1  | +36067.2   | +341920 | -305853 |
+|  60-80% (Strong)   |  9.6% | 11.6% |  3.7% |  4.3% |  8.9% | 61.8%  |   1,588 |   336 |   0.7  | +106207.7   | +190354 | -84146 |
+|  >80% (Nuts)       |  1.4% | 10.0% |  2.5% |  3.3% | 11.9% | 70.9%  |     512 |   246 |   1.6  | +87019.3   | +101612 | -14593 |
++------------------------------------------------------------------------------------------------------------------------+
+|  ACTION USAGE (all decisions) | Fold 49.2% | Call 19.2% | r33  6.3% | r66  6.4% | rPot 12.7% | All-In  6.2% |
+|  ALL-IN WinRate 50.4% (n=5925) | JAM by Opp-Color: Blue  4.8% Green 13.3% Yellow 21.1% Red 18.5% |
++------------------------------------------------------------------------------------------------------------------------+
+|  Train Loss:           6.2373  |  Val Loss:   6.4303                                |
+|  Loss Q: 5.2236 | Pi: 1.0083 | Bluff: 0.0612 | Str: 0.0193 | Eq: 0.0064        |
++========================================================================================+
+
+[CHECKPOINT] Restore-point dump saved: C:\REPO\Antigravity\AIPoker\versions\v25\weights\checkpoints\main_hands42197.pth
++========================================================================================+
+|  SELF-PLAY V8 MULTI-PERSONALITY LEAGUE SYSTEM (RTX 4080 GPU)                           |
++========================================================================================+
+|  Active Personality: MAIN                                                               |
+|  Hands Simulated:        44,028 /     50,000   ( 88.1%)                            |
+|  Training Epoch:       69                                                              |
+|  Bootstrap Alpha:      0.00                                                            |
+|  Curriculum Stage:   Phase 4: Dynamic Table Sizes                                      |
+|  Elapsed Time:       50m 44s                                                          |
+|  Sim Speed:              14 hands/sec                                                 |
+|  ETA:                6m 53s                                                           |
+|  Training Samples:       44,028                                                        |
++----------------------------------------------------------------------------------------+
+|  CUMULATIVE PERFORMANCE BY SEAT:                                                       |
+|  - Seat 0 Hero (Main)                       :  +10.4 BB/100 (VPIP:36.3% AGG:50.4%) [R:20196 F:30734 AI:7243]|
+|  - Seat 1 Opp 1: LAG (Heuristic)            :  -13.5 BB/100 (VPIP:62.8% AGG:66.4%) [R:33262 F:21010 AI:9197]|
+|  - Seat 2 Opp 2: Nit (Heuristic)            :   +1.9 BB/100 (VPIP:15.1% AGG:19.6%) [R:4991  F:36564 AI:1395]|
+|  - Seat 3 Opp 3: Calling Station (Heuristic):   +5.4 BB/100 (VPIP:55.1% AGG:15.7%) [R:9664  F:22414 AI:6033]|
+|  - Seat 4 Opp 4: Lagged-Self (NN)           :  -23.8 BB/100 (VPIP:26.7% AGG:60.6%) [R:21216 F:31395 AI:5589]|
+|  - Seat 5 Opp 5: TAG (Heuristic)            :  +19.7 BB/100 (VPIP:31.1% AGG:48.8%) [R:17103 F:31968 AI:4713]|
++----------------------------------------------------------------------------------------+
+|  Global Post-Flop Avg Active Players: 2.24                                             |
++----------------------------------------------------------------------------------------+
+|  EXPLOITATION SCOREBOARD (Net BB/100 Matrix):                                          |
+|  [Winner \ Loser] | Hero  | S1    | S2    | S3    | S4    | S5    |                    |
+|  Hero (Main)      |   -   |  +4.9 |  +1.0 |  -0.3 |  +5.7 |  -0.9 |                    |
+|  Opp 1: LAG (Heuristic) |  -4.9 |   -   |  -0.5 |  -5.8 |  +5.2 |  -7.5 |                    |
+|  Opp 2: Nit (Heuristic) |  -1.0 |  +0.5 |   -   |  +0.2 |  +1.8 |  +0.4 |                    |
+|  Opp 3: Calling Station (Heuristic) |  +0.3 |  +5.8 |  -0.2 |   -   |  +5.0 |  -5.5 |                    |
+|  Opp 4: Lagged-Self (NN) |  -5.7 |  -5.2 |  -1.8 |  -5.0 |   -   |  -6.1 |                    |
+|  Opp 5: TAG (Heuristic) |  +0.9 |  +7.5 |  -0.4 |  +5.5 |  +6.1 |   -   |                    |
++----------------------------------------------------------------------------------------+
+|  Action Entropy:       0.8499                                                        |
++------------------------------------------------------------------------------------------------------------------------+
+|  Equity Matrix (FACING A BET ONLY -- free checks tallied separately, see Free col)                                    |
+|  Equity Bucket     | Fold  | Call  | r33   | r66   | rPot  | All-In | N Hands | Free  | Avg St | Net Chips | Won    | Lost  |
++------------------------------------------------------------------------------------------------------------------------+
+|  <20% (Pure Air)   | 84.8% |  4.6% |  1.1% |  0.5% |  1.1% |  7.9%  |   2,396 |   752 |   1.0  | -68286.3   | +14223 | -82510 |
+|  20-40% (Draws)    | 86.9% |  4.7% |  1.0% |  1.0% |  1.1% |  5.2%  |  27,511 |   470 |   0.1  | -156585.6   | +184245 | -340830 |
+|  40-60% (Marginal) | 47.8% | 14.3% |  3.0% |  2.8% |  4.1% | 28.1%  |   9,586 |   475 |   0.1  | +38755.5   | +366350 | -327595 |
+|  60-80% (Strong)   |  9.2% | 11.7% |  3.8% |  4.5% |  8.9% | 61.9%  |   1,682 |   360 |   0.6  | +112853.3   | +202826 | -89972 |
+|  >80% (Nuts)       |  1.3% | 10.1% |  2.8% |  3.6% | 11.4% | 70.7%  |     533 |   263 |   1.6  | +91771.9   | +107654 | -15883 |
++------------------------------------------------------------------------------------------------------------------------+
+|  ACTION USAGE (all decisions) | Fold 48.8% | Call 19.2% | r33  6.6% | r66  6.7% | rPot 12.5% | All-In  6.3% |
+|  ALL-IN WinRate 50.5% (n=6242) | JAM by Opp-Color: Blue  4.9% Green 13.3% Yellow 20.9% Red 18.2% |
++------------------------------------------------------------------------------------------------------------------------+
+|  Train Loss:           6.7257  |  Val Loss:   6.3607                                |
+|  Loss Q: 5.8251 | Pi: 0.8945 | Bluff: 0.0728 | Str: 0.0201 | Eq: 0.0078        |
++========================================================================================+
++========================================================================================+
+|  SELF-PLAY V8 MULTI-PERSONALITY LEAGUE SYSTEM (RTX 4080 GPU)                           |
++========================================================================================+
+|  Active Personality: MAIN                                                               |
+|  Hands Simulated:        45,870 /     50,000   ( 91.7%)                            |
+|  Training Epoch:       72                                                              |
+|  Bootstrap Alpha:      0.00                                                            |
+|  Curriculum Stage:   Phase 4: Dynamic Table Sizes                                      |
+|  Elapsed Time:       52m 49s                                                          |
+|  Sim Speed:              14 hands/sec                                                 |
+|  ETA:                4m 45s                                                           |
+|  Training Samples:       45,870                                                        |
++----------------------------------------------------------------------------------------+
+|  CUMULATIVE PERFORMANCE BY SEAT:                                                       |
+|  - Seat 0 Hero (Main)                       :  +13.1 BB/100 (VPIP:37.6% AGG:50.8%) [R:21149 F:31858 AI:7607]|
+|  - Seat 1 Opp 1: LAG (Heuristic)            :  -13.8 BB/100 (VPIP:63.0% AGG:66.8%) [R:34200 F:21448 AI:9459]|
+|  - Seat 2 Opp 2: Nit (Heuristic)            :   +2.7 BB/100 (VPIP:15.2% AGG:20.7%) [R:5085  F:37291 AI:1417]|
+|  - Seat 3 Opp 3: Calling Station (Heuristic):   +4.2 BB/100 (VPIP:56.4% AGG:16.0%) [R:9882  F:22777 AI:6157]|
+|  - Seat 4 Opp 4: Lagged-Self (NN)           :  -25.1 BB/100 (VPIP:28.4% AGG:61.8%) [R:22027 F:32291 AI:5794]|
+|  - Seat 5 Opp 5: TAG (Heuristic)            :  +18.9 BB/100 (VPIP:32.9% AGG:49.2%) [R:17806 F:32826 AI:4901]|
++----------------------------------------------------------------------------------------+
+|  Global Post-Flop Avg Active Players: 2.22                                             |
++----------------------------------------------------------------------------------------+
+|  EXPLOITATION SCOREBOARD (Net BB/100 Matrix):                                          |
+|  [Winner \ Loser] | Hero  | S1    | S2    | S3    | S4    | S5    |                    |
+|  Hero (Main)      |   -   |  +4.5 |  +1.0 |  +0.5 |  +7.3 |  -0.1 |                    |
+|  Opp 1: LAG (Heuristic) |  -4.5 |   -   |  -0.7 |  -5.5 |  +4.3 |  -7.4 |                    |
+|  Opp 2: Nit (Heuristic) |  -1.0 |  +0.7 |   -   |  +0.4 |  +2.0 |  +0.6 |                    |
+|  Opp 3: Calling Station (Heuristic) |  -0.5 |  +5.5 |  -0.4 |   -   |  +5.0 |  -5.5 |                    |
+|  Opp 4: Lagged-Self (NN) |  -7.3 |  -4.3 |  -2.0 |  -5.0 |   -   |  -6.6 |                    |
+|  Opp 5: TAG (Heuristic) |  +0.1 |  +7.4 |  -0.6 |  +5.5 |  +6.6 |   -   |                    |
++----------------------------------------------------------------------------------------+
+|  Action Entropy:       0.8205                                                        |
++------------------------------------------------------------------------------------------------------------------------+
+|  Equity Matrix (FACING A BET ONLY -- free checks tallied separately, see Free col)                                    |
+|  Equity Bucket     | Fold  | Call  | r33   | r66   | rPot  | All-In | N Hands | Free  | Avg St | Net Chips | Won    | Lost  |
++------------------------------------------------------------------------------------------------------------------------+
+|  <20% (Pure Air)   | 85.1% |  4.5% |  1.1% |  0.5% |  1.1% |  7.8%  |   2,451 |   781 |   0.9  | -68742.3   | +14233 | -82976 |
+|  20-40% (Draws)    | 86.9% |  4.8% |  1.0% |  1.0% |  1.1% |  5.2%  |  28,501 |   484 |   0.1  | -159861.2   | +188189 | -348050 |
+|  40-60% (Marginal) | 47.0% | 14.6% |  3.1% |  3.0% |  4.1% | 28.3%  |  10,153 |   488 |   0.1  | +42430.0   | +388463 | -346033 |
+|  60-80% (Strong)   |  8.8% | 11.5% |  3.9% |  4.8% |  8.7% | 62.3%  |   1,802 |   382 |   0.6  | +121755.5   | +215941 | -94186 |
+|  >80% (Nuts)       |  1.3% | 10.5% |  2.9% |  3.4% | 11.1% | 70.8%  |     551 |   277 |   1.5  | +94416.8   | +110959 | -16543 |
++------------------------------------------------------------------------------------------------------------------------+
+|  ACTION USAGE (all decisions) | Fold 48.6% | Call 19.1% | r33  6.7% | r66  6.8% | rPot 12.3% | All-In  6.4% |
+|  ALL-IN WinRate 51.0% (n=6563) | JAM by Opp-Color: Blue  4.9% Green 13.4% Yellow 20.8% Red 18.3% |
++------------------------------------------------------------------------------------------------------------------------+
+|  Train Loss:           5.8103  |  Val Loss:   6.1631                                |
+|  Loss Q: 4.8856 | Pi: 0.9190 | Bluff: 0.0641 | Str: 0.0215 | Eq: 0.0070        |
++========================================================================================+
+
+[DIAGNOSTICS] Mid-flight checkpoint at 45870 hands...
++========================================================================================+
+|  SELF-PLAY V8 MULTI-PERSONALITY LEAGUE SYSTEM (RTX 4080 GPU)                           |
++========================================================================================+
+|  Active Personality: MAIN                                                               |
+|  Hands Simulated:        47,731 /     50,000   ( 95.5%)                            |
+|  Training Epoch:       75                                                              |
+|  Bootstrap Alpha:      0.00                                                            |
+|  Curriculum Stage:   Phase 4: Dynamic Table Sizes                                      |
+|  Elapsed Time:       55m 7s                                                           |
+|  Sim Speed:              14 hands/sec                                                 |
+|  ETA:                2m 37s                                                           |
+|  Training Samples:       47,731                                                        |
++----------------------------------------------------------------------------------------+
+|  CUMULATIVE PERFORMANCE BY SEAT:                                                       |
+|  - Seat 0 Hero (Main)                       :  +12.4 BB/100 (VPIP:41.1% AGG:52.9%) [R:22767 F:32775 AI:8133]|
+|  - Seat 1 Opp 1: LAG (Heuristic)            :  -13.3 BB/100 (VPIP:63.4% AGG:66.3%) [R:35242 F:21887 AI:9767]|
+|  - Seat 2 Opp 2: Nit (Heuristic)            :   +2.7 BB/100 (VPIP:15.3% AGG:20.8%) [R:5178  F:38079 AI:1438]|
+|  - Seat 3 Opp 3: Calling Station (Heuristic):   +4.5 BB/100 (VPIP:57.3% AGG:16.1%) [R:10142 F:23153 AI:6305]|
+|  - Seat 4 Opp 4: Lagged-Self (NN)           :  -26.7 BB/100 (VPIP:31.2% AGG:62.9%) [R:23151 F:33136 AI:6138]|
+|  - Seat 5 Opp 5: TAG (Heuristic)            :  +20.4 BB/100 (VPIP:33.9% AGG:49.2%) [R:18491 F:33721 AI:5100]|
++----------------------------------------------------------------------------------------+
+|  Global Post-Flop Avg Active Players: 2.21                                             |
++----------------------------------------------------------------------------------------+
+|  EXPLOITATION SCOREBOARD (Net BB/100 Matrix):                                          |
+|  [Winner \ Loser] | Hero  | S1    | S2    | S3    | S4    | S5    |                    |
+|  Hero (Main)      |   -   |  +4.7 |  +1.0 |  -0.0 |  +7.9 |  -1.1 |                    |
+|  Opp 1: LAG (Heuristic) |  -4.7 |   -   |  -0.7 |  -5.2 |  +4.3 |  -7.0 |                    |
+|  Opp 2: Nit (Heuristic) |  -1.0 |  +0.7 |   -   |  +0.3 |  +2.1 |  +0.5 |                    |
+|  Opp 3: Calling Station (Heuristic) |  +0.0 |  +5.2 |  -0.3 |   -   |  +5.2 |  -5.6 |                    |
+|  Opp 4: Lagged-Self (NN) |  -7.9 |  -4.3 |  -2.1 |  -5.2 |   -   |  -7.1 |                    |
+|  Opp 5: TAG (Heuristic) |  +1.1 |  +7.0 |  -0.5 |  +5.6 |  +7.1 |   -   |                    |
++----------------------------------------------------------------------------------------+
+|  Action Entropy:       0.7939                                                        |
++------------------------------------------------------------------------------------------------------------------------+
+|  Equity Matrix (FACING A BET ONLY -- free checks tallied separately, see Free col)                                    |
+|  Equity Bucket     | Fold  | Call  | r33   | r66   | rPot  | All-In | N Hands | Free  | Avg St | Net Chips | Won    | Lost  |
++------------------------------------------------------------------------------------------------------------------------+
+|  <20% (Pure Air)   | 85.1% |  4.4% |  1.1% |  0.6% |  1.1% |  7.8%  |   2,518 |   806 |   0.9  | -70187.2   | +14568 | -84755 |
+|  20-40% (Draws)    | 86.6% |  4.8% |  1.1% |  1.1% |  1.1% |  5.3%  |  29,525 |   501 |   0.1  | -168373.4   | +198090 | -366464 |
+|  40-60% (Marginal) | 45.4% | 14.6% |  3.3% |  3.2% |  4.2% | 29.3%  |  10,694 |   507 |   0.1  | +39217.7   | +416287 | -377069 |
+|  60-80% (Strong)   |  8.3% | 11.3% |  4.1% |  4.7% |  8.4% | 63.1%  |   1,921 |   400 |   0.6  | +129453.8   | +229839 | -100385 |
+|  >80% (Nuts)       |  1.2% | 10.8% |  2.8% |  3.3% | 10.6% | 71.2%  |     573 |   286 |   1.5  | +98579.4   | +116302 | -17723 |
++------------------------------------------------------------------------------------------------------------------------+
+|  ACTION USAGE (all decisions) | Fold 47.8% | Call 19.0% | r33  7.0% | r66  7.3% | rPot 12.3% | All-In  6.6% |
+|  ALL-IN WinRate 50.9% (n=7048) | JAM by Opp-Color: Blue  5.0% Green 13.7% Yellow 20.9% Red 18.2% |
++------------------------------------------------------------------------------------------------------------------------+
+|  Train Loss:           7.6543  |  Val Loss:   7.5831                                |
+|  Loss Q: 6.7051 | Pi: 0.9433 | Bluff: 0.0758 | Str: 0.0189 | Eq: 0.0062        |
++========================================================================================+
++========================================================================================+
+|  SELF-PLAY V8 MULTI-PERSONALITY LEAGUE SYSTEM (RTX 4080 GPU)                           |
++========================================================================================+
+|  Active Personality: MAIN                                                               |
+|  Hands Simulated:        49,595 /     50,000   ( 99.2%)                            |
+|  Training Epoch:       78                                                              |
+|  Bootstrap Alpha:      0.00                                                            |
+|  Curriculum Stage:   Phase 4: Dynamic Table Sizes                                      |
+|  Elapsed Time:       57m 19s                                                          |
+|  Sim Speed:              14 hands/sec                                                 |
+|  ETA:                28s                                                              |
+|  Training Samples:       49,595                                                        |
++----------------------------------------------------------------------------------------+
+|  CUMULATIVE PERFORMANCE BY SEAT:                                                       |
+|  - Seat 0 Hero (Main)                       :  +13.4 BB/100 (VPIP:43.5% AGG:53.7%) [R:24229 F:33729 AI:8670]|
+|  - Seat 1 Opp 1: LAG (Heuristic)            :  -13.2 BB/100 (VPIP:63.6% AGG:66.4%) [R:36352 F:22337 AI:10107]|
+|  - Seat 2 Opp 2: Nit (Heuristic)            :   +2.4 BB/100 (VPIP:15.3% AGG:20.5%) [R:5258  F:38838 AI:1457]|
+|  - Seat 3 Opp 3: Calling Station (Heuristic):   +4.9 BB/100 (VPIP:58.3% AGG:16.4%) [R:10411 F:23541 AI:6456]|
+|  - Seat 4 Opp 4: Lagged-Self (NN)           :  -27.3 BB/100 (VPIP:33.8% AGG:63.5%) [R:24259 F:33925 AI:6454]|
+|  - Seat 5 Opp 5: TAG (Heuristic)            :  +19.8 BB/100 (VPIP:34.8% AGG:49.4%) [R:19208 F:34613 AI:5318]|
++----------------------------------------------------------------------------------------+
+|  Global Post-Flop Avg Active Players: 2.20                                             |
++----------------------------------------------------------------------------------------+
+|  EXPLOITATION SCOREBOARD (Net BB/100 Matrix):                                          |
+|  [Winner \ Loser] | Hero  | S1    | S2    | S3    | S4    | S5    |                    |
+|  Hero (Main)      |   -   |  +5.3 |  +1.1 |  -0.5 |  +8.3 |  -0.7 |                    |
+|  Opp 1: LAG (Heuristic) |  -5.3 |   -   |  -0.7 |  -5.0 |  +4.5 |  -6.8 |                    |
+|  Opp 2: Nit (Heuristic) |  -1.1 |  +0.7 |   -   |  +0.3 |  +2.1 |  +0.4 |                    |
+|  Opp 3: Calling Station (Heuristic) |  +0.5 |  +5.0 |  -0.3 |   -   |  +5.1 |  -5.4 |                    |
+|  Opp 4: Lagged-Self (NN) |  -8.3 |  -4.5 |  -2.1 |  -5.1 |   -   |  -7.3 |                    |
+|  Opp 5: TAG (Heuristic) |  +0.7 |  +6.8 |  -0.4 |  +5.4 |  +7.3 |   -   |                    |
++----------------------------------------------------------------------------------------+
+|  Action Entropy:       0.7695                                                        |
++------------------------------------------------------------------------------------------------------------------------+
+|  Equity Matrix (FACING A BET ONLY -- free checks tallied separately, see Free col)                                    |
+|  Equity Bucket     | Fold  | Call  | r33   | r66   | rPot  | All-In | N Hands | Free  | Avg St | Net Chips | Won    | Lost  |
++------------------------------------------------------------------------------------------------------------------------+
+|  <20% (Pure Air)   | 85.2% |  4.3% |  1.1% |  0.5% |  1.0% |  7.8%  |   2,576 |   833 |   0.9  | -72484.6   | +14568 | -87053 |
+|  20-40% (Draws)    | 86.4% |  4.9% |  1.1% |  1.1% |  1.1% |  5.4%  |  30,459 |   517 |   0.1  | -176349.4   | +207727 | -384077 |
+|  40-60% (Marginal) | 44.1% | 14.5% |  3.4% |  3.4% |  4.2% | 30.4%  |  11,350 |   524 |   0.1  | +43058.6   | +456853 | -413795 |
+|  60-80% (Strong)   |  7.9% | 11.4% |  4.2% |  5.0% |  8.3% | 63.1%  |   2,029 |   410 |   0.6  | +136221.4   | +242462 | -106241 |
+|  >80% (Nuts)       |  1.2% | 11.2% |  3.0% |  3.2% | 10.3% | 71.2%  |     600 |   297 |   1.5  | +104071.3   | +122305 | -18234 |
++------------------------------------------------------------------------------------------------------------------------+
+|  ACTION USAGE (all decisions) | Fold 47.2% | Call 18.8% | r33  7.3% | r66  7.6% | rPot 12.3% | All-In  6.8% |
+|  ALL-IN WinRate 51.3% (n=7547) | JAM by Opp-Color: Blue  5.1% Green 14.1% Yellow 20.9% Red 18.3% |
++------------------------------------------------------------------------------------------------------------------------+
+|  Train Loss:           7.6503  |  Val Loss:   8.5753                                |
+|  Loss Q: 6.8890 | Pi: 0.7553 | Bluff: 0.0776 | Str: 0.0179 | Eq: 0.0067        |
++========================================================================================+
++========================================================================================+
+|  SELF-PLAY V8 MULTI-PERSONALITY LEAGUE SYSTEM (RTX 4080 GPU)                           |
++========================================================================================+
+|  Active Personality: MAIN                                                               |
+|  Hands Simulated:        49,967 /     50,000   ( 99.9%)                            |
+|  Training Epoch:       81                                                              |
+|  Bootstrap Alpha:      0.00                                                            |
+|  Curriculum Stage:   Phase 4: Dynamic Table Sizes                                      |
+|  Elapsed Time:       57m 41s                                                          |
+|  Sim Speed:              14 hands/sec                                                 |
+|  ETA:                2s                                                               |
+|  Training Samples:       49,967                                                        |
++----------------------------------------------------------------------------------------+
+|  CUMULATIVE PERFORMANCE BY SEAT:                                                       |
+|  - Seat 0 Hero (Main)                       :  +14.1 BB/100 (VPIP:45.0% AGG:54.9%) [R:24473 F:33920 AI:8810]|
+|  - Seat 1 Opp 1: LAG (Heuristic)            :  -13.9 BB/100 (VPIP:63.7% AGG:67.5%) [R:36560 F:22424 AI:10188]|
+|  - Seat 2 Opp 2: Nit (Heuristic)            :   +2.3 BB/100 (VPIP:15.3% AGG:21.0%) [R:5273  F:38996 AI:1460]|
+|  - Seat 3 Opp 3: Calling Station (Heuristic):   +4.9 BB/100 (VPIP:60.3% AGG:16.7%) [R:10462 F:23602 AI:6493]|
+|  - Seat 4 Opp 4: Lagged-Self (NN)           :  -27.0 BB/100 (VPIP:36.1% AGG:63.6%) [R:24468 F:34083 AI:6529]|
+|  - Seat 5 Opp 5: TAG (Heuristic)            :  +19.6 BB/100 (VPIP:34.5% AGG:48.3%) [R:19324 F:34793 AI:5360]|
++----------------------------------------------------------------------------------------+
+|  Global Post-Flop Avg Active Players: 2.20                                             |
++----------------------------------------------------------------------------------------+
+|  EXPLOITATION SCOREBOARD (Net BB/100 Matrix):                                          |
+|  [Winner \ Loser] | Hero  | S1    | S2    | S3    | S4    | S5    |                    |
+|  Hero (Main)      |   -   |  +5.5 |  +1.1 |  -0.4 |  +8.4 |  -0.6 |                    |
+|  Opp 1: LAG (Heuristic) |  -5.5 |   -   |  -0.6 |  -5.2 |  +4.3 |  -6.9 |                    |
+|  Opp 2: Nit (Heuristic) |  -1.1 |  +0.6 |   -   |  +0.3 |  +2.1 |  +0.4 |                    |
+|  Opp 3: Calling Station (Heuristic) |  +0.4 |  +5.2 |  -0.3 |   -   |  +4.9 |  -5.2 |                    |
+|  Opp 4: Lagged-Self (NN) |  -8.4 |  -4.3 |  -2.1 |  -4.9 |   -   |  -7.3 |                    |
+|  Opp 5: TAG (Heuristic) |  +0.6 |  +6.9 |  -0.4 |  +5.2 |  +7.3 |   -   |                    |
++----------------------------------------------------------------------------------------+
+|  Action Entropy:       0.7610                                                        |
++------------------------------------------------------------------------------------------------------------------------+
+|  Equity Matrix (FACING A BET ONLY -- free checks tallied separately, see Free col)                                    |
+|  Equity Bucket     | Fold  | Call  | r33   | r66   | rPot  | All-In | N Hands | Free  | Avg St | Net Chips | Won    | Lost  |
++------------------------------------------------------------------------------------------------------------------------+
+|  <20% (Pure Air)   | 85.2% |  4.3% |  1.1% |  0.5% |  1.0% |  7.8%  |   2,588 |   835 |   0.9  | -72920.8   | +14568 | -87489 |
+|  20-40% (Draws)    | 86.3% |  4.9% |  1.1% |  1.1% |  1.1% |  5.4%  |  30,665 |   521 |   0.1  | -177229.3   | +209791 | -387020 |
+|  40-60% (Marginal) | 43.7% | 14.5% |  3.4% |  3.4% |  4.2% | 30.8%  |  11,485 |   524 |   0.1  | +46631.1   | +466153 | -419522 |
+|  60-80% (Strong)   |  7.9% | 11.4% |  4.2% |  5.0% |  8.3% | 63.2%  |   2,035 |   411 |   0.6  | +137204.5   | +243446 | -106241 |
+|  >80% (Nuts)       |  1.2% | 11.6% |  3.0% |  3.1% | 10.2% | 70.9%  |     605 |   298 |   1.5  | +104391.3   | +122745 | -18354 |
++------------------------------------------------------------------------------------------------------------------------+
+|  ACTION USAGE (all decisions) | Fold 47.2% | Call 18.8% | r33  7.2% | r66  7.6% | rPot 12.3% | All-In  6.9% |
+|  ALL-IN WinRate 51.4% (n=7685) | JAM by Opp-Color: Blue  5.2% Green 14.2% Yellow 21.0% Red 18.4% |
++------------------------------------------------------------------------------------------------------------------------+
+|  Train Loss:           5.6917  |  Val Loss:   7.0977                                |
+|  Loss Q: 4.8255 | Pi: 0.8620 | Bluff: 0.0428 | Str: 0.0182 | Eq: 0.0063        |
++========================================================================================+
++========================================================================================+
+|  SELF-PLAY V8 MULTI-PERSONALITY LEAGUE SYSTEM (RTX 4080 GPU)                           |
++========================================================================================+
+|  Active Personality: MAIN                                                               |
+|  Hands Simulated:        49,998 /     50,000   (100.0%)                            |
+|  Training Epoch:       84                                                              |
+|  Bootstrap Alpha:      0.00                                                            |
+|  Curriculum Stage:   Phase 4: Dynamic Table Sizes                                      |
+|  Elapsed Time:       57m 43s                                                          |
+|  Sim Speed:              14 hands/sec                                                 |
+|  ETA:                0s                                                               |
+|  Training Samples:       49,998                                                        |
++----------------------------------------------------------------------------------------+
+|  CUMULATIVE PERFORMANCE BY SEAT:                                                       |
+|  - Seat 0 Hero (Main)                       :  +14.1 BB/100 (VPIP:41.8% AGG:59.0%) [R:24487 F:33942 AI:8813]|
+|  - Seat 1 Opp 1: LAG (Heuristic)            :  -14.1 BB/100 (VPIP:67.7% AGG:65.7%) [R:36598 F:22428 AI:10198]|
+|  - Seat 2 Opp 2: Nit (Heuristic)            :   +2.3 BB/100 (VPIP:17.7% AGG:21.0%) [R:5273  F:39004 AI:1460]|
+|  - Seat 3 Opp 3: Calling Station (Heuristic):   +5.1 BB/100 (VPIP:63.3% AGG:13.3%) [R:10464 F:23606 AI:6497]|
+|  - Seat 4 Opp 4: Lagged-Self (NN)           :  -27.0 BB/100 (VPIP:35.2% AGG:62.9%) [R:24479 F:34097 AI:6532]|
+|  - Seat 5 Opp 5: TAG (Heuristic)            :  +19.5 BB/100 (VPIP:32.9% AGG:58.7%) [R:19330 F:34807 AI:5362]|
++----------------------------------------------------------------------------------------+
+|  Global Post-Flop Avg Active Players: 2.20                                             |
++----------------------------------------------------------------------------------------+
+|  EXPLOITATION SCOREBOARD (Net BB/100 Matrix):                                          |
+|  [Winner \ Loser] | Hero  | S1    | S2    | S3    | S4    | S5    |                    |
+|  Hero (Main)      |   -   |  +5.5 |  +1.1 |  -0.3 |  +8.4 |  -0.6 |                    |
+|  Opp 1: LAG (Heuristic) |  -5.5 |   -   |  -0.6 |  -5.3 |  +4.3 |  -7.0 |                    |
+|  Opp 2: Nit (Heuristic) |  -1.1 |  +0.6 |   -   |  +0.3 |  +2.1 |  +0.4 |                    |
+|  Opp 3: Calling Station (Heuristic) |  +0.3 |  +5.3 |  -0.3 |   -   |  +4.9 |  -5.1 |                    |
+|  Opp 4: Lagged-Self (NN) |  -8.4 |  -4.3 |  -2.1 |  -4.9 |   -   |  -7.3 |                    |
+|  Opp 5: TAG (Heuristic) |  +0.6 |  +7.0 |  -0.4 |  +5.1 |  +7.3 |   -   |                    |
++----------------------------------------------------------------------------------------+
+|  Action Entropy:       0.7568                                                        |
++------------------------------------------------------------------------------------------------------------------------+
+|  Equity Matrix (FACING A BET ONLY -- free checks tallied separately, see Free col)                                    |
+|  Equity Bucket     | Fold  | Call  | r33   | r66   | rPot  | All-In | N Hands | Free  | Avg St | Net Chips | Won    | Lost  |
++------------------------------------------------------------------------------------------------------------------------+
+|  <20% (Pure Air)   | 85.2% |  4.3% |  1.1% |  0.5% |  1.0% |  7.8%  |   2,591 |   836 |   0.9  | -72920.8   | +14568 | -87489 |
+|  20-40% (Draws)    | 86.3% |  4.9% |  1.1% |  1.1% |  1.1% |  5.4%  |  30,683 |   521 |   0.1  | -177279.3   | +209791 | -387070 |
+|  40-60% (Marginal) | 43.7% | 14.5% |  3.4% |  3.4% |  4.2% | 30.8%  |  11,493 |   524 |   0.1  | +46762.4   | +466375 | -419612 |
+|  60-80% (Strong)   |  7.9% | 11.4% |  4.2% |  5.0% |  8.3% | 63.2%  |   2,035 |   411 |   0.6  | +137204.5   | +243446 | -106241 |
+|  >80% (Nuts)       |  1.2% | 11.6% |  3.0% |  3.1% | 10.2% | 70.9%  |     605 |   299 |   1.5  | +104391.3   | +122745 | -18354 |
++------------------------------------------------------------------------------------------------------------------------+
+|  ACTION USAGE (all decisions) | Fold 47.2% | Call 18.8% | r33  7.3% | r66  7.6% | rPot 12.3% | All-In  6.9% |
+|  ALL-IN WinRate 51.4% (n=7687) | JAM by Opp-Color: Blue  5.2% Green 14.2% Yellow 21.0% Red 18.4% |
++------------------------------------------------------------------------------------------------------------------------+
+|  Train Loss:           6.4543  |  Val Loss:   2.1332                                |
+|  Loss Q: 5.3842 | Pi: 1.0574 | Bluff: 0.1900 | Str: 0.0304 | Eq: 0.0042        |
++========================================================================================+
++========================================================================================+
+|  SELF-PLAY V8 MULTI-PERSONALITY LEAGUE SYSTEM (RTX 4080 GPU)                           |
++========================================================================================+
+|  Active Personality: MAIN                                                               |
+|  Hands Simulated:        50,005 /     50,000   (100.0%)                            |
+|  Training Epoch:       87                                                              |
+|  Bootstrap Alpha:      0.00                                                            |
+|  Curriculum Stage:   Phase 4: Dynamic Table Sizes                                      |
+|  Elapsed Time:       57m 44s                                                          |
+|  Sim Speed:              14 hands/sec                                                 |
+|  ETA:                59m 59s                                                          |
+|  Training Samples:       50,005                                                        |
++----------------------------------------------------------------------------------------+
+|  CUMULATIVE PERFORMANCE BY SEAT:                                                       |
+|  - Seat 0 Hero (Main)                       :  +14.2 BB/100 (VPIP:47.7% AGG:59.0%) [R:24492 F:33945 AI:8814]|
+|  - Seat 1 Opp 1: LAG (Heuristic)            :  -14.1 BB/100 (VPIP:67.5% AGG:65.7%) [R:36600 F:22430 AI:10199]|
+|  - Seat 2 Opp 2: Nit (Heuristic)            :   +2.3 BB/100 (VPIP:17.0% AGG:21.0%) [R:5273  F:39010 AI:1460]|
+|  - Seat 3 Opp 3: Calling Station (Heuristic):   +5.1 BB/100 (VPIP:60.6% AGG:10.7%) [R:10465 F:23607 AI:6497]|
+|  - Seat 4 Opp 4: Lagged-Self (NN)           :  -27.0 BB/100 (VPIP:32.1% AGG:62.9%) [R:24480 F:34101 AI:6532]|
+|  - Seat 5 Opp 5: TAG (Heuristic)            :  +19.5 BB/100 (VPIP:31.3% AGG:58.7%) [R:19331 F:34810 AI:5362]|
++----------------------------------------------------------------------------------------+
+|  Global Post-Flop Avg Active Players: 2.20                                             |
++----------------------------------------------------------------------------------------+
+|  EXPLOITATION SCOREBOARD (Net BB/100 Matrix):                                          |
+|  [Winner \ Loser] | Hero  | S1    | S2    | S3    | S4    | S5    |                    |
+|  Hero (Main)      |   -   |  +5.6 |  +1.1 |  -0.3 |  +8.4 |  -0.6 |                    |
+|  Opp 1: LAG (Heuristic) |  -5.6 |   -   |  -0.6 |  -5.3 |  +4.3 |  -7.0 |                    |
+|  Opp 2: Nit (Heuristic) |  -1.1 |  +0.6 |   -   |  +0.3 |  +2.1 |  +0.4 |                    |
+|  Opp 3: Calling Station (Heuristic) |  +0.3 |  +5.3 |  -0.3 |   -   |  +4.9 |  -5.1 |                    |
+|  Opp 4: Lagged-Self (NN) |  -8.4 |  -4.3 |  -2.1 |  -4.9 |   -   |  -7.3 |                    |
+|  Opp 5: TAG (Heuristic) |  +0.6 |  +7.0 |  -0.4 |  +5.1 |  +7.3 |   -   |                    |
++----------------------------------------------------------------------------------------+
+|  Action Entropy:       0.7531                                                        |
++------------------------------------------------------------------------------------------------------------------------+
+|  Equity Matrix (FACING A BET ONLY -- free checks tallied separately, see Free col)                                    |
+|  Equity Bucket     | Fold  | Call  | r33   | r66   | rPot  | All-In | N Hands | Free  | Avg St | Net Chips | Won    | Lost  |
++------------------------------------------------------------------------------------------------------------------------+
+|  <20% (Pure Air)   | 85.2% |  4.3% |  1.1% |  0.5% |  1.0% |  7.8%  |   2,591 |   836 |   0.9  | -72920.8   | +14568 | -87489 |
+|  20-40% (Draws)    | 86.3% |  4.9% |  1.1% |  1.1% |  1.1% |  5.4%  |  30,686 |   521 |   0.1  | -177299.3   | +209791 | -387090 |
+|  40-60% (Marginal) | 43.7% | 14.5% |  3.4% |  3.4% |  4.2% | 30.8%  |  11,497 |   524 |   0.1  | +47128.6   | +466741 | -419612 |
+|  60-80% (Strong)   |  7.9% | 11.4% |  4.2% |  5.0% |  8.3% | 63.2%  |   2,035 |   411 |   0.6  | +137204.5   | +243446 | -106241 |
+|  >80% (Nuts)       |  1.2% | 11.6% |  3.0% |  3.1% | 10.2% | 70.9%  |     605 |   299 |   1.5  | +104391.3   | +122745 | -18354 |
++------------------------------------------------------------------------------------------------------------------------+
+|  ACTION USAGE (all decisions) | Fold 47.2% | Call 18.8% | r33  7.3% | r66  7.6% | rPot 12.3% | All-In  6.9% |
+|  ALL-IN WinRate 51.4% (n=7688) | JAM by Opp-Color: Blue  5.2% Green 14.2% Yellow 21.0% Red 18.4% |
++------------------------------------------------------------------------------------------------------------------------+
+|  Train Loss:           4.8025  |  Val Loss:   0.8963                                |
+|  Loss Q: 3.4468 | Pi: 1.3536 | Bluff: 0.0209 | Str: 0.0085 | Eq: 0.0028        |
++========================================================================================+
+
+Training completed successfully! Saved final weights to: C:\REPO\Antigravity\AIPoker\versions\v25\weights\expert_main.pth

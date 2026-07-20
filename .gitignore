@@ -8,6 +8,7 @@ venv/
 
 # Large Datasets and Extracted Files
 tools/data/
+data/
 
 # Model Weights
 core/weights/

@@ -31,88 +31,308 @@ which version is currently active. This is NOT a per-version snapshot (those liv
 
 ## Betting behavior
 
-### [BET-1] No middle gear — shove-preference 🔴 OPEN
+### [BET-1] No middle gear — shove-preference 🟢 RESOLVED (V29, 2026-07-20 — critic-consistency filter + higher risk-aversion)
 **First identified**: V15 SPECS.md (`[P1]`, framed as a raise-fraction-floor artifact, believed
 subsumed by V15's stack-range widening). **Reconfirmed**: V20_preflopEq / V20_preflopEq_AI
-(2026-07-17) — NOT actually resolved by V15 as once believed.
+(2026-07-17) — NOT actually resolved by V15 as once believed. **Last confirmed**: V25 100k-hand
+confirmatory run (2026-07-18) — MIXED result, see below (50k diagnostic was the best result of the
+whole investigation; 100k confirmed the core `vpip_adapts_to_style` hypothesis even more strongly,
+but the direct Q-gap widened back to 1.73-1.78x from 50k's 1.35-1.36x, echoing V24's own
+more-training-hurts-not-helps pattern — full detail in `versions/v25/SPECS.md`, not yet resolved
+which of the two readings to trust). V24's own calibrated
+setting (2026-07-18) FAILED outright: allin-vs-next-best Q-value gap WIDENED (V23: 2.4-2.5x at
+stack 15/25/40bb; V24: 2.75-3.18x at the SAME cells), `action_diversity` unchanged at
+`{'fold':9,'allin':12}` (2 actions). V24_extreme (diagnostic) then showed the opponent-response
+lever COULD move the needle at an extreme, non-production setting, at the cost of a new
+`vpip_adapts_to_style` regression. V25 pivoted to a structurally different fix — see below — and
+achieved a tighter Q-gap than V24_extreme WITHOUT that regression, at realistic settings.
 
 **Simple**: We rarely bet a normal amount — decisions are mostly fold, call, or shove all-in;
 medium-sized raises (33%/66%/pot) are almost never actually chosen even though the option exists.
 
 **Technical**: `model_verify`'s `action_diversity` check shows RAISE_33/RAISE_66 essentially never
-winning argmax across the whole equity×stack test grid, in every checkpoint of V20_preflopEq and
-V20_preflopEq_AI (`{'fold':9,'allin':10-11,...}`, at most 1-5 raise-bucket cells out of 21). Root
-cause traced directly in `opponent_bots.py`'s `FuzzyPlayerArchetype`: once a training opponent's
-equity clears its `need_for_value` threshold, it calls/raises "regardless of price" (verbatim in
-the code) — a min-raise and a shove extract identical zero-extra-fold-cost value from those hands,
-so the critic learns ALLIN as the dominant action. Confirmed via the trained critic's own Q-values:
-clean, monotonic ALLIN > RAISE_POT > RAISE_66 > RAISE_33 > CALL at every equity/stack combo tested,
-roughly double the next-biggest size, no smooth EV gradient favoring a middle size.
+winning argmax across the whole equity×stack test grid, in every checkpoint of V20_preflopEq
+through V22 (`{'fold':9,'allin':9-11,...}`, at most 1-5 raise-bucket cells out of 21). Root cause
+traced directly in `opponent_bots.py`'s `FuzzyPlayerArchetype`: once a training opponent's equity
+clears its `need_for_value` threshold, it calls/raises "regardless of price" (verbatim in the
+code) — a min-raise and a shove extract identical zero-extra-fold-cost value from those hands, so
+the critic learns ALLIN as the dominant action.
 
-**Suggestion**: Make the heuristic bots' value-branch price-sensitive (continuation probability
-should decay with bet size even above the value threshold, not stay flat at "always continue").
-**Already tried and failed**: diversifying the opponent POOL toward real NN opponents
-(V20_preflopEq_AI, 2026-07-17) — a promising early read at 35k hands fully faded by 140k/150k.
-Pool diversity alone is not sufficient; the fix needs to go directly at the opponent response
-function.
+**Fix tried and RULED OUT (2026-07-17/18, V23)**: made the value-raise branch price-sensitive
+(`VALUE_PRICE_SENSITIVITY=0.05`, calibrated via a standalone probe across all 4 archetypes,
+carefully chosen to avoid overcorrection — see `versions/v23/self_play/calibrate_bet1.py` and
+`versions/v23/SPECS.md` for the full derivation) in both `decide_postflop` and a restructured
+`decide_preflop`, then retrained 150k hands fresh. Result: `action_diversity`/
+`deep_stack_ood_guard` got WORSE, not better. Direct Q-value inspection at the same failing cell
+(`eq=0.55, stack=40bb`) shows why: V22's Q-values there were `call=0.52, raise_33=0.63,
+raise_66=0.64 (actual max), raise_pot=0.56, allin=0.49` (healthy, ALLIN not even top); V23's at
+the IDENTICAL cell: `call=0.76, raise_33=1.03, raise_66=1.10, raise_pot=1.24, allin=2.99` — ALLIN
+now more than double the next-best action.
 
-### [BET-2] Short-stack polarization — residual flatting 🔴 OPEN
-**First identified**: tracked since V15/V16 era as `[P3]`. **Last confirmed**: V20 (WORSENED with
-more training, 0.12→0.25 avg P(call) between 120k→200k).
+**Root cause of the regression, found by code inspection (not speculation)**: `simulator.py`'s
+`_mc_target_evs_sized` — the function computing HERO's OWN per-size training target — calls the
+*exact same* `bot.decide_preflop`/`decide_postflop` functions the fix patched, to sample how often
+opponents fold to each of hero's hypothetical raise sizes (`p_all_fold`), then credits
+`p_all_fold * pot` straight into that size's counterfactual EV. Making bots fold MORE to oversized
+bets doesn't just describe more realistic live-opponent behavior — it ALSO mechanically INFLATES
+hero's own ALLIN target, since more folding = more free pot-wins credited to the shove option. The
+fix's two effects (opponents demand more to continue vs. hero gets more fold-equity credit for
+shoving) point in OPPOSITE directions for this goal, and the fold-equity-credit effect won,
+re-inforcing the shove preference instead of reducing it.
+
+**Fix 2 tried and RULED OUT (2026-07-18, V24)**: implemented exactly the revised suggestion below
+— decoupled `_mc_target_evs_sized` from live `decide_*` (new `_ev_target_fold_decision`, reverting
+the target's value branch to pre-BET-1 flat `need_for_value`, keeping the pre-existing P1b
+`continue_bar`) — PLUS a new "show of strength" mechanism: a per-personality `bot_bluff_perc`
+trait (`opponent_bots.py`) giving non-all-in raises a probabilistic, price-independent bonus fold
+rate that all-in doesn't get (`RAISE_RESPECT_BOOST=0.10`, calibrated via direct EV-arithmetic
+checks on the isolated fold-decision function — confirmed a real, non-degenerate
+`P(fold|raise) - P(fold|allin)` gradient existed for all 4 archetypes BEFORE committing to a
+retrain). A real implementation bug was caught during that same calibration (boosting
+`need_for_value` has NO effect at realistic raise-pot price levels — only `continue_bar` gates
+fold-vs-continue there; fixed by boosting `continue_bar` directly) — a good example of the
+calibrate-before-retrain discipline catching an error cheaply.
+
+Despite all that care, the FULL 150k retrain result was a clean negative: `action_diversity`
+unchanged (still 2 actions), `deep_stack_ood_guard` still fails, and the allin-vs-next-best
+Q-value gap WIDENED at every tested stack depth (see versions/v24/SPECS.md's full table) rather
+than narrowing. Aggregate win-rate metrics (`bb100_vs_standard_fields`, `beats_offformula_stress`)
+held up fine or slightly improved -- suggesting the training population still doesn't punish
+over-shoving enough in EV terms for this lever (even with a real, confirmed-in-isolation
+behavioral change) to overcome all-in's advantages. One NEW regression found: `committed_sensitivity`
+dropped from V23's PASS (0.109) to WARN (0.011) -- not yet root-caused, plausibly downstream of
+the policy being even MORE all-in-concentrated (sizing-relevant features matter less when the
+policy barely uses graduated sizes).
+
+**Diagnostic run (2026-07-18, V24_extreme)**: deliberately EXTREME, throwaway test -- `bot_bluff_
+perc` pushed to near-0 for all 4 archetypes, `RAISE_RESPECT_BOOST` 0.10->0.40, 50k hands (not
+150k), `stack_depth_mix` replaced with a single `fixed_stack_bb=35`, bootstrap warmup skipped
+entirely. Result: **real, multi-dimensional movement for the first time in this whole
+investigation**:
+- Allin-vs-next-best Q-value gap roughly HALVED at every tested stack depth (e.g. 35bb: 3.18x ->
+  1.68x; 40bb: 3.18x -> 1.60x).
+- `action_diversity`: `{'fold':8,'raise_pot':2,'allin':11}` -- `raise_pot` won 2 argmax cells, the
+  FIRST time any raise bucket has won a cell across the entire V20-V24 lineage.
+- `stack_full_sweep`'s argmax path became a genuine multi-action transition by stack depth
+  (`allin`x4 -> `raise_pot`x2 -> `fold`x3) instead of one action dominating all 9 points.
+- Three long-flat features became load-bearing for the first time: `committed_sensitivity` (WARN
+  0.011 -> PASS 0.075), `pot_type_sensitivity` (WARN 0.004 -> first-ever PASS 0.122),
+  `opponent_style_sweep` ([OPP-5], WARN since V20_preflopEq_AI -> first-ever PASS 0.151).
+- Real win-rate held up: `bb100_vs_standard_fields` PASS all 4 fields (+27.6 to +42.8 BB/100),
+  `beats_offformula_stress` PASS -- still a genuinely profitable strategy, not diversity-for-its-
+  -own-sake.
+- **Cost / new regression**: `vpip_adapts_to_style` FAILED (short delta only +1.9pts, needs
+  >=5pt) -- every prior version passed this. Hero now enters 61-75% of hands almost regardless of
+  opponent tightness; opponents fold to raises so readily at this setting that a wide-and-
+  aggressive default works nearly everywhere, at the cost of no longer adapting entry range to who
+  is at the table. `deep_stack_ood_guard` still FAILs too (cell moved to 15bb).
+- **Confound, by design**: FIVE things changed at once (the two bluff constants, fixed-vs-mixed
+  stack depth, bootstrap on/off, 50k-vs-150k hands) -- this run cannot isolate how much of the
+  improvement (or the new VPIP regression) is attributable to the bluff mechanism specifically vs.
+  the simplified curriculum/faster convergence in general. See versions/v24_extreme/SPECS.md for
+  the full numbers.
+
+**Fix 3 — structural pivot, tried and currently the best result (2026-07-18, V25)**: rather than
+another opponent-response calibration pass, attacked the root cause identified during the
+V24_extreme write-up directly: `_mc_target_evs_sized`'s `ev_if_called = true_equity * (pot +
+2*raise_size - to_call) - raise_size` treated a called (non-all-in) raise as a TERMINAL, right-now
+showdown, with zero representation of the value a raise preserves by keeping future streets' betting
+alive (implied odds when hero improves, continued fold equity later) vs. an all-in that forecloses
+that entirely. User explicitly chose to prioritize a fix that produces EMERGENT/learned behavior
+(discover the value of continued betting by simulating it) over more hand-tuned opponent-response
+constants. Two designs were considered and put to the user as an explicit fork — TD-bootstrap via
+the model's own in-training critic (maximally "emergent" but a real paradigm shift/instability risk
+for a codebase that's never done self-referential targets) vs. a one-street-deep MC rollout with a
+FIXED continuation policy (same MC/counterfactual paradigm already used everywhere in this codebase,
+lower risk, directly calibratable). **User chose the MC rollout.**
+
+New `SixMaxSimulator._rollout_continuation_ev` (`versions/v25/self_play/simulator.py`): for every
+non-all-in raise size on a non-river street, deals the next card(s), recomputes a cheap MC equity,
+applies hero's fixed c-bet policy (bet ~2/3 pot if new equity clears a threshold, else check --
+deliberately NOT the live NN, to avoid bootstrapping the target off the model being trained), asks
+the opponent's REAL `decide_postflop` whether it folds, and adds the realized delta vs. the old
+single-street assumption as an ADDITIVE correction. River and all-in are untouched (correctly --
+neither has a "next street"). Calibrated in isolation first (`calibrate_multistreet_ev.py`) --
+caught and fixed a methodology bug in the calibration script itself (eyeballed `true_equity` instead
+of computing it from the actual cards) before drawing any conclusion. Confirmed: exactly 0 at
+river/all-in, meaningfully positive on a deep-stack flush draw (+2-11% of pot) and an already-strong
+made hand (+1-19%, larger on average since a favorite gets paid nearly every trial vs. a draw only
+benefiting on the trials that hit), shrinking toward 0 as the stack empties. Cost: ~2.4x slower
+per hand (smoke-tested), from up to 3 sizes x 4 rollout trials x a 150-sim equity call each.
+
+**Result (50k-hand fast diagnostic, realistic settings, no extreme parameters)**: allin-vs-next-best
+Q-gap at the standard cells (eq=0.55, stack 15/25/35/40bb) narrowed to **1.35-1.36x** -- tighter than
+V24_extreme's own extreme-parameter 1.60-1.76x -- AND Q-values are now cleanly monotonic by size
+(fold<call<r33<r66<rPot<allin), a smooth curve rather than an erratic one. Critically,
+**`vpip_adapts_to_style` still PASSES** (+8.1/+6.0pts) -- V24_extreme could only reach a comparable
+Q-gap by breaking this same check. `model_verify --full`: 18 PASS/2 WARN/1 FAIL/1 SKIP.
+`deep_stack_ood_guard` still FAILS but at the lowest all-in argmax confidence ever measured (0.31 vs
+V24's 0.46/V24_extreme's 0.35) -- the one open failure left in this whole lineage. Win-rate checks
+all PASS and strong (+29.6 to +80.6 BB/100). `action_diversity`'s own strict grid doesn't show a
+raise bucket winning outright (unlike V24_extreme's 2-cell win) despite the tighter gap: its
+synthetic cells apparently don't land where the gap narrowed most; `stack_full_sweep` DOES show one
+`raise_pot` win in the argmax path though. 50k checkpoint backed up to
+`versions/v25/weights/frozen_v25_50k_diag.pth`. A longer 100k-hand from-scratch confirmatory run
+(user-authorized ceiling) is in progress to check this holds up with more training exposure. Full
+detail: `versions/v25/SPECS.md`.
+
+**Suggestion (four-times-revised)**: the structural target-EV fix (V25) looks like the strongest
+lever found so far — it reaches an equal-or-better Q-gap than the best opponent-response attempt
+(V24_extreme) WITHOUT that attempt's regression. Once the 100k confirmatory run lands: if it holds,
+this is a strong deploy candidate pending `deep_stack_ood_guard`'s persistent failure (not yet
+resolved by ANY version since V19 — may need its own dedicated investigation, separate from BET-1).
+The opponent-response lever (V24's `bot_bluff_perc`/`RAISE_RESPECT_BOOST`) is still live/inherited in
+V25's base and may be complementary — a future ablation isolating V25's rollout fix ALONE (reverting
+V24's opponent-response tuning) would clarify how much each contributes, if worth the cycle.
+**Also tried and failed** (2026-07-17): diversifying the opponent POOL toward real NN opponents
+(V20_preflopEq_AI) — a promising early read at 35k hands fully faded by 140k/150k.
+
+**V26/V27 diagnostic work (2026-07-18/19)**: built the FIRST permanent, reproducible Q-gap check
+(`allin_vs_nextbest_qgap` in `tools/model_verify/checks.py`) — every prior number quoted above was
+measured with a different one-off script each time. Ran against V26/V27 with a proper WORST-CELL
+(not averaged) breakdown by stack depth and opponent archetype: confirmed the gap MONOTONICALLY
+WORSENS with stack depth (V27: 15bb=+0.35 → 40bb=+0.61, fraction of pot) — backwards from correct
+theory. Tested the `RAISE_RESPECT_BOOST` is_allin-asymmetry hypothesis directly (paired probe,
+N=2000): real and large for TAG/LAG (fold rate facing all-in vs. an equally-priced raise: -66pts/
+-37pts), but the archetype PATTERN didn't match the Q-gap's own pattern (worst at NIT, where the
+boost asymmetry is ~zero since NIT is already fold-saturated) — concluded this mechanism is real
+but not the primary driver. Investigated a "range narrows on a bigger bet" hypothesis and ruled it
+out for training specifically (full-information simulator, oracle equity from real dealt cards, no
+hidden range to narrow for a single opponent hand — verified the math is internally consistent).
+
+**Fix 4 — risk-adjusted target, tried and WORKED (V28, 2026-07-19)**: the better-supported lead —
+`_mc_target_evs_sized`'s target is a raw point-estimate EV with NO risk/variance penalty, and
+because a bigger bet's `raise_size` scales with stack while its outcome variance scales too, the
+same marginal equity edge produces a linearly bigger raw EV number at deeper stacks with nothing
+counteracting all-in's much higher variance. Confirmed via code research: no variance-aware
+mechanism exists anywhere in this codebase. Fix: closed-form `Var[X]` from the SAME three
+quantities the EV blend already computes (fold/call-win/call-lose 3-point mixture, `E[X]` verified
+to match the existing formula exactly via a 20-trial randomized unit test) — `risk_adjusted_ev =
+raw_ev - RISK_AVERSION_COEFFICIENT * sqrt(Var[X])`, applied UNIFORMLY to every sized action, NOT an
+`is_allin` special case (all-in's larger `raise_size` gives it naturally larger variance, so the
+same coefficient penalizes it most on its own). Calibrated coefficient (0.10) via a standalone
+script (averaged over 40 trials/cell to cut sampling noise) BEFORE training, confirming it flips
+the worst diagnosed cell from strongly all-in-favoring to clearly disfavoring while barely touching
+a legitimate value shove. Trained 100k hands fresh from V27.
+
+**Result (V28): real, validated improvement, but partial**. `allin_vs_nextbest_qgap` shrank ~40-50%
+at every cell AND the pathological worsening-with-stack-depth pattern is GONE (roughly flat
+15bb-40bb instead of escalating to 0.61 at 40bb). `action_diversity` recovered from a 2-action
+collapse to 4 actions (call/raise_33 win cells again); `stack_full_sweep`'s argmax path is now a
+coherent call→raise_33 progression with zero all-in wins (was all-allin in V27); `position_sweep`
+recovered from V27's WARN back to PASS (0.653, even better than V26's 0.378).
+`beats_frozen_predecessor` PASSES (+29.7 BB/100 vs frozen V27). `deep_stack_ood_guard` STILL FAILS
+(the one check no version since V19 has cleared) but at meaningfully lower confidence (0.33→0.24).
+Full detail: `versions/v28/SPECS.md`.
+
+**Fix 5 — critic-consistency filter + higher risk-aversion, RESOLVED (V29, 2026-07-20)**: calibrated
+a candidate ALLIN-specific consistency filter against V28's own real Q-values across
+`deep_stack_ood_guard`'s eq × stack grid BEFORE building it (honest finding, not assumed): at
+eq=0.43, V28's critic already ranked ALLIN below RAISE_POT while ALLIN still cleared the fold
+baseline (the exact spurious-weight case a consistency filter fixes) — but at eq=0.48/0.55 (the
+check's OTHER 10 failing cells), ALLIN was the critic's OWN genuine Q-argmax, where a policy-side
+filter is a correct no-op. Built BOTH levers together: `regret_match_policy_torch` gained
+`critic_consistency_margin` (vetoes ALLIN's regret when any other action's Q beats it by more than
+the margin — ALLIN-specific, not an all-pairs rule, since an all-pairs version tested against the
+same calibration data collapsed legitimate raise-size mixing in 19-23/25 grid cells), AND
+`risk_aversion_coefficient` bumped 0.10→0.15 to push on the eq=0.48/0.55 half the filter can't
+reach. Trained 100k hands fresh from V28.
+
+**Result: RESOLVED, and qualitatively different from every prior attempt**. `deep_stack_ood_guard`
+PASSES — the first clean pass since V22, after V23-V28 all failed it. `allin_vs_nextbest_qgap`'s
+worst-cell gap is NEGATIVE at every stack depth (15bb=-1.00 → 40bb=-1.97) and every archetype
+(NIT/TAG/LAG=-0.43/-0.43/-0.44, CALLING_STATION=-0.47) — V28's own worst cells were still POSITIVE;
+V29 doesn't just shrink the gap, it flips the sign everywhere tested. `action_diversity` stayed
+healthy (fold/call/raise_pot all still win argmax cells), confirming the ALLIN-only filter scope
+didn't collapse sizing mixing. The two mechanisms (filter + coefficient bump) weren't tested in
+isolation, so their individual contributions aren't separately attributable — see
+`versions/v29/SPECS.md` for the full derivation, calibration, and `model_verify --full` breakdown
+(21 PASS/2 WARN/0 FAIL/1 SKIP, the cleanest scorecard in this whole lineage). Verified, NOT yet
+deployed live (V28 stays active pending user evaluation).
+
+### [BET-2] Short-stack polarization — residual flatting 🟡 LIKELY RESOLVED (V29, 2026-07-20 — unconfirmed side effect)
+**First identified**: tracked since V15/V16 era as `[P3]`. **Last confirmed failing**: V22
+(2026-07-17, 0.35 avg P(call) in shove-or-fold spots) — still present after the [STACK-1]/[STACK-2]
+fix (deeper stack curriculum), similar magnitude to V20's own 0.25-0.35 range.
 
 **Simple**: In clear shove-or-fold spots (short stack facing a raise sized near the stack), we
 sometimes just call instead of shoving or folding — a real strong player would rarely flat here.
 
 **Technical**: `short_stack_polarization` (WARN-gated, not a hard FAIL). Avg P(call) in a
-shove-or-fold equity/stack grid should be near 0; it isn't, and it's trending worse with more
-training in at least one version, not better. Root cause not yet isolated — a candidate is the
-counterfactual EV target not sharply enough penalizing the dominated middle option at these
-depths, but this hasn't been directly tested.
+shove-or-fold equity/stack grid should be near 0. V29 (2026-07-20): **PASS at 0.14** — well down
+from V22's 0.35 and V20's 0.25-0.35 range. NOT a targeted fix this version ([BET-1]'s
+critic-consistency filter + risk-aversion bump were aimed at the ALLIN side of the same equity/stack
+neighborhood, not specifically at short-stack call-flatting) — reads as a plausible side effect of
+the same mechanism (a sharper fold-or-shove signal at marginal equity/short stacks could naturally
+squeeze out the dominated flat-call option too), but NOT confirmed via a dedicated test. Flagged
+YELLOW rather than closed outright: watch this check across future versions before calling it
+durably resolved, same discipline [STACK-1] itself needed (one clean pass at V22 didn't hold).
 
-**Suggestion**: Dedicated investigation needed — hasn't been root-caused. Worth checking whether
-this correlates with [BET-1]'s mechanism (deterministic opponent response smoothing away the
-penalty for flatting) before assuming a separate cause.
+**Suggestion**: If a future version's `short_stack_polarization` regresses, revisit whether it
+tracks with [BET-1]'s own mechanism specifically (both live in the same equity/stack neighborhood).
 
 ---
 
 ## Stack depth
 
-### [STACK-1] Deep-stack OOD trash-jam 🔴 OPEN
+### [STACK-1] Deep-stack OOD trash-jam 🟢 RESOLVED (V29, 2026-07-20)
 **First identified**: live incident, V14/V15 era (K9o jammed 20bb into a single limper).
-**Last confirmed**: V20_preflopEq_AI 150k (`eq=0.55, stack=20bb -> ALLIN@0.37`) — present in
-EVERY version checked so far (V19, V20, V20_preflopEq, V20_preflopEq_AI), at slightly different
-specific cells each time.
+**Present in EVERY version from V14 through V21_auxhead** (V19, V20, V20_preflopEq,
+V20_preflopEq_AI, V21, V21_auxhead all FAILed `deep_stack_ood_guard`, at slightly different
+specific cells each time). V22 (2026-07-17) PASSED this gate for the first time ever -- but this
+turned out to be a FALSE RESOLUTION: **every version since (V23, V24, V24_extreme, V25, V26, V27,
+V28) FAILed this same check again**, at gradually improving-but-never-clearing confidence
+(V25=lowest all-in argmax confidence ever at the time 0.31, V28=0.33→0.24) -- V22's depth-curriculum
+fix reduced the problem's severity but did not durably close it, contradicting this entry's own
+"RESOLVED (V22)" label for six versions running. Corrected here rather than left stale. **RE-
+RESOLVED**: V29 (2026-07-20, [BET-1] Fix 5 -- critic-consistency filter + risk_aversion_coefficient
+0.10→0.15) PASSED cleanly again, this time alongside `allin_vs_nextbest_qgap` flipping fully
+negative at every cell (not just a narrower gap) -- a categorically stronger signal than V22's own
+pass had. See [BET-1] for the full mechanism.
+
+**Regression watch, upgraded to a HARD requirement given the V22 false-resolution history**: do NOT
+mark this RESOLVED again on a single clean pass alone -- re-check on every future version for AT
+LEAST 2-3 consecutive versions before trusting a "RESOLVED" label here, and if it regresses, update
+this entry's status immediately rather than leaving a stale claim (as happened V23-V28).
 
 **Simple**: At medium-deep stacks (15-40bb) facing a modest bet with a marginal hand (~45-55%
-equity), we sometimes jam all-in when we should just call or fold.
+equity), we used to sometimes jam all-in when we should just call or fold. V22's deeper stack
+curriculum (see [STACK-2]) narrowed this but did NOT durably fix it -- the real, lasting fix came
+from V29's [BET-1] mechanism (a training-target change, not a training-DATA-coverage change).
 
-**Technical**: `deep_stack_ood_guard` regression check. V20's own investigation found the failure
-grid shape changes across versions (V19: flat across the whole 15-40bb range; V20: narrowed to
-fewer cells) but never actually clears the gate. Likely shares [BET-1]'s mechanism (shoving reads
-as "free" value against a population that doesn't punish overbets), though not directly proven —
-worth testing together.
+**Technical**: `deep_stack_ood_guard` regression check. V22's ORIGINAL hypothesis (in hindsight,
+INCOMPLETE): the model had never actually trained beyond 50bb (see [STACK-2]) and the live-serve
+clamp created a hard extrapolation boundary right around the failure zone. V22 raised
+`STACK_CEIL_BB` 50->100 and gave `stack_depth_mix` real training density up to 100bb (an
+overlapping tail band, not a hard cutoff) -- training-DATA-coverage exposure alone bought one clean
+pass, then the check failed again for six straight versions, showing coverage wasn't the whole
+story. V29's fix instead targets the training TARGET FORMULA itself (risk-unaware raw EV +
+policy/critic disagreement, see [BET-1]) -- a mechanism V22 never touched. The originally-suspected
+shared mechanism with [BET-1] (shoving reading as "free"
+value against a price-insensitive population) turned out NOT to be the (or at least not the only)
+cause -- [BET-1] itself remains fully unresolved in V22 (`action_diversity` still shows no
+raise_33/66/pot argmax anywhere), yet [STACK-1] cleared anyway. Keep this in mind if [BET-1] work
+starts: the two issues are less coupled than assumed.
 
-**Suggestion**: Same lever as [BET-1] — the opponent price-sensitivity fix is the most likely
-thing to move this too, since it may be the same underlying cause in a different equity band.
+**Regression watch**: re-check this gate on every future version -- it's cleared now, but the
+mechanism (deep-stack curriculum) is new and unproven over multiple versions yet.
 
-### [STACK-2] Beyond-50bb extrapolation (clamped, not solved) 🟡 PARTIAL
+### [STACK-2] Beyond-50bb extrapolation 🟢 RESOLVED (V22)
 **First identified**: V20 pre-deployment smoke test (a flopped set of aces showed fold%
 climbing 10%→32% from 45bb→150bb, a real OOD extrapolation artifact).
-**Status**: mitigated via a live-serve clamp (stack/pot/call-derived context features capped at
-the training ceiling regardless of real table depth), not via actually extending training depth.
+**RESOLVED**: V22 (2026-07-17) -- `STACK_CEIL_BB`/`POT_CEIL_BB`/`CALL_CEIL_BB` raised 50/100/50 ->
+100/200/100 and `stack_depth_mix` widened to `[5-14bb:0.40, 14-30bb:0.30, 30-60bb:0.20,
+10-100bb:0.10]` (the last band deliberately overlapping, not a disjoint bucket, to avoid a
+training-density cliff at the seam). Training now genuinely covers up to 100bb instead of clamping
+at 50bb. Also fixed [STACK-1] as a side effect (see above).
 
-**Simple**: We've never actually trained beyond 50bb effective stacks. At truly deep tables
-(80-150bb+), the live clamp keeps us from breaking, but we're not applying any deep-stack-specific
-skill — we just can't perceive the extra depth at all.
+**Simple**: We used to never train beyond 50bb effective stacks; a live clamp kept things safe at
+deeper tables but the model had zero deep-stack skill. Now trains with real exposure up to 100bb.
 
-**Technical**: `stack_depth_mix` curriculum (5-50bb bands) has capped training depth since V15.
-`contract.py`'s stack/pot/call_amount-derived features are clamped to that ceiling before being
-fed to the model at serve time, verified to hold fold-rate flat (~13%) from 20bb to 150bb+. This
-is a safety patch against a real OOD failure mode, not learned deep-stack strategy (multi-street
-implied odds, etc. past 50bb were never in any training example).
-
-**Suggestion**: Extend `stack_depth_mix` to cover deeper bands in a future version if deep-stack
-play quality (not just safety) becomes a priority.
+**Residual scope**: 100-150bb+ tables still extrapolate past the new ceiling (the live-serve clamp
+logic still applies beyond 100bb) -- fully resolved for the trained 5-100bb range, not for
+truly-deep tournament-style stacks past that. Extend further in a future version if that becomes a
+priority.
 
 ---
 
@@ -139,18 +359,70 @@ human-like or solver-like opponent.
 consider a genuinely different opponent archetype family for stress-testing beyond
 `TieredLookupBot`.
 
-### [OPP-2] No per-opponent action attribution 🔴 OPEN
-**First identified**: V16 ROADMAP `[P6]`. **Status**: unchanged since — no architecture work done.
+### [OPP-2] No per-opponent action attribution 🟢 RESOLVED, TRAINING + LIVE (V29, 2026-07-20)
+**First identified**: V16 ROADMAP `[P6]`. **Status prior to V29**: unchanged since — no
+architecture work done.
 
-**Simple**: We don't track who specifically did what during a hand — we only see "someone raised,"
-not which particular opponent (with their own known tendencies) did it.
+**Simple**: We didn't used to track who specifically did what during a hand — only "someone
+raised," not which particular opponent (with their own known tendencies) did it. Fixed for
+TRAINING at first pass; the live wiring (`core/table_state.py`) was completed the same day per
+explicit user request ("deploy to live and make sure the live boardstate can provide all
+informations needed").
 
-**Technical**: Action-history tokens aren't per-seat — the sequence model sees a coarse
-fold/call/raise token stream, not attributed to a specific opponent. HUD stats (VPIP/AGG color)
-are static per-seat CONTEXT features, decoupled from the actual in-hand action sequence.
+**Technical**: Corrected framing found while implementing the fix -- there was never actually a
+"coarse action-history token stream" in the current architecture (that description predates a
+prior redesign); the sequence axis is hero's own successive decision points this hand, each with a
+static per-timestep context snapshot. The real gap was narrower but still real: a specific
+opponent seat's only signal was its STATIC, cross-hand VPIP/AGG HUD color plus a hand-level
+`pot_type` aggregate ("someone raised, 3-bet+") -- no way to attribute in-hand aggression to one
+specific seat. **Fix (V29)**: two new per-seat boolean context features, `raised_this_hand[seat]` /
+`raised_this_street[seat]` (context_dim 44->54, contract_version 7->8), threaded through
+`versions/v29/self_play/simulator.py`'s betting loop (both hero's and every opponent bot's raise
+branches), `core/board_state.py`'s shared `SeatState` (additive, inert for every earlier version's
+contract), `versions/v29/core/contract.py`, and `train.py`'s separate `vectorize_hand_samples`
+context builder (kept in lockstep by hand -- this is the exact duplication that let V20's own
+rescale drift, watched carefully here). Verified via unit tests plus real-simulated-hand
+integration smoke tests (including the real TreeOpponent/lagged-self opponent pool) before
+committing to the full retrain.
 
-**Suggestion**: Would need a real architecture change (per-seat action tokens in the sequence
-input), not a quick fix. Flagged as backlog across multiple versions, never built.
+**Live fix (2026-07-20)**: `core/table_state.py`'s `_generate_timeline_actions` gained real per-seat
+raise/call classification -- a stack-drop diff is only a RAISE if it exceeds the bet level that
+specific seat actually faced (`street_bet_before`, captured once per tick, updated locally so a
+rare multi-drop frame doesn't misattribute), not "any drop." Preflop is seeded to the big blind
+(not 0) so a plain limp isn't misread as a raise -- previously `current_street_bet_level` had no
+concept of the BB's fixed opening price. `raised_this_street` resets every street change (mirroring
+`current_street_bet_level`'s own reset); `raised_this_hand` persists the whole hand. Threaded into
+`to_board_state()`'s `SeatState`s.
+
+**Also fixed as a direct byproduct**: the EXISTING `committed`/`hero_committed`/`pot_type` context
+features (V22/V23) had ALSO been silently inert (always 0) in live serving for every version since
+V22 -- `to_board_state()` never set them. Now sourced from real tracked state: `committed`/
+`hero_committed` = each player's start-of-hand stack minus their current stack (lazily seeded the
+first time a stack is observed each hand); `pot_type` = a live whole-hand raise-EVENT counter
+(`self.raise_count`), bucketed 0/1/2+ exactly like the simulator's own `raise_count`.
+
+**Also fixed, a second-order byproduct**: neither hero's nor an opponent's stack correctly updated
+to a genuine 0 (all-in) -- both had a monotonic-decay guard (`if stack > 0:`) that (correctly)
+rejects a bare 0 as a likely failed OCR read, but had no way to distinguish that from a REAL all-in.
+`core/vision.py` already emitted a reliable `state='All-In'` signal for OPPONENTS via an explicit
+'ALL'/'IN' text match (checked before digit-cleaning mangles the letters into garbage digits) that
+`table_state.py` simply wasn't using -- now it is. HERO's own OCR region had no equivalent signal at
+all (just bare digit parsing) -- added the same 'ALL'/'IN' text-match to vision.py's hero-stack
+extraction (`hero_all_in` flag), mirroring the already-proven opponent pattern exactly. Verified
+both the fix (all-in correctly reaches 0) and the regression case (an unconfirmed bare-0 misread
+still correctly gets rejected as noise, preserving the original protection) via direct tests.
+
+**Verification**: unit tests (raise-vs-call classification including a limp, a preflop raise, a
+flop bet-then-call, an exact-chip all-in call) plus a full end-to-end test through
+`core.decision.PokerDecisionEngine.make_decision` with V29 active, confirming no crash and correct
+context values reaching the model. Not tested against real screen captures/OCR (no live table
+available this session) -- the vision.py text-matching logic is a direct structural mirror of the
+opponent-side pattern already running in production, not a new heuristic, but real-table
+confirmation is still worth doing when next played live.
+
+**Suggestion**: none outstanding for the core mechanism. Worth keeping an eye on `current_street_bet_level`'s
+epsilon tolerance (1% of BB, floor 0.01) across different stake levels/currencies if this is ever
+used at very small or very large blinds.
 
 ### [OPP-3] Size-blind action history 🔴 OPEN
 **First identified**: V16 ROADMAP `[P5]` (generalized from an original call_amount-only framing).
@@ -187,12 +459,17 @@ V20_preflopEq_AI), so the gap matters more than it used to.
 training's exact mechanism. Scoped conceptually, not started — the live pipeline currently has no
 per-seat "have they acted since the last raise" tracking at all.
 
-### [OPP-5] Opponent-style/VPIP-AGG-color read may not be load-bearing 🔴 OPEN
+### [OPP-5] Opponent-style/VPIP-AGG-color read may not be load-bearing 🟡 PARTIAL (resolved in V24_extreme/V25, per the Suggestion below)
 **First identified**: `model_verify`'s `opponent_style_sweep` check, added 2026-07-15 (first
 version to carry it). **Confirmed**: V20_preflopEq_AI (spread 0.000, completely flat) and V21
 (spread 0.001, then re-confirmed at 0.004 after widening the sweep from 3 to 5 equity points to
 cover the actual fold/continue transition zone — ruling out "the two saturated endpoints just
-happened to hide a real mid-curve difference").
+happened to hide a real mid-curve difference"). **Update (2026-07-18)**: the Suggestion below
+(fix alongside [BET-1]) played out as predicted — V24_extreme's opponent-response push produced
+the first-ever PASS (spread 0.151), and V25's structural multi-street fix (realistic settings, no
+extreme parameters) ALSO passes (spread 0.109). Confirms this was genuinely a training-population
+flatness issue, not dead wiring, and both [BET-1] fix families move it. See [OPP-8] below, though,
+for a narrower, still-open finding about how COARSE this same signal is even once load-bearing.
 
 **Simple**: Facing the identical bet at the identical hand strength, we play essentially the same
 way against a tight, disciplined opponent (a "nit") as against a loose, aggressive one (a
@@ -207,19 +484,251 @@ or size-aware) — this is about whether the per-seat HUD-style CONTEXT features
 versions, no architecture change needed to use them) are actually load-bearing at all, and the
 answer looks like no.
 
-**Suggestion**: Root cause not yet isolated. Worth checking whether this is a genuine dead input
-(plausible: the deterministic heuristic-bot training population doesn't reward differentiating by
-style enough to matter for the loss — a similar population-level flatness to [BET-1]'s root cause)
-versus an actual wiring/normalization issue in how `VPIP_MAP`/`AGG_MAP` values reach the model. A
-cheap first check: an isolated sensitivity ablation on just the VPIP/AGG color inputs (mirroring
-`equity_edge_sensitivity`'s approach) before assuming it's purely a training-population artifact.
+**Root cause narrowed (2026-07-17)**: added `check_opponent_color_isolated_ablation` (FAST,
+`tools/model_verify/checks.py`) — pushes VPIP/AGG to synthetic extremes (0.0 vs 1.0, well past any
+realistic archetype) and tests the table-level scalar (ctx[7]/ctx[8]) and the per-seat block
+separately. Run against V21_auxhead: table-scalar TV=0.026, per-seat-block TV=0.077 (comparable to
+`hand_strength_sensitivity`'s own 0.117) — the network CAN read the per-seat VPIP/AGG input, and
+does respond once pushed far enough. Since `opponent_style_sweep`'s realistic archetype range
+(0.10-0.85) shows no response but this synthetic extreme does, this is a **training-population
+artifact, not dead wiring**: the deterministic heuristic-bot population apparently never
+differentiates outcomes by opponent style enough, within realistic bounds, for the network to
+learn to condition on it there — the same population-level-flatness mechanism already suspected
+for [BET-1].
+
+**Suggestion**: Since wiring is confirmed intact, the fix lever moves to the training population
+side — likely the same lever as [BET-1] (making the heuristic bots' response actually vary with
+their own declared style more sharply, or ensuring the training distribution samples a wide enough
+style spread that within-realistic-range differences carry real EV consequences). Not yet
+attempted; worth testing together with [BET-1]'s opponent-price-sensitivity fix rather than as a
+fully separate change, since both may share the same root population issue.
+
+### [OPP-6] No adversarial exploiter opponent — pool lacks a best-response hunter 🔴 OPEN (idea,
+not yet built)
+**First identified**: conceptual discussion 2026-07-17, comparing self-play-only training against
+CFR-style equilibrium approaches (see that session's CFR time-cost estimates if this is revisited:
+full tabular/Cepheus-style solving is off the table for this project's hardware; a Deep-CFR-style
+build was ballparked at multi-day-to-multi-week dedicated infra work, separate from the current
+actor-critic pipeline).
+
+**Simple**: Every opponent the hero currently trains against is either a fixed heuristic script or
+a "relative" (its own past self / an earlier checkpoint of the same training lineage). Nothing in
+the pool is actively hunting the hero's CURRENT weaknesses, so subtle exploitable habits (unbalanced
+bluff frequency, thin-value gaps, missed indifference points — the "smaller intricate details" of
+the game) can persist even while aggregate winrate against the existing pool looks fine.
+
+**Technical**: Current pool (`versions/v20_preflopEq_AI/self_play/config.yaml`) is 60% NN (25%
+lagged-self + 20%/15% frozen same-lineage checkpoints) / 40% heuristic (`tag`/`nit`). All NN
+opponents share ancestry with the hero being trained — self-play-with-relatives — which is exactly
+the setup known in imperfect-info game literature to plateau or cycle rather than converge toward a
+hard-to-exploit strategy. This is the same underlying gap [OPP-1] already flags (overfitting to a
+deterministic training population) and likely shares mechanism with [BET-1] (heuristic bots' value
+branch isn't price-sensitive, so overbet/shove patterns go unpunished by anything in the pool).
+
+**Suggestion**: Add a dedicated "exploiter" opponent to the pool — a bot trained specifically to
+maximize exploitation of the CURRENT frozen hero checkpoint (an approximate best-response), and
+refreshed periodically as the hero improves, rather than another lagged-self mirror. This is a
+lighter-weight, NFSP-flavored middle ground: no tree-traversal/regret-accumulation infra needed, it
+slots into the existing V18 `Opponent` interface as one more pool entry. Real cost: training the
+exploiter is a full training run of its own (comparable to any other NN opponent-pool member), plus
+ongoing re-training to stay a meaningful adversary as the hero moves — an ongoing cost, not a
+one-off. Not yet scoped against the actual pipeline.
+
+### [OPP-7] NN-opponent self-play queries are self-referential and hero-blind 🟢 FIXED (V27, 2026-07-19)
+**First identified**: 2026-07-17, while reviewing V22's training dashboard (Lagged-Self (NN)'s
+-31.7 BB/100 prompted a closer look at how NN opponents perceive the table). Present since V18's
+opponent refactor introduced NN opponents (lagged-self mirrors, frozen checkpoints) -- not
+introduced by V22, though V22's new `opp_committed_this_hand_bb` feature (see [OPP-2]/[OPP-3]
+history) inherited the same flaw by reusing the existing loop.
+
+**Simple**: When a non-hero NN opponent (e.g. the lagged self-play mirror) makes its OWN decision
+during training, it ends up seeing a slightly wrong picture of the table: it lists ITSELF as one
+of its own opponents, and never sees the real hero as an opponent at all. This doesn't affect
+hero's own live decisions (those are unaffected), only how realistic/well-calibrated the NN
+opponents hero trains against actually are.
+
+**Technical**: `simulator.py`'s `_query_model_decide` builds each query's opponent-seat block with
+a fixed loop (`for idx in range(5): seat_key = f"seat_{idx+1}"`, `is_active = idx < num_opponents`),
+always using ABSOLUTE table seats 1-5, and `opponents_profiles` (per-seat VPIP/AGG) is keyed the
+same way, built once per hand and reused for every actor's query. This is correct ONLY when hero
+(seat 0) is the querying actor -- hero's real opponents genuinely are seats 1-5. For any other
+actor (e.g. Lagged-Self at seat 4), with `num_opponents` correctly counting live players excluding
+self (so e.g. `num_opponents=5` at a full 6-max table), the loop marks ALL of seat_1..seat_5
+active -- including seat_4 itself (a phantom self-as-opponent entry, using its own VPIP/AGG/
+committed values) -- while seat_0 (real hero) is structurally never representable, since the loop
+range is fixed to 1-5. Every per-seat context field built inside this function (VPIP/AGG color,
+and now `committed`) inherits this same self-referential/hero-blind construction for non-hero
+queries.
+
+**Suggestion**: Fix requires a genuine seat-relative remap inside `_query_model_decide` -- compute
+the ACTUAL other-live-seats list relative to whichever seat is querying (excluding itself,
+including hero when relevant) instead of assuming "opponents are always seats 1-5". Nontrivial
+(touches shared simulator code used by every version's self-play), and any fix should be validated
+via a fresh training run before trusting the resulting NN-opponent behavior change -- not a
+same-run hotfix. Likely low severity in practice (opponent VPIP/AGG color reads are already only
+weakly load-bearing per [OPP-5], so a self-referential value there may add noise more than it
+changes behavior), but worth confirming rather than assuming.
+
+**Fixed (V27, 2026-07-19)**: exactly the suggested remap -- `other_seats = [s for s in range(6) if
+s != actor_seat]`, indexed by slot instead of the old hardcoded `idx+1`. Verified two ways before
+any real training: (1) a synthetic `actor_seat=0` query reproduces the OLD seats-1-5 ordering and
+values byte-for-byte (hero's own path provably unchanged); (2) a synthetic `actor_seat=4` query
+confirms no self-referential "seat 4" entry exists and the real hero ("seat 0") now appears, with a
+live VPIP/AGG read computed the same `acts/ops` way every other seat's profile already is.
+
+**Real-world impact CONFIRMED, and the Suggestion's own "likely low severity... but worth
+confirming rather than assuming" caveat was WRONG** -- this was not low severity. The 100k-hand
+V27 run (which ALSO carries the unrelated [VAL-3] fix, so the two aren't cleanly isolated from each
+other) shows `opponent_style_sweep` genuinely improved (0.041 -> 0.165, Lagged-Self now seeing a
+real hero plausibly enriched the training population) but ALSO a cluster of real regressions
+alongside it: VPIP roughly doubled (~16-26% -> ~40-48%), `action_diversity` narrowed (3 actions ->
+2), `stack_full_sweep`'s argmax flipped from all-call to all-allin across the full stack range,
+`position_sweep` newly WARNs (spread 0.378 -> 0.022, position barely matters anymore), and
+[BET-1]'s own `allin_vs_nextbest_qgap` got WORSE at every stack depth and archetype. See
+`versions/v27/SPECS.md` "Results" for the full number-by-number comparison. Net verdict: `
+beats_frozen_predecessor` still PASSES (+40.2 BB/100 vs frozen V26) but the win looks like "wins via
+higher aggression," not "wins via better play" -- the same pattern V24_extreme showed. Per explicit
+user decision (2026-07-19): both [VAL-3] and this fix were verified correct in isolation via direct
+unit tests before training (not guesses), so V27 -- not V26 -- remains the base going forward
+despite this regression cluster; WHICH of the two fixes (or plain run-to-run variance) actually
+caused the broader shift has not been isolated -- open question, not resolved.
+
+### [OPP-8] Opponent fold-tendency signal is a coarse 4-way color, not the real underlying trait 🔴 OPEN (severity likely overstated below — see 2026-07-18 correction)
+**First identified**: 2026-07-18, investigating why V25's own trained policy barely differentiates
+all-in frequency by opponent archetype (0.239 vs NIT, 0.216 vs CALLING_STATION at the SAME
+eq=0.55) despite the opponent bots' actual fold-to-a-shove behavior being wildly different (NIT
+~98% fold, CALLING_STATION ~0% fold at the identical price, per a direct probe against
+`_ev_target_fold_decision`) — user's own observation ("why hasn't hero learned to always shove
+low-medium equity vs NIT if it folds 98% of the time") prompted the investigation.
+
+**Important correction (2026-07-18, user's own follow-up reasoning)**: the "hero should have
+learned to always shove low-medium equity vs NIT" framing overstates the real exploit. The 98%
+fold-rate probe FIXED the opponent's equity at a flat 0.45 and asked "given NIT genuinely has 45%
+equity here, does it fold" — an if-then answer, not a "how often does this actually happen"
+answer. Since NIT only voluntarily plays premium hands (VPIP 0.11), by the time it reaches a
+postflop decision its range is already selection-skewed strong — a genuine 45%-equity NIT spot is
+RARE in real simulated hands, not the typical case the synthetic sweep implied. The real training
+target (`_mc_target_evs_sized`'s postflop `oracle_equity`) already partially reflects this, since it
+uses the LITERAL dealt cards of opponents who are actually still active in that hand — a real
+selection effect the standalone diagnostic scripts (built to isolate the fold-decision mechanic in
+controlled isolation) don't capture. Net effect: hero's relatively FLAT all-in frequency across
+archetypes (the original finding below) may be closer to CORRECT, sophisticated behavior than a
+gap — don't over-read the raw fold-rate numbers as "free money being left on the table" without
+weighting by how often that equity level actually arises against each archetype's real range.
+
+**Simple**: Hero can tell a tight opponent from a loose one, but has no direct way to know exactly
+HOW likely that specific opponent is to fold to a big bet — it's reading a rough category (tight/
+loose), not the actual "folds under pressure" dial, so it can't fully exploit an extreme folder the
+way the training bots' own logic would justify.
+
+**Technical**: each `FuzzyPlayerArchetype` has an independent `base_fold_to_pressure` trait
+(TAG=0.60, LAG=0.45, NIT=0.85, CALLING_STATION=0.15 — see `opponent_bots.py`) that's the actual
+driver of `continue_bar`'s `style_shift` and therefore of the huge fold-rate gap above. This trait
+is NEVER exposed as a model input feature, in any form. The ONLY opponent-identity signal in
+`ContractV12`'s per-seat block is `vpip_color`/`agg_color` (`core/contract.py` `VPIP_MAP`/
+`AGG_MAP`), a 4-bucket categorical read derived purely from `current_vpip` (`simulator.py`'s
+`_vpip_to_color`, thresholds at 0.18/0.26/0.35). In THIS specific 4-archetype roster, VPIP happens
+to be roughly ordinally consistent with `fold_to_pressure` (NIT is both tightest AND most
+fold-prone) — so the color bucket is a real, usable, directionally-correct proxy (which is why
+[OPP-5]'s `opponent_style_sweep` now passes, see above) — but it's still a coarse 4-way label
+standing in for a continuous, independently-fuzzed (`random.gauss(base, 0.05)` every hand) trait,
+so the network can infer the DIRECTION of an exploit but has much less signal on its true
+MAGNITUDE than the underlying simulator population actually has. Compounding factors, not yet
+separated out: NIT is only 15% of the opponent pool's sampling weight, and 6-max hands usually have
+multiple simultaneously-active opponents, diluting "this one seat is foldy" against the joint
+all-fold probability the training target already computes across every active seat.
+
+**Sharper framing (2026-07-18, user's own follow-up)**: the VPIP/AGG-color correlation with real
+fold-to-pressure is a COINCIDENCE of this specific 4-archetype roster's design (NIT happens to be
+both tightest AND most fold-prone; CALLING_STATION happens to be both loosest AND least fold-prone)
+— VPIP measures preflop entry frequency and AGG measures general aggression, neither of which
+*means* "folds to a big bet" on its own. If a future archetype ever decouples those (a tight
+player who's secretly a calling station once in, or a loose player who still folds hard to real
+pressure — both exist among real opponents), the model has NO way to tell, because the trait that
+actually matters was never observable to begin with. This makes it a genuine information
+bottleneck, not just an undertrained corner — more training hands can't teach the network to read
+a signal it was never given.
+
+**Suggestion (concrete fix, revised)**: add a THIRD per-opponent signal alongside `vpip_color`/
+`agg_color` — e.g. `fold_pressure_color`, computed the exact same way. Cheap on the training side:
+`simulator.py`'s HUD-building code already does an ORACLE read of each bot's own `current_vpip`/
+`current_agg_freq` per hand (not real empirical tracking) to build the existing two colors — adding
+`current_fold_to_pressure` as a third oracle-read value is the same shape of change, not a new
+mechanism. Real cost: a genuine contract change (new per-seat context feature, contract_version
+bump, budget like [OPP-2]/[OPP-3]'s history — needs an actual retrain to evaluate, not a cheap
+warm-start check). **Separate, additional gap this exposes**: this feature would be "free" in
+training (oracle read) but LIVE opponents don't ship with a `fold_to_pressure` label — making this
+useful outside self-play needs genuine empirical HUD tracking (e.g. "% folded facing a bet >=66%
+pot," accumulated over observed hands) added to PHPHelp.py's live HUD, which doesn't exist yet —
+a real, separate lift, not just a training-side change. Also still worth doing as a first, cheap
+check before any of the above: re-run `allin_exploits_opponent_foldiness` (new FAST check, added
+2026-07-18) against the 100k/150k confirmatory checkpoint once available, to see how much more
+training exposure alone moves the spread before concluding a feature change is required.
+
+**V26 update (2026-07-18)**: ran that suggested cheap check against V26's 100k confirmatory
+checkpoint (2 of 5 opponent seats swapped to real-data TreeOpponents — see `versions/v26/SPECS.md`).
+`allin_exploits_opponent_foldiness` spread: **0.011**, still WARN, no meaningful improvement over
+V25. Training exposure and real-data-opponent diversity alone did NOT move this — consistent with
+the mechanism above being a genuine information bottleneck (no `fold_pressure_color`-equivalent
+input), not an undertrained corner, and consistent with the source data's own honest caveat (the
+Pluribus-fitted TreeOpponents don't express a wide foldiness spread either, since all of Pluribus's
+humans were similarly-skilled pros). Separately, LIVE telemetry from this run surfaced a related but
+distinct pattern worth tracking: hero's actual **jam% by opponent color** (not the fixed-equity
+probe, the real in-training action rate) is Blue 9-11% → Green 16-17% → Yellow 22-23% → Red 19-20%,
+stable across the whole run — NOT flat, but also not monotonically ordered by real fold-proneness
+(Blue/NIT-like is tightest AND most fold-prone, yet gets jammed on LEAST). Two live explanations, not
+yet distinguished: (a) the same underexploitation this entry describes, or (b) a genuine
+range-selection effect (reaching postflop against a tight opponent at all is already a
+stronger-than-average spot for hero, so a lower jam rate there may be appropriate, not a leak — see
+the "Important correction" above, same logic). The suggested `fold_pressure_color` feature (or a
+same-seed V25-vs-V26 ablation) remains the next real lever; simply adding more/different opponents
+without that feature does not appear sufficient.
+
+### [OPP-9] Live range-aware equity doesn't narrow with continued action 🔴 OPEN
+**First identified**: 2026-07-19, user's own question while scoping V28 ("in postflops should we
+still assume that remaining players' VPIP is real when calculating range-aware equity?").
+
+**Simple**: When estimating a live opponent's hand range for the equity calculation, we treat them
+the same way whether they just showed up this street or have already called/raised through two
+previous streets — the range never gets narrower just because they've kept putting more money in.
+
+**Technical**: `compute_range_aware_equity` (`versions/v26/self_play/simulator.py:229-316`) takes
+no parameter for street count, per-opponent action count, or committed-this-hand amount anywhere in
+its signature — only a per-call `opp_colors`/`front_colors` split (the current betting round's
+positional order, via `PHPHelp.py`'s `_classify_opponents_by_action_order`). Worse: its VPIP
+fold-roll (the mechanism that actually narrows the sampled range toward stronger hands) is gated
+`if is_preflop` only (`simulator.py:254-257`) — its own comment states postflop is "unchanged, no
+roll applies there either way." So postflop, this function currently does NO VPIP-based narrowing
+at all, on any street, regardless of how many times the opponent has already continued. This is
+DIFFERENT from [OPP-4] (reopened-action detection within the CURRENT round) — this is about
+cross-street accumulation: an opponent who called a flop bet and a turn bet has, in reality, already
+filtered themselves toward a stronger range than their raw preflop VPIP number implies, and nothing
+in this pipeline reflects that.
+
+Confirmed this is LIVE-SERVING-ONLY: training's own `_mc_target_evs_sized` never faces this
+question, since it always uses oracle equity postflop (the opponent's literal real dealt cards,
+`simulator.py:922-925`) — there's no range to narrow when you already know the true cards. The
+`opp_committed_this_hand_bb` feature ([OPP-2]-era, `contract.py`) is fed to the model as a separate
+input but is NEVER passed into the range-sampling function itself — the model might learn to
+partially compensate via that raw feature, but the EQUITY NUMBER hero's decision is built around is
+not itself corrected.
+
+**Suggestion**: extend `compute_range_aware_equity` to accept each opponent's action count / total
+committed-this-hand amount and apply a progressively tighter effective VPIP cutoff (or a partial
+fold-roll) postflop, scaled by how much they've already put in — reusing the SAME
+`opp_committed_this_hand_bb` value already computed and passed into `contract.py`, not a new
+mechanism. A real, contained scoping pass, separate from the risk-adjusted-target work in V28 (which
+lives in `_mc_target_evs_sized`/training, not `compute_range_aware_equity`/live serving) — not yet
+scoped in detail.
 
 ---
 
 ## Format fit
 
 ### [FMT-1] No ICM awareness 🔴 OPEN
-**First identified**: 2026-07-17, live session on a Double-or-Nothing board.
+**First identified**: 2026-07-17, live session on a Double-or-Nothing board. **Reconfirmed**:
+v21_auxhead live, 2026-07-17, turn 28 (`history/Double_Or_Nothing_1171134565/flagged/
+turn_28_20260717_212121/`), user caught it live and stopped the fold.
 
 **Simple**: In tournament formats (like Double or Nothing), we make decisions purely on chip
 count, not on how much actually busting out costs you — so we may fold spots a human would call
@@ -228,11 +737,24 @@ wider in a real bubble/survival situation.
 **Technical**: Trained purely on cash-game-style BB/100 profit; no ICM (tournament equity) model
 anywhere in the pipeline (simulator payouts, EV targets, or evaluation). Confirmed live: folds
 that are clean chip-EV-correct even at 2-3bb effective stack, where ICM-aware strategy might
-differ.
+differ. **Concrete instance (v21_auxhead, turn 28)**: KcJd, 1.2BB stack, facing a 1.0BB call
+(effectively covered, 0.2BB left after) 3-way vs Blue/nit+Red/maniac+Red/maniac. equity=0.26 (range-
+aware) vs pot_odds=0.345 needed → model FOLDs at policy mass 1.00, critic Q confirms CALL is
+chip-EV-worse by ~0.19BB. Both Layer 1 (OCR) and Layer 2 (model's actual decoded input) checked out
+clean — this is a real Layer 3 policy outcome, not a perception/bridge bug. The single-hand chip-EV
+math is technically correct in isolation, but at ~1BB effective, standard push/fold theory shoves
+extremely wide (often ~ATC) because folding isn't free either — the stack faces blind attrition again
+next hand at an even thinner depth. The model's per-hand EV target has no notion of that future cost,
+so it undervalues calling/pushing in exactly this ultra-short-stack band. This is a myopic
+single-hand-horizon gap that compounds [FMT-1]'s core ICM gap, not a separate root cause.
 
 **Suggestion**: Would need genuinely different training targets (ICM-weighted payouts instead of
 raw chip profit) — a substantial, separate project, not a config tweak. Only relevant if
-tournament/DoN formats are a priority over cash-style play.
+tournament/DoN formats are a priority over cash-style play. The turn-28 instance suggests a
+cheaper partial mitigation worth considering separately: a stack-depth-aware push/fold prior or
+floor below ~2BB effective (matching known Nash push/fold charts) rather than full ICM-weighted
+retraining, if ultra-short-stack folds keep recurring in live play before the full ICM project is
+prioritized.
 
 ---
 
@@ -277,6 +799,34 @@ live-only, discarded after each decision) — so accumulation starts now, not re
 
 **Suggestion**: Keep monitoring live sessions now that the recorder captures these fields;
 revisit this entry once enough live hands have accumulated to say something statistical.
+
+### [VAL-5] Warm-started continuation degrades action diversity, independent of the variable being tuned 🔴 OPEN
+**First identified**: V21_auxhead Phases 5-7 (2026-07-17), while mapping the aux-head weight
+response curve.
+
+**Simple**: Extending a model's training with a `--resume_path` continuation run (rather than
+training fresh from scratch for the full hand count) seems to push it toward fold/all-in-only play,
+regardless of what else changed in that continuation.
+
+**Technical**: Four separate `+50k`-hand warm-started continuations off the same clean
+`phase2_fresh_100k.pth` base (aux-head weights 0.05/0.20/0.10/0.35 — otherwise identical) ALL showed
+`action_diversity` collapse to 2 distinct actions (`{fold:9,allin:12}`) and `stack_full_sweep`
+argmax pinned to `allin` at every one of 9 stack points. The base checkpoint's OWN 100k-hand fresh
+run (Phase 2) had the best bet-sizing diversity of the whole investigation (4 actions, a real
+call→raise_pot→raise_66 progression). Since the collapse appeared identically across four different
+aux-weight values, the continuation MECHANISM itself is implicated, not the variable under test —
+plausibly the same total-hands/shove-trend pattern behind [BET-1], but not yet directly proven.
+Re-training the fully chosen aux config FRESH to 100k (Phase 8) recovered most (not all) of the lost
+diversity (3 actions vs Phase 2's 4), confirming continuation is at least A cause.
+
+**Suggestion**: Until root-caused, prefer fresh full-length training runs over stacking
+`--resume_path` continuations when evaluating anything sensitive to `action_diversity`/
+`stack_full_sweep` (hyperparameter sweeps, ablations). If continuation must be used for cost
+reasons, always re-validate the final candidate with `model_verify --full` rather than trusting an
+earlier fresh-run's numbers to still apply. Worth a dedicated investigation (does hand-COUNT alone
+reproduce it on a single fresh run taken past 100k, or is it specific to the optimizer/scheduler
+reset `--resume_path` causes — see the unfixed gap noted in versions/v21_auxhead/SPECS.md) before
+V22 relies on any warm-started extension.
 
 ---
 

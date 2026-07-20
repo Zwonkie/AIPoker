@@ -1,0 +1,29 @@
+{
+  "actions": [
+    "fold",
+    "call",
+    "raise_33",
+    "raise_66",
+    "raise_pot",
+    "allin"
+  ],
+  "feature_order": [
+    "equity",
+    "pot_odds",
+    "street_norm",
+    "stack_bb_norm",
+    "num_active_opp_norm"
+  ],
+  "clusters": {
+    "0": "c:\\REPO\\Antigravity\\AIPoker\\data/xgb_cluster_0.json",
+    "1": "c:\\REPO\\Antigravity\\AIPoker\\data/xgb_cluster_1.json",
+    "2": "c:\\REPO\\Antigravity\\AIPoker\\data/xgb_cluster_2.json",
+    "3": "c:\\REPO\\Antigravity\\AIPoker\\data/xgb_cluster_3.json"
+  },
+  "cluster_sizes": {
+    "1": 10247,
+    "0": 27927,
+    "3": 13369,
+    "2": 22824
+  }
+}

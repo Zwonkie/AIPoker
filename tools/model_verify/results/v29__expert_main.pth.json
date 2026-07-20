@@ -1,0 +1,3982 @@
+{
+  "version": "v29",
+  "weights": "expert_main.pth",
+  "action_space": [
+    "fold",
+    "call",
+    "raise_33",
+    "raise_66",
+    "raise_pot",
+    "allin"
+  ],
+  "full": true,
+  "checks": [
+    {
+      "id": "equity_ablation_monotonic",
+      "status": "PASS",
+      "detail": "P(fold) 1.00->0.00, P(aggressive) 0.00->0.84",
+      "data": [
+        {
+          "equity": 0.05,
+          "policy": {
+            "fold": 0.9999476671218872,
+            "call": 5.2352770580910146e-05,
+            "raise_33": 2.13453255071272e-09,
+            "raise_66": 1.0047531695533962e-09,
+            "raise_pot": 1.5024902433324883e-09,
+            "allin": 8.566439116224067e-13
+          }
+        },
+        {
+          "equity": 0.2,
+          "policy": {
+            "fold": 0.9998890161514282,
+            "call": 0.00011098942195530981,
+            "raise_33": 1.0383562454308048e-08,
+            "raise_66": 4.936759001594737e-09,
+            "raise_pot": 7.596777429341728e-09,
+            "allin": 4.366284243884078e-12
+          }
+        },
+        {
+          "equity": 0.35,
+          "policy": {
+            "fold": 0.9979481101036072,
+            "call": 0.0020503655541688204,
+            "raise_33": 6.709099693580356e-07,
+            "raise_66": 3.1221850349538727e-07,
+            "raise_pot": 4.514998295235273e-07,
+            "allin": 5.242148937156799e-10
+          }
+        },
+        {
+          "equity": 0.5,
+          "policy": {
+            "fold": 0.5019079446792603,
+            "call": 0.49505743384361267,
+            "raise_33": 0.0017050682799890637,
+            "raise_66": 0.0006371760391630232,
+            "raise_pot": 0.0006797607056796551,
+            "allin": 1.2685233741649427e-05
+          }
+        },
+        {
+          "equity": 0.65,
+          "policy": {
+            "fold": 0.008669745177030563,
+            "call": 0.6655449867248535,
+            "raise_33": 0.13829752802848816,
+            "raise_66": 0.08623908460140228,
+            "raise_pot": 0.08466841280460358,
+            "allin": 0.016580278053879738
+          }
+        },
+        {
+          "equity": 0.8,
+          "policy": {
+            "fold": 0.0013046895619481802,
+            "call": 0.21063007414340973,
+            "raise_33": 0.19330710172653198,
+            "raise_66": 0.21521662175655365,
+            "raise_pot": 0.2419983297586441,
+            "allin": 0.137543186545372
+          }
+        },
+        {
+          "equity": 0.95,
+          "policy": {
+            "fold": 0.0008381180232390761,
+            "call": 0.16007784008979797,
+            "raise_33": 0.1617812067270279,
+            "raise_66": 0.21112200617790222,
+            "raise_pot": 0.24745407700538635,
+            "allin": 0.21872678399085999
+          }
+        }
+      ],
+      "doc": {
+        "what": "Sweeps the model's win probability (equity) from very weak (5%) to very strong (95%), holding everything else fixed, and watches how often it folds vs bets/raises.",
+        "expect": "Folding should become rare and betting/raising should become common as equity rises -- a smooth swing from mostly-fold at low equity to mostly-aggressive at high equity.",
+        "if_not": "If fold doesn't drop or aggression doesn't rise, the model isn't using its own equity input correctly -- a fundamental, likely training-breaking bug (wrong feature index, dead equity pathway, or a catastrophic collapse)."
+      }
+    },
+    {
+      "id": "free_check_low_fold",
+      "status": "WARN",
+      "detail": "max raw P(fold) when call_bb=0 across sweep: 1.000 (covered by decision.py's free-check mask, but worth tracking)",
+      "data": [
+        {
+          "equity": 0.1,
+          "stack_bb": 8,
+          "policy": {
+            "fold": 0.9999080896377563,
+            "call": 9.195977327181026e-05,
+            "raise_33": 4.6850257007235996e-09,
+            "raise_66": 2.046630864782628e-09,
+            "raise_pot": 3.4406006932385935e-09,
+            "allin": 1.1968499108450104e-11
+          }
+        },
+        {
+          "equity": 0.1,
+          "stack_bb": 40,
+          "policy": {
+            "fold": 0.9998569488525391,
+            "call": 0.0001430695701856166,
+            "raise_33": 1.0794853899653845e-08,
+            "raise_66": 5.599003927159174e-09,
+            "raise_pot": 8.28341395475718e-09,
+            "allin": 3.704191467446272e-12
+          }
+        },
+        {
+          "equity": 0.1,
+          "stack_bb": 100,
+          "policy": {
+            "fold": 0.9994707703590393,
+            "call": 0.0005288611282594502,
+            "raise_33": 1.0214179013701141e-07,
+            "raise_66": 6.426318321928193e-08,
+            "raise_pot": 8.109879701123646e-08,
+            "allin": 1.6464067956190043e-11
+          }
+        },
+        {
+          "equity": 0.3,
+          "stack_bb": 8,
+          "policy": {
+            "fold": 0.9992606043815613,
+            "call": 0.0007392060360871255,
+            "raise_33": 8.137021723086946e-08,
+            "raise_66": 3.83251510527316e-08,
+            "raise_pot": 6.451479350744194e-08,
+            "allin": 4.314649748593524e-10
+          }
+        },
+        {
+          "equity": 0.3,
+          "stack_bb": 40,
+          "policy": {
+            "fold": 0.9965607523918152,
+            "call": 0.0034362608566880226,
+            "raise_33": 1.30317198454577e-06,
+            "raise_66": 6.89146872900892e-07,
+            "raise_pot": 9.483047733738204e-07,
+            "allin": 9.00911290013795e-10
+          }
+        },
+        {
+          "equity": 0.3,
+          "stack_bb": 100,
+          "policy": {
+            "fold": 0.9920022487640381,
+            "call": 0.007985688745975494,
+            "raise_33": 5.900581527384929e-06,
+            "raise_66": 2.9664640806004172e-06,
+            "raise_pot": 3.2050722893472994e-06,
+            "allin": 2.01050576187356e-09
+          }
+        },
+        {
+          "equity": 0.5,
+          "stack_bb": 8,
+          "policy": {
+            "fold": 0.20375220477581024,
+            "call": 0.7869018316268921,
+            "raise_33": 0.004384252242743969,
+            "raise_66": 0.0021547479555010796,
+            "raise_pot": 0.0024848654866218567,
+            "allin": 0.00032221488072536886
+          }
+        },
+        {
+          "equity": 0.5,
+          "stack_bb": 40,
+          "policy": {
+            "fold": 0.06897954642772675,
+            "call": 0.8988708853721619,
+            "raise_33": 0.016229096800088882,
+            "raise_66": 0.008066401816904545,
+            "raise_pot": 0.0075708357617259026,
+            "allin": 0.00028318975819274783
+          }
+        },
+        {
+          "equity": 0.5,
+          "stack_bb": 100,
+          "policy": {
+            "fold": 0.15125803649425507,
+            "call": 0.7944512963294983,
+            "raise_33": 0.02606682851910591,
+            "raise_66": 0.014684837311506271,
+            "raise_pot": 0.013382957316935062,
+            "allin": 0.00015593349235132337
+          }
+        },
+        {
+          "equity": 0.7,
+          "stack_bb": 8,
+          "policy": {
+            "fold": 0.0016966736875474453,
+            "call": 0.41681864857673645,
+            "raise_33": 0.16244621574878693,
+            "raise_66": 0.15326198935508728,
+            "raise_pot": 0.1607968807220459,
+            "allin": 0.10497964173555374
+          }
+        },
+        {
+          "equity": 0.7,
+          "stack_bb": 40,
+          "policy": {
+            "fold": 0.0008554986561648548,
+            "call": 0.25636646151542664,
+            "raise_33": 0.20284555852413177,
+            "raise_66": 0.22756953537464142,
+            "raise_pot": 0.23084178566932678,
+            "allin": 0.08152119815349579
+          }
+        },
+        {
+          "equity": 0.7,
+          "stack_bb": 100,
+          "policy": {
+            "fold": 0.0016435428988188505,
+            "call": 0.27889183163642883,
+            "raise_33": 0.2310900241136551,
+            "raise_66": 0.23205403983592987,
+            "raise_pot": 0.2266654521226883,
+            "allin": 0.029655084013938904
+          }
+        },
+        {
+          "equity": 0.9,
+          "stack_bb": 8,
+          "policy": {
+            "fold": 0.0004010883276350796,
+            "call": 0.20099788904190063,
+            "raise_33": 0.15727199614048004,
+            "raise_66": 0.20774097740650177,
+            "raise_pot": 0.22130745649337769,
+            "allin": 0.21228057146072388
+          }
+        },
+        {
+          "equity": 0.9,
+          "stack_bb": 40,
+          "policy": {
+            "fold": 0.000469036924187094,
+            "call": 0.18198008835315704,
+            "raise_33": 0.15616896748542786,
+            "raise_66": 0.2159544825553894,
+            "raise_pot": 0.23222899436950684,
+            "allin": 0.2131984680891037
+          }
+        },
+        {
+          "equity": 0.9,
+          "stack_bb": 100,
+          "policy": {
+            "fold": 0.000801974325440824,
+            "call": 0.21065029501914978,
+            "raise_33": 0.1861211061477661,
+            "raise_66": 0.2308700531721115,
+            "raise_pot": 0.2421341836452484,
+            "allin": 0.12942247092723846
+          }
+        }
+      ],
+      "doc": {
+        "what": "Checks how often the model wants to fold when there's nothing to call (a free option) -- folding here is always a mistake since checking costs nothing.",
+        "expect": "Fold probability should be near zero whenever the price to continue is zero.",
+        "if_not": "A high raw rate here isn't necessarily a live bug (core/decision.py masks FOLD out of live sampling when checking is free), but a rising trend over versions means the model's own preference is drifting worse and the live mask is doing more of the work to paper over it."
+      }
+    },
+    {
+      "id": "air_folds_mostly",
+      "status": "PASS",
+      "detail": "avg P(fold) at ~12% equity facing a real bet: 1.00  (per-stack [1.0, 1.0, 1.0, 1.0])",
+      "data": [
+        {
+          "stack_bb": 8,
+          "policy": {
+            "fold": 0.9999505281448364,
+            "call": 4.942957093589939e-05,
+            "raise_33": 1.8878600904770337e-09,
+            "raise_66": 7.234143839518481e-10,
+            "raise_pot": 1.1934118138157146e-09,
+            "allin": 6.362307382323795e-12
+          }
+        },
+        {
+          "stack_bb": 20,
+          "policy": {
+            "fold": 0.9999563694000244,
+            "call": 4.365586573840119e-05,
+            "raise_33": 1.6330654606377948e-09,
+            "raise_66": 6.597815627173986e-10,
+            "raise_pot": 1.064461407906947e-09,
+            "allin": 2.08207279542294e-12
+          }
+        },
+        {
+          "stack_bb": 40,
+          "policy": {
+            "fold": 0.9999381303787231,
+            "call": 6.181006756378338e-05,
+            "raise_33": 3.2271232353053847e-09,
+            "raise_66": 1.5347565440748667e-09,
+            "raise_pot": 2.312073199561837e-09,
+            "allin": 1.2910030032856068e-12
+          }
+        },
+        {
+          "stack_bb": 80,
+          "policy": {
+            "fold": 0.999848484992981,
+            "call": 0.00015147491649258882,
+            "raise_33": 1.6862024665442732e-08,
+            "raise_66": 9.772514353301176e-09,
+            "raise_pot": 1.3296233447590566e-08,
+            "allin": 3.071957835679151e-12
+          }
+        }
+      ],
+      "doc": {
+        "what": "Tests a clearly bad hand (~12% equity) facing a real bet across a range of stack depths.",
+        "expect": "The model should fold more often than not -- weak hands facing money should mostly give up.",
+        "if_not": "A model that keeps calling/raising with air is over-continuing with trash hands, bleeding chips broadly -- this was the historical V16 regression this check was built to catch."
+      }
+    },
+    {
+      "id": "nuts_aggressive_mostly",
+      "status": "PASS",
+      "detail": "avg aggressive mass at ~92% equity: 0.81",
+      "data": [
+        {
+          "stack_bb": 8,
+          "policy": {
+            "fold": 0.000983916805125773,
+            "call": 0.21158312261104584,
+            "raise_33": 0.1716366410255432,
+            "raise_66": 0.18629024922847748,
+            "raise_pot": 0.21219605207443237,
+            "allin": 0.21731005609035492
+          }
+        },
+        {
+          "stack_bb": 20,
+          "policy": {
+            "fold": 0.000889301358256489,
+            "call": 0.185844287276268,
+            "raise_33": 0.16766567528247833,
+            "raise_66": 0.19786597788333893,
+            "raise_pot": 0.22850142419338226,
+            "allin": 0.21923336386680603
+          }
+        },
+        {
+          "stack_bb": 40,
+          "policy": {
+            "fold": 0.0009684357792139053,
+            "call": 0.16376560926437378,
+            "raise_33": 0.1656213253736496,
+            "raise_66": 0.2106287032365799,
+            "raise_pot": 0.24822723865509033,
+            "allin": 0.210788756608963
+          }
+        },
+        {
+          "stack_bb": 80,
+          "policy": {
+            "fold": 0.001468545407988131,
+            "call": 0.180283322930336,
+            "raise_33": 0.18722885847091675,
+            "raise_66": 0.221492737531662,
+            "raise_pot": 0.25663331151008606,
+            "allin": 0.15289324522018433
+          }
+        }
+      ],
+      "doc": {
+        "what": "Tests a near-certain winning hand (~92% equity) facing a real bet across stack depths.",
+        "expect": "The model should bet/raise more often than not -- strong hands should build the pot, not slow-play into passivity.",
+        "if_not": "A model that mostly calls/folds here is leaving value on the table with its best hands -- a passive-value-hand bug."
+      }
+    },
+    {
+      "id": "deep_stack_ood_guard",
+      "status": "PASS",
+      "detail": "no marginal-equity/deep-stack/single-modest-bet cell jams all-in",
+      "data": [
+        {
+          "equity": 0.35,
+          "stack_bb": 15,
+          "policy": {
+            "fold": 0.996416449546814,
+            "call": 0.0032487129792571068,
+            "raise_33": 4.855561928707175e-05,
+            "raise_66": 8.431897731497884e-05,
+            "raise_pot": 0.00020178325939923525,
+            "allin": 1.5911430750747968e-07
+          },
+          "argmax": "fold",
+          "argmax_is_allin": false
+        },
+        {
+          "equity": 0.35,
+          "stack_bb": 20,
+          "policy": {
+            "fold": 0.9943041205406189,
+            "call": 0.005017192102968693,
+            "raise_33": 9.956191206583753e-05,
+            "raise_66": 0.00017514635692350566,
+            "raise_pot": 0.000403663027100265,
+            "allin": 2.538749583891331e-07
+          },
+          "argmax": "fold",
+          "argmax_is_allin": false
+        },
+        {
+          "equity": 0.35,
+          "stack_bb": 25,
+          "policy": {
+            "fold": 0.9902456998825073,
+            "call": 0.008363520726561546,
+            "raise_33": 0.0002126811450580135,
+            "raise_66": 0.0003691726305987686,
+            "raise_pot": 0.0008085159352049232,
+            "allin": 4.385413205909572e-07
+          },
+          "argmax": "fold",
+          "argmax_is_allin": false
+        },
+        {
+          "equity": 0.35,
+          "stack_bb": 30,
+          "policy": {
+            "fold": 0.985694944858551,
+            "call": 0.012261691503226757,
+            "raise_33": 0.0003372363862581551,
+            "raise_66": 0.0005551435751840472,
+            "raise_pot": 0.0011504346039146185,
+            "allin": 5.739207722399442e-07
+          },
+          "argmax": "fold",
+          "argmax_is_allin": false
+        },
+        {
+          "equity": 0.35,
+          "stack_bb": 40,
+          "policy": {
+            "fold": 0.9768566489219666,
+            "call": 0.020346658304333687,
+            "raise_33": 0.0005400847876444459,
+            "raise_66": 0.0007833409472368658,
+            "raise_pot": 0.0014724964275956154,
+            "allin": 7.246259769999597e-07
+          },
+          "argmax": "fold",
+          "argmax_is_allin": false
+        },
+        {
+          "equity": 0.4,
+          "stack_bb": 15,
+          "policy": {
+            "fold": 0.9133239984512329,
+            "call": 0.04526545852422714,
+            "raise_33": 0.005086810328066349,
+            "raise_66": 0.011177975684404373,
+            "raise_pot": 0.025118375197052956,
+            "allin": 2.73332952929195e-05
+          },
+          "argmax": "fold",
+          "argmax_is_allin": false
+        },
+        {
+          "equity": 0.4,
+          "stack_bb": 20,
+          "policy": {
+            "fold": 0.8834905028343201,
+            "call": 0.06044548377394676,
+            "raise_33": 0.0074956342577934265,
+            "raise_66": 0.015420232899487019,
+            "raise_pot": 0.03311453014612198,
+            "allin": 3.364489020896144e-05
+          },
+          "argmax": "fold",
+          "argmax_is_allin": false
+        },
+        {
+          "equity": 0.4,
+          "stack_bb": 25,
+          "policy": {
+            "fold": 0.8523703813552856,
+            "call": 0.07819324731826782,
+            "raise_33": 0.010183063335716724,
+            "raise_66": 0.019462650641798973,
+            "raise_pot": 0.03975112736225128,
+            "allin": 3.9529950299765915e-05
+          },
+          "argmax": "fold",
+          "argmax_is_allin": false
+        },
+        {
+          "equity": 0.4,
+          "stack_bb": 30,
+          "policy": {
+            "fold": 0.8286478519439697,
+            "call": 0.09541580826044083,
+            "raise_33": 0.012219688855111599,
+            "raise_66": 0.0216254573315382,
+            "raise_pot": 0.04204917326569557,
+            "allin": 4.1962837713072076e-05
+          },
+          "argmax": "fold",
+          "argmax_is_allin": false
+        },
+        {
+          "equity": 0.4,
+          "stack_bb": 40,
+          "policy": {
+            "fold": 0.795112133026123,
+            "call": 0.1295793056488037,
+            "raise_33": 0.014375044032931328,
+            "raise_66": 0.021957386285066605,
+            "raise_pot": 0.038935497403144836,
+            "allin": 4.0709073800826445e-05
+          },
+          "argmax": "fold",
+          "argmax_is_allin": false
+        },
+        {
+          "equity": 0.43,
+          "stack_bb": 15,
+          "policy": {
+            "fold": 0.7115465402603149,
+            "call": 0.10345525294542313,
+            "raise_33": 0.023414073511958122,
+            "raise_66": 0.05115601420402527,
+            "raise_pot": 0.11024673283100128,
+            "allin": 0.00018123630434274673
+          },
+          "argmax": "fold",
+          "argmax_is_allin": false
+        },
+        {
+          "equity": 0.43,
+          "stack_bb": 20,
+          "policy": {
+            "fold": 0.6410283446311951,
+            "call": 0.12953372299671173,
+            "raise_33": 0.03177150338888168,
+            "raise_66": 0.06461068242788315,
+            "raise_pot": 0.1328505128622055,
+            "allin": 0.00020514859352260828
+          },
+          "argmax": "fold",
+          "argmax_is_allin": false
+        },
+        {
+          "equity": 0.43,
+          "stack_bb": 25,
+          "policy": {
+            "fold": 0.5910813212394714,
+            "call": 0.15280775725841522,
+            "raise_33": 0.038359981030225754,
+            "raise_66": 0.07316246628761292,
+            "raise_pot": 0.14437080919742584,
+            "allin": 0.00021770165767520666
+          },
+          "argmax": "fold",
+          "argmax_is_allin": false
+        },
+        {
+          "equity": 0.43,
+          "stack_bb": 30,
+          "policy": {
+            "fold": 0.559572160243988,
+            "call": 0.17698556184768677,
+            "raise_33": 0.04318239167332649,
+            "raise_66": 0.07633577287197113,
+            "raise_pot": 0.14370588958263397,
+            "allin": 0.00021827747696079314
+          },
+          "argmax": "fold",
+          "argmax_is_allin": false
+        },
+        {
+          "equity": 0.43,
+          "stack_bb": 40,
+          "policy": {
+            "fold": 0.48288384079933167,
+            "call": 0.23751771450042725,
+            "raise_33": 0.05457831174135208,
+            "raise_66": 0.08315441012382507,
+            "raise_pot": 0.14161831140518188,
+            "allin": 0.0002474280190654099
+          },
+          "argmax": "fold",
+          "argmax_is_allin": false
+        },
+        {
+          "equity": 0.48,
+          "stack_bb": 15,
+          "policy": {
+            "fold": 0.2326083928346634,
+            "call": 0.15533684194087982,
+            "raise_33": 0.08373063802719116,
+            "raise_66": 0.17625774443149567,
+            "raise_pot": 0.35090765357017517,
+            "allin": 0.0011588099878281355
+          },
+          "argmax": "raise_pot",
+          "argmax_is_allin": false
+        },
+        {
+          "equity": 0.48,
+          "stack_bb": 20,
+          "policy": {
+            "fold": 0.1914810985326767,
+            "call": 0.16345787048339844,
+            "raise_33": 0.09488451480865479,
+            "raise_66": 0.1886119246482849,
+            "raise_pot": 0.3604593276977539,
+            "allin": 0.0011052519548684359
+          },
+          "argmax": "raise_pot",
+          "argmax_is_allin": false
+        },
+        {
+          "equity": 0.48,
+          "stack_bb": 25,
+          "policy": {
+            "fold": 0.16658246517181396,
+            "call": 0.17811472713947296,
+            "raise_33": 0.10426309704780579,
+            "raise_66": 0.194142147898674,
+            "raise_pot": 0.3558310270309448,
+            "allin": 0.0010665451409295201
+          },
+          "argmax": "raise_pot",
+          "argmax_is_allin": false
+        },
+        {
+          "equity": 0.48,
+          "stack_bb": 30,
+          "policy": {
+            "fold": 0.14110612869262695,
+            "call": 0.1939367651939392,
+            "raise_33": 0.11495363712310791,
+            "raise_66": 0.19960790872573853,
+            "raise_pot": 0.34930962324142456,
+            "allin": 0.0010859289905056357
+          },
+          "argmax": "raise_pot",
+          "argmax_is_allin": false
+        },
+        {
+          "equity": 0.48,
+          "stack_bb": 40,
+          "policy": {
+            "fold": 0.09564454108476639,
+            "call": 0.22581122815608978,
+            "raise_33": 0.1383083313703537,
+            "raise_66": 0.2085297405719757,
+            "raise_pot": 0.33038845658302307,
+            "allin": 0.0013176512438803911
+          },
+          "argmax": "raise_pot",
+          "argmax_is_allin": false
+        },
+        {
+          "equity": 0.55,
+          "stack_bb": 15,
+          "policy": {
+            "fold": 0.03881801664829254,
+            "call": 0.13442078232765198,
+            "raise_33": 0.13504716753959656,
+            "raise_66": 0.2488124817609787,
+            "raise_pot": 0.43884894251823425,
+            "allin": 0.004052660893648863
+          },
+          "argmax": "raise_pot",
+          "argmax_is_allin": false
+        },
+        {
+          "equity": 0.55,
+          "stack_bb": 20,
+          "policy": {
+            "fold": 0.033187706023454666,
+            "call": 0.13681632280349731,
+            "raise_33": 0.14330674707889557,
+            "raise_66": 0.2517487406730652,
+            "raise_pot": 0.43131694197654724,
+            "allin": 0.0036235277075320482
+          },
+          "argmax": "raise_pot",
+          "argmax_is_allin": false
+        },
+        {
+          "equity": 0.55,
+          "stack_bb": 25,
+          "policy": {
+            "fold": 0.026919828727841377,
+            "call": 0.1413094699382782,
+            "raise_33": 0.15447880327701569,
+            "raise_66": 0.2548803389072418,
+            "raise_pot": 0.4188668429851532,
+            "allin": 0.0035447152331471443
+          },
+          "argmax": "raise_pot",
+          "argmax_is_allin": false
+        },
+        {
+          "equity": 0.55,
+          "stack_bb": 30,
+          "policy": {
+            "fold": 0.02046993374824524,
+            "call": 0.1482415348291397,
+            "raise_33": 0.168111652135849,
+            "raise_66": 0.2574983537197113,
+            "raise_pot": 0.4019049406051636,
+            "allin": 0.003773646429181099
+          },
+          "argmax": "raise_pot",
+          "argmax_is_allin": false
+        },
+        {
+          "equity": 0.55,
+          "stack_bb": 40,
+          "policy": {
+            "fold": 0.012812688946723938,
+            "call": 0.16309385001659393,
+            "raise_33": 0.1929505169391632,
+            "raise_66": 0.25870367884635925,
+            "raise_pot": 0.36792683601379395,
+            "allin": 0.004512412939220667
+          },
+          "argmax": "raise_pot",
+          "argmax_is_allin": false
+        }
+      ],
+      "doc": {
+        "what": "Re-creates the exact spot that caused a real-money mistake: a marginal hand (35-55% equity) at a moderate-to-deep stack (15-40bb) facing one modest bet from a single opponent.",
+        "expect": "ALL-IN should never be the model's top choice here -- shoving a marginal hand for stacks this deep into a small bet is a severe, high-variance mistake.",
+        "if_not": "If ALL-IN wins, the model is repeating the live incident that motivated this check (a K9o 20bb trash-jam) -- a hard, deploy-blocking regression, not a stylistic quirk."
+      }
+    },
+    {
+      "id": "short_stack_polarization",
+      "status": "PASS",
+      "detail": "avg P(call) in clear shove-or-fold spots: 0.14",
+      "data": [
+        {
+          "equity": 0.5,
+          "stack_bb": 6,
+          "policy": {
+            "fold": 0.5864288210868835,
+            "call": 0.13823555409908295,
+            "raise_33": 0.03452951833605766,
+            "raise_66": 0.07567300647497177,
+            "raise_pot": 0.16451066732406616,
+            "allin": 0.0006224261014722288
+          }
+        },
+        {
+          "equity": 0.5,
+          "stack_bb": 8,
+          "policy": {
+            "fold": 0.5734665393829346,
+            "call": 0.13946808874607086,
+            "raise_33": 0.03633413091301918,
+            "raise_66": 0.0793415978550911,
+            "raise_pot": 0.17078807950019836,
+            "allin": 0.0006015866529196501
+          }
+        },
+        {
+          "equity": 0.5,
+          "stack_bb": 10,
+          "policy": {
+            "fold": 0.5541635155677795,
+            "call": 0.14167830348014832,
+            "raise_33": 0.03896965831518173,
+            "raise_66": 0.08461247384548187,
+            "raise_pot": 0.17998231947422028,
+            "allin": 0.0005937877576798201
+          }
+        },
+        {
+          "equity": 0.55,
+          "stack_bb": 6,
+          "policy": {
+            "fold": 0.16603434085845947,
+            "call": 0.15991899371147156,
+            "raise_33": 0.09197276830673218,
+            "raise_66": 0.19252929091453552,
+            "raise_pot": 0.3866148293018341,
+            "allin": 0.0029297100845724344
+          }
+        },
+        {
+          "equity": 0.55,
+          "stack_bb": 8,
+          "policy": {
+            "fold": 0.15109719336032867,
+            "call": 0.156612828373909,
+            "raise_33": 0.09578566998243332,
+            "raise_66": 0.19926296174526215,
+            "raise_pot": 0.39438679814338684,
+            "allin": 0.0028545684181153774
+          }
+        },
+        {
+          "equity": 0.55,
+          "stack_bb": 10,
+          "policy": {
+            "fold": 0.13709035515785217,
+            "call": 0.15452979505062103,
+            "raise_33": 0.0998287945985794,
+            "raise_66": 0.2055567055940628,
+            "raise_pot": 0.4002150595188141,
+            "allin": 0.002779270987957716
+          }
+        },
+        {
+          "equity": 0.6,
+          "stack_bb": 6,
+          "policy": {
+            "fold": 0.04377373307943344,
+            "call": 0.14191865921020508,
+            "raise_33": 0.12919938564300537,
+            "raise_66": 0.24118779599666595,
+            "raise_pot": 0.43686866760253906,
+            "allin": 0.007051754742860794
+          }
+        },
+        {
+          "equity": 0.6,
+          "stack_bb": 8,
+          "policy": {
+            "fold": 0.04079113528132439,
+            "call": 0.1403672695159912,
+            "raise_33": 0.13223102688789368,
+            "raise_66": 0.24417683482170105,
+            "raise_pot": 0.43561869859695435,
+            "allin": 0.006815011613070965
+          }
+        },
+        {
+          "equity": 0.6,
+          "stack_bb": 10,
+          "policy": {
+            "fold": 0.038293663412332535,
+            "call": 0.13966034352779388,
+            "raise_33": 0.1351037174463272,
+            "raise_66": 0.2467246651649475,
+            "raise_pot": 0.4336504340171814,
+            "allin": 0.006567149423062801
+          }
+        },
+        {
+          "equity": 0.65,
+          "stack_bb": 6,
+          "policy": {
+            "fold": 0.016533318907022476,
+            "call": 0.13563573360443115,
+            "raise_33": 0.1546134203672409,
+            "raise_66": 0.25706747174263,
+            "raise_pot": 0.42290928959846497,
+            "allin": 0.013240711763501167
+          }
+        },
+        {
+          "equity": 0.65,
+          "stack_bb": 8,
+          "policy": {
+            "fold": 0.01546391099691391,
+            "call": 0.1349385678768158,
+            "raise_33": 0.1577194631099701,
+            "raise_66": 0.2588740885257721,
+            "raise_pot": 0.4201330840587616,
+            "allin": 0.01287088729441166
+          }
+        },
+        {
+          "equity": 0.65,
+          "stack_bb": 10,
+          "policy": {
+            "fold": 0.014157921075820923,
+            "call": 0.13459596037864685,
+            "raise_33": 0.1616387814283371,
+            "raise_66": 0.2607862651348114,
+            "raise_pot": 0.41613179445266724,
+            "allin": 0.012689262628555298
+          }
+        }
+      ],
+      "doc": {
+        "what": "Tests short-stack (6-10bb) spots with decent equity (50-65%) facing a raise sized near the whole stack -- a classic 'push or fold' situation.",
+        "expect": "CALL should be rare -- with a stack this short and a raise this big, the correct play is almost always shove or fold, not a flat call sitting in between.",
+        "if_not": "A high call rate means the model hasn't learned short-stack push/fold theory and is leaking value through a 'mushy middle' action -- tracked as an open backlog item, not yet gating deploys (WARN-only)."
+      }
+    },
+    {
+      "id": "action_diversity",
+      "status": "PASS",
+      "detail": "argmax distribution across the equity x stack grid: {'fold': 11, 'call': 5, 'raise_pot': 5}",
+      "data": [
+        {
+          "equity": 0.05,
+          "stack_bb": 8,
+          "policy": {
+            "fold": 0.9999569654464722,
+            "call": 4.300194632378407e-05,
+            "raise_33": 1.35325295413935e-09,
+            "raise_66": 4.986464574585625e-10,
+            "raise_pot": 8.143693497331128e-10,
+            "allin": 4.087691556770023e-12
+          },
+          "argmax": "fold"
+        },
+        {
+          "equity": 0.05,
+          "stack_bb": 25,
+          "policy": {
+            "fold": 0.99996018409729,
+            "call": 3.9843962440500036e-05,
+            "raise_33": 1.3379761742982055e-09,
+            "raise_66": 5.66271141089203e-10,
+            "raise_pot": 8.970162945765026e-10,
+            "allin": 1.0354021242817146e-12
+          },
+          "argmax": "fold"
+        },
+        {
+          "equity": 0.05,
+          "stack_bb": 60,
+          "policy": {
+            "fold": 0.9999096393585205,
+            "call": 9.03348991414532e-05,
+            "raise_33": 5.803457270303625e-09,
+            "raise_66": 3.06716807507712e-09,
+            "raise_pot": 4.341269566054962e-09,
+            "allin": 1.3282647551293714e-12
+          },
+          "argmax": "fold"
+        },
+        {
+          "equity": 0.2,
+          "stack_bb": 8,
+          "policy": {
+            "fold": 0.9999167919158936,
+            "call": 8.315206650877371e-05,
+            "raise_33": 4.661206087774872e-09,
+            "raise_66": 1.9206360946100176e-09,
+            "raise_pot": 3.3448765979215977e-09,
+            "allin": 1.6916176792669546e-11
+          },
+          "argmax": "fold"
+        },
+        {
+          "equity": 0.2,
+          "stack_bb": 25,
+          "policy": {
+            "fold": 0.9999059438705444,
+            "call": 9.410003258381039e-05,
+            "raise_33": 7.189300266219334e-09,
+            "raise_66": 3.2493590040871823e-09,
+            "raise_pot": 5.347435827474101e-09,
+            "allin": 6.629541967478891e-12
+          },
+          "argmax": "fold"
+        },
+        {
+          "equity": 0.2,
+          "stack_bb": 60,
+          "policy": {
+            "fold": 0.9998170733451843,
+            "call": 0.00018290050502400845,
+            "raise_33": 2.533562337703188e-08,
+            "raise_66": 1.3722293523699136e-08,
+            "raise_pot": 1.9877020918102062e-08,
+            "allin": 6.087874562105133e-12
+          },
+          "argmax": "fold"
+        },
+        {
+          "equity": 0.35,
+          "stack_bb": 8,
+          "policy": {
+            "fold": 0.9994822144508362,
+            "call": 0.0005178491701371968,
+            "raise_33": 4.841134426669669e-08,
+            "raise_66": 1.9038308707308715e-08,
+            "raise_pot": 3.268510795351176e-08,
+            "allin": 3.662628811351709e-10
+          },
+          "argmax": "fold"
+        },
+        {
+          "equity": 0.35,
+          "stack_bb": 25,
+          "policy": {
+            "fold": 0.9989327788352966,
+            "call": 0.0010666954331099987,
+            "raise_33": 2.0120565125125722e-07,
+            "raise_66": 9.486868179919838e-08,
+            "raise_pot": 1.5407727005367633e-07,
+            "allin": 2.7847005257264357e-10
+          },
+          "argmax": "fold"
+        },
+        {
+          "equity": 0.35,
+          "stack_bb": 60,
+          "policy": {
+            "fold": 0.9950276017189026,
+            "call": 0.004966656677424908,
+            "raise_33": 2.8581227979884716e-06,
+            "raise_66": 1.251227104148711e-06,
+            "raise_pot": 1.5708487808296923e-06,
+            "allin": 1.7331794888164609e-09
+          },
+          "argmax": "fold"
+        },
+        {
+          "equity": 0.5,
+          "stack_bb": 8,
+          "policy": {
+            "fold": 0.6983323097229004,
+            "call": 0.30072373151779175,
+            "raise_33": 0.0004937225603498518,
+            "raise_66": 0.00018714055477175862,
+            "raise_pot": 0.00023731183318886906,
+            "allin": 2.569611206126865e-05
+          },
+          "argmax": "fold"
+        },
+        {
+          "equity": 0.5,
+          "stack_bb": 25,
+          "policy": {
+            "fold": 0.5802106857299805,
+            "call": 0.41807588934898376,
+            "raise_33": 0.0009294567280448973,
+            "raise_66": 0.0003561818157322705,
+            "raise_pot": 0.00041687212069518864,
+            "allin": 1.0943103916360997e-05
+          },
+          "argmax": "fold"
+        },
+        {
+          "equity": 0.5,
+          "stack_bb": 60,
+          "policy": {
+            "fold": 0.30413153767585754,
+            "call": 0.678957998752594,
+            "raise_33": 0.00890057347714901,
+            "raise_66": 0.003968553617596626,
+            "raise_pot": 0.003984337206929922,
+            "allin": 5.696722291759215e-05
+          },
+          "argmax": "call"
+        },
+        {
+          "equity": 0.65,
+          "stack_bb": 8,
+          "policy": {
+            "fold": 0.02297070436179638,
+            "call": 0.8631614446640015,
+            "raise_33": 0.045931845903396606,
+            "raise_66": 0.024982357397675514,
+            "raise_pot": 0.027199409902095795,
+            "allin": 0.015754207968711853
+          },
+          "argmax": "call"
+        },
+        {
+          "equity": 0.65,
+          "stack_bb": 25,
+          "policy": {
+            "fold": 0.010998406447470188,
+            "call": 0.7889105081558228,
+            "raise_33": 0.08554212749004364,
+            "raise_66": 0.04994108900427818,
+            "raise_pot": 0.050798021256923676,
+            "allin": 0.013809861615300179
+          },
+          "argmax": "call"
+        },
+        {
+          "equity": 0.65,
+          "stack_bb": 60,
+          "policy": {
+            "fold": 0.005217183381319046,
+            "call": 0.42980876564979553,
+            "raise_33": 0.21666556596755981,
+            "raise_66": 0.163895383477211,
+            "raise_pot": 0.1601097285747528,
+            "allin": 0.024303367361426353
+          },
+          "argmax": "call"
+        },
+        {
+          "equity": 0.8,
+          "stack_bb": 8,
+          "policy": {
+            "fold": 0.0016994390171021223,
+            "call": 0.28772246837615967,
+            "raise_33": 0.1781190037727356,
+            "raise_66": 0.16756708920001984,
+            "raise_pot": 0.18546542525291443,
+            "allin": 0.17942656576633453
+          },
+          "argmax": "call"
+        },
+        {
+          "equity": 0.8,
+          "stack_bb": 25,
+          "policy": {
+            "fold": 0.0011608598288148642,
+            "call": 0.22160613536834717,
+            "raise_33": 0.18463683128356934,
+            "raise_66": 0.20095203816890717,
+            "raise_pot": 0.22276851534843445,
+            "allin": 0.16887560486793518
+          },
+          "argmax": "raise_pot"
+        },
+        {
+          "equity": 0.8,
+          "stack_bb": 60,
+          "policy": {
+            "fold": 0.0014841482043266296,
+            "call": 0.20159408450126648,
+            "raise_33": 0.20068353414535522,
+            "raise_66": 0.22949974238872528,
+            "raise_pot": 0.2572110593318939,
+            "allin": 0.10952750593423843
+          },
+          "argmax": "raise_pot"
+        },
+        {
+          "equity": 0.95,
+          "stack_bb": 8,
+          "policy": {
+            "fold": 0.0007259976700879633,
+            "call": 0.1874367594718933,
+            "raise_33": 0.16386733949184418,
+            "raise_66": 0.19784709811210632,
+            "raise_pot": 0.22541530430316925,
+            "allin": 0.22470751404762268
+          },
+          "argmax": "raise_pot"
+        },
+        {
+          "equity": 0.95,
+          "stack_bb": 25,
+          "policy": {
+            "fold": 0.0007147965370677412,
+            "call": 0.16296698153018951,
+            "raise_33": 0.1598716527223587,
+            "raise_66": 0.209964320063591,
+            "raise_pot": 0.24377049505710602,
+            "allin": 0.22271175682544708
+          },
+          "argmax": "raise_pot"
+        },
+        {
+          "equity": 0.95,
+          "stack_bb": 60,
+          "policy": {
+            "fold": 0.0009856082033365965,
+            "call": 0.1630048006772995,
+            "raise_33": 0.16477574408054352,
+            "raise_66": 0.21232348680496216,
+            "raise_pot": 0.24681802093982697,
+            "allin": 0.2120923399925232
+          },
+          "argmax": "raise_pot"
+        }
+      ],
+      "doc": {
+        "what": "Sweeps equity and stack together and checks which action wins (argmax) across the whole grid.",
+        "expect": "Different regions of the grid should prefer different actions. A HEALTHY model can still have only 3-4 actions ever win (e.g. raise buckets legitimately never peak -- a known 'no middle gear' pattern) as long as no ONE action dominates almost everything.",
+        "if_not": "If one single action wins over ~85%+ of the whole grid regardless of equity/stack, that's a policy collapse -- the model has stopped discriminating between situations, historically caused by a 'raise-everything' or 'call-everything' training failure."
+      }
+    },
+    {
+      "id": "no_nan_or_crash",
+      "status": "PASS",
+      "detail": "4 edge cases: no NaN/crash",
+      "data": [
+        {
+          "case": 0,
+          "equity": 0.5,
+          "stack_bb": 0.5,
+          "pot_bb": 1,
+          "call_bb": 0.4,
+          "num_active_opp": 0,
+          "policy": {
+            "fold": 0.08887114375829697,
+            "call": 0.10489658266305923,
+            "raise_33": 0.11447184532880783,
+            "raise_66": 0.23703357577323914,
+            "raise_pot": 0.45082998275756836,
+            "allin": 0.003896829904988408
+          },
+          "outcome": "clean",
+          "ok": true
+        },
+        {
+          "case": 1,
+          "equity": 0.0,
+          "stack_bb": 200,
+          "pot_bb": 0.01,
+          "call_bb": 0.0,
+          "num_active_opp": 5,
+          "policy": {
+            "fold": 0.9996021389961243,
+            "call": 0.0003979298344347626,
+            "raise_33": 1.883952194248195e-08,
+            "raise_66": 8.289614328305106e-09,
+            "raise_pot": 9.154545566048e-09,
+            "allin": 3.658365277381392e-12
+          },
+          "outcome": "clean",
+          "ok": true
+        },
+        {
+          "case": 2,
+          "equity": 1.0,
+          "stack_bb": 400,
+          "pot_bb": 999,
+          "call_bb": 399,
+          "num_active_opp": 5,
+          "opp_vpip": 0.45,
+          "opp_agg": 0.85,
+          "policy": {
+            "fold": 0.023770920932292938,
+            "call": 0.680870532989502,
+            "raise_33": 0.12129693478345871,
+            "raise_66": 0.06741500645875931,
+            "raise_pot": 0.05038324370980263,
+            "allin": 0.05626339092850685
+          },
+          "outcome": "clean",
+          "ok": true
+        },
+        {
+          "case": 3,
+          "equity": 0.5,
+          "stack_bb": 5,
+          "pot_bb": 5,
+          "call_bb": 5,
+          "num_active_opp": 1,
+          "street": 3,
+          "policy": {
+            "fold": 0.5534449815750122,
+            "call": 0.2210206836462021,
+            "raise_33": 0.03119903802871704,
+            "raise_66": 0.06096503883600235,
+            "raise_pot": 0.13240358233451843,
+            "allin": 0.0009666013647802174
+          },
+          "outcome": "clean",
+          "ok": true
+        }
+      ],
+      "doc": {
+        "what": "Feeds the model deliberately extreme/edge-case inputs (near-zero stacks, zero opponents, huge pots, max street) that a real table could occasionally produce.",
+        "expect": "The model should always return a valid, finite policy -- no crashes, no NaN outputs.",
+        "if_not": "A NaN or crash means the model would go completely unresponsive (or the live client would error out) the moment a rare real-table edge case occurs -- previously caused by a padding-mask bug, now a permanent regression guard."
+      }
+    },
+    {
+      "id": "hand_strength_sensitivity",
+      "status": "PASS",
+      "detail": "avg policy shift (total variation) between hand_strength=0.15 vs 0.85 at fixed equity: 0.332",
+      "data": [
+        {
+          "equity": 0.35,
+          "stack_bb": 15,
+          "policy_lo_hs": {
+            "fold": 0.9996834993362427,
+            "call": 0.00031646795105189085,
+            "raise_33": 2.702513768326753e-08,
+            "raise_66": 1.1399876598261471e-08,
+            "raise_pot": 1.9623984215400014e-08,
+            "allin": 6.675495572983081e-11
+          },
+          "policy_hi_hs": {
+            "fold": 0.9988290667533875,
+            "call": 0.0011704375501722097,
+            "raise_33": 1.8402811008400022e-07,
+            "raise_66": 8.114432858974396e-08,
+            "raise_pot": 1.375574214534936e-07,
+            "allin": 8.199668166675167e-10
+          },
+          "total_variation": 0.0009
+        },
+        {
+          "equity": 0.35,
+          "stack_bb": 40,
+          "policy_lo_hs": {
+            "fold": 0.9989662170410156,
+            "call": 0.0010333089157938957,
+            "raise_33": 2.508598413442087e-07,
+            "raise_66": 1.169855323723823e-07,
+            "raise_pot": 1.7287692344325478e-07,
+            "allin": 1.6271249625443573e-10
+          },
+          "policy_hi_hs": {
+            "fold": 0.9905795454978943,
+            "call": 0.009408023208379745,
+            "raise_33": 5.955260803602869e-06,
+            "raise_66": 2.7641999622574076e-06,
+            "raise_pot": 3.758909997486626e-06,
+            "allin": 7.060957152305036e-09
+          },
+          "total_variation": 0.0084
+        },
+        {
+          "equity": 0.5,
+          "stack_bb": 15,
+          "policy_lo_hs": {
+            "fold": 0.9490184187889099,
+            "call": 0.05093459039926529,
+            "raise_33": 2.4915359972510487e-05,
+            "raise_66": 9.199020496453159e-06,
+            "raise_pot": 1.2778982636518776e-05,
+            "allin": 2.6364921268395847e-07
+          },
+          "policy_hi_hs": {
+            "fold": 0.24209639430046082,
+            "call": 0.7491815686225891,
+            "raise_33": 0.004434704314917326,
+            "raise_66": 0.001872501103207469,
+            "raise_pot": 0.00216587889008224,
+            "allin": 0.00024901109281927347
+          },
+          "total_variation": 0.7069
+        },
+        {
+          "equity": 0.5,
+          "stack_bb": 40,
+          "policy_lo_hs": {
+            "fold": 0.8129050135612488,
+            "call": 0.1865961253643036,
+            "raise_33": 0.00027885535382665694,
+            "raise_66": 0.00010230708721792325,
+            "raise_pot": 0.00011656991409836337,
+            "allin": 1.0418839337944519e-06
+          },
+          "policy_hi_hs": {
+            "fold": 0.11194976419210434,
+            "call": 0.8591877222061157,
+            "raise_33": 0.015193778090178967,
+            "raise_66": 0.006707761436700821,
+            "raise_pot": 0.006641342770308256,
+            "allin": 0.00031968511757440865
+          },
+          "total_variation": 0.701
+        },
+        {
+          "equity": 0.65,
+          "stack_bb": 15,
+          "policy_lo_hs": {
+            "fold": 0.03803156316280365,
+            "call": 0.9256731867790222,
+            "raise_33": 0.017907941713929176,
+            "raise_66": 0.007662808056920767,
+            "raise_pot": 0.007964869029819965,
+            "allin": 0.0027595909778028727
+          },
+          "policy_hi_hs": {
+            "fold": 0.006678050383925438,
+            "call": 0.6050006151199341,
+            "raise_33": 0.13353295624256134,
+            "raise_66": 0.0969497412443161,
+            "raise_pot": 0.10625900328159332,
+            "allin": 0.05157967656850815
+          },
+          "total_variation": 0.352
+        },
+        {
+          "equity": 0.65,
+          "stack_bb": 40,
+          "policy_lo_hs": {
+            "fold": 0.01972993090748787,
+            "call": 0.8626593947410583,
+            "raise_33": 0.05800535902380943,
+            "raise_66": 0.028664560988545418,
+            "raise_pot": 0.02700272761285305,
+            "allin": 0.003938022069633007
+          },
+          "policy_hi_hs": {
+            "fold": 0.0024230091366916895,
+            "call": 0.30616241693496704,
+            "raise_33": 0.22142936289310455,
+            "raise_66": 0.20195002853870392,
+            "raise_pot": 0.21298673748970032,
+            "allin": 0.05504855141043663
+          },
+          "total_variation": 0.5738
+        },
+        {
+          "equity": 0.8,
+          "stack_bb": 15,
+          "policy_lo_hs": {
+            "fold": 0.002345475135371089,
+            "call": 0.4058007299900055,
+            "raise_33": 0.17587967216968536,
+            "raise_66": 0.1404212862253189,
+            "raise_pot": 0.1491350531578064,
+            "allin": 0.12641778588294983
+          },
+          "policy_hi_hs": {
+            "fold": 0.001094928476959467,
+            "call": 0.2044006735086441,
+            "raise_33": 0.17284852266311646,
+            "raise_66": 0.1984158158302307,
+            "raise_pot": 0.2262342870235443,
+            "allin": 0.1970057487487793
+          },
+          "total_variation": 0.2057
+        },
+        {
+          "equity": 0.8,
+          "stack_bb": 40,
+          "policy_lo_hs": {
+            "fold": 0.0013541558291763067,
+            "call": 0.24319277703762054,
+            "raise_33": 0.20772919058799744,
+            "raise_66": 0.212070494890213,
+            "raise_pot": 0.22837387025356293,
+            "allin": 0.10727954655885696
+          },
+          "policy_hi_hs": {
+            "fold": 0.0011434893822297454,
+            "call": 0.17242340743541718,
+            "raise_33": 0.17318116128444672,
+            "raise_66": 0.219868466258049,
+            "raise_pot": 0.2566452920436859,
+            "allin": 0.17673815786838531
+          },
+          "total_variation": 0.1055
+        }
+      ],
+      "doc": {
+        "what": "Artificially swings the model's 'hand_strength' input (how strong the raw two cards are, independent of position/opponents) between weak and strong while holding equity fixed -- an ablation that could never happen in real play, used to check whether the model actually reads that input slot.",
+        "expect": "The policy should shift meaningfully between the weak and strong settings -- proof the feature carries real weight in the network, not just padding along for the ride.",
+        "if_not": "A flat/negligible response means this input may be dead weight -- either never learned as useful, or a wiring bug feeding it to the wrong place. WARN-only: no established 'correct' amount of movement yet, this is a first-pass load-bearing check."
+      }
+    },
+    {
+      "id": "equity_edge_sensitivity",
+      "status": "PASS",
+      "detail": "avg policy shift (total variation) between low vs high equity_edge at fixed equity/field: 0.694",
+      "data": [
+        {
+          "equity": 0.35,
+          "num_active_opp": 1,
+          "real_value": 0.7,
+          "policy_lo_edge": {
+            "fold": 0.9998530149459839,
+            "call": 0.0001466513058403507,
+            "raise_33": 8.658688699370032e-08,
+            "raise_66": 7.491126297054507e-08,
+            "raise_pot": 1.509029488033775e-07,
+            "allin": 5.323650201227714e-11
+          },
+          "policy_hi_edge": {
+            "fold": 0.010840960778295994,
+            "call": 0.15983451902866364,
+            "raise_33": 0.1959158182144165,
+            "raise_66": 0.26945170760154724,
+            "raise_pot": 0.3553229868412018,
+            "allin": 0.00863391999155283
+          },
+          "total_variation": 0.989
+        },
+        {
+          "equity": 0.35,
+          "num_active_opp": 3,
+          "real_value": 1.4,
+          "policy_lo_edge": {
+            "fold": 0.9998908042907715,
+            "call": 0.00010914640733972192,
+            "raise_33": 3.6299179217991195e-09,
+            "raise_66": 1.2253713599363891e-09,
+            "raise_pot": 1.8651995503660146e-09,
+            "allin": 2.8261646495275627e-12
+          },
+          "policy_hi_edge": {
+            "fold": 0.8705679178237915,
+            "call": 0.12939466536045074,
+            "raise_33": 2.6794297809829004e-05,
+            "raise_66": 5.19897048434359e-06,
+            "raise_pot": 4.941457063978305e-06,
+            "allin": 4.1939898665077635e-07
+          },
+          "total_variation": 0.1293
+        },
+        {
+          "equity": 0.5,
+          "num_active_opp": 1,
+          "real_value": 1.0,
+          "policy_lo_edge": {
+            "fold": 0.9990867376327515,
+            "call": 0.0009019296849146485,
+            "raise_33": 2.4183188997994876e-06,
+            "raise_66": 2.806334578053793e-06,
+            "raise_pot": 6.104798558226321e-06,
+            "allin": 2.1105195369131025e-09
+          },
+          "policy_hi_edge": {
+            "fold": 0.0036134140100330114,
+            "call": 0.1769527941942215,
+            "raise_33": 0.20186671614646912,
+            "raise_66": 0.2542172968387604,
+            "raise_pot": 0.3127298355102539,
+            "allin": 0.05061991885304451
+          },
+          "total_variation": 0.9955
+        },
+        {
+          "equity": 0.5,
+          "num_active_opp": 3,
+          "real_value": 2.0,
+          "policy_lo_edge": {
+            "fold": 0.9988114833831787,
+            "call": 0.001188405673019588,
+            "raise_33": 8.837039899844967e-08,
+            "raise_66": 2.9193481410061395e-08,
+            "raise_pot": 4.292092725677321e-08,
+            "allin": 1.3476682270141538e-10
+          },
+          "policy_hi_edge": {
+            "fold": 0.0609721764922142,
+            "call": 0.9301539063453674,
+            "raise_33": 0.005585701670497656,
+            "raise_66": 0.0013611781178042293,
+            "raise_pot": 0.001098649692721665,
+            "allin": 0.0008282531634904444
+          },
+          "total_variation": 0.9378
+        },
+        {
+          "equity": 0.65,
+          "num_active_opp": 1,
+          "real_value": 1.3,
+          "policy_lo_edge": {
+            "fold": 0.7601664066314697,
+            "call": 0.11590972542762756,
+            "raise_33": 0.018437715247273445,
+            "raise_66": 0.034477777779102325,
+            "raise_pot": 0.07093856483697891,
+            "allin": 6.989342364249751e-05
+          },
+          "policy_hi_edge": {
+            "fold": 0.0021825109142810106,
+            "call": 0.16941151022911072,
+            "raise_33": 0.18053068220615387,
+            "raise_66": 0.22904254496097565,
+            "raise_pot": 0.27503490447998047,
+            "allin": 0.14379781484603882
+          },
+          "total_variation": 0.758
+        },
+        {
+          "equity": 0.65,
+          "num_active_opp": 3,
+          "real_value": 2.6,
+          "policy_lo_edge": {
+            "fold": 0.8245977163314819,
+            "call": 0.17535021901130676,
+            "raise_33": 3.678737994050607e-05,
+            "raise_66": 7.328106221393682e-06,
+            "raise_pot": 7.440618446707958e-06,
+            "allin": 5.116698957863264e-07
+          },
+          "policy_hi_edge": {
+            "fold": 0.006616473197937012,
+            "call": 0.7005788683891296,
+            "raise_33": 0.10628975927829742,
+            "raise_66": 0.0518304817378521,
+            "raise_pot": 0.04629427567124367,
+            "allin": 0.08839011192321777
+          },
+          "total_variation": 0.818
+        },
+        {
+          "equity": 0.8,
+          "num_active_opp": 1,
+          "real_value": 1.6,
+          "policy_lo_edge": {
+            "fold": 0.015285758301615715,
+            "call": 0.13619503378868103,
+            "raise_33": 0.16543108224868774,
+            "raise_66": 0.2641523480415344,
+            "raise_pot": 0.4147743880748749,
+            "allin": 0.004161390941590071
+          },
+          "policy_hi_edge": {
+            "fold": 0.0013998924987390637,
+            "call": 0.1621544510126114,
+            "raise_33": 0.16587407886981964,
+            "raise_66": 0.21614320576190948,
+            "raise_pot": 0.25491324067115784,
+            "allin": 0.1995152086019516
+          },
+          "total_variation": 0.2218
+        },
+        {
+          "equity": 0.8,
+          "num_active_opp": 3,
+          "real_value": 3.2,
+          "policy_lo_edge": {
+            "fold": 0.03411520645022392,
+            "call": 0.9551511406898499,
+            "raise_33": 0.00660448195412755,
+            "raise_66": 0.0016878353198990226,
+            "raise_pot": 0.0013859637547284365,
+            "allin": 0.0010553584434092045
+          },
+          "policy_hi_edge": {
+            "fold": 0.0014183574821799994,
+            "call": 0.2813975214958191,
+            "raise_33": 0.17493554949760437,
+            "raise_66": 0.1507595181465149,
+            "raise_pot": 0.15540222823619843,
+            "allin": 0.23608684539794922
+          },
+          "total_variation": 0.7065
+        }
+      ],
+      "doc": {
+        "what": "Same idea as hand_strength, but for 'equity_edge' -- a precomputed 'how much better than average for this field size is my equity' signal. Swings it independently of equity/opponent-count to isolate whether the network reads it.",
+        "expect": "The policy should respond meaningfully to this input on its own.",
+        "if_not": "A flat response suggests the feature may be redundant with (fully derivable from) equity + opponent-count, and the network never bothered to use it separately -- not dangerous, just a wasted input, worth knowing before investing more design effort in it."
+      }
+    },
+    {
+      "id": "committed_sensitivity",
+      "status": "PASS",
+      "detail": "avg policy shift (total variation) between opp committed=0bb vs =60%stack at fixed equity/stack: 0.062",
+      "data": [
+        {
+          "equity": 0.35,
+          "stack_bb": 20,
+          "policy_lo_committed": {
+            "fold": 0.9992511868476868,
+            "call": 0.0007484955131076276,
+            "raise_33": 1.0390491667067181e-07,
+            "raise_66": 4.673928799547866e-08,
+            "raise_pot": 7.802182722116413e-08,
+            "allin": 2.0077887963321217e-10
+          },
+          "policy_hi_committed": {
+            "fold": 0.9992296695709229,
+            "call": 0.0007700978312641382,
+            "raise_33": 9.966318259557738e-08,
+            "raise_66": 4.379706908252956e-08,
+            "raise_pot": 7.314106653666386e-08,
+            "allin": 2.2713710079447225e-10
+          },
+          "total_variation": 0.0
+        },
+        {
+          "equity": 0.35,
+          "stack_bb": 60,
+          "policy_lo_committed": {
+            "fold": 0.9950276017189026,
+            "call": 0.004966656677424908,
+            "raise_33": 2.8581227979884716e-06,
+            "raise_66": 1.251227104148711e-06,
+            "raise_pot": 1.5708487808296923e-06,
+            "allin": 1.7331794888164609e-09
+          },
+          "policy_hi_committed": {
+            "fold": 0.9922654032707214,
+            "call": 0.0077253165654838085,
+            "raise_33": 4.769163751916494e-06,
+            "raise_66": 2.0227830646035727e-06,
+            "raise_pot": 2.500621121725999e-06,
+            "allin": 3.716419394450554e-09
+          },
+          "total_variation": 0.0028
+        },
+        {
+          "equity": 0.5,
+          "stack_bb": 20,
+          "policy_lo_committed": {
+            "fold": 0.6204376220703125,
+            "call": 0.37821751832962036,
+            "raise_33": 0.0007211496122181416,
+            "raise_66": 0.0002771416329778731,
+            "raise_pot": 0.00033531998633407056,
+            "allin": 1.1239745617785957e-05
+          },
+          "policy_hi_committed": {
+            "fold": 0.5191333889961243,
+            "call": 0.4788877069950104,
+            "raise_33": 0.0010686819441616535,
+            "raise_66": 0.00040582212386652827,
+            "raise_pot": 0.0004811651597265154,
+            "allin": 2.322921500308439e-05
+          },
+          "total_variation": 0.1013
+        },
+        {
+          "equity": 0.5,
+          "stack_bb": 60,
+          "policy_lo_committed": {
+            "fold": 0.30413153767585754,
+            "call": 0.678957998752594,
+            "raise_33": 0.00890057347714901,
+            "raise_66": 0.003968553617596626,
+            "raise_pot": 0.003984337206929922,
+            "allin": 5.696722291759215e-05
+          },
+          "policy_hi_committed": {
+            "fold": 0.13993202149868011,
+            "call": 0.8298266530036926,
+            "raise_33": 0.01635274849832058,
+            "raise_66": 0.007041606120765209,
+            "raise_pot": 0.006631158757954836,
+            "allin": 0.00021577251027338207
+          },
+          "total_variation": 0.1642
+        },
+        {
+          "equity": 0.65,
+          "stack_bb": 20,
+          "policy_lo_committed": {
+            "fold": 0.01312767993658781,
+            "call": 0.8287705183029175,
+            "raise_33": 0.06757710129022598,
+            "raise_66": 0.03787526115775108,
+            "raise_pot": 0.039169687777757645,
+            "allin": 0.013479729183018208
+          },
+          "policy_hi_committed": {
+            "fold": 0.011094917543232441,
+            "call": 0.7985237240791321,
+            "raise_33": 0.0783415362238884,
+            "raise_66": 0.04535795748233795,
+            "raise_pot": 0.04701678082346916,
+            "allin": 0.01966516114771366
+          },
+          "total_variation": 0.0323
+        },
+        {
+          "equity": 0.65,
+          "stack_bb": 60,
+          "policy_lo_committed": {
+            "fold": 0.005217183381319046,
+            "call": 0.42980876564979553,
+            "raise_33": 0.21666556596755981,
+            "raise_66": 0.163895383477211,
+            "raise_pot": 0.1601097285747528,
+            "allin": 0.024303367361426353
+          },
+          "policy_hi_committed": {
+            "fold": 0.002840885892510414,
+            "call": 0.30217161774635315,
+            "raise_33": 0.23089994490146637,
+            "raise_66": 0.2050030678510666,
+            "raise_pot": 0.20960961282253265,
+            "allin": 0.04947489872574806
+          },
+          "total_variation": 0.13
+        },
+        {
+          "equity": 0.8,
+          "stack_bb": 20,
+          "policy_lo_committed": {
+            "fold": 0.0012051294324919581,
+            "call": 0.23675648868083954,
+            "raise_33": 0.18453365564346313,
+            "raise_66": 0.1922624260187149,
+            "raise_pot": 0.21218545734882355,
+            "allin": 0.17305687069892883
+          },
+          "policy_hi_committed": {
+            "fold": 0.0011597619159147143,
+            "call": 0.2261742204427719,
+            "raise_33": 0.17826791107654572,
+            "raise_66": 0.19022616744041443,
+            "raise_pot": 0.21117772161960602,
+            "allin": 0.19299432635307312
+          },
+          "total_variation": 0.0199
+        },
+        {
+          "equity": 0.8,
+          "stack_bb": 60,
+          "policy_lo_committed": {
+            "fold": 0.0014841482043266296,
+            "call": 0.20159408450126648,
+            "raise_33": 0.20068353414535522,
+            "raise_66": 0.22949974238872528,
+            "raise_pot": 0.2572110593318939,
+            "allin": 0.10952750593423843
+          },
+          "policy_hi_committed": {
+            "fold": 0.0013277849648147821,
+            "call": 0.18066969513893127,
+            "raise_33": 0.1827043890953064,
+            "raise_66": 0.22450527548789978,
+            "raise_pot": 0.2590242028236389,
+            "allin": 0.15176856517791748
+          },
+          "total_variation": 0.0441
+        }
+      ],
+      "doc": {
+        "what": "Holds equity/stack/pot/field fixed and swings only how much an opponent has ALREADY put into this hand's pot -- from nothing (0bb) to a substantial chunk (60% of their stack) -- checking whether the policy responds.",
+        "expect": "The policy should respond meaningfully -- an opponent who already has 60% of their stack in the pot this hand reads very differently from one who hasn't put in anything yet, even at identical remaining stack and hand equity.",
+        "if_not": "A flat response suggests this new feature isn't load-bearing yet (may need more training exposure, or the network is deriving everything it needs from opp_stack/call_amount already) -- not dangerous on its own, but means the entry-sizing addition isn't paying off yet."
+      }
+    },
+    {
+      "id": "pot_type_sensitivity",
+      "status": "PASS",
+      "detail": "avg policy shift (total variation) between pot_type=limped vs =3bet+ at fixed equity/stack: 0.038",
+      "data": [
+        {
+          "equity": 0.35,
+          "stack_bb": 20,
+          "policy_lo_pottype": {
+            "fold": 0.9992511868476868,
+            "call": 0.0007484955131076276,
+            "raise_33": 1.0390491667067181e-07,
+            "raise_66": 4.673928799547866e-08,
+            "raise_pot": 7.802182722116413e-08,
+            "allin": 2.0077887963321217e-10
+          },
+          "policy_hi_pottype": {
+            "fold": 0.9994049072265625,
+            "call": 0.0005951478378847241,
+            "raise_33": 5.411414250033886e-08,
+            "raise_66": 2.1282135165279215e-08,
+            "raise_pot": 3.421291694394313e-08,
+            "allin": 1.1065892646655584e-10
+          },
+          "total_variation": 0.0002
+        },
+        {
+          "equity": 0.35,
+          "stack_bb": 60,
+          "policy_lo_pottype": {
+            "fold": 0.9950276017189026,
+            "call": 0.004966656677424908,
+            "raise_33": 2.8581227979884716e-06,
+            "raise_66": 1.251227104148711e-06,
+            "raise_pot": 1.5708487808296923e-06,
+            "allin": 1.7331794888164609e-09
+          },
+          "policy_hi_pottype": {
+            "fold": 0.9979775547981262,
+            "call": 0.002021093387156725,
+            "raise_33": 6.803778092034918e-07,
+            "raise_66": 2.870191906367836e-07,
+            "raise_pot": 3.668403110168583e-07,
+            "allin": 3.1948826917371775e-10
+          },
+          "total_variation": 0.0029
+        },
+        {
+          "equity": 0.5,
+          "stack_bb": 20,
+          "policy_lo_pottype": {
+            "fold": 0.6204376220703125,
+            "call": 0.37821751832962036,
+            "raise_33": 0.0007211496122181416,
+            "raise_66": 0.0002771416329778731,
+            "raise_pot": 0.00033531998633407056,
+            "allin": 1.1239745617785957e-05
+          },
+          "policy_hi_pottype": {
+            "fold": 0.6569082736968994,
+            "call": 0.3424847722053528,
+            "raise_33": 0.00035562447737902403,
+            "raise_66": 0.00011386904225219041,
+            "raise_pot": 0.00013141779345460236,
+            "allin": 6.135071998869535e-06
+          },
+          "total_variation": 0.0365
+        },
+        {
+          "equity": 0.5,
+          "stack_bb": 60,
+          "policy_lo_pottype": {
+            "fold": 0.30413153767585754,
+            "call": 0.678957998752594,
+            "raise_33": 0.00890057347714901,
+            "raise_66": 0.003968553617596626,
+            "raise_pot": 0.003984337206929922,
+            "allin": 5.696722291759215e-05
+          },
+          "policy_hi_pottype": {
+            "fold": 0.42625290155410767,
+            "call": 0.566469669342041,
+            "raise_33": 0.004035104997456074,
+            "raise_66": 0.0016095949104055762,
+            "raise_pot": 0.0016123187961056828,
+            "allin": 2.038127786363475e-05
+          },
+          "total_variation": 0.1221
+        },
+        {
+          "equity": 0.65,
+          "stack_bb": 20,
+          "policy_lo_pottype": {
+            "fold": 0.01312767993658781,
+            "call": 0.8287705183029175,
+            "raise_33": 0.06757710129022598,
+            "raise_66": 0.03787526115775108,
+            "raise_pot": 0.039169687777757645,
+            "allin": 0.013479729183018208
+          },
+          "policy_hi_pottype": {
+            "fold": 0.012541331350803375,
+            "call": 0.864457368850708,
+            "raise_33": 0.0551520437002182,
+            "raise_66": 0.027867238968610764,
+            "raise_pot": 0.02771051786839962,
+            "allin": 0.012271508574485779
+          },
+          "total_variation": 0.0357
+        },
+        {
+          "equity": 0.65,
+          "stack_bb": 60,
+          "policy_lo_pottype": {
+            "fold": 0.005217183381319046,
+            "call": 0.42980876564979553,
+            "raise_33": 0.21666556596755981,
+            "raise_66": 0.163895383477211,
+            "raise_pot": 0.1601097285747528,
+            "allin": 0.024303367361426353
+          },
+          "policy_hi_pottype": {
+            "fold": 0.005766028072685003,
+            "call": 0.48219603300094604,
+            "raise_33": 0.20572060346603394,
+            "raise_66": 0.14529457688331604,
+            "raise_pot": 0.13774847984313965,
+            "allin": 0.02327427640557289
+          },
+          "total_variation": 0.0529
+        },
+        {
+          "equity": 0.8,
+          "stack_bb": 20,
+          "policy_lo_pottype": {
+            "fold": 0.0012051294324919581,
+            "call": 0.23675648868083954,
+            "raise_33": 0.18453365564346313,
+            "raise_66": 0.1922624260187149,
+            "raise_pot": 0.21218545734882355,
+            "allin": 0.17305687069892883
+          },
+          "policy_hi_pottype": {
+            "fold": 0.001131784520111978,
+            "call": 0.2466590851545334,
+            "raise_33": 0.17905350029468536,
+            "raise_66": 0.1787048876285553,
+            "raise_pot": 0.19390903413295746,
+            "allin": 0.20054173469543457
+          },
+          "total_variation": 0.0374
+        },
+        {
+          "equity": 0.8,
+          "stack_bb": 60,
+          "policy_lo_pottype": {
+            "fold": 0.0014841482043266296,
+            "call": 0.20159408450126648,
+            "raise_33": 0.20068353414535522,
+            "raise_66": 0.22949974238872528,
+            "raise_pot": 0.2572110593318939,
+            "allin": 0.10952750593423843
+          },
+          "policy_hi_pottype": {
+            "fold": 0.0014116790844127536,
+            "call": 0.19858357310295105,
+            "raise_33": 0.1958761215209961,
+            "raise_66": 0.22695840895175934,
+            "raise_pot": 0.25505396723747253,
+            "allin": 0.12211622297763824
+          },
+          "total_variation": 0.0126
+        }
+      ],
+      "doc": {
+        "what": "Holds equity/stack/pot/call fixed and swings only whether this hand has been limped/unraised vs 3-bet (or more) -- checking whether the policy responds to the STRUCTURE of the action, not just the raw money amounts.",
+        "expect": "The policy should respond meaningfully -- a 3-bet pot implies a much stronger range behind the bet than a limped pot, even at an identical call price.",
+        "if_not": "A flat response suggests pot_type isn't load-bearing yet -- the network may already be deriving everything it needs from call_amount/committed, or hasn't had enough training exposure to use this new signal."
+      }
+    },
+    {
+      "id": "stack_full_sweep",
+      "status": "PASS",
+      "detail": "max action-probability range across the full stack sweep: 0.392  (argmax path: ['fold', 'fold', 'fold', 'fold', 'call', 'call', 'fold', 'fold', 'fold'])",
+      "data": [
+        {
+          "stack_bb": 5,
+          "policy": {
+            "fold": 0.7713817954063416,
+            "call": 0.2279961109161377,
+            "raise_33": 0.0003218630445189774,
+            "raise_66": 0.0001212386559927836,
+            "raise_pot": 0.00016030814731493592,
+            "allin": 1.8763104890240356e-05
+          },
+          "argmax": "fold"
+        },
+        {
+          "stack_bb": 10,
+          "policy": {
+            "fold": 0.7534586191177368,
+            "call": 0.24592211842536926,
+            "raise_33": 0.0003267943684477359,
+            "raise_66": 0.00012203206279082224,
+            "raise_pot": 0.0001589691237313673,
+            "allin": 1.1511557204357814e-05
+          },
+          "argmax": "fold"
+        },
+        {
+          "stack_bb": 15,
+          "policy": {
+            "fold": 0.7355197668075562,
+            "call": 0.26380541920661926,
+            "raise_33": 0.0003590336418710649,
+            "raise_66": 0.0001350725069642067,
+            "raise_pot": 0.00017314021533820778,
+            "allin": 7.420236215693876e-06
+          },
+          "argmax": "fold"
+        },
+        {
+          "stack_bb": 25,
+          "policy": {
+            "fold": 0.6605597138404846,
+            "call": 0.3383159935474396,
+            "raise_33": 0.000611904717516154,
+            "raise_66": 0.00023024616530165076,
+            "raise_pot": 0.00027594887069426477,
+            "allin": 6.246574685064843e-06
+          },
+          "argmax": "fold"
+        },
+        {
+          "stack_bb": 40,
+          "policy": {
+            "fold": 0.4970242381095886,
+            "call": 0.4998379945755005,
+            "raise_33": 0.0017578111728653312,
+            "raise_66": 0.0006599021726287901,
+            "raise_pot": 0.000707093218807131,
+            "allin": 1.2985405192011967e-05
+          },
+          "argmax": "call"
+        },
+        {
+          "stack_bb": 60,
+          "policy": {
+            "fold": 0.37964001297950745,
+            "call": 0.6089478135108948,
+            "raise_33": 0.006116786971688271,
+            "raise_66": 0.002619500271975994,
+            "raise_pot": 0.0026412904262542725,
+            "allin": 3.467976057436317e-05
+          },
+          "argmax": "call"
+        },
+        {
+          "stack_bb": 90,
+          "policy": {
+            "fold": 0.49515587091445923,
+            "call": 0.4912925660610199,
+            "raise_33": 0.007029195781797171,
+            "raise_66": 0.0032730018720030785,
+            "raise_pot": 0.0032229518983513117,
+            "allin": 2.6289100787835196e-05
+          },
+          "argmax": "fold"
+        },
+        {
+          "stack_bb": 130,
+          "policy": {
+            "fold": 0.5814630389213562,
+            "call": 0.4089009761810303,
+            "raise_33": 0.005090751219540834,
+            "raise_66": 0.0023116650991141796,
+            "raise_pot": 0.0022176604252308607,
+            "allin": 1.5903469829936512e-05
+          },
+          "argmax": "fold"
+        },
+        {
+          "stack_bb": 180,
+          "policy": {
+            "fold": 0.6098911166191101,
+            "call": 0.3815458416938782,
+            "raise_33": 0.004552276339381933,
+            "raise_66": 0.002058197045698762,
+            "raise_pot": 0.0019387908978387713,
+            "allin": 1.3820596905134153e-05
+          },
+          "argmax": "fold"
+        }
+      ],
+      "doc": {
+        "what": "Sweeps stack depth from very short (5bb) to very deep (180bb) at a fixed, middling equity spot with a bet sized proportionally to the stack, watching whether/how the chosen action changes.",
+        "expect": "SOME meaningful change in behavior across that huge range -- a stack-blind model would be a real gap, since push/fold, pot-control, and deep-stack play all call for different approaches.",
+        "if_not": "A totally flat policy across 5bb-180bb means stack depth isn't influencing decisions at all. For V20-family models a flat TAIL past ~50bb is an accepted, deliberate side effect of a live-safety clamp -- but flatness across the WHOLE range (including 5-40bb, never clamped) would be a real defect."
+      }
+    },
+    {
+      "id": "position_sweep",
+      "status": "PASS",
+      "detail": "P(fold) across position 0-5: [0.8, 0.86, 0.9, 0.93, 0.91, 0.86] (spread 0.133)",
+      "data": [
+        {
+          "position": 0,
+          "policy": {
+            "fold": 0.7989444136619568,
+            "call": 0.1994202435016632,
+            "raise_33": 0.0007855537114664912,
+            "raise_66": 0.0003823017468675971,
+            "raise_pot": 0.0004652079369407147,
+            "allin": 2.2164090296428185e-06
+          },
+          "argmax": "fold"
+        },
+        {
+          "position": 1,
+          "policy": {
+            "fold": 0.8600813150405884,
+            "call": 0.1393437385559082,
+            "raise_33": 0.00029463190003298223,
+            "raise_66": 0.00012658649939112365,
+            "raise_pot": 0.00015276965859811753,
+            "allin": 8.160296260939504e-07
+          },
+          "argmax": "fold"
+        },
+        {
+          "position": 2,
+          "policy": {
+            "fold": 0.9042092561721802,
+            "call": 0.09556949138641357,
+            "raise_33": 0.00011860830272780731,
+            "raise_66": 4.632028139894828e-05,
+            "raise_pot": 5.59436775802169e-05,
+            "allin": 3.261675374233164e-07
+          },
+          "argmax": "fold"
+        },
+        {
+          "position": 3,
+          "policy": {
+            "fold": 0.9322959780693054,
+            "call": 0.06760867685079575,
+            "raise_33": 5.303689249558374e-05,
+            "raise_66": 1.908550621010363e-05,
+            "raise_pot": 2.309137380507309e-05,
+            "allin": 1.47622628787758e-07
+          },
+          "argmax": "fold"
+        },
+        {
+          "position": 4,
+          "policy": {
+            "fold": 0.9060611724853516,
+            "call": 0.093578040599823,
+            "raise_33": 0.00017641388694755733,
+            "raise_66": 8.096975943772122e-05,
+            "raise_pot": 0.00010297827247995883,
+            "allin": 4.417587149418978e-07
+          },
+          "argmax": "fold"
+        },
+        {
+          "position": 5,
+          "policy": {
+            "fold": 0.8576449155807495,
+            "call": 0.1416669338941574,
+            "raise_33": 0.0003404047747608274,
+            "raise_66": 0.00015523633919656277,
+            "raise_pot": 0.00019159332441631705,
+            "allin": 9.64377136369876e-07
+          },
+          "argmax": "fold"
+        }
+      ],
+      "doc": {
+        "what": "Sweeps table position (0 through 5) at a fixed marginal spot, checking whether fold rate changes at all by seat.",
+        "expect": "Some spread -- position is one of the most basic levers in poker strategy (tighter early, looser on the button), so a healthy model should show at least a little sensitivity.",
+        "if_not": "A flatline means the model isn't differentiating by seat at all in this spot -- a hardcoded/default-position bug existed once before (since fixed in V19) and this check exists specifically to catch a repeat."
+      }
+    },
+    {
+      "id": "opponent_style_sweep",
+      "status": "PASS",
+      "detail": "avg P(fold) spread across Blue->Red opponent archetypes (same bet, fixed equity): 0.107",
+      "data": [
+        {
+          "equity": 0.25,
+          "style_idx": 0,
+          "style": "Blue (nit)",
+          "policy": {
+            "fold": 0.9989977478981018,
+            "call": 0.0009923774050548673,
+            "raise_33": 2.535830844863085e-06,
+            "raise_66": 2.5716997242852813e-06,
+            "raise_pot": 4.710088887804886e-06,
+            "allin": 1.4736225573130923e-09
+          },
+          "argmax": "fold"
+        },
+        {
+          "equity": 0.25,
+          "style_idx": 1,
+          "style": "Green (tag)",
+          "policy": {
+            "fold": 0.9992212057113647,
+            "call": 0.0007718867855146527,
+            "raise_33": 1.7434338133170968e-06,
+            "raise_66": 1.7810374401960871e-06,
+            "raise_pot": 3.334582515890361e-06,
+            "allin": 1.0424291430055632e-09
+          },
+          "argmax": "fold"
+        },
+        {
+          "equity": 0.25,
+          "style_idx": 2,
+          "style": "Yellow (station)",
+          "policy": {
+            "fold": 0.9993324875831604,
+            "call": 0.0006621067295782268,
+            "raise_33": 1.352007529931143e-06,
+            "raise_66": 1.3728559906667215e-06,
+            "raise_pot": 2.5969179660023656e-06,
+            "allin": 8.273775553568896e-10
+          },
+          "argmax": "fold"
+        },
+        {
+          "equity": 0.25,
+          "style_idx": 3,
+          "style": "Red (maniac)",
+          "policy": {
+            "fold": 0.99952232837677,
+            "call": 0.0004748219216708094,
+            "raise_33": 7.580944725305017e-07,
+            "raise_66": 7.487638526981755e-07,
+            "raise_pot": 1.4391938520930125e-06,
+            "allin": 4.860105096149425e-10
+          },
+          "argmax": "fold"
+        },
+        {
+          "equity": 0.3,
+          "style_idx": 0,
+          "style": "Blue (nit)",
+          "policy": {
+            "fold": 0.9962770342826843,
+            "call": 0.003619382157921791,
+            "raise_33": 2.393918839516118e-05,
+            "raise_66": 2.7907866751775146e-05,
+            "raise_pot": 5.162192974239588e-05,
+            "allin": 1.882907163519576e-08
+          },
+          "argmax": "fold"
+        },
+        {
+          "equity": 0.3,
+          "style_idx": 1,
+          "style": "Green (tag)",
+          "policy": {
+            "fold": 0.9974760413169861,
+            "call": 0.0024654592853039503,
+            "raise_33": 1.3318412129592616e-05,
+            "raise_66": 1.5584602806484327e-05,
+            "raise_pot": 2.962612416013144e-05,
+            "allin": 1.0299658015355817e-08
+          },
+          "argmax": "fold"
+        },
+        {
+          "equity": 0.3,
+          "style_idx": 2,
+          "style": "Yellow (station)",
+          "policy": {
+            "fold": 0.9980461597442627,
+            "call": 0.0019154956098645926,
+            "raise_33": 8.73541193868732e-06,
+            "raise_66": 1.0099565770360641e-05,
+            "raise_pot": 1.9467532183625735e-05,
+            "allin": 6.745161318377768e-09
+          },
+          "argmax": "fold"
+        },
+        {
+          "equity": 0.3,
+          "style_idx": 3,
+          "style": "Red (maniac)",
+          "policy": {
+            "fold": 0.998729407787323,
+            "call": 0.0012527152430266142,
+            "raise_33": 4.1449980017205235e-06,
+            "raise_66": 4.61606487078825e-06,
+            "raise_pot": 9.04625812836457e-06,
+            "allin": 3.1940790012896514e-09
+          },
+          "argmax": "fold"
+        },
+        {
+          "equity": 0.35,
+          "style_idx": 0,
+          "style": "Blue (nit)",
+          "policy": {
+            "fold": 0.9721978306770325,
+            "call": 0.02457485720515251,
+            "raise_33": 0.0006645172252319753,
+            "raise_66": 0.0009152426500804722,
+            "raise_pot": 0.0016466263914480805,
+            "allin": 8.995226608021767e-07
+          },
+          "argmax": "fold"
+        },
+        {
+          "equity": 0.35,
+          "style_idx": 1,
+          "style": "Green (tag)",
+          "policy": {
+            "fold": 0.9851633906364441,
+            "call": 0.013509692624211311,
+            "raise_33": 0.0002649285306688398,
+            "raise_66": 0.0003691412857733667,
+            "raise_pot": 0.0006925248890183866,
+            "allin": 3.1652484722144436e-07
+          },
+          "argmax": "fold"
+        },
+        {
+          "equity": 0.35,
+          "style_idx": 2,
+          "style": "Yellow (station)",
+          "policy": {
+            "fold": 0.9903744459152222,
+            "call": 0.008951674215495586,
+            "raise_33": 0.00013432824925985187,
+            "raise_66": 0.00018477677076589316,
+            "raise_pot": 0.00035469711292535067,
+            "allin": 1.5072619419242983e-07
+          },
+          "argmax": "fold"
+        },
+        {
+          "equity": 0.35,
+          "style_idx": 3,
+          "style": "Red (maniac)",
+          "policy": {
+            "fold": 0.9951620697975159,
+            "call": 0.004626948852092028,
+            "raise_33": 4.2983410821761936e-05,
+            "raise_66": 5.650208186125383e-05,
+            "raise_pot": 0.00011159633140778169,
+            "allin": 4.462754432665861e-08
+          },
+          "argmax": "fold"
+        },
+        {
+          "equity": 0.45,
+          "style_idx": 0,
+          "style": "Blue (nit)",
+          "policy": {
+            "fold": 0.2200385481119156,
+            "call": 0.2802892327308655,
+            "raise_33": 0.10683602094650269,
+            "raise_66": 0.15309295058250427,
+            "raise_pot": 0.2390318363904953,
+            "allin": 0.0007113856263458729
+          },
+          "argmax": "call"
+        },
+        {
+          "equity": 0.45,
+          "style_idx": 1,
+          "style": "Green (tag)",
+          "policy": {
+            "fold": 0.36823567748069763,
+            "call": 0.2586321234703064,
+            "raise_33": 0.07462702691555023,
+            "raise_66": 0.11235114932060242,
+            "raise_pot": 0.18575480580329895,
+            "allin": 0.0003991767589468509
+          },
+          "argmax": "fold"
+        },
+        {
+          "equity": 0.45,
+          "style_idx": 2,
+          "style": "Yellow (station)",
+          "policy": {
+            "fold": 0.49681705236434937,
+            "call": 0.22934237122535706,
+            "raise_33": 0.05266406759619713,
+            "raise_66": 0.0814223513007164,
+            "raise_pot": 0.13951218128204346,
+            "allin": 0.0002420358796371147
+          },
+          "argmax": "fold"
+        },
+        {
+          "equity": 0.45,
+          "style_idx": 3,
+          "style": "Red (maniac)",
+          "policy": {
+            "fold": 0.7299978733062744,
+            "call": 0.14937052130699158,
+            "raise_33": 0.02172773703932762,
+            "raise_66": 0.035080987960100174,
+            "raise_pot": 0.06374682486057281,
+            "allin": 7.615595677634701e-05
+          },
+          "argmax": "fold"
+        },
+        {
+          "equity": 0.65,
+          "style_idx": 0,
+          "style": "Blue (nit)",
+          "policy": {
+            "fold": 0.0037219631485641003,
+            "call": 0.1762324720621109,
+            "raise_33": 0.21712279319763184,
+            "raise_66": 0.25625890493392944,
+            "raise_pot": 0.3251398205757141,
+            "allin": 0.02152412384748459
+          },
+          "argmax": "raise_pot"
+        },
+        {
+          "equity": 0.65,
+          "style_idx": 1,
+          "style": "Green (tag)",
+          "policy": {
+            "fold": 0.0038978352677077055,
+            "call": 0.17240267992019653,
+            "raise_33": 0.21612463891506195,
+            "raise_66": 0.25798842310905457,
+            "raise_pot": 0.3308764696121216,
+            "allin": 0.018709957599639893
+          },
+          "argmax": "raise_pot"
+        },
+        {
+          "equity": 0.65,
+          "style_idx": 2,
+          "style": "Yellow (station)",
+          "policy": {
+            "fold": 0.004062370862811804,
+            "call": 0.17013224959373474,
+            "raise_33": 0.2152649611234665,
+            "raise_66": 0.25909993052482605,
+            "raise_pot": 0.3347524106502533,
+            "allin": 0.016688082367181778
+          },
+          "argmax": "raise_pot"
+        },
+        {
+          "equity": 0.65,
+          "style_idx": 3,
+          "style": "Red (maniac)",
+          "policy": {
+            "fold": 0.004529457073658705,
+            "call": 0.16569162905216217,
+            "raise_33": 0.21344158053398132,
+            "raise_66": 0.2610219717025757,
+            "raise_pot": 0.3421531915664673,
+            "allin": 0.013162204995751381
+          },
+          "argmax": "raise_pot"
+        }
+      ],
+      "doc": {
+        "what": "Holds hero's own equity fixed and swaps only the opponent's read style (from a tight/aggressive 'nit' to a loose/aggressive 'maniac') while facing an identical bet, checking whether fold rate shifts.",
+        "expect": "Facing the SAME bet, hero should fold more against a villain whose range is scarier (tighter-but-betting = stronger range) and less against a looser villain, at the same equity.",
+        "if_not": "No shift at all means the model may be ignoring the opponent-style inputs entirely and just reacting to its own hand/equity in a vacuum -- a real exploitability gap (a fixed strategy is easier to beat than an adjusting one), and ties into a known open backlog item about per-opponent modeling."
+      }
+    },
+    {
+      "id": "allin_exploits_opponent_foldiness",
+      "status": "WARN",
+      "detail": "avg P(all-in) spread across NIT/TAG/LAG/CALLING_STATION at fixed equity: 0.008 -- [OPP-8] all-in frequency barely differs by real opponent archetype despite wildly different actual fold-to-pressure",
+      "data": [
+        {
+          "equity": 0.15,
+          "archetype": "NIT",
+          "archetype_idx": 0,
+          "policy": {
+            "fold": 0.9998692274093628,
+            "call": 0.00013038823090028018,
+            "raise_33": 8.2604991291646e-08,
+            "raise_66": 7.259077250409973e-08,
+            "raise_pot": 1.4145877003102214e-07,
+            "allin": 6.015819092874963e-11
+          },
+          "argmax": "fold",
+          "argmax_is_allin": false
+        },
+        {
+          "equity": 0.15,
+          "archetype": "TAG",
+          "archetype_idx": 1,
+          "policy": {
+            "fold": 0.9998886585235596,
+            "call": 0.00011110439663752913,
+            "raise_33": 6.256107099034125e-08,
+            "raise_66": 5.430177196785735e-08,
+            "raise_pot": 1.0711233500160233e-07,
+            "allin": 5.1251530797102873e-11
+          },
+          "argmax": "fold",
+          "argmax_is_allin": false
+        },
+        {
+          "equity": 0.15,
+          "archetype": "LAG",
+          "archetype_idx": 2,
+          "policy": {
+            "fold": 0.9999021291732788,
+            "call": 9.779771062312648e-05,
+            "raise_33": 4.9004636792915335e-08,
+            "raise_66": 4.176649071041538e-08,
+            "raise_pot": 8.290209052574937e-08,
+            "allin": 4.3782030084704715e-11
+          },
+          "argmax": "fold",
+          "argmax_is_allin": false
+        },
+        {
+          "equity": 0.15,
+          "archetype": "CALLING_STATION",
+          "archetype_idx": 3,
+          "policy": {
+            "fold": 0.9999129772186279,
+            "call": 8.699289901414886e-05,
+            "raise_33": 3.7267017916065015e-08,
+            "raise_66": 3.0319721844307423e-08,
+            "raise_pot": 5.906418110157574e-08,
+            "allin": 2.9759961855946315e-11
+          },
+          "argmax": "fold",
+          "argmax_is_allin": false
+        },
+        {
+          "equity": 0.25,
+          "archetype": "NIT",
+          "archetype_idx": 0,
+          "policy": {
+            "fold": 0.9994045495986938,
+            "call": 0.000589081784710288,
+            "raise_33": 1.385549467158853e-06,
+            "raise_66": 1.5727830486866878e-06,
+            "raise_pot": 3.2824318623170257e-06,
+            "allin": 1.3105931895296408e-09
+          },
+          "argmax": "fold",
+          "argmax_is_allin": false
+        },
+        {
+          "equity": 0.25,
+          "archetype": "TAG",
+          "archetype_idx": 1,
+          "policy": {
+            "fold": 0.9995538592338562,
+            "call": 0.00044220301788300276,
+            "raise_33": 8.810949907456234e-07,
+            "raise_66": 9.938836456058198e-07,
+            "raise_pot": 2.113149093929678e-06,
+            "allin": 8.956928532199981e-10
+          },
+          "argmax": "fold",
+          "argmax_is_allin": false
+        },
+        {
+          "equity": 0.25,
+          "archetype": "LAG",
+          "archetype_idx": 2,
+          "policy": {
+            "fold": 0.9996529817581177,
+            "call": 0.00034456001594662666,
+            "raise_33": 5.725864298256056e-07,
+            "raise_66": 6.317515044429456e-07,
+            "raise_pot": 1.355395397695247e-06,
+            "allin": 6.070892677456641e-10
+          },
+          "argmax": "fold",
+          "argmax_is_allin": false
+        },
+        {
+          "equity": 0.25,
+          "archetype": "CALLING_STATION",
+          "archetype_idx": 3,
+          "policy": {
+            "fold": 0.99972003698349,
+            "call": 0.00027838489040732384,
+            "raise_33": 3.7322615753510036e-07,
+            "raise_66": 3.891823325830046e-07,
+            "raise_pot": 8.217521099140868e-07,
+            "allin": 3.5608713200296904e-10
+          },
+          "argmax": "fold",
+          "argmax_is_allin": false
+        },
+        {
+          "equity": 0.35,
+          "archetype": "NIT",
+          "archetype_idx": 0,
+          "policy": {
+            "fold": 0.9774878025054932,
+            "call": 0.01782948337495327,
+            "raise_33": 0.0007304290193133056,
+            "raise_66": 0.0012802189448848367,
+            "raise_pot": 0.00267044804058969,
+            "allin": 1.6094619468276505e-06
+          },
+          "argmax": "fold",
+          "argmax_is_allin": false
+        },
+        {
+          "equity": 0.35,
+          "archetype": "TAG",
+          "archetype_idx": 1,
+          "policy": {
+            "fold": 0.9905951023101807,
+            "call": 0.008121821098029613,
+            "raise_33": 0.00019936147145926952,
+            "raise_66": 0.00034113379660993814,
+            "raise_pot": 0.0007421669433824718,
+            "allin": 4.0510192889087193e-07
+          },
+          "argmax": "fold",
+          "argmax_is_allin": false
+        },
+        {
+          "equity": 0.35,
+          "archetype": "LAG",
+          "archetype_idx": 2,
+          "policy": {
+            "fold": 0.9955109357833862,
+            "call": 0.004112239461392164,
+            "raise_33": 6.064289482310414e-05,
+            "raise_66": 9.786814189283177e-05,
+            "raise_pot": 0.0002180714946007356,
+            "allin": 1.1615209416504513e-07
+          },
+          "argmax": "fold",
+          "argmax_is_allin": false
+        },
+        {
+          "equity": 0.35,
+          "archetype": "CALLING_STATION",
+          "archetype_idx": 3,
+          "policy": {
+            "fold": 0.9969989061355591,
+            "call": 0.0028281696140766144,
+            "raise_33": 2.9534872737713158e-05,
+            "raise_66": 4.4543023250298575e-05,
+            "raise_pot": 9.88003084785305e-05,
+            "allin": 5.02809847091612e-08
+          },
+          "argmax": "fold",
+          "argmax_is_allin": false
+        },
+        {
+          "equity": 0.45,
+          "archetype": "NIT",
+          "archetype_idx": 0,
+          "policy": {
+            "fold": 0.267034113407135,
+            "call": 0.19375228881835938,
+            "raise_33": 0.08720709383487701,
+            "raise_66": 0.1592010259628296,
+            "raise_pot": 0.2921038568019867,
+            "allin": 0.0007016448071226478
+          },
+          "argmax": "raise_pot",
+          "argmax_is_allin": false
+        },
+        {
+          "equity": 0.45,
+          "archetype": "TAG",
+          "archetype_idx": 1,
+          "policy": {
+            "fold": 0.38777267932891846,
+            "call": 0.1830516755580902,
+            "raise_33": 0.06622789055109024,
+            "raise_66": 0.12468427419662476,
+            "raise_pot": 0.23778754472732544,
+            "allin": 0.0004759472794830799
+          },
+          "argmax": "fold",
+          "argmax_is_allin": false
+        },
+        {
+          "equity": 0.45,
+          "archetype": "LAG",
+          "archetype_idx": 2,
+          "policy": {
+            "fold": 0.5292574763298035,
+            "call": 0.1616983264684677,
+            "raise_33": 0.045921046286821365,
+            "raise_66": 0.08853758126497269,
+            "raise_pot": 0.1742941439151764,
+            "allin": 0.0002913567004725337
+          },
+          "argmax": "fold",
+          "argmax_is_allin": false
+        },
+        {
+          "equity": 0.45,
+          "archetype": "CALLING_STATION",
+          "archetype_idx": 3,
+          "policy": {
+            "fold": 0.6640284657478333,
+            "call": 0.13560821115970612,
+            "raise_33": 0.029561301693320274,
+            "raise_66": 0.05682436749339104,
+            "raise_pot": 0.11381644755601883,
+            "allin": 0.00016120317741297185
+          },
+          "argmax": "fold",
+          "argmax_is_allin": false
+        },
+        {
+          "equity": 0.55,
+          "archetype": "NIT",
+          "archetype_idx": 0,
+          "policy": {
+            "fold": 0.01822151616215706,
+            "call": 0.14138051867485046,
+            "raise_33": 0.16946305334568024,
+            "raise_66": 0.26134225726127625,
+            "raise_pot": 0.40499424934387207,
+            "allin": 0.004598425235599279
+          },
+          "argmax": "raise_pot",
+          "argmax_is_allin": false
+        },
+        {
+          "equity": 0.55,
+          "archetype": "TAG",
+          "archetype_idx": 1,
+          "policy": {
+            "fold": 0.0265088751912117,
+            "call": 0.14199064671993256,
+            "raise_33": 0.1564313769340515,
+            "raise_66": 0.25573015213012695,
+            "raise_pot": 0.4156532287597656,
+            "allin": 0.003685676958411932
+          },
+          "argmax": "raise_pot",
+          "argmax_is_allin": false
+        },
+        {
+          "equity": 0.55,
+          "archetype": "LAG",
+          "archetype_idx": 2,
+          "policy": {
+            "fold": 0.03724430128931999,
+            "call": 0.14422868192195892,
+            "raise_33": 0.14600734412670135,
+            "raise_66": 0.2493351548910141,
+            "raise_pot": 0.42014360427856445,
+            "allin": 0.003040975658223033
+          },
+          "argmax": "raise_pot",
+          "argmax_is_allin": false
+        },
+        {
+          "equity": 0.55,
+          "archetype": "CALLING_STATION",
+          "archetype_idx": 3,
+          "policy": {
+            "fold": 0.05124476179480553,
+            "call": 0.1522681564092636,
+            "raise_33": 0.13853535056114197,
+            "raise_66": 0.24082937836647034,
+            "raise_pot": 0.41463878750801086,
+            "allin": 0.002483604708686471
+          },
+          "argmax": "raise_pot",
+          "argmax_is_allin": false
+        },
+        {
+          "equity": 0.65,
+          "archetype": "NIT",
+          "archetype_idx": 0,
+          "policy": {
+            "fold": 0.004202267620712519,
+            "call": 0.15564915537834167,
+            "raise_33": 0.20467999577522278,
+            "raise_66": 0.2642133831977844,
+            "raise_pot": 0.3528255224227905,
+            "allin": 0.018429622054100037
+          },
+          "argmax": "raise_pot",
+          "argmax_is_allin": false
+        },
+        {
+          "equity": 0.65,
+          "archetype": "TAG",
+          "archetype_idx": 1,
+          "policy": {
+            "fold": 0.004746934864670038,
+            "call": 0.14961479604244232,
+            "raise_33": 0.20077641308307648,
+            "raise_66": 0.2663021683692932,
+            "raise_pot": 0.3628512918949127,
+            "allin": 0.015708444640040398
+          },
+          "argmax": "raise_pot",
+          "argmax_is_allin": false
+        },
+        {
+          "equity": 0.65,
+          "archetype": "LAG",
+          "archetype_idx": 2,
+          "policy": {
+            "fold": 0.005482639651745558,
+            "call": 0.1448763906955719,
+            "raise_33": 0.19543451070785522,
+            "raise_66": 0.2675083577632904,
+            "raise_pot": 0.3731435537338257,
+            "allin": 0.013554560951888561
+          },
+          "argmax": "raise_pot",
+          "argmax_is_allin": false
+        },
+        {
+          "equity": 0.65,
+          "archetype": "CALLING_STATION",
+          "archetype_idx": 3,
+          "policy": {
+            "fold": 0.006848501972854137,
+            "call": 0.14135141670703888,
+            "raise_33": 0.1901574581861496,
+            "raise_66": 0.2677960991859436,
+            "raise_pot": 0.38287487626075745,
+            "allin": 0.010971609503030777
+          },
+          "argmax": "raise_pot",
+          "argmax_is_allin": false
+        },
+        {
+          "equity": 0.75,
+          "archetype": "NIT",
+          "archetype_idx": 0,
+          "policy": {
+            "fold": 0.00246088276617229,
+            "call": 0.16742190718650818,
+            "raise_33": 0.1996426284313202,
+            "raise_66": 0.2533617913722992,
+            "raise_pot": 0.322138249874115,
+            "allin": 0.05497461184859276
+          },
+          "argmax": "raise_pot",
+          "argmax_is_allin": false
+        },
+        {
+          "equity": 0.75,
+          "archetype": "TAG",
+          "archetype_idx": 1,
+          "policy": {
+            "fold": 0.0025438203010708094,
+            "call": 0.16537153720855713,
+            "raise_33": 0.199831023812294,
+            "raise_66": 0.2551230192184448,
+            "raise_pot": 0.327312171459198,
+            "allin": 0.04981838911771774
+          },
+          "argmax": "raise_pot",
+          "argmax_is_allin": false
+        },
+        {
+          "equity": 0.75,
+          "archetype": "LAG",
+          "archetype_idx": 2,
+          "policy": {
+            "fold": 0.0026575818192213774,
+            "call": 0.1629709154367447,
+            "raise_33": 0.19962580502033234,
+            "raise_66": 0.25711220502853394,
+            "raise_pot": 0.33267760276794434,
+            "allin": 0.044955890625715256
+          },
+          "argmax": "raise_pot",
+          "argmax_is_allin": false
+        },
+        {
+          "equity": 0.75,
+          "archetype": "CALLING_STATION",
+          "archetype_idx": 3,
+          "policy": {
+            "fold": 0.0028864042833447456,
+            "call": 0.16023676097393036,
+            "raise_33": 0.20087434351444244,
+            "raise_66": 0.2599829435348511,
+            "raise_pot": 0.33954447507858276,
+            "allin": 0.03647506237030029
+          },
+          "argmax": "raise_pot",
+          "argmax_is_allin": false
+        },
+        {
+          "equity": 0.85,
+          "archetype": "NIT",
+          "archetype_idx": 0,
+          "policy": {
+            "fold": 0.0017208600183948874,
+            "call": 0.1656024307012558,
+            "raise_33": 0.18480344116687775,
+            "raise_66": 0.23694990575313568,
+            "raise_pot": 0.29087620973587036,
+            "allin": 0.1200471967458725
+          },
+          "argmax": "raise_pot",
+          "argmax_is_allin": false
+        },
+        {
+          "equity": 0.85,
+          "archetype": "TAG",
+          "archetype_idx": 1,
+          "policy": {
+            "fold": 0.0017448393628001213,
+            "call": 0.1651831418275833,
+            "raise_33": 0.1855413019657135,
+            "raise_66": 0.2388930469751358,
+            "raise_pot": 0.2948460280895233,
+            "allin": 0.11379172652959824
+          },
+          "argmax": "raise_pot",
+          "argmax_is_allin": false
+        },
+        {
+          "equity": 0.85,
+          "archetype": "LAG",
+          "archetype_idx": 2,
+          "policy": {
+            "fold": 0.001790264737792313,
+            "call": 0.1645844280719757,
+            "raise_33": 0.18657729029655457,
+            "raise_66": 0.24119596183300018,
+            "raise_pot": 0.29961827397346497,
+            "allin": 0.10623380541801453
+          },
+          "argmax": "raise_pot",
+          "argmax_is_allin": false
+        },
+        {
+          "equity": 0.85,
+          "archetype": "CALLING_STATION",
+          "archetype_idx": 3,
+          "policy": {
+            "fold": 0.0019004788482561707,
+            "call": 0.16470426321029663,
+            "raise_33": 0.1906318962574005,
+            "raise_66": 0.24628561735153198,
+            "raise_pot": 0.3087214231491089,
+            "allin": 0.08775633573532104
+          },
+          "argmax": "raise_pot",
+          "argmax_is_allin": false
+        }
+      ],
+      "doc": {
+        "what": "Sweeps hero's own all-in probability across equity, feeding the EXACT VPIP/AGG of the four real named archetypes that populate the training pool (NIT/TAG/LAG/CALLING_STATION) -- not an abstract Blue-Red spectrum, the literal opponents hero actually trains against.",
+        "expect": "Since these four archetypes have wildly different real fold-to-a-shove rates AT A GIVEN EQUITY (e.g. NIT folds an all-in ~98% of the time at a realistic price when it genuinely holds marginal equity, CALLING_STATION ~0%, driven by a `fold_to_pressure` trait the model is never directly shown), a well-exploiting policy should shove NIT somewhat more often than CALLING_STATION at the same hero equity.",
+        "if_not": "A small spread is evidence the model can't directly observe the underlying fold_to_pressure trait (it only infers tight-vs-loose via a coarse VPIP/AGG color). CAVEAT: don't over-read this as pure exploitable waste -- this sweep feeds a flat equity per cell and doesn't weight by how OFTEN each archetype actually presents that equity in real play; NIT's tight preflop selection means a genuine marginal-equity NIT spot is rarer in practice than the sweep implies, since NIT's real postflop range is already selection-skewed strong. See OFK known-shortcomings-backlog [OPP-8] for the full investigation, including this correction."
+      }
+    },
+    {
+      "id": "allin_vs_nextbest_qgap",
+      "status": "PASS",
+      "detail": "WORST-cell Q-gap (allin - next-best, as fraction of pot) by stack: 15bb=-1.00, 20bb=-1.16, 25bb=-1.35, 30bb=-1.56, 40bb=-1.97 | by archetype: NIT=-0.43, TAG=-0.43, LAG=-0.44, CALLING_STATION=-0.47 | worst overall: stack=15bb (-1.00), archetype=NIT (-0.43)",
+      "data": [
+        {
+          "stack_bb": 15,
+          "equity": 0.35,
+          "qvals": {
+            "fold": 0.00012937746942043304,
+            "call": 0.03245061635971069,
+            "raise_33": -0.27533429861068726,
+            "raise_66": 0.0748090147972107,
+            "raise_pot": 0.11320638656616211,
+            "allin": -4.264496803283691
+          },
+          "gap_frac_of_pot": -1.7511
+        },
+        {
+          "stack_bb": 15,
+          "equity": 0.4,
+          "qvals": {
+            "fold": 0.0008270228281617165,
+            "call": 0.12434184551239014,
+            "raise_33": -0.08597540855407715,
+            "raise_66": 0.24144411087036133,
+            "raise_pot": 0.30214589834213257,
+            "allin": -3.8157331943511963
+          },
+          "gap_frac_of_pot": -1.6472
+        },
+        {
+          "stack_bb": 15,
+          "equity": 0.43,
+          "qvals": {
+            "fold": 0.0008747512474656105,
+            "call": 0.1943836212158203,
+            "raise_33": 0.03148055076599121,
+            "raise_66": 0.3383915424346924,
+            "raise_pot": 0.412680983543396,
+            "allin": -3.308199167251587
+          },
+          "gap_frac_of_pot": -1.4884
+        },
+        {
+          "stack_bb": 15,
+          "equity": 0.48,
+          "qvals": {
+            "fold": 0.0014560502022504807,
+            "call": 0.3352436125278473,
+            "raise_33": 0.24134725332260132,
+            "raise_66": 0.5152369737625122,
+            "raise_pot": 0.6152862310409546,
+            "allin": -2.563390016555786
+          },
+          "gap_frac_of_pot": -1.2715
+        },
+        {
+          "stack_bb": 15,
+          "equity": 0.55,
+          "qvals": {
+            "fold": 0.0017611337825655937,
+            "call": 0.5290876030921936,
+            "raise_33": 0.5270746350288391,
+            "raise_66": 0.7575105428695679,
+            "raise_pot": 0.8987814784049988,
+            "allin": -1.606846570968628
+          },
+          "gap_frac_of_pot": -1.0023
+        },
+        {
+          "stack_bb": 20,
+          "equity": 0.35,
+          "qvals": {
+            "fold": 0.0008240621536970139,
+            "call": 0.03793078660964966,
+            "raise_33": -0.27031809091567993,
+            "raise_66": 0.09351760149002075,
+            "raise_pot": 0.13709896802902222,
+            "allin": -5.329966068267822
+          },
+          "gap_frac_of_pot": -2.1868
+        },
+        {
+          "stack_bb": 20,
+          "equity": 0.4,
+          "qvals": {
+            "fold": 0.0013837087899446487,
+            "call": 0.12892383337020874,
+            "raise_33": -0.08244740962982178,
+            "raise_66": 0.25324589014053345,
+            "raise_pot": 0.3181362748146057,
+            "allin": -4.736179351806641
+          },
+          "gap_frac_of_pot": -2.0217
+        },
+        {
+          "stack_bb": 20,
+          "equity": 0.43,
+          "qvals": {
+            "fold": 0.0015429146587848663,
+            "call": 0.17554783821105957,
+            "raise_33": 0.015906214714050293,
+            "raise_66": 0.33518797159194946,
+            "raise_pot": 0.4157935380935669,
+            "allin": -4.166394233703613
+          },
+          "gap_frac_of_pot": -1.8329
+        },
+        {
+          "stack_bb": 20,
+          "equity": 0.48,
+          "qvals": {
+            "fold": 0.0013883104547858238,
+            "call": 0.305902898311615,
+            "raise_33": 0.21725177764892578,
+            "raise_66": 0.5013879537582397,
+            "raise_pot": 0.6025884747505188,
+            "allin": -3.17922043800354
+          },
+          "gap_frac_of_pot": -1.5127
+        },
+        {
+          "stack_bb": 20,
+          "equity": 0.55,
+          "qvals": {
+            "fold": 0.0016828551888465881,
+            "call": 0.5088488459587097,
+            "raise_33": 0.5057452321052551,
+            "raise_66": 0.7411220073699951,
+            "raise_pot": 0.8774341940879822,
+            "allin": -2.0269670486450195
+          },
+          "gap_frac_of_pot": -1.1618
+        },
+        {
+          "stack_bb": 25,
+          "equity": 0.35,
+          "qvals": {
+            "fold": 0.0026751458644866943,
+            "call": 0.04578959941864014,
+            "raise_33": -0.26178663969039917,
+            "raise_66": 0.10649913549423218,
+            "raise_pot": 0.14379924535751343,
+            "allin": -6.658659934997559
+          },
+          "gap_frac_of_pot": -2.721
+        },
+        {
+          "stack_bb": 25,
+          "equity": 0.4,
+          "qvals": {
+            "fold": 0.002445518970489502,
+            "call": 0.12936878204345703,
+            "raise_33": -0.07995104789733887,
+            "raise_66": 0.25438612699508667,
+            "raise_pot": 0.31661564111709595,
+            "allin": -5.717150688171387
+          },
+          "gap_frac_of_pot": -2.4135
+        },
+        {
+          "stack_bb": 25,
+          "equity": 0.43,
+          "qvals": {
+            "fold": 0.002122197300195694,
+            "call": 0.17872220277786255,
+            "raise_33": 0.016492724418640137,
+            "raise_66": 0.3361765742301941,
+            "raise_pot": 0.41731345653533936,
+            "allin": -5.0088911056518555
+          },
+          "gap_frac_of_pot": -2.1705
+        },
+        {
+          "stack_bb": 25,
+          "equity": 0.48,
+          "qvals": {
+            "fold": 0.0018870215862989426,
+            "call": 0.27310067415237427,
+            "raise_33": 0.1861344575881958,
+            "raise_66": 0.47980570793151855,
+            "raise_pot": 0.5895455479621887,
+            "allin": -3.8888909816741943
+          },
+          "gap_frac_of_pot": -1.7914
+        },
+        {
+          "stack_bb": 25,
+          "equity": 0.55,
+          "qvals": {
+            "fold": 0.001455456018447876,
+            "call": 0.4892970621585846,
+            "raise_33": 0.49273258447647095,
+            "raise_66": 0.732086181640625,
+            "raise_pot": 0.8685316443443298,
+            "allin": -2.5033607482910156
+          },
+          "gap_frac_of_pot": -1.3488
+        },
+        {
+          "stack_bb": 30,
+          "equity": 0.35,
+          "qvals": {
+            "fold": 0.004549087956547737,
+            "call": 0.06223559379577637,
+            "raise_33": -0.2535143494606018,
+            "raise_66": 0.12453776597976685,
+            "raise_pot": 0.14923185110092163,
+            "allin": -8.135573387145996
+          },
+          "gap_frac_of_pot": -3.3139
+        },
+        {
+          "stack_bb": 30,
+          "equity": 0.4,
+          "qvals": {
+            "fold": 0.003782074898481369,
+            "call": 0.12813866138458252,
+            "raise_33": -0.07653558254241943,
+            "raise_66": 0.2575414180755615,
+            "raise_pot": 0.30854684114456177,
+            "allin": -6.782162666320801
+          },
+          "gap_frac_of_pot": -2.8363
+        },
+        {
+          "stack_bb": 30,
+          "equity": 0.43,
+          "qvals": {
+            "fold": 0.0032594501972198486,
+            "call": 0.17581897974014282,
+            "raise_33": 0.0212552547454834,
+            "raise_66": 0.3343566060066223,
+            "raise_pot": 0.4047890305519104,
+            "allin": -5.983512878417969
+          },
+          "gap_frac_of_pot": -2.5553
+        },
+        {
+          "stack_bb": 30,
+          "equity": 0.48,
+          "qvals": {
+            "fold": 0.0025849491357803345,
+            "call": 0.25840651988983154,
+            "raise_33": 0.17813611030578613,
+            "raise_66": 0.46581602096557617,
+            "raise_pot": 0.5726355910301208,
+            "allin": -4.6812639236450195
+          },
+          "gap_frac_of_pot": -2.1016
+        },
+        {
+          "stack_bb": 30,
+          "equity": 0.55,
+          "qvals": {
+            "fold": 0.0015075448900461197,
+            "call": 0.4682338833808899,
+            "raise_33": 0.4781162738800049,
+            "raise_66": 0.7185617089271545,
+            "raise_pot": 0.8612257838249207,
+            "allin": -3.0373783111572266
+          },
+          "gap_frac_of_pot": -1.5594
+        },
+        {
+          "stack_bb": 40,
+          "equity": 0.35,
+          "qvals": {
+            "fold": 0.005058290436863899,
+            "call": 0.07901239395141602,
+            "raise_33": -0.27921372652053833,
+            "raise_66": 0.10968619585037231,
+            "raise_pot": 0.1054273247718811,
+            "allin": -10.578631401062012
+          },
+          "gap_frac_of_pot": -4.2753
+        },
+        {
+          "stack_bb": 40,
+          "equity": 0.4,
+          "qvals": {
+            "fold": 0.0051724836230278015,
+            "call": 0.14419329166412354,
+            "raise_33": -0.08490002155303955,
+            "raise_66": 0.2563650608062744,
+            "raise_pot": 0.2902193069458008,
+            "allin": -8.763261795043945
+          },
+          "gap_frac_of_pot": -3.6214
+        },
+        {
+          "stack_bb": 40,
+          "equity": 0.43,
+          "qvals": {
+            "fold": 0.0050804503262043,
+            "call": 0.17597603797912598,
+            "raise_33": 0.01667308807373047,
+            "raise_66": 0.33144569396972656,
+            "raise_pot": 0.38821178674697876,
+            "allin": -7.666049957275391
+          },
+          "gap_frac_of_pot": -3.2217
+        },
+        {
+          "stack_bb": 40,
+          "equity": 0.48,
+          "qvals": {
+            "fold": 0.004017673432826996,
+            "call": 0.24185150861740112,
+            "raise_33": 0.18189656734466553,
+            "raise_66": 0.4550044536590576,
+            "raise_pot": 0.5488693118095398,
+            "allin": -6.013920783996582
+          },
+          "gap_frac_of_pot": -2.6251
+        },
+        {
+          "stack_bb": 40,
+          "equity": 0.55,
+          "qvals": {
+            "fold": 0.0025289254263043404,
+            "call": 0.42867976427078247,
+            "raise_33": 0.4613202214241028,
+            "raise_66": 0.6851832866668701,
+            "raise_pot": 0.8238286972045898,
+            "allin": -4.113278388977051
+          },
+          "gap_frac_of_pot": -1.9748
+        },
+        {
+          "archetype": "NIT",
+          "archetype_idx": 0,
+          "equity": 0.35,
+          "qvals": {
+            "fold": 0.003421034663915634,
+            "call": 0.08577108383178711,
+            "raise_33": -0.23220258951187134,
+            "raise_66": 0.14344465732574463,
+            "raise_pot": 0.17606574296951294,
+            "allin": -6.865323066711426
+          },
+          "gap_frac_of_pot": -0.9389
+        },
+        {
+          "archetype": "NIT",
+          "archetype_idx": 0,
+          "equity": 0.4,
+          "qvals": {
+            "fold": 0.0027726348489522934,
+            "call": 0.16786527633666992,
+            "raise_33": -0.05471992492675781,
+            "raise_66": 0.285309374332428,
+            "raise_pot": 0.3470109701156616,
+            "allin": -5.643887519836426
+          },
+          "gap_frac_of_pot": -0.7988
+        },
+        {
+          "archetype": "NIT",
+          "archetype_idx": 0,
+          "equity": 0.43,
+          "qvals": {
+            "fold": 0.002392249181866646,
+            "call": 0.2172386646270752,
+            "raise_33": 0.03904414176940918,
+            "raise_66": 0.36522436141967773,
+            "raise_pot": 0.44728338718414307,
+            "allin": -4.909339427947998
+          },
+          "gap_frac_of_pot": -0.7142
+        },
+        {
+          "archetype": "NIT",
+          "archetype_idx": 0,
+          "equity": 0.48,
+          "qvals": {
+            "fold": 0.001981191337108612,
+            "call": 0.31862950325012207,
+            "raise_33": 0.21458590030670166,
+            "raise_66": 0.5156402587890625,
+            "raise_pot": 0.6277568340301514,
+            "allin": -3.7635061740875244
+          },
+          "gap_frac_of_pot": -0.5855
+        },
+        {
+          "archetype": "NIT",
+          "archetype_idx": 0,
+          "equity": 0.55,
+          "qvals": {
+            "fold": 0.0015487466007471085,
+            "call": 0.5397765636444092,
+            "raise_33": 0.5282852053642273,
+            "raise_66": 0.7729401588439941,
+            "raise_pot": 0.9124835133552551,
+            "allin": -2.2990427017211914
+          },
+          "gap_frac_of_pot": -0.4282
+        },
+        {
+          "archetype": "TAG",
+          "archetype_idx": 1,
+          "equity": 0.35,
+          "qvals": {
+            "fold": 0.002793671563267708,
+            "call": 0.08720707893371582,
+            "raise_33": -0.25356703996658325,
+            "raise_66": 0.12916016578674316,
+            "raise_pot": 0.168146550655365,
+            "allin": -6.51982307434082
+          },
+          "gap_frac_of_pot": -0.8917
+        },
+        {
+          "archetype": "TAG",
+          "archetype_idx": 1,
+          "equity": 0.4,
+          "qvals": {
+            "fold": 0.002575877122581005,
+            "call": 0.1720881462097168,
+            "raise_33": -0.07169866561889648,
+            "raise_66": 0.27743130922317505,
+            "raise_pot": 0.34116870164871216,
+            "allin": -5.577202796936035
+          },
+          "gap_frac_of_pot": -0.7891
+        },
+        {
+          "archetype": "TAG",
+          "archetype_idx": 1,
+          "equity": 0.43,
+          "qvals": {
+            "fold": 0.0022118082270026207,
+            "call": 0.2212376594543457,
+            "raise_33": 0.02597963809967041,
+            "raise_66": 0.3604034185409546,
+            "raise_pot": 0.4433528780937195,
+            "allin": -4.862651348114014
+          },
+          "gap_frac_of_pot": -0.7075
+        },
+        {
+          "archetype": "TAG",
+          "archetype_idx": 1,
+          "equity": 0.48,
+          "qvals": {
+            "fold": 0.0020352089777588844,
+            "call": 0.3121525049209595,
+            "raise_33": 0.19296371936798096,
+            "raise_66": 0.501825213432312,
+            "raise_pot": 0.6133057475090027,
+            "allin": -3.759840726852417
+          },
+          "gap_frac_of_pot": -0.5831
+        },
+        {
+          "archetype": "TAG",
+          "archetype_idx": 1,
+          "equity": 0.55,
+          "qvals": {
+            "fold": 0.001580026000738144,
+            "call": 0.5316640734672546,
+            "raise_33": 0.5056638121604919,
+            "raise_66": 0.7584224939346313,
+            "raise_pot": 0.8969379663467407,
+            "allin": -2.3330135345458984
+          },
+          "gap_frac_of_pot": -0.4307
+        },
+        {
+          "archetype": "LAG",
+          "archetype_idx": 2,
+          "equity": 0.35,
+          "qvals": {
+            "fold": 0.0023077335208654404,
+            "call": 0.08531904220581055,
+            "raise_33": -0.27611368894577026,
+            "raise_66": 0.11317199468612671,
+            "raise_pot": 0.15601372718811035,
+            "allin": -6.301085472106934
+          },
+          "gap_frac_of_pot": -0.8609
+        },
+        {
+          "archetype": "LAG",
+          "archetype_idx": 2,
+          "equity": 0.4,
+          "qvals": {
+            "fold": 0.0022680889815092087,
+            "call": 0.17422747611999512,
+            "raise_33": -0.09084534645080566,
+            "raise_66": 0.26634979248046875,
+            "raise_pot": 0.3311970829963684,
+            "allin": -5.504819869995117
+          },
+          "gap_frac_of_pot": -0.7781
+        },
+        {
+          "archetype": "LAG",
+          "archetype_idx": 2,
+          "equity": 0.43,
+          "qvals": {
+            "fold": 0.002120520919561386,
+            "call": 0.22645998001098633,
+            "raise_33": 0.013337016105651855,
+            "raise_66": 0.3549368381500244,
+            "raise_pot": 0.4374964237213135,
+            "allin": -4.889646053314209
+          },
+          "gap_frac_of_pot": -0.7103
+        },
+        {
+          "archetype": "LAG",
+          "archetype_idx": 2,
+          "equity": 0.48,
+          "qvals": {
+            "fold": 0.0020315945148468018,
+            "call": 0.30640530586242676,
+            "raise_33": 0.1751471757888794,
+            "raise_66": 0.48982417583465576,
+            "raise_pot": 0.6005775332450867,
+            "allin": -3.770660161972046
+          },
+          "gap_frac_of_pot": -0.5828
+        },
+        {
+          "archetype": "LAG",
+          "archetype_idx": 2,
+          "equity": 0.55,
+          "qvals": {
+            "fold": 0.0016199927777051926,
+            "call": 0.5229583382606506,
+            "raise_33": 0.48342466354370117,
+            "raise_66": 0.7436749935150146,
+            "raise_pot": 0.8813324570655823,
+            "allin": -2.3925347328186035
+          },
+          "gap_frac_of_pot": -0.4365
+        },
+        {
+          "archetype": "CALLING_STATION",
+          "archetype_idx": 3,
+          "equity": 0.35,
+          "qvals": {
+            "fold": 0.002750147134065628,
+            "call": 0.08850282430648804,
+            "raise_33": -0.28934305906295776,
+            "raise_66": 0.10579109191894531,
+            "raise_pot": 0.145929753780365,
+            "allin": -6.686435699462891
+          },
+          "gap_frac_of_pot": -0.911
+        },
+        {
+          "archetype": "CALLING_STATION",
+          "archetype_idx": 3,
+          "equity": 0.4,
+          "qvals": {
+            "fold": 0.002429771237075329,
+            "call": 0.1748475432395935,
+            "raise_33": -0.10898184776306152,
+            "raise_66": 0.25479429960250854,
+            "raise_pot": 0.3183402419090271,
+            "allin": -5.759258270263672
+          },
+          "gap_frac_of_pot": -0.8103
+        },
+        {
+          "archetype": "CALLING_STATION",
+          "archetype_idx": 3,
+          "equity": 0.43,
+          "qvals": {
+            "fold": 0.0023768749088048935,
+            "call": 0.2260047197341919,
+            "raise_33": -0.0026497840881347656,
+            "raise_66": 0.343428373336792,
+            "raise_pot": 0.4230320453643799,
+            "allin": -5.185896873474121
+          },
+          "gap_frac_of_pot": -0.7479
+        },
+        {
+          "archetype": "CALLING_STATION",
+          "archetype_idx": 3,
+          "equity": 0.48,
+          "qvals": {
+            "fold": 0.0021200180053710938,
+            "call": 0.30318063497543335,
+            "raise_33": 0.1563788652420044,
+            "raise_66": 0.4780251979827881,
+            "raise_pot": 0.5881338715553284,
+            "allin": -4.024380683898926
+          },
+          "gap_frac_of_pot": -0.615
+        },
+        {
+          "archetype": "CALLING_STATION",
+          "archetype_idx": 3,
+          "equity": 0.55,
+          "qvals": {
+            "fold": 0.001810828223824501,
+            "call": 0.5049178004264832,
+            "raise_33": 0.45027685165405273,
+            "raise_66": 0.7204548716545105,
+            "raise_pot": 0.8579307198524475,
+            "allin": -2.63057804107666
+          },
+          "gap_frac_of_pot": -0.4651
+        }
+      ],
+      "doc": {
+        "what": "Measures the raw Q-value gap between ALL-IN and whichever OTHER action the model rates second-best, reporting the WORST (max) cell in each slice -- broken down by stack depth (15-40bb) and by the 4 real named opponent archetypes (NIT/TAG/LAG/CALLING_STATION) -- not a single aggregate number, a full breakdown table.",
+        "expect": "This is the FIRST committed, reproducible version of a metric that's been quoted informally (as a 1.35x-1.78x ratio) since V21_auxhead -- every prior number was measured with a different one-off script. No established 'correct' magnitude yet; the value is in localizing WHERE any gap concentrates (which stack depths, which opponent reads) rather than re-measuring the same aggregate a sixth way. Reports the WORST cell deliberately, not an average across the equity sweep -- an early version of this check averaged and hid a real spike (all-in swinging from strongly disfavored to strongly favored over a narrow equity band at one specific stack depth) under four other correctly-behaved cells.",
+        "if_not": "A large gap surviving in a specific slice of the breakdown (e.g. concentrated at one stack depth or one archetype) is a much sharper lead for a targeted fix than the old aggregate ratio ever was -- see [BET-1] in the OFK backlog for the investigation this feeds."
+      }
+    },
+    {
+      "id": "opponent_color_isolated_ablation",
+      "status": "PASS",
+      "detail": "table-scalar TV (0.0 vs 1.0): 0.085 | per-seat-block TV (0.0 vs 1.0): 0.150 -- responds at extremes but opponent_style_sweep found realistic-archetype values flat; reads as a training-population artifact (network CAN use this input, population never taught it to care within realistic bounds), not dead wiring",
+      "data": {
+        "table_scalar": {
+          "policy_lo": {
+            "fold": 0.8963887691497803,
+            "call": 0.10336511582136154,
+            "raise_33": 0.00013474879960995167,
+            "raise_66": 5.116268221172504e-05,
+            "raise_pot": 5.975331805530004e-05,
+            "allin": 3.8911898059268424e-07
+          },
+          "policy_hi": {
+            "fold": 0.9812878370285034,
+            "call": 0.018690329045057297,
+            "raise_33": 1.0982676940329839e-05,
+            "raise_66": 4.6072914301475976e-06,
+            "raise_pot": 6.187142389535438e-06,
+            "allin": 1.978855479478625e-08
+          },
+          "total_variation": 0.0849
+        },
+        "per_seat_block": {
+          "policy_lo": {
+            "fold": 0.8439631462097168,
+            "call": 0.15564274787902832,
+            "raise_33": 0.00022245773288886994,
+            "raise_66": 8.035737118916586e-05,
+            "raise_pot": 9.039923315867782e-05,
+            "allin": 8.046525863392162e-07
+          },
+          "policy_hi": {
+            "fold": 0.9939900636672974,
+            "call": 0.006004760041832924,
+            "raise_33": 2.443623998260591e-06,
+            "raise_66": 1.1051912451875978e-06,
+            "raise_pot": 1.6153832120835432e-06,
+            "allin": 3.1658522470223716e-09
+          },
+          "total_variation": 0.15
+        }
+      },
+      "doc": {
+        "what": "Follow-up to opponent_style_sweep: pushes the opponent VPIP/AGG inputs to synthetic extremes (0.0 vs 1.0, well past any real archetype) and tests the table-level scalar and the per-seat block separately, rather than sweeping both together across realistic values.",
+        "expect": "If opponent_style_sweep found no response within the realistic range, this check tells us why: a response HERE (at extremes) but not there means the network can read the input but the training population never taught it to care within realistic bounds. No response even here means the input is likely dead/unwired.",
+        "if_not": "Flat even at 0.0 vs 1.0 is stronger evidence of a genuine wiring/normalization bug than opponent_style_sweep alone could show -- worth a direct code audit of how VPIP_MAP/AGG_MAP values reach the model before assuming it's purely a training-population artifact."
+      }
+    },
+    {
+      "id": "hand_strength_sweep",
+      "status": "PASS",
+      "detail": "max action-probability range across the hand_strength=0.1-0.9 sweep: 0.539",
+      "data": [
+        {
+          "hand_strength": 0.1,
+          "policy": {
+            "fold": 0.9781675934791565,
+            "call": 0.021805323660373688,
+            "raise_33": 1.4023492440173868e-05,
+            "raise_66": 5.701648206013488e-06,
+            "raise_pot": 7.348902272497071e-06,
+            "allin": 2.1390379245644908e-08
+          },
+          "argmax": "fold"
+        },
+        {
+          "hand_strength": 0.3,
+          "policy": {
+            "fold": 0.9508445262908936,
+            "call": 0.049071963876485825,
+            "raise_33": 4.4189368054503575e-05,
+            "raise_66": 1.756712663336657e-05,
+            "raise_pot": 2.1692030713893473e-05,
+            "allin": 9.156401858945173e-08
+          },
+          "argmax": "fold"
+        },
+        {
+          "hand_strength": 0.5,
+          "policy": {
+            "fold": 0.87535560131073,
+            "call": 0.12432172149419785,
+            "raise_33": 0.00017457699868828058,
+            "raise_66": 6.794221553718671e-05,
+            "raise_pot": 7.960258517414331e-05,
+            "allin": 5.429367320175515e-07
+          },
+          "argmax": "fold"
+        },
+        {
+          "hand_strength": 0.7,
+          "policy": {
+            "fold": 0.6978988647460938,
+            "call": 0.30065691471099854,
+            "raise_33": 0.0007841648766770959,
+            "raise_66": 0.0003101670299656689,
+            "raise_pot": 0.0003460720763541758,
+            "allin": 3.83946462534368e-06
+          },
+          "argmax": "fold"
+        },
+        {
+          "hand_strength": 0.9,
+          "policy": {
+            "fold": 0.43958190083503723,
+            "call": 0.5549043416976929,
+            "raise_33": 0.002948099048808217,
+            "raise_66": 0.001226821099407971,
+            "raise_pot": 0.0013152045430615544,
+            "allin": 2.3608137780684046e-05
+          },
+          "argmax": "call"
+        }
+      ],
+      "doc": {
+        "what": "Full 5-point curve version of hand_strength_sensitivity (same ablation, more points) so a flatline OR a non-monotonic kink is visible on a chart, not just one aggregate number.",
+        "expect": "Same as hand_strength_sensitivity: a meaningful, ideally smooth response across the curve.",
+        "if_not": "Same as hand_strength_sensitivity -- WARN-only, diagnostic."
+      }
+    },
+    {
+      "id": "equity_edge_sweep",
+      "status": "PASS",
+      "detail": "max action-probability range across the equity_edge=0.4-3.2 sweep: 0.997",
+      "data": [
+        {
+          "equity_edge": 0.4,
+          "policy": {
+            "fold": 0.9997616410255432,
+            "call": 0.00023833687009755522,
+            "raise_33": 3.272631232675849e-08,
+            "raise_66": 1.6216743503605358e-08,
+            "raise_pot": 2.644097740756024e-08,
+            "allin": 1.417802160397219e-11
+          },
+          "argmax": "fold"
+        },
+        {
+          "equity_edge": 0.8,
+          "policy": {
+            "fold": 0.9986042380332947,
+            "call": 0.0013946749968454242,
+            "raise_33": 4.271377633813245e-07,
+            "raise_66": 2.1145942241673765e-07,
+            "raise_pot": 3.245042705657397e-07,
+            "allin": 2.799070419889915e-10
+          },
+          "argmax": "fold"
+        },
+        {
+          "equity_edge": 1.2,
+          "policy": {
+            "fold": 0.9705280661582947,
+            "call": 0.029424086213111877,
+            "raise_33": 2.428706648061052e-05,
+            "raise_66": 1.0305251635145396e-05,
+            "raise_pot": 1.3308874258655123e-05,
+            "allin": 4.044807155878516e-08
+          },
+          "argmax": "fold"
+        },
+        {
+          "equity_edge": 1.6,
+          "policy": {
+            "fold": 0.35212084650993347,
+            "call": 0.6421291828155518,
+            "raise_33": 0.003237595781683922,
+            "raise_66": 0.0012275420594960451,
+            "raise_pot": 0.0012510615633800626,
+            "allin": 3.3729636925272644e-05
+          },
+          "argmax": "call"
+        },
+        {
+          "equity_edge": 2.4,
+          "policy": {
+            "fold": 0.0046869912184774876,
+            "call": 0.3961016833782196,
+            "raise_33": 0.21015286445617676,
+            "raise_66": 0.16932600736618042,
+            "raise_pot": 0.1672951877117157,
+            "allin": 0.052437301725149155
+          },
+          "argmax": "call"
+        },
+        {
+          "equity_edge": 3.2,
+          "policy": {
+            "fold": 0.002354359021410346,
+            "call": 0.1924227625131607,
+            "raise_33": 0.17529304325580597,
+            "raise_66": 0.21171805262565613,
+            "raise_pot": 0.2380768209695816,
+            "allin": 0.18013492226600647
+          },
+          "argmax": "raise_pot"
+        }
+      ],
+      "doc": {
+        "what": "Full multi-point curve version of equity_edge_sensitivity (same ablation, more points) so a flatline OR a non-monotonic kink is visible on a chart, not just one aggregate number.",
+        "expect": "Same as equity_edge_sensitivity: a meaningful, ideally smooth response across the curve.",
+        "if_not": "Same as equity_edge_sensitivity -- WARN-only, diagnostic."
+      }
+    },
+    {
+      "id": "vpip_adapts_to_style",
+      "status": "PASS",
+      "detail": "short: tight=15.8% loose=21.8% (delta +6.0pts); deep: tight=20.0% loose=25.7% (delta +5.6pts)",
+      "data": [
+        {
+          "depth": "short",
+          "stack_range": [
+            5,
+            14
+          ],
+          "vpip_tight": 15.8,
+          "vpip_loose": 21.8,
+          "delta": 6.0,
+          "bb100_tight": 25.8,
+          "bb100_loose": 12.6,
+          "pass": true
+        },
+        {
+          "depth": "deep",
+          "stack_range": [
+            30,
+            50
+          ],
+          "vpip_tight": 20.0,
+          "vpip_loose": 25.7,
+          "delta": 5.6,
+          "bb100_tight": 36.6,
+          "bb100_loose": 37.4,
+          "pass": true
+        }
+      ],
+      "doc": {
+        "what": "Runs real simulated hands against an all-tight ('nit') table vs an all-loose ('fish') table, and measures how often hero voluntarily enters a pot (VPIP) against each.",
+        "expect": "Hero's VPIP should be noticeably HIGHER against the loose/weak table than the tight table (by at least ~5 percentage points) -- playing more hands where opponents are more likely to be weak, fewer where they're not.",
+        "if_not": "A flat VPIP regardless of opponent tightness means hero isn't adapting its starting-hand selection to the table at all -- the exact bug this check was built to catch (a real historical regression)."
+      }
+    },
+    {
+      "id": "beats_offformula_stress",
+      "status": "PASS",
+      "detail": "short: +14.1 BB/100 (VPIP 22%); deep: +30.1 BB/100 (VPIP 27%)",
+      "data": [
+        {
+          "depth": "short",
+          "bb100": 14.1,
+          "vpip": 21.9
+        },
+        {
+          "depth": "deep",
+          "bb100": 30.1,
+          "vpip": 27.2
+        }
+      ],
+      "doc": {
+        "what": "Swaps in a structurally different opponent (a discrete equity-tier lookup bot, not just a reweighted version of the same continuous pot-odds formula every training opponent uses) to see if hero's win rate holds up against a genuinely different playing style.",
+        "expect": "Win rate should stay positive or only mildly negative -- evidence the model learned general poker principles, not just how to beat its own training-opponent formula.",
+        "if_not": "A big win-rate collapse (below -30 BB/100) is a strong overfitting signal -- the model may have learned to exploit quirks specific to the training bots' math rather than transferable strategy."
+      }
+    },
+    {
+      "id": "bb100_vs_standard_fields",
+      "status": "PASS",
+      "detail": "loose_short: +20.7 BB/100, no baseline recorded yet VPIP 23% | loose_deep: +72.5 BB/100, no baseline recorded yet VPIP 27% | tight_short: +32.4 BB/100, no baseline recorded yet VPIP 25% | tight_deep: +53.6 BB/100, no baseline recorded yet VPIP 31%",
+      "data": [
+        {
+          "field": "loose_short",
+          "pool": [
+            "fish",
+            "tag",
+            "nit"
+          ],
+          "stack_range": [
+            5,
+            14
+          ],
+          "bb100": 20.7,
+          "vpip": 22.9,
+          "baseline": null,
+          "regressed": false
+        },
+        {
+          "field": "loose_deep",
+          "pool": [
+            "fish",
+            "tag",
+            "nit"
+          ],
+          "stack_range": [
+            30,
+            50
+          ],
+          "bb100": 72.5,
+          "vpip": 27.5,
+          "baseline": null,
+          "regressed": false
+        },
+        {
+          "field": "tight_short",
+          "pool": [
+            "nit",
+            "tag"
+          ],
+          "stack_range": [
+            5,
+            14
+          ],
+          "bb100": 32.4,
+          "vpip": 25.0,
+          "baseline": null,
+          "regressed": false
+        },
+        {
+          "field": "tight_deep",
+          "pool": [
+            "nit",
+            "tag"
+          ],
+          "stack_range": [
+            30,
+            50
+          ],
+          "bb100": 53.6,
+          "vpip": 30.7,
+          "baseline": null,
+          "regressed": false
+        }
+      ],
+      "doc": {
+        "what": "Runs real simulated hands against four standard opponent-field presets (loose/tight x short/deep stacks) and measures hero's win rate (BB/100), compared against the last recorded baseline for this version.",
+        "expect": "Win rate should hold roughly steady or improve versus the stored baseline in all four fields.",
+        "if_not": "A drop of more than 15 BB/100 in any field vs baseline is flagged as a quiet regression -- the model got WORSE against a standard opponent mix, even though nothing else may be failing."
+      }
+    },
+    {
+      "id": "beats_frozen_predecessor",
+      "status": "SKIP",
+      "detail": "could not load frozen_v28.pth: Checkpoint C:\\REPO\\Antigravity\\AIPoker\\versions/v29/weights\\frozen_v28.pth is context_dim=44 (contract v7), but v29 expects context_dim=54. Refusing to load.",
+      "data": null,
+      "doc": {
+        "what": "Plays real simulated hands against a mixed field that includes a frozen snapshot of this version's immediate predecessor, so the new model literally plays against the old one.",
+        "expect": "The new version should have a positive win rate (profit) in that field -- a straightforward 'did we actually get better' test.",
+        "if_not": "A loss (negative BB/100) here means the new version may not actually be an improvement over what it's replacing -- a serious deploy-readiness concern."
+      }
+    }
+  ]
+}

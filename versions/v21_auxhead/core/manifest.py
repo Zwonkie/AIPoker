@@ -46,12 +46,41 @@ But `strength`/`equity` correlations dropped in this and Phase 3 (both short 25k
 continuations from the same base) -- likely the shared `aux_loss_weight` budget across all three
 heads, not something specific to either weighting scheme.
 
-**Phase 5** (in progress): same dampened weighting, longer continuation (+50k hands) testing
-whether the strength/equity dip is a short-continuation transient (like Phase 1's main-loss spike,
-which fully resettled) or a standing tradeoff.
+**Phase 5** (complete): same dampened weighting, longer continuation (+50k hands). `equity` mostly
+recovered (0.861->0.918) -- partially transient. `strength` kept declining MONOTONICALLY
+(0.151->0.065->0.047->0.033 across Phases 2-5) -- ruled out as transient for this head; points at a
+structural cause: one shared `aux_loss_weight` across all three heads lets bluff's
+correctly-larger reweighted loss crowd out strength's share.
+
+**Phase 6** (complete): decoupled per-head weights (`aux_loss_weight_bluff/_strength/_equity` in
+`train.py`, each defaulting to the shared scalar if unset). `strength` boosted to 0.20 (4x), bluff/
+equity left at 0.05 (already stable). Same base + window as Phase 5 for a controlled comparison.
+Fixed `strength` (0.033->0.144) without hurting the other two heads.
+
+**Phase 7** (complete): mapped the full response curve (0.05/0.10/0.20/0.35) instead of trusting
+one data point -- an inverted U, not a plateau. `strength=0.10` chosen as the best overall balance
+(best `equity` 0.943 AND best `bluff` 0.130, near-best `strength` 0.120). But `model_verify --full`
+on this arm's weights (150k total: 100k fresh + 50k warm-started continuation) surfaced a real,
+separate confound: `action_diversity` collapsed to `{fold:9,allin:12}` (2 actions), far worse than
+Phase 2's OWN 100k fresh run (`{fold:9,allin:10,call:1,raise_pot:1}`, 4 actions, the best diversity
+of the whole investigation). Root-caused: every one of Phases 5/6/7a/7b applied a +50k
+warm-started continuation on top of the same clean Phase 2 base, at four different aux weights --
+diversity collapsed in every one of them regardless of weight, pointing at the continuation
+mechanism itself (plausibly the same shove-trending pattern tracked as [BET-1]), not the aux
+tuning.
+
+**Phase 8** (complete): the actual final candidate. Trains the FULLY chosen configuration
+(corrected bluff label + sqrt-dampened reweighting + per-head weights
+bluff=0.05/strength=0.10/equity=0.05) FRESH from scratch (100k hands, no `--resume_path`, matching
+Phase 2's own protocol) to get the aux-head benefits without the continuation-induced diversity
+cost. Confirmed the hypothesis: `action_diversity` recovered to 3 actions (a real `raise_33`
+plateau across 5/9 stack points) vs Phase 7a's 2-action collapse, `strength` correlation hit
+0.171 (best of any phase). `model_verify --full`: 15 PASS/3 WARN/1 FAIL/0 SKIP -- same shape as
+V21/Phase 2, no new failures. This checkpoint (`expert_main.pth`) is the final candidate for this
+experiment, superseding Phase 7a's continuation-damaged weights.
 
 See: versions/v21/SPECS.md item 7 (motivation) | versions/v21_auxhead/SPECS.md (full detail, all
-phases' results, the opp_bluff_prob fix, the reweighting fix)
+phases' results, the opp_bluff_prob fix, the reweighting fix, the per-head weight change)
 """
 from shared.manifest import VersionManifest
 

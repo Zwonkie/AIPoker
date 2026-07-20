@@ -1,26 +1,26 @@
 model_verify | version=v21_auxhead weights=expert_main.pth action_space=('fold', 'call', 'raise_33', 'raise_66', 'raise_pot', 'allin')
   check                        status detail
 ----------------------------------------------------------------------------------------------------
-  equity_ablation_monotonic    PASS   P(fold) 1.00->0.00, P(aggressive) 0.00->0.87
+  equity_ablation_monotonic    PASS   P(fold) 1.00->0.00, P(aggressive) 0.00->0.89
   free_check_low_fold          WARN   max raw P(fold) when call_bb=0 across sweep: 1.000 (covered by decision.py's free-check mask, but worth tracking)
   air_folds_mostly             PASS   avg P(fold) at ~12% equity facing a real bet: 1.00  (per-stack [1.0, 1.0, 1.0, 1.0])
-  nuts_aggressive_mostly       PASS   avg aggressive mass at ~92% equity: 0.87
-  deep_stack_ood_guard         FAIL   [V14 P0 regression] deep-stack OOD trash-jam: eq=0.55 stack=40bb -> ALL-IN argmax @ 0.41
-  short_stack_polarization     PASS   avg P(call) in clear shove-or-fold spots: 0.16
-  action_diversity             PASS   argmax distribution across the equity x stack grid: {'fold': 9, 'allin': 10, 'call': 1, 'raise_pot': 1}
+  nuts_aggressive_mostly       PASS   avg aggressive mass at ~92% equity: 0.89
+  deep_stack_ood_guard         FAIL   [V14 P0 regression] deep-stack OOD trash-jam: eq=0.55 stack=25bb -> ALL-IN argmax @ 0.42
+  short_stack_polarization     PASS   avg P(call) in clear shove-or-fold spots: 0.15
+  action_diversity             PASS   argmax distribution across the equity x stack grid: {'fold': 9, 'allin': 12}
   no_nan_or_crash              PASS   4 edge cases: no NaN/crash
-  hand_strength_sensitivity    PASS   avg policy shift (total variation) between hand_strength=0.15 vs 0.85 at fixed equity: 0.109
-  equity_edge_sensitivity      PASS   avg policy shift (total variation) between low vs high equity_edge at fixed equity/field: 0.637
-  stack_full_sweep             PASS   max action-probability range across the full stack sweep: 0.184  (argmax path: ['call', 'call', 'call', 'call', 'call', 'raise_pot', 'raise_pot', 'raise_66', 'raise_66'])
-  position_sweep               PASS   P(fold) across position 0-5: [0.51, 0.54, 0.57, 0.62, 0.6, 0.55] (spread 0.106)
+  hand_strength_sensitivity    PASS   avg policy shift (total variation) between hand_strength=0.15 vs 0.85 at fixed equity: 0.104
+  equity_edge_sensitivity      PASS   avg policy shift (total variation) between low vs high equity_edge at fixed equity/field: 0.592
+  stack_full_sweep             PASS   max action-probability range across the full stack sweep: 0.119  (argmax path: ['allin', 'allin', 'allin', 'allin', 'allin', 'allin', 'allin', 'allin', 'allin'])
+  position_sweep               PASS   P(fold) across position 0-5: [0.03, 0.03, 0.04, 0.04, 0.04, 0.08] (spread 0.044)
   opponent_style_sweep         WARN   avg P(fold) spread across Blue->Red opponent archetypes (same bet, fixed equity): 0.002 -- fold rate barely moves with opponent style; per-opponent VPIP/AGG read may not be load-bearing
-  hand_strength_sweep          PASS   max action-probability range across the hand_strength=0.1-0.9 sweep: 0.825
+  hand_strength_sweep          PASS   max action-probability range across the hand_strength=0.1-0.9 sweep: 0.239
   equity_edge_sweep            PASS   max action-probability range across the equity_edge=0.4-3.2 sweep: 0.999
 ----------------------------------------------------------------------------------------------------
-  vpip_adapts_to_style         PASS   short: tight=21.1% loose=37.9% (delta +16.7pts); deep: tight=12.5% loose=27.3% (delta +14.8pts)
-  beats_offformula_stress      PASS   short: +36.5 BB/100 (VPIP 34%); deep: +55.5 BB/100 (VPIP 22%)
-  bb100_vs_standard_fields     PASS   loose_short: +37.2 BB/100, no baseline recorded yet VPIP 39% | loose_deep: +65.5 BB/100, no baseline recorded yet VPIP 28% | tight_short: +34.9 BB/100, no baseline recorded yet VPIP 40% | tight_deep: +28.8 BB/100, no baseline recorded yet VPIP 28%
-  beats_frozen_predecessor     PASS   vs field incl. frozen predecessor (frozen_v21.pth): +86.8 BB/100 over 4000 hands
+  vpip_adapts_to_style         PASS   short: tight=18.4% loose=34.3% (delta +15.9pts); deep: tight=16.8% loose=31.0% (delta +14.2pts)
+  beats_offformula_stress      PASS   short: +27.3 BB/100 (VPIP 32%); deep: +33.4 BB/100 (VPIP 26%)
+  bb100_vs_standard_fields     PASS   loose_short: +32.9 BB/100, no baseline recorded yet VPIP 39% | loose_deep: +68.2 BB/100, no baseline recorded yet VPIP 32% | tight_short: +37.2 BB/100, no baseline recorded yet VPIP 35% | tight_deep: +46.8 BB/100, no baseline recorded yet VPIP 30%
+  beats_frozen_predecessor     PASS   vs field incl. frozen predecessor (frozen_v21.pth): +64.7 BB/100 over 4000 hands
 ----------------------------------------------------------------------------------------------------
   16 PASS, 2 WARN, 1 FAIL, 0 SKIP
   raw results written to tools/model_verify/results/v21_auxhead__expert_main.json

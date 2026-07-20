@@ -1,0 +1,164 @@
+{
+    "timestamp": "20260719_112014",
+    "chosen_action": "RAISE_SLIDER_1.00",
+    "bet_size": 770.0,
+    "reason": "V26 sampled (temp=0.50, free-check fold-masked) -> ALLIN -> raise-to 770 (slider 1.00): {FOLD 0.00, CALL 0.13, RAISE_33 0.11, RAISE_66 0.11, RAISE_POT 0.11, ALLIN 0.53}",
+    "actor_policy": {
+        "FOLD": 0.0009192335419356823,
+        "CALL": 0.1334233433008194,
+        "RAISE_33": 0.11264622956514359,
+        "RAISE_66": 0.10778185725212097,
+        "RAISE_POT": 0.11277125030755997,
+        "ALLIN": 0.5324580073356628
+    },
+    "critic_q_vals": {
+        "FOLD": -0.0008621597662568092,
+        "CALL": 0.8251503109931946,
+        "RAISE_33": 0.8132008910179138,
+        "RAISE_66": 0.6682252883911133,
+        "RAISE_POT": 0.7085363268852234,
+        "ALLIN": 2.7473723888397217
+    },
+    "equity": 0.52,
+    "equity_meta": {
+        "method": "range-aware",
+        "opp_colors": [
+            "Red",
+            "Red",
+            "Green"
+        ],
+        "num_opponents": 3,
+        "opp_colors_in_pot": [
+            "Green"
+        ],
+        "opp_colors_still_to_act": [
+            "Red",
+            "Red"
+        ],
+        "hand_strength": 0.73,
+        "value": 0.52,
+        "equity_edge": 2.08
+    },
+    "context_vector": [
+        0.2,
+        0.051333333333333335,
+        0.008,
+        0.52,
+        0.0,
+        0.3,
+        0.3333333333333333,
+        0.45,
+        0.85
+    ],
+    "context_labeled": {
+        "position": 0.2,
+        "bankroll": 0.051333333333333335,
+        "pot": 0.008,
+        "equity": 0.52,
+        "pot_odds": 0.0,
+        "num_opponents": 0.3,
+        "street_level": 0.3333333333333333,
+        "opp_vpip_norm": 0.45,
+        "opp_agg_norm": 0.85
+    },
+    "model_seen": {
+        "position": 2.0,
+        "hero_stack_bb": 25.7,
+        "pot_bb": 4.0,
+        "equity": 0.52,
+        "pot_odds": 0.0,
+        "num_active": 3,
+        "street": "Flop",
+        "to_call_bb": 0.0,
+        "equity_edge": 2.08,
+        "hand_strength": 0.73
+    },
+    "decision_path": {
+        "preflop_chart": {
+            "status": "Bypassed",
+            "details": "Deprecated in V8/V9"
+        },
+        "active_model": {
+            "status": "Active",
+            "details": "Loaded Herocules (v26)"
+        },
+        "bluff_engine": {
+            "status": "Passed",
+            "details": "Handled natively by V8/V9"
+        },
+        "math_engine": {
+            "status": "Passed",
+            "details": "Math checks out OK"
+        }
+    },
+    "table_state": {
+        "community_cards": [
+            "6c",
+            "5d",
+            "2h"
+        ],
+        "hero_cards": [
+            "Qd",
+            "Qh"
+        ],
+        "pot_size": 120,
+        "hero_stack": 770,
+        "opponents": {
+            "seat_1": {
+                "name": "Budddhaaah",
+                "stack": 920,
+                "is_active": false,
+                "state": "Folded",
+                "vpip_color": "Red",
+                "agg_color": "Yellow"
+            },
+            "seat_2": {
+                "name": "rexloyal274",
+                "stack": 770,
+                "is_active": false,
+                "state": "Folded",
+                "vpip_color": null,
+                "agg_color": null
+            },
+            "seat_3": {
+                "name": "Frituurkok",
+                "stack": 650,
+                "is_active": false,
+                "state": "Folded",
+                "vpip_color": "Red",
+                "agg_color": "Yellow"
+            },
+            "seat_4": {
+                "name": "Wutang",
+                "stack": 730,
+                "is_active": false,
+                "state": "Folded",
+                "vpip_color": "Red",
+                "agg_color": "Blue"
+            },
+            "seat_5": {
+                "name": "Vibrantsober12",
+                "stack": 840,
+                "is_active": true,
+                "state": "Active",
+                "vpip_color": "Green",
+                "agg_color": "Red"
+            }
+        },
+        "num_active_players": 3,
+        "active_buttons": [
+            "button_fold"
+        ],
+        "street": "Flop",
+        "dealer_name": "Wutang",
+        "dealer_idx": 4,
+        "hero_position": 2,
+        "action_history": [
+            "c"
+        ],
+        "opp_vpip_norm": 0.45,
+        "opp_agg_norm": 0.85,
+        "big_blind": 30.0
+    },
+    "hand_history_len": 2
+}
