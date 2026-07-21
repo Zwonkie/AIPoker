@@ -31,6 +31,11 @@ class TableState:
         self.dealer_name = ""
         self.dealer_idx = 0
         self.hero_position = 0
+        # [V42_liveFixes] Button-relative position per seat key, counted over the OCCUPIED ring --
+        # see _recompute_positions. `seated_count` is how many players are actually at the table
+        # (6 until seats are read in), NOT how many are still in the hand.
+        self.seat_positions = {}
+        self.seated_count = 6
 
         if big_blind is not None:
             self.big_blind = big_blind
@@ -188,11 +193,71 @@ class TableState:
         if raw_dealer_idx != -1:
             self.dealer_idx = raw_dealer_idx
             self.dealer_name = raw_state.get('dealer_name', '')
-            self.hero_position = (0 - self.dealer_idx) % 6
-        
+        # Recomputed every tick, not only when the button moves: the occupied ring can change as
+        # seats are read in (see _recompute_positions).
+        self._recompute_positions()
+
+
         # --- Timeline Generation ---
         self._generate_timeline_actions()
         
+    # ================================================================= #
+    #  [V42_liveFixes / Fable review #12-CE] Short-handed position arithmetic
+    # ================================================================= #
+    # `hero_position` was `(0 - dealer_idx) % 6` and the contract derives every OPPONENT's position
+    # from it as `(slot + 1 + hero_position) % 6`. Both assume six gap-free seats -- true in
+    # training, which always deals 6, and false at exactly the moment that matters most: the 3-5
+    # handed DoN endgame. With seat_5 busted and the button on seat_4, blinds skip the empty seat,
+    # so hero can be the BIG BLIND while being encoded as UTG, and every opponent's position is
+    # shifted with it.
+    #
+    # Positions are now counted over the OCCUPIED ring, which is what the blinds actually follow.
+    # No contract change is needed for the opponent side either: the contract reads slot j as
+    # position `(j + 1 + hero_position) % 6`, so writing an opponent whose true position is `p` into
+    # slot `(p - hero_position) % 6` makes the encoder produce exactly `p`. Those slot indices are
+    # distinct for distinct p (mod 6 is injective on 0..5) and never collide with hero's own 0.
+    #
+    # For a full 6-handed table this is arithmetically IDENTICAL to the old behaviour -- slot
+    # (p - hp) % 6 reduces to the physical seat number -- so nothing changes for the common case.
+    def _occupied_ring(self):
+        """Seat keys in ACTION order starting at hero: seat_N sits N seats after hero (the existing
+        convention -- `hero_position = (0 - dealer_idx) % 6` only agrees with 'BU=0, SB=1, ...' if
+        seat index increases in the direction of action). Only seats a player has actually been seen
+        at this hand are included; `self.opponents` accumulates within a hand and is cleared on
+        reset, so this can grow as seats are OCR'd in but never silently loses a live player."""
+        return ['Hero'] + [f"seat_{i}" for i in range(1, 6) if f"seat_{i}" in self.opponents]
+
+    def _recompute_positions(self):
+        """Button-relative position for hero and every seated opponent, over the occupied ring."""
+        ring = self._occupied_ring()
+        n = len(ring)
+        dealer_key = 'Hero' if self.dealer_idx == 0 else f"seat_{self.dealer_idx}"
+
+        if n >= 2 and dealer_key in ring:
+            d = ring.index(dealer_key)
+            self.seated_count = n
+            self.hero_position = (0 - d) % n
+            self.seat_positions = {key: (i - d) % n for i, key in enumerate(ring)}
+        else:
+            # Button not on a seat we've read yet (or nobody read at all) -- fall back to the
+            # legacy 6-ring rather than inventing an ordering.
+            self.seated_count = 6
+            self.hero_position = (0 - self.dealer_idx) % 6
+            self.seat_positions = {'Hero': self.hero_position}
+            for i in range(1, 6):
+                self.seat_positions[f"seat_{i}"] = (i + self.hero_position) % 6
+
+    def _contract_slot_for(self, seat_key: str) -> str:
+        """The `seat_N` key to write this opponent into so that ContractV12's own
+        `(j + 1 + hero_position) % 6` reproduces its TRUE position. See the block comment above."""
+        pos = self.seat_positions.get(seat_key)
+        if pos is None:
+            return seat_key                       # unknown -- leave it where it was
+        slot = (pos - self.hero_position) % 6
+        if slot == 0:                             # would collide with hero; can't happen for a
+            return seat_key                       # real opponent, but never silently overwrite
+        return f"seat_{slot}"
+
     def _generate_timeline_actions(self):
         """Infers chronological betting actions from stabilized state differences."""
         # 1. Determine current street
@@ -292,6 +357,41 @@ class TableState:
             'action_history': self.action_history.copy()
         }
 
+    def committed_chips(self, player_key: str) -> float:
+        """Chips `player_key` ('Hero' or 'seat_N') has put into THIS hand's pot so far, derived the
+        one way this class knows how: start-of-hand stack minus current stack.
+
+        Extracted so the equity classifier and `to_board_state()`'s per-seat `committed` feature
+        cannot drift apart -- they are answering the same question and must agree.
+
+        Caveat worth knowing at every call site: `hand_start_stacks` is seeded the first frame each
+        player is observed this hand (see `update()`), so if the recorder attaches mid-hand a
+        player who is already in reads 0. That failure direction is deliberate and matches the rest
+        of the live layer -- an unknown opponent is treated as *possibly folding*, not as a
+        guaranteed showdown opponent. Overstating who is locked in is the expensive mistake here
+        (see _classify_opponents_by_action_order).
+        """
+        current = (self.hero_stack if player_key == 'Hero'
+                   else (self.opponents.get(player_key) or {}).get('stack', 0.0))
+        start = self.hand_start_stacks.get(player_key, current)
+        try:
+            return max(0.0, float(start) - float(current))
+        except (TypeError, ValueError):
+            return 0.0
+
+    def blind_seat_keys(self) -> tuple:
+        """(small_blind_key, big_blind_key) for this hand, or (None, None) if the dealer button
+        wasn't detected. Seats are clockwise from the button: SB is 1 after it, BB is 2 after.
+
+        Needed because a posted blind is money in the pot that the player did NOT choose to put
+        there and can still fold behind -- the one case where "has chips committed" must not be
+        read as "is staying in the hand".
+        """
+        if self.dealer_idx not in range(0, 6):
+            return None, None
+        order = ['Hero', 'seat_1', 'seat_2', 'seat_3', 'seat_4', 'seat_5']
+        return order[(self.dealer_idx + 1) % 6], order[(self.dealer_idx + 2) % 6]
+
     def to_board_state(self, call_amount: float = 0.0, equity: float = 0.0, big_blind: float = 10.0) -> 'BoardState':
         """Generates the pure decoupled mathematical model of the table state."""
         from core.board_state import BoardState, SeatState, HUDStats
@@ -331,14 +431,30 @@ class TableState:
         for seat_key, opp_dict in self.opponents.items():
             opp_stack = opp_dict.get('stack', 0.0)
             start_stack = self.hand_start_stacks.get(seat_key, opp_stack)
-            bs.seats[seat_key] = SeatState(
+            # [V42_liveFixes] Write each opponent into the contract slot whose derived position
+            # equals its TRUE button-relative position -- identity mapping at a full table, and the
+            # difference between "encoded as UTG" and "actually the BB" short-handed. See
+            # _contract_slot_for. All per-seat features (stack, committed, [OPP-2] raise flags)
+            # travel with the opponent because they are read from `opp_dict` here, not from the key.
+            bs.seats[self._contract_slot_for(seat_key)] = SeatState(
                 name=opp_dict.get('name', ''),
                 stack=opp_stack,
                 is_active=opp_dict.get('is_active', False),
                 state_label=opp_dict.get('state', 'Active'),
                 hud=HUDStats(
-                    vpip_color=opp_dict.get('vpip_color', 'Blue'),
-                    agg_color=opp_dict.get('agg_color', 'Blue')
+                    # [V42_liveFixes / Fable review #8-CE] These defaulted to 'Blue' == VPIP 0.10 /
+                    # AGG 0.18, the TIGHTEST band the contract can express -- so an opponent whose
+                    # HUD badge hadn't been classified yet (new player sits down, badge obscured,
+                    # colour crop misread) was read as the nittiest possible villain. Training's
+                    # own absent-profile default is the opposite end of that judgement: 0.30/0.46,
+                    # i.e. Yellow/Green (versions/*/self_play/train.py's map_*_to_midpoint defaults
+                    # and ContractV12's own absent-seat default at contract.py:254). Live now
+                    # matches training: unknown == average, not unknown == super-nit. The same
+                    # convention already governs the equity path (`o.get('vpip_color') or 'Yellow'`
+                    # in PHPHelp, [V20_preflopEq] Finding 1), so this also makes the equity feature
+                    # and the per-seat HUD features agree about the same opponent.
+                    vpip_color=opp_dict.get('vpip_color') or 'Yellow',
+                    agg_color=opp_dict.get('agg_color') or 'Green'
                 ),
                 committed=max(0.0, start_stack - opp_stack),
                 raised_this_hand=self.raised_this_hand.get(seat_key, False),
@@ -407,6 +523,8 @@ class TableState:
                     except (IndexError, ValueError):
                         pass
                     break
-        
-        self.hero_position = (0 - self.dealer_idx) % 6
+
+        # [V42_liveFixes] Occupied-ring positions (identical to the old `(0 - dealer_idx) % 6` at a
+        # full table) -- see _recompute_positions.
+        self._recompute_positions()
 

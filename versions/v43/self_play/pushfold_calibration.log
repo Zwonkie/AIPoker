@@ -1,0 +1,25 @@
+cells=349  hands=40  stacks=[5, 6, 7, 8, 9, 10, 12, 15, 20]  samples/cell=24
+
+variant                        agree   over  under   commit mass by stack                             slope
+-----------------------------------------------------------------------------------------------------------
+base (V41)                    40.4%    208      0   5:0.70 6:0.66 7:0.69 8:0.68 9:0.69 10:0.69 12:0.68 15:0.68 20:0.67  -0.028
+T-M9 allin-by-chips           40.4%    208      0   5:0.66 6:0.69 7:0.67 8:0.69 9:0.68 10:0.68 12:0.69 15:0.70 20:0.70  +0.046
+risk 0.10                     40.4%    208      0   5:0.69 6:0.70 7:0.71 8:0.70 9:0.69 10:0.68 12:0.70 15:0.69 20:0.72  +0.028
+risk 0.20                     41.0%    206      0   5:0.64 6:0.67 7:0.67 8:0.66 9:0.67 10:0.67 12:0.68 15:0.67 20:0.66  +0.021
+risk 0.25                     40.7%    207      0   5:0.62 6:0.63 7:0.65 8:0.65 9:0.64 10:0.64 12:0.64 15:0.67 20:0.66  +0.038
+clip 100                      40.4%    208      0   5:0.67 6:0.66 7:0.68 8:0.68 9:0.68 10:0.68 12:0.67 15:0.69 20:0.69  +0.025
+veto off                      40.4%    208      0   5:0.67 6:0.66 7:0.67 8:0.67 9:0.70 10:0.68 12:0.68 15:0.70 20:0.69  +0.013
+discount off                  40.4%    208      0   5:0.68 6:0.67 7:0.67 8:0.68 9:0.67 10:0.70 12:0.67 15:0.70 20:0.69  +0.010
+discount per-risk             40.4%    208      0   5:0.65 6:0.68 7:0.68 8:0.67 9:0.67 10:0.66 12:0.69 15:0.66 20:0.69  +0.035
+per-risk + T-M9               40.4%    208      0   5:0.65 6:0.65 7:0.66 8:0.69 9:0.67 10:0.64 12:0.68 15:0.68 20:0.68  +0.032
+per-risk + T-M9 + clip100     40.4%    208      0   5:0.67 6:0.67 7:0.66 8:0.67 9:0.68 10:0.68 12:0.66 15:0.69 20:0.66  -0.006
+
+wrote C:\REPO\Antigravity\AIPoker\versions\v43\self_play\pushfold_calibration.json
+
+READING THIS TABLE
+  agree  -- fraction of unambiguous Nash cells the TARGET leans the same way as Nash.
+  over   -- Nash folds, target commits (V41's dominant error: 318 of 336).
+  under  -- Nash shoves, target folds (V29's error mode).
+  slope  -- mean commit mass at the deepest stack minus the shallowest. Push/fold wants
+            this NEGATIVE (commit wider when short). V41's trained policy is POSITIVE.
+            Only a dampener whose bite scales with the chips at risk can move it.

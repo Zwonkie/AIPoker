@@ -15,6 +15,9 @@ from core.models.v25_engine import V25ModelEngine
 from core.models.v26_engine import V26ModelEngine
 from core.models.v28_engine import V28ModelEngine
 from core.models.v29_engine import V29ModelEngine
+from core.models.v40_engine import V40ModelEngine
+from core.models.v41_engine import V41ModelEngine
+from core.models.v43_engine import V43ModelEngine
 
 # Live action selection: SAMPLE from the actor policy (matching training/eval, which sample rather
 # than argmax) but SHARPEN with a temperature < 1 so genuine mixing survives on close spots while
@@ -76,6 +79,76 @@ def _stack_scaled_temperature(board_state):
 # V14 raise buckets -> pot-fraction (None = all-in). MUST match versions/v14 config
 # raise_pot_fractions [0.33, 0.66, 1.0, null] and simulator._raise_size_for_fraction.
 V14_RAISE_FRAC = {'RAISE_33': 0.33, 'RAISE_66': 0.66, 'RAISE_POT': 1.0, 'ALLIN': None}
+
+
+# [Fable review #14/H3] Hero's own past-action tokens. Training and every model_verify rollout feed
+# these (simulator.py appends 7/3/6 to `hero_actions_histories[0]` after each hero decision and
+# passes the list into `bridge.to_tensors`), but the LIVE path never passed `action_history_raw`, so
+# `to_tensors` filled `act_ints` with 20 PADs. The transformer was trained and validated with its
+# own line populated and served with it blank -- anything it learned to condition on its own past
+# actions (barreling after raising, giving up after checking) was silently unavailable live, and no
+# eval reproduced that input. Same integer vocabulary as the simulator; raises are size-blind (every
+# bucket is 6), which is the known [OPP-3] limitation, not a new one.
+HERO_ACTION_FOLD, HERO_ACTION_CALL, HERO_ACTION_RAISE = 7, 3, 6
+
+
+def _hero_action_token(action: str) -> int:
+    """Map a returned live action string to the simulator's own action-history token."""
+    a = (action or '').upper()
+    if a == 'FOLD':
+        return HERO_ACTION_FOLD
+    if a in ('CALL', 'CHECK'):
+        return HERO_ACTION_CALL
+    if a.startswith('RAISE') or a.startswith('BET') or a in ('ALLIN', 'ALL_IN', 'ALL-IN'):
+        return HERO_ACTION_RAISE
+    return HERO_ACTION_CALL   # unknown/passive default -- never PAD, which would mean "no action"
+
+
+# ======================================================================= #
+#  [V42_liveFixes / Fable review #16-H4 remainder + #6-CE] Live FEATURE providers.
+# ======================================================================= #
+# PHPHelp.py used to carry two more hand-maintained `is_vN` substring ladders -- one selecting the
+# version's `compute_range_aware_equity`, one its `preflop_hand_strength` -- and both stopped at
+# 'v29'. V40 and V41 were deployed live without being added, so for the whole time V41 was the
+# active model it was served **vs-random equity** (its single most load-bearing input feature, and
+# the one thing every train/serve invariant list names first) and a **constant hand_strength=0.5**.
+# Nothing threw; the tensors were shape-valid. That is exactly the silent-degradation failure mode
+# the review's #16 describes, realised on the primary feature.
+#
+# The fix is the same one `make_bridge()` applied to the tensor ladder: the VERSION declares what it
+# needs, the shared layer just asks. An engine implements `live_features()` and is immune to the
+# ladder forever; engines that don't are resolved through the legacy table below, which is now the
+# ONLY copy of that mapping. A model matching neither is reported loudly (see
+# `live_feature_providers`) instead of quietly dropping to vs-random.
+#
+# Order matters in this table exactly as it did in the ladders it replaces: each entry must precede
+# any entry whose key it contains as a substring ('v20_preflopeq_ai' > 'v20_preflopeq' > 'v20',
+# 'v17_gauntlet' > 'v17').
+_LEGACY_LIVE_FEATURES = [
+    # (name substring, version package, range-aware equity?, front/after split?, hand_strength?,
+    #  fallback (stack, pot, call) money-feature scales)
+    #
+    # The scales column is a FALLBACK ONLY, for contracts that bake the divisors inline instead of
+    # exporting them. `context_scales()` prefers the version contract's own STACK_SCALE/POT_SCALE/
+    # CALL_SCALE module constants whenever they exist, so for V20_preflopEq and everything after it
+    # this column is never consulted and cannot drift. Pre-V20 contracts all use the original
+    # bridge_v13 scale (/400 stack+call, /1000 pot); V20 itself was the rescale but writes 100/250/
+    # 100 inline (versions/v20/core/contract.py L128-138).
+    ('v29',              'versions.v29',              True,  True,  True,  (100.0, 250.0, 100.0)),
+    ('v28',              'versions.v28',              True,  True,  True,  (100.0, 250.0, 100.0)),
+    ('v26',              'versions.v26',              True,  True,  True,  (100.0, 250.0, 100.0)),
+    ('v25',              'versions.v25',              True,  True,  True,  (100.0, 250.0, 100.0)),
+    ('v21_auxhead',      'versions.v21_auxhead',      True,  True,  True,  (100.0, 250.0, 100.0)),
+    ('v20_preflopeq_ai', 'versions.v20_preflopEq_AI', True,  True,  True,  (100.0, 250.0, 100.0)),
+    ('v20_preflopeq',    'versions.v20_preflopEq',    True,  True,  True,  (100.0, 250.0, 100.0)),
+    ('v20',              'versions.v20',              True,  False, False, (100.0, 250.0, 100.0)),
+    ('v19',              'versions.v19',              True,  False, False, (400.0, 1000.0, 400.0)),
+    ('v17_gauntlet',     'versions.v17_gauntlet',     True,  False, False, (400.0, 1000.0, 400.0)),
+    ('v17',              'versions.v17',              True,  False, False, (400.0, 1000.0, 400.0)),
+    ('v15',              'versions.v15',              True,  False, False, (400.0, 1000.0, 400.0)),
+    ('v14',              'versions.v14',              True,  False, False, (400.0, 1000.0, 400.0)),
+    ('v13',              'versions.v13',              True,  False, False, (400.0, 1000.0, 400.0)),
+]
 
 
 def _fmt_dist(d):
@@ -166,6 +239,7 @@ from versions.v20.core.contract import ContractV12 as ContractV12_v20
 from versions.v20_preflopEq.core.contract import ContractV12 as ContractV12_v20PreflopEq
 from versions.v25.core.contract import ContractV12 as ContractV12_v25
 from versions.v29.core.contract import ContractV12 as ContractV12_v29
+from versions.v41.core.contract import ContractV12 as ContractV12_v41
 from core.board_state import BoardState
 from core.action import PokerAction
 
@@ -200,6 +274,51 @@ class PokerDecisionEngine:
             # model_verify --full results (21 PASS/2 WARN/0 FAIL/1 SKIP -- the cleanest scorecard in
             # this lineage; deep_stack_ood_guard [STACK-1] PASSED for the first time since V22).
             # DEPLOYED LIVE (2026-07-20) per explicit user request, on the strength of this result.
+            # V41: SAME contract as V29/V40 (context_dim=54, contract_version=8) -- nothing about
+            # the tensor schema changed in either version, so this reuses V29's live game-state
+            # work ([OPP-2] per-seat raise tracking in core/table_state.py and the
+            # committed/hero_committed/pot_type + all-in stack-tracking byproduct fixes) unchanged.
+            # It still gets its OWN bridge (self.bridge_v41) rather than sharing bridge_v29, so a
+            # future divergence can't silently misalign -- that is exactly how the V20 drift class
+            # and [OPP-7]'s tensor-boundary bug both happened.
+            # Lineage V29 -> V40 (BET-3 package: betting round no longer ends on a check; CALL no
+            # longer exempt from the variance penalty / continuation credit; ALLIN veto rescoped)
+            # -> V41 (simulation realism: dead blinds, NN opponents playing a degraded self,
+            # asymmetric stacks + the min-raise and reopen-action rule bugs that exposed, and
+            # [OPP-7] finally fixed AT THE TENSOR BOUNDARY -- V27's remap wrote the real hero to a
+            # `seat_0` key ContractV12.to_tensors never reads, so hero was invisible to 128 of 128
+            # NN-opponent queries). Each fix carries a measured before/after -- see
+            # versions/v41/SPECS.md and
+            # .agents/skills/OFK/references/fable-review-resolution-log.md.
+            # V43: SAME contract as V29/V40/V41 (context_dim=54, contract_version=8) -- every change
+            # is training-side, so this reuses all live game-state work unchanged. Declares
+            # make_bridge(), live_features() AND is_sized, so no ladder in this file or in
+            # PHPHelp.py can misroute it (the three failure modes that bit the V40 deploy).
+            # Corrective-prior cleanup: the V12 realization discount and the V29 ALLIN veto are
+            # REMOVED (entry width and jam frequency are learned from the inputs V40/V41 fixed, not
+            # imposed); the variance penalty is KEPT and re-scaled 0.15->0.20 alongside
+            # TARGET_CLIP_BB 40->100, because the old clip was an undeclared deep-stack all-in
+            # dampener. See versions/v43/SPECS.md.
+            # DEPLOYED LIVE 2026-07-21 by explicit user decision on a MIXED scorecard, BEFORE
+            # beats_frozen_predecessor finished. Known regressions at deploy time:
+            # vpip_adapts_to_style FAIL (deep delta +4.2pts vs the >=5pt gate; V41 passed at
+            # short +5.9/deep +7.2) and nash_bbcall_vs_jam 47% (V41 passed) -- both the predicted
+            # cost of removing the realization discount, i.e. hero enters and calls jams wider.
+            # Genuinely better than V41: allin_vs_nextbest_qgap negative at EVERY cell,
+            # opponent_style_sweep WARN->PASS, action_diversity genuinely mixed, [BET-3] resolved.
+            # ROLLBACK: set active_model_name back to 'Herocules (v41)' (still registered below).
+            'Herocules (v43)': V43ModelEngine(weight_name="expert_main.pth"),
+            'Herocules (v41)': V41ModelEngine(weight_name="expert_main.pth"),
+            # V40: the [BET-3] package -- same 54/8 contract as V29/V41, so it reuses V29's live
+            # game-state work untouched and declares its own bridge (no ladder entry needed).
+            # Trained 100k hands 2026-07-20 (hero +63.7 BB/100 vs field). The multiway-aggression
+            # collapse that motivated the package went from 6/6 short-stack cells to 3/6, with
+            # 3-way aggression at eq 0.65 rising 0.01 -> ~0.5. DEPLOYED LIVE 2026-07-21 as an
+            # INTERIM model by explicit user request, for play-testing while V41 trains -- note its
+            # model_verify --full was only partially completed (all FAST checks plus
+            # vpip_adapts_to_style and beats_offformula_stress passed; bb100_vs_standard_fields and
+            # beats_frozen_predecessor were cut short to free CPU). See versions/v40/SPECS.md.
+            'Herocules (v40)': V40ModelEngine(weight_name="expert_main.pth"),
             'Herocules (v29)': V29ModelEngine(weight_name="expert_main.pth"),
             # V28: IDENTICAL architecture/tensor schema to V25/V26 (context_dim=44,
             # contract_version=7) -- shares bridge_v25 below, gated by is_v28_model alongside
@@ -371,7 +490,20 @@ class PokerDecisionEngine:
             # V13: equity-primary + range-aware equity. Kept as the tagged MILESTONE fallback.
             'Herocules (v13 Range-Aware)': V13ModelEngine(weight_name="expert_main.pth"),
         }
-        self.active_model_name = 'Herocules (v29)'
+        # DEPLOYED 2026-07-21: V41 replaces V40 (which was live for a few hours as an interim
+        # play-test model). Trained 100,000 hands; model_verify --full 22 PASS / 5 WARN / 0 FAIL /
+        # 0 SKIP -- the cleanest scorecard of any version (V29's was 21/2/0/1), and the first with
+        # ZERO skips. Headline: multiway_shortstack_aggression PASSES outright (V29 collapsed all
+        # 6 short-stack cells, V40 fixed 3/6, V41 holds 3-way aggression at 0.81 where V29 gave
+        # 0.01) -- [BET-3], the live symptom that started this whole line of work, is resolved.
+        # beats_frozen_predecessor is a REAL head-to-head for the first time since the V18 refactor
+        # (frozen V40 seated as an NNOpponent): +64.3 BB/100 over 4000 hands.
+        # V25-V40 remain registered as rollback options -- switching back is a one-line change
+        # here (or set_active_model at runtime).
+        # DEPLOYED 2026-07-21: V43 replaces V41 by explicit user decision, on a MIXED scorecard and
+        # before beats_frozen_predecessor finished -- see the registry entry above for exactly what
+        # was known at deploy time. V41 (the MILESTONE) stays registered as the one-line rollback.
+        self.active_model_name = 'Herocules (v43)'
         self.bridge_v9 = ContractV8V9()
         self.bridge_v11 = ContractV11()
         self.bridge_v13 = ContractV12(max_seq_len=20)
@@ -390,16 +522,201 @@ class PokerDecisionEngine:
         # [V29] NEW contract (context_dim=54, contract_version=8) -- own bridge, not shared with
         # bridge_v25 above (V25/V26/V27/V28 all stay on the 44/7 contract untouched).
         self.bridge_v29 = ContractV12_v29(max_seq_len=20)
+        # [V41] Same 54/8 contract as V29, but its own bridge instance -- see the registry note.
+        self.bridge_v41 = ContractV12_v41(max_seq_len=20)
+        # [Fable review #16/H4] ENGINE-OWNED BRIDGES. The dispatch below is three hand-synchronised
+        # substring ladders (here, plus two more in PHPHelp.py) whose failure mode is silent: a new
+        # engine added to the registry but missed in a ladder matches no `is_vN` flag, falls through
+        # to `bridge_v9`, throws, is caught, and FOLDS EVERY HAND while play continues. An engine
+        # that declares `make_bridge()` short-circuits the whole ladder with its OWN contract, so a
+        # new version needs no ladder edit and cannot be silently misrouted. Substring collisions
+        # (a future 'v29b' matching 'v29') are sidestepped for the same reason. Existing engines
+        # without `make_bridge` keep the ladder exactly as it was -- this is additive, not a rewrite.
+        self._engine_bridges = {}
+        for _name, _engine in self.models.items():
+            _factory = getattr(_engine, 'make_bridge', None)
+            if callable(_factory):
+                try:
+                    self._engine_bridges[_name] = _factory()
+                except Exception as _e:
+                    print(f"WARNING: {_name} declares make_bridge() but it raised: {_e!r}. "
+                          f"Falling back to the version ladder for this model.")
+        self._report_engine_health()
+
         self.hand_history_buffer = []
+        # [Fable review #14/H3] One token per entry in hand_history_buffer, appended in the SAME
+        # call that appended the state, so the two can never drift. Holds the actions taken at all
+        # PRIOR states: len(hero_action_buffer) == len(hand_history_buffer) - 1 while a decision is
+        # in flight, which is exactly the alignment `to_tensors` expects (it leaves the current
+        # step's slot as PAD, and the transformer shifts by one internally).
+        self.hero_action_buffer = []
         self._last_street = None
         self._last_hole_cards = None
+
+    def _report_engine_health(self):
+        """[Fable review #15+#16] One startup line per engine: did its weights load, and how will
+        its tensors be built. Previously a failed load was a single WARNING scrolling past among
+        many, and bridge routing was invisible until something folded every hand at a real table."""
+        for name, engine in self.models.items():
+            loaded = getattr(engine, 'loaded', True)
+            route = 'own bridge' if name in self._engine_bridges else 'version ladder'
+            status = 'OK' if loaded else 'FAILED TO LOAD -- will refuse to act'
+            marker = '*' if name == self.active_model_name else ' '
+            print(f"  [engine]{marker} {name:<34} weights={status:<38} tensors={route}")
+        # [V42_liveFixes / Fable review live-L3] Surface the diagnostic action-selection mode at
+        # startup. It used to be visible only in per-decision reason text, so a leftover
+        # HEROCULES_CRITIC_ARGMAX could put live play on an eval-unvalidated selector unnoticed.
+        if USE_CRITIC_ARGMAX_ACTION:
+            print("  [engine]! ACTION SELECTION = CRITIC-ARGMAX(Q) -- DIAGNOSTIC MODE, NOT the "
+                  "sampled actor policy and NOT validated by model_verify. Set "
+                  "CRITIC_ARGMAX_MODE = False in PHPHelp.py to turn it off.")
 
     def set_active_model(self, model_name: str, tree_file: str = None):
         if model_name in self.models:
             self.active_model_name = model_name
-        else:
-            print(f"Warning: {model_name} is not loaded or supported. Falling back to V20.")
-            self.active_model_name = 'Herocules (v20)'
+            return
+        # [Fable review #16/H4] Was: silently switch to 'Herocules (v20)' -- nine versions stale, a
+        # different CONTRACT, and indistinguishable at the HUD from the model you asked for. Keep
+        # serving whatever is already active (a known-good model) and say loudly that the switch
+        # did not happen, rather than quietly swapping in a different one.
+        print(f"ERROR: '{model_name}' is not in the live registry -- KEEPING "
+              f"'{self.active_model_name}' active. Registered: {sorted(self.models)}")
+
+    def _resolve_live_spec(self, name: str):
+        """Which version package serves `name`, and what it declares -- engine first, name-ladder
+        second. Shared by `live_feature_providers()` and `context_scales()` so the two can never
+        disagree about which version a live model actually is.
+
+        Returns (spec | None, source, error | None).
+        """
+        engine = self.models.get(name)
+
+        declare = getattr(engine, 'live_features', None)
+        if callable(declare):
+            try:
+                spec = declare() or None
+                if spec:
+                    return spec, 'engine', None
+            except Exception as e:
+                return None, 'unresolved', f"{name}'s live_features() raised: {e!r}"
+
+        lowered = name.lower()
+        for key, package, range_aware, front, hand_strength, scales in _LEGACY_LIVE_FEATURES:
+            if key in lowered:
+                return ({'version_package': package, 'range_aware_equity': range_aware,
+                         'front_colors': front, 'hand_strength': hand_strength,
+                         'context_scales': scales},
+                        'name-ladder', None)
+
+        return None, 'unresolved', (
+            f"'{name}' matches no entry in _LEGACY_LIVE_FEATURES and its engine declares no "
+            f"live_features() -- live equity would silently fall back to vs-random. Add "
+            f"live_features() to its engine.")
+
+    def context_scales(self, model_name: str = None):
+        """The money-feature divisors the ACTIVE model's contract uses for ctx[1] hero_stack,
+        ctx[2] pot and ctx[9] call_amount -- so a diagnostic can turn a recorded input tensor back
+        into big blinds.
+
+        Read from the version contract's OWN `STACK_SCALE`/`POT_SCALE`/`CALL_SCALE` module
+        constants wherever they exist, which is the only copy that can't go stale: it is literally
+        the constant the encoder divided by. `_LEGACY_LIVE_FEATURES`' scales column is consulted
+        only for the pre-V20_preflopEq contracts that bake the divisor inline.
+
+        This replaced a hand-maintained `is_v20_family` substring check in `PHPHelp.py` that
+        stopped at 'v29', so V40/V41/V43 turns were decoded with the pre-V20 /400,/1000 constants:
+        history/Turbo_1171580052/flagged/turn_2_20260721_201440 rendered a real 75BB/1.5BB/1.0BB
+        node as 300BB/6.0BB/4.0BB and then raised a bogus "MODEL-INPUT vs RAW-OCR MISMATCH ->
+        BRIDGE issue" banner against a bridge that was correct. The same decode also feeds
+        `_build_turn_record`, so every recorded turn's `to_call`/`pot_odds` inherited the error.
+        Note this is the THIRD time this specific decoder has been wrong for the live model (see
+        its own docstring's V20_preflopEq_AI case) -- hence sourcing it from the contract itself.
+
+        Returns {'stack': float, 'pot': float, 'call': float, 'source': str, 'error': str | None}.
+        """
+        import importlib
+
+        name = model_name or self.active_model_name
+        spec, source, resolve_error = self._resolve_live_spec(name)
+
+        # Pre-V20 bridge_v13 scale -- the oldest contract in the registry, so the least-surprising
+        # answer if we genuinely cannot tell. Always paired with a non-None `error`.
+        fallback = (400.0, 1000.0, 400.0)
+
+        if spec is None:
+            stack, pot, call = fallback
+            return {'stack': stack, 'pot': pot, 'call': call, 'source': 'unresolved',
+                    'error': resolve_error}
+
+        package = spec.get('version_package')
+        try:
+            contract = importlib.import_module(f"{package}.core.contract")
+        except Exception as e:
+            stack, pot, call = spec.get('context_scales') or fallback
+            return {'stack': stack, 'pot': pot, 'call': call, 'source': f'{source}:declared',
+                    'error': f"importing {package}.core.contract for '{name}' failed: {e!r}"}
+
+        stack = getattr(contract, 'STACK_SCALE', None)
+        pot = getattr(contract, 'POT_SCALE', None)
+        call = getattr(contract, 'CALL_SCALE', None)
+        if None not in (stack, pot, call):
+            return {'stack': float(stack), 'pot': float(pot), 'call': float(call),
+                    'source': f'{source}:contract', 'error': None}
+
+        declared = spec.get('context_scales')
+        if declared:
+            stack, pot, call = declared
+            return {'stack': float(stack), 'pot': float(pot), 'call': float(call),
+                    'source': f'{source}:declared', 'error': None}
+
+        stack, pot, call = fallback
+        return {'stack': stack, 'pot': pot, 'call': call, 'source': f'{source}:fallback',
+                'error': (f"{package}.core.contract exports no STACK_SCALE/POT_SCALE/CALL_SCALE and "
+                          f"'{name}' declares no context_scales -- decoded BB values for this model "
+                          f"are a GUESS. Export the constants from that contract.")}
+
+    def live_feature_providers(self, model_name: str = None):
+        """[V42_liveFixes] The equity / hand_strength implementations the ACTIVE model was trained
+        with, resolved once per decision by the shared layer instead of by a substring ladder in
+        `PHPHelp.py`. See `_LEGACY_LIVE_FEATURES` above for why this exists.
+
+        Returns a dict:
+          `equity_fn`         -- that version's own `compute_range_aware_equity`, or None
+          `hand_strength_fn`  -- that version's own `preflop_hand_strength`, or None
+          `use_front_colors`  -- whether its equity fn takes the front/after split (V20_preflopEq+)
+          `source`            -- 'engine' | 'name-ladder' | 'unresolved', for the live log
+          `error`             -- a human-readable reason when something is missing
+
+        `source == 'unresolved'` is a REAL PROBLEM, not a shrug: it means the model will be served
+        vs-random equity while having been trained on range-aware equity. The caller is expected to
+        surface it. A new version avoids the whole question by declaring `live_features()` on its
+        engine (see `core/models/v41_engine.py`).
+        """
+        import importlib
+
+        name = model_name or self.active_model_name
+        spec, source, resolve_error = self._resolve_live_spec(name)
+
+        if spec is None:
+            return {'equity_fn': None, 'hand_strength_fn': None, 'use_front_colors': False,
+                    'source': 'unresolved', 'error': resolve_error}
+
+        package = spec.get('version_package')
+        equity_fn = hand_strength_fn = None
+        error = None
+        try:
+            if spec.get('range_aware_equity', True):
+                equity_fn = getattr(importlib.import_module(f"{package}.self_play.simulator"),
+                                    'compute_range_aware_equity', None)
+            if spec.get('hand_strength', False):
+                hand_strength_fn = getattr(importlib.import_module(f"{package}.core.contract"),
+                                           'preflop_hand_strength', None)
+        except Exception as e:
+            error = f"importing {package} for '{name}' failed: {e!r}"
+
+        return {'equity_fn': equity_fn, 'hand_strength_fn': hand_strength_fn,
+                'use_front_colors': bool(spec.get('front_colors', False)),
+                'source': source, 'error': error}
 
     def _v14_size_to_slider(self, frac, board_state):
         """Translate a V14 pot-fraction raise bucket into (raise_size_chips, slider_fraction).
@@ -437,11 +754,20 @@ class PokerDecisionEngine:
                       use_dynamic_sizing: bool = True,
                       bet_raise_available: bool = True,
                       check_call_available: bool = True,
-                      action_history_raw: list = None):
+                      action_history_raw: list = None,
+                      call_amount_known: bool = True):
         
         active_model = self.models.get(self.active_model_name)
         if not active_model:
             return 'FOLD', "Model not found", 0.0, {}
+        # [Fable review #15] An engine whose weights failed to load holds RANDOM weights and will
+        # happily emit confident-looking nonsense at a real table -- the failure was previously
+        # swallowed in the engine's constructor and never checked here. Every engine sets `.loaded`;
+        # anything that doesn't is treated as loaded (legacy engines predate the flag). Fold rather
+        # than act on garbage, and say why.
+        if getattr(active_model, 'loaded', True) is False:
+            err = getattr(active_model, 'load_error', 'unknown error')
+            return 'FOLD', f"Model '{self.active_model_name}' failed to load ({err}) - refusing to act", 0.0, {}
 
         # Round Reset Logic (Sandbox tracking)
         street_order = {'Preflop': 0, 'Flop': 1, 'Turn': 2, 'River': 3}
@@ -452,11 +778,17 @@ class PokerDecisionEngine:
         # Reset if hole cards changed or street went backwards (e.g., new hand started)
         if current_hole_cards != self._last_hole_cards or current_street_val < last_street_val:
             self.hand_history_buffer = []
+            self.hero_action_buffer = []   # [H3] reset together -- see the buffer's own note
             
         self._last_street = board_state.street
         self._last_hole_cards = current_hole_cards
         
         self.hand_history_buffer.append(board_state)
+        # [Fable review #14/H3] Serve the model its own action history. An explicit
+        # `action_history_raw` from the caller still wins (replay/debug harnesses pass one); with
+        # none, use the buffer we maintain ourselves, which is guaranteed aligned by construction.
+        if action_history_raw is None:
+            action_history_raw = list(self.hero_action_buffer)
 
         is_v13_model = getattr(active_model, 'is_v13', False) or 'v13' in self.active_model_name.lower()
         is_v14_model = getattr(active_model, 'is_v14', False) or 'v14' in self.active_model_name.lower()
@@ -470,6 +802,8 @@ class PokerDecisionEngine:
         # 'v25'/'v26'/'v28'/'v29' are substrings of nothing among each other, so order doesn't
         # matter for THESE flags, but is_v29_model gets its OWN bridge branch below (checked
         # BEFORE the v25/v26/v28 combined branch, since v29's contract is a different width/scale).
+        is_v41_model = getattr(active_model, 'is_v41', False) or 'v41' in self.active_model_name.lower()
+        is_v40_model = getattr(active_model, 'is_v40', False) or 'v40' in self.active_model_name.lower()
         is_v29_model = getattr(active_model, 'is_v29', False) or 'v29' in self.active_model_name.lower()
         is_v28_model = getattr(active_model, 'is_v28', False) or 'v28' in self.active_model_name.lower()
         is_v26_model = getattr(active_model, 'is_v26', False) or 'v26' in self.active_model_name.lower()
@@ -482,9 +816,24 @@ class PokerDecisionEngine:
         # V14/V15/V17/V17_gauntlet/V19/V20/V20_preflopEq/V20_preflopEq_AI/V21_auxhead/V25 share the
         # IDENTICAL 6-action sized contract -> one live path (selection + slider sizing). Anything
         # gated on "the sized model" uses this flag.
-        is_sized_model = is_v14_model or is_v15_model or is_v17_model or is_v17_gauntlet_model or is_v19_model or is_v20_model or is_v20_preflopEq_model or is_v20_preflopEq_AI_model or is_v21_auxhead_model or is_v25_model or is_v26_model or is_v28_model or is_v29_model
+        # [V43 / Fable review #16-H4 remainder] An engine may now DECLARE `is_sized` instead of
+        # being recognised by this OR-chain. That chain is the ladder that silently bit the V40
+        # deploy: its bridge was fine (V40 declares make_bridge()), but `is_sized_model` did not
+        # know the name, so live emitted a bare `RAISE_POT` with size=0.0 -- a raise the executor
+        # cannot size -- instead of an executable `RAISE_SLIDER_x`. Engines without the flag keep
+        # the ladder exactly as it was; this is additive.
+        _declared_sized = getattr(active_model, 'is_sized', None)
+        is_sized_model = bool(_declared_sized) if _declared_sized is not None else (
+            is_v14_model or is_v15_model or is_v17_model or is_v17_gauntlet_model or is_v19_model or is_v20_model or is_v20_preflopEq_model or is_v20_preflopEq_AI_model or is_v21_auxhead_model or is_v25_model or is_v26_model or is_v28_model or is_v29_model or is_v40_model or is_v41_model)
         try:
-            if is_v29_model:
+            own_bridge = self._engine_bridges.get(self.active_model_name)
+            if own_bridge is not None:
+                # [Fable review #16/H4] The engine declared its own contract -- no ladder involved.
+                hole, board, ctx, act = own_bridge.to_tensors(self.hand_history_buffer, action_history_raw)
+            elif is_v41_model:
+                # [V41] Same 54/8 tensor schema as V29 -- separate bridge on purpose (see registry).
+                hole, board, ctx, act = self.bridge_v41.to_tensors(self.hand_history_buffer, action_history_raw)
+            elif is_v29_model:
                 # [V29] NEW contract (context_dim=54, contract_version=8) -- own bridge, NOT
                 # bridge_v25 (V25/V26/V28's shared 44/7 contract would silently misalign the 10
                 # new appended per-opponent-seat raise features).
@@ -516,10 +865,21 @@ class PokerDecisionEngine:
                 hole, board, ctx, act = self.bridge_v13.to_tensors(self.hand_history_buffer, action_history_raw)
             elif getattr(active_model, 'is_v11', False) or 'v11' in self.active_model_name.lower():
                 hole, board, ctx, act = self.bridge_v11.to_tensors(self.hand_history_buffer, action_history_raw)
-            else:
+            elif getattr(active_model, 'is_v9', False) or 'v9' in self.active_model_name.lower():
                 hole, board, ctx, act = self.bridge_v9.to_tensors(board_state, action_history_raw)
+            else:
+                # [Fable review #16/H4] Previously this WAS the bridge_v9 branch: any model the
+                # ladder didn't recognise got the v9 contract, threw, and folded every hand behind a
+                # generic "Fatal decision engine crash". Name the actual problem and the actual fix.
+                raise RuntimeError(
+                    f"no tensor bridge resolved for active model '{self.active_model_name}'. "
+                    f"Add a make_bridge() method to its engine (preferred -- see _engine_bridges), "
+                    f"or add it to the version ladder in make_decision.")
             evs = active_model.predict_ev(hole, board, ctx, act)
         except Exception as e:
+            # [H3] The state was already appended; record the action we actually return so the
+            # buffers stay in lockstep even on the crash path.
+            self.hero_action_buffer.append(HERO_ACTION_FOLD)
             return 'FOLD', f"Fatal decision engine crash: {e}", 0.0, {}
 
         # 1. Base Model Decision.
@@ -530,10 +890,14 @@ class PokerDecisionEngine:
         # Train/serve consistency: FOLD is strictly dominated when checking is free (call_amount==0),
         # so the sim zeroes it before selecting (simulator._select_action) — we mirror that here.
         is_actor_policy = is_v13_model or is_v11_model or is_sized_model
-        # call_amount can be None on a parse miss -> treat unknown as "facing a bet" (do NOT mask
-        # fold), which is the safe default (never auto-check/call into an unknown price).
+        # [V42_liveFixes / Fable review #13] FOLD is masked ONLY when checking is positively known to
+        # be free. The old test was `call_amount is None or <= 0`, and the live caller could not
+        # produce None -- an unreadable Check/Call button left `call_amount` at its 0.0 initialiser,
+        # so a vision failure while facing a real bet made FOLD illegal. `call_amount_known=False`
+        # now says "this number is an estimate, not a reading": the estimate still drives the tensor
+        # (pot_odds, scaled_call), but it can never take FOLD away.
         _ca = getattr(board_state, 'call_amount', 0)
-        free_check = _ca is not None and _ca <= 0
+        free_check = bool(call_amount_known) and _ca is not None and _ca <= 0
         argmax_action = max(evs, key=evs.get)
         free_fold_overridden = free_check and argmax_action == 'FOLD'
 
@@ -551,12 +915,20 @@ class PokerDecisionEngine:
             if not bet_raise_available:
                 for rk in V14_RAISE_FRAC:   # raise button gone -> only fold/call/check are legal
                     probs[rk] = 0.0
+            # [V42_liveFixes / Fable review M4] `check_call_available` was accepted by this method
+            # and never read. With no Check/Call button on screen (the all-in case PHPHelp detects
+            # by button brightness), the sampler could still return CALL and the executor would
+            # click where no button exists. Mask it, exactly as the raise buckets are masked when
+            # the raise button is gone.
+            if not check_call_available:
+                probs['CALL'] = 0.0
             sharp = {a: (v ** (1.0 / temp)) for a, v in probs.items()}
             names = [a for a in keys if sharp[a] > 0.0]
             sharp_total = sum(sharp[a] for a in names) or 1.0
             sampled_probs = {a: (sharp[a] / sharp_total if a in names else 0.0) for a in keys}
             choice = random.choices(names, weights=[sharp[a] for a in names], k=1)[0] if names \
-                else ('CALL' if free_check or not bet_raise_available else 'FOLD')
+                else (('CALL' if check_call_available else 'FOLD')
+                      if (free_check or not bet_raise_available) else 'FOLD')
 
             # [TEST FLAG] Optionally replace the sampled actor choice with the critic's argmax-Q pick
             # over the SAME masked candidate set (see USE_CRITIC_ARGMAX_ACTION). No-op if off / no Q.
@@ -574,17 +946,26 @@ class PokerDecisionEngine:
             else:
                 action = choice   # FOLD / CALL
                 size_note = choice
-            _tag = "V29" if is_v29_model else ("V28" if is_v28_model else ("V26" if is_v26_model else ("V25" if is_v25_model else ("V21_auxhead" if is_v21_auxhead_model else ("V20_preflopEq_AI" if is_v20_preflopEq_AI_model else ("V20_preflopEq" if is_v20_preflopEq_model else ("V20" if is_v20_model else ("V19" if is_v19_model else ("V17_gauntlet" if is_v17_gauntlet_model else ("V17" if is_v17_model else ("V15" if is_v15_model else "V14")))))))))))
+            # [V43] An engine may declare `display_tag`; otherwise fall back to the 13-deep nested
+            # ternary below. Without this a new version silently renders under the FINAL else
+            # ("V14") in the live reason line -- the HUD naming a different model than the one
+            # acting, which is exactly the class of mislabelling the review's #16/H4 is about.
+            _tag = getattr(active_model, 'display_tag', None) or (
+                   "V41" if is_v41_model else ("V40" if is_v40_model else ("V29" if is_v29_model else ("V28" if is_v28_model else ("V26" if is_v26_model else ("V25" if is_v25_model else ("V21_auxhead" if is_v21_auxhead_model else ("V20_preflopEq_AI" if is_v20_preflopEq_AI_model else ("V20_preflopEq" if is_v20_preflopEq_model else ("V20" if is_v20_model else ("V19" if is_v19_model else ("V17_gauntlet" if is_v17_gauntlet_model else ("V17" if is_v17_model else ("V15" if is_v15_model else "V14"))))))))))))))
             _mode = "CRITIC-ARGMAX(Q)" if _critic_pick is not None else f"sampled (temp={temp:.2f}"
             _modeclose = "" if _critic_pick is not None else ")"
             reason = (f"{_tag} {_mode}"
                       + (", free-check fold-masked" if free_check else "")
                       + (", raise-unavail" if not bet_raise_available else "")
+                      + (", call-unavail" if not check_call_available else "")
+                      + (", price-estimated" if not call_amount_known else "")
                       + f"{_modeclose} -> {size_note}: {_fmt_dist(evs)}")
         elif is_actor_policy:
             probs = {a: max(0.0, float(evs.get(a, 0.0))) for a in ('FOLD', 'CALL', 'RAISE')}
             if free_check:
                 probs['FOLD'] = 0.0   # never fold a free option
+            if not check_call_available:
+                probs['CALL'] = 0.0   # [V42_liveFixes] no Check/Call button -- see the sized path
             sharp = {a: (v ** (1.0 / temp)) for a, v in probs.items()}
             names = [a for a in ('FOLD', 'CALL', 'RAISE') if sharp[a] > 0.0]
             sharp_total = sum(sharp[a] for a in names) or 1.0
@@ -592,7 +973,7 @@ class PokerDecisionEngine:
             if names:
                 action = random.choices(names, weights=[sharp[a] for a in names], k=1)[0]
             else:
-                action = 'CALL' if free_check else 'FOLD'   # degenerate safety net
+                action = 'CALL' if (free_check and check_call_available) else 'FOLD'   # degenerate safety net
             # [TEST FLAG] Optional critic-argmax override (see USE_CRITIC_ARGMAX_ACTION); no-op off /
             # for models without a Q head.
             _critic_pick = _critic_argmax_action(getattr(active_model, 'last_q_vals', None), names) \
@@ -679,7 +1060,13 @@ class PokerDecisionEngine:
         ev_dict['decision_path'] = decision_path
         # Aux-head opponent read (v21_auxhead only -- see _narrate_opponent_read; every other
         # model's aux heads are untrained noise at aux_loss_weight=0.0).
-        aux_read = getattr(active_model, 'last_aux', None) if (is_v21_auxhead_model or is_v25_model or is_v26_model or is_v28_model or is_v29_model) else None
+        # [V43] `has_aux` is engine-declarable, same reason as is_sized/display_tag above: a new
+        # version with the identical aux-head architecture would otherwise silently lose its HUD
+        # opponent-read line by not being named in this OR-chain.
+        _declared_aux = getattr(active_model, 'has_aux', None)
+        _aux_ok = bool(_declared_aux) if _declared_aux is not None else (
+            is_v21_auxhead_model or is_v25_model or is_v26_model or is_v28_model or is_v29_model or is_v40_model or is_v41_model)
+        aux_read = getattr(active_model, 'last_aux', None) if _aux_ok else None
         ev_dict['aux_read'] = aux_read
         ev_dict['thinking'] = _narrate_thinking(action, board_state, evs, aux=aux_read)
         # The raw policy bucket the sampler ("dice roll") actually picked, e.g. RAISE_66 or ALLIN --
@@ -705,5 +1092,9 @@ class PokerDecisionEngine:
             }
         except Exception:
             ev_dict['model_input'] = None
+
+        # [Fable review #14/H3] Record hero's own action for this state, so the NEXT decision this
+        # hand serves the model a real action history instead of all-PAD.
+        self.hero_action_buffer.append(_hero_action_token(action))
 
         return action, reason, bet_size, ev_dict

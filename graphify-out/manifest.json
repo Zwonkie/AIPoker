@@ -10,9 +10,9 @@
     "semantic_hash": "3762940f859f0a3be4b76cbee2efaa43"
   },
   "PHPHelp.py": {
-    "mtime": 1784545594.5671535,
-    "ast_hash": "acaf5fd9e2c070eaea6bfc3c4c458a19",
-    "semantic_hash": "acaf5fd9e2c070eaea6bfc3c4c458a19"
+    "mtime": 1784658877.5134666,
+    "ast_hash": "9489c80a2c7d8e3a26d1b3676ea04e99",
+    "semantic_hash": ""
   },
   "core/action.py": {
     "mtime": 1783848105.1541605,
@@ -50,8 +50,8 @@
     "semantic_hash": "48e1a947106b4d3059465488a9c19c3d"
   },
   "core/decision.py": {
-    "mtime": 1784562467.3061888,
-    "ast_hash": "21db3a6375dae1427bbf6b7fc9e38966",
+    "mtime": 1784658686.2245402,
+    "ast_hash": "a8bfcf5864cc21682f8f17876336bbe7",
     "semantic_hash": ""
   },
   "core/evaluator.py": {
@@ -190,9 +190,9 @@
     "semantic_hash": "00943d893bb9e75878a5804f5d7b8603"
   },
   "core/table_state.py": {
-    "mtime": 1784545497.7283041,
-    "ast_hash": "76476727f3b1a5a4cb5a4623e97b7cfe",
-    "semantic_hash": "76476727f3b1a5a4cb5a4623e97b7cfe"
+    "mtime": 1784658734.9135725,
+    "ast_hash": "ec6a93c6b69aab7b303edd213d008d8b",
+    "semantic_hash": ""
   },
   "core/vision.py": {
     "mtime": 1784545484.9621825,
@@ -460,8 +460,8 @@
     "semantic_hash": "af6a8d91c6ffb853cbaf130fe394082c"
   },
   "tools/model_verify/checks.py": {
-    "mtime": 1784559581.2899766,
-    "ast_hash": "f5c28793f1876235f59013eb1382ce23",
+    "mtime": 1784575593.1186507,
+    "ast_hash": "dd423a8ec6dccf371ded4772265fc6ab",
     "semantic_hash": ""
   },
   "tools/model_verify/render_report.py": {
@@ -605,8 +605,8 @@
     "semantic_hash": "c4ade9a08fc65bedb4b42bfe867cb5aa"
   },
   "tools/model_verify/results/v29__expert_main.pth.json": {
-    "mtime": 1784559865.302435,
-    "ast_hash": "012e4178777b5c3c8ff6c42675b16ee6",
+    "mtime": 1784564808.3113184,
+    "ast_hash": "b5bd6656d1b2cc5912a07264116192e3",
     "semantic_hash": ""
   },
   "tools/model_verify/run.py": {
@@ -775,14 +775,14 @@
     "semantic_hash": "7818ad8c7376f8c437c021ac5e458385"
   },
   "tools/training_monitor/telemetry.json": {
-    "mtime": 1784562503.354411,
-    "ast_hash": "aabc1d7af92d2baef882aec30e6551d6",
-    "semantic_hash": "aabc1d7af92d2baef882aec30e6551d6"
+    "mtime": 1784658987.080972,
+    "ast_hash": "63a8fbdc95b5afacb38bf851ebeb61bd",
+    "semantic_hash": ""
   },
   "tools/training_monitor/telemetry_history.json": {
-    "mtime": 1784540925.240597,
-    "ast_hash": "076cbd1cabbfe07a38a001e93bf15648",
-    "semantic_hash": "076cbd1cabbfe07a38a001e93bf15648"
+    "mtime": 1784653204.1920567,
+    "ast_hash": "040ffad984e49cf689e34390978a3c31",
+    "semantic_hash": ""
   },
   "versions/__init__.py": {
     "mtime": 1783966352.7955225,
@@ -3235,8 +3235,8 @@
     "semantic_hash": ""
   },
   ".agents/skills/OFK/SKILL.md": {
-    "mtime": 1784269953.3057716,
-    "ast_hash": "309e3c5e50abf0051a7084989f897fc3",
+    "mtime": 1784633476.610785,
+    "ast_hash": "af6333756a88f5aaab5d9b94da88b335",
     "semantic_hash": ""
   },
   ".agents/skills/OFK/references/V11/issues-and-fixes.md": {
@@ -3415,13 +3415,8 @@
     "semantic_hash": ""
   },
   ".agents/skills/OFK/references/known-shortcomings-backlog.md": {
-    "mtime": 1784562314.3796492,
-    "ast_hash": "12bf282d964effd08e3a24912224c478",
-    "semantic_hash": ""
-  },
-  ".agents/skills/OFK/references/legacy-versions-history.md": {
-    "mtime": 1784107224.0576265,
-    "ast_hash": "ff71bce75d257645cddf272203e5359b",
+    "mtime": 1784629886.815238,
+    "ast_hash": "c0c3afd011ef94b10102e19de9fa1036",
     "semantic_hash": ""
   },
   ".agents/skills/OFK/references/model-testing-suite.md": {
@@ -3435,8 +3430,8 @@
     "semantic_hash": ""
   },
   ".agents/skills/OFK/references/pipeline-flow.md": {
-    "mtime": 1784105745.8906367,
-    "ast_hash": "f36ac38f2ab3d4037e70822154d9e5a8",
+    "mtime": 1784633392.891182,
+    "ast_hash": "a3984df4866fd91e289b5662362b003a",
     "semantic_hash": ""
   },
   ".agents/skills/OFK/references/simulation_architecture.md": {
@@ -4532,6 +4527,746 @@
   "tools/model_verify/nash/solve_nash_pushfold.py": {
     "mtime": 1784559363.2052124,
     "ast_hash": "2e5f7d7ef6b1ed8fac0ea7fb4224f1ec",
+    "semantic_hash": ""
+  },
+  "versions/v30/__init__.py": {
+    "mtime": 1784565046.0894063,
+    "ast_hash": "d41d8cd98f00b204e9800998ecf8427e",
+    "semantic_hash": ""
+  },
+  "versions/v30/core/__init__.py": {
+    "mtime": 1784565046.0584471,
+    "ast_hash": "d41d8cd98f00b204e9800998ecf8427e",
+    "semantic_hash": ""
+  },
+  "versions/v30/core/contract.py": {
+    "mtime": 1784565046.0584471,
+    "ast_hash": "59e196c6c194dbd61b1c5542a81815aa",
+    "semantic_hash": ""
+  },
+  "versions/v30/core/manifest.py": {
+    "mtime": 1784565776.0955148,
+    "ast_hash": "f1ad3067507108934a645181f9551ff3",
+    "semantic_hash": ""
+  },
+  "versions/v30/core/model.py": {
+    "mtime": 1784565046.059011,
+    "ast_hash": "259db10f0cfeefc746ea5a08ece855f3",
+    "semantic_hash": ""
+  },
+  "versions/v30/self_play/__init__.py": {
+    "mtime": 1784565046.0690298,
+    "ast_hash": "d41d8cd98f00b204e9800998ecf8427e",
+    "semantic_hash": ""
+  },
+  "versions/v30/self_play/calibrate_bet1.py": {
+    "mtime": 1784565046.0783854,
+    "ast_hash": "a436a090a8e588654ba917c5268e9d08",
+    "semantic_hash": ""
+  },
+  "versions/v30/self_play/calibrate_critic_consistency.py": {
+    "mtime": 1784565046.080386,
+    "ast_hash": "eaee667d871eac0dd36d207c33488145",
+    "semantic_hash": ""
+  },
+  "versions/v30/self_play/calibrate_multistreet_ev.py": {
+    "mtime": 1784565046.0848942,
+    "ast_hash": "b9ff89863371bfdd5cabb4bbd269b7e2",
+    "semantic_hash": ""
+  },
+  "versions/v30/self_play/eval_pure_policy.py": {
+    "mtime": 1784565046.0838945,
+    "ast_hash": "87c8b2788ca5112bb3f9a5757033145c",
+    "semantic_hash": ""
+  },
+  "versions/v30/self_play/gameplay_eval.py": {
+    "mtime": 1784565046.0690298,
+    "ast_hash": "bcb6d71679d576cf99b5d8d13ea17be4",
+    "semantic_hash": ""
+  },
+  "versions/v30/self_play/inspect_aux_heads.py": {
+    "mtime": 1784565046.0783854,
+    "ast_hash": "c80fb215bbdad051f060e5ba7150c7bd",
+    "semantic_hash": ""
+  },
+  "versions/v30/self_play/opponent_bots.py": {
+    "mtime": 1784565046.0828898,
+    "ast_hash": "7d8c572a85a30de1117e9d28b8c3c2f4",
+    "semantic_hash": ""
+  },
+  "versions/v30/self_play/opponents.py": {
+    "mtime": 1784565046.0813859,
+    "ast_hash": "e28489d1730494e4f6e5eb89f9da5fe3",
+    "semantic_hash": ""
+  },
+  "versions/v30/self_play/overfit_sanity.py": {
+    "mtime": 1784565046.0858946,
+    "ast_hash": "a46df1427a3b2199c81d0dbe513a9d09",
+    "semantic_hash": ""
+  },
+  "versions/v30/self_play/preflop_ranking.json": {
+    "mtime": 1784565046.080386,
+    "ast_hash": "a29b7b46fd29e7868be89cb1992be6b4",
+    "semantic_hash": ""
+  },
+  "versions/v30/self_play/simulator.py": {
+    "mtime": 1784575042.2481565,
+    "ast_hash": "7f50a6808c27d010ba7ea6bb6c2655fe",
+    "semantic_hash": ""
+  },
+  "versions/v30/self_play/telemetry.py": {
+    "mtime": 1784565046.0813859,
+    "ast_hash": "68fd2c0c6ce1a76428ed0f9a3022260d",
+    "semantic_hash": ""
+  },
+  "versions/v30/self_play/train.py": {
+    "mtime": 1784565046.0828898,
+    "ast_hash": "d33843a09fc91eac098bf2396458d1c6",
+    "semantic_hash": ""
+  },
+  "versions/v30/self_play/tree_opponent.py": {
+    "mtime": 1784565046.0793865,
+    "ast_hash": "3d01454da63870bf1cc34045569c8e6b",
+    "semantic_hash": ""
+  },
+  "versions/v30/weights/tree_opponents/player_clusters.json": {
+    "mtime": 1784565046.0999174,
+    "ast_hash": "f4a8d64799d32fe9ed6f7df80cfd79a7",
+    "semantic_hash": ""
+  },
+  "versions/v30/weights/tree_opponents/xgb_cluster_0.json": {
+    "mtime": 1784565046.1026673,
+    "ast_hash": "a7e14fbe6c1fabb76d87df0558702e72",
+    "semantic_hash": ""
+  },
+  "versions/v30/weights/tree_opponents/xgb_cluster_1.json": {
+    "mtime": 1784565046.094914,
+    "ast_hash": "8bac2872e6eef2ddac372e45d4184193",
+    "semantic_hash": ""
+  },
+  "versions/v30/weights/tree_opponents/xgb_cluster_2.json": {
+    "mtime": 1784565046.0989175,
+    "ast_hash": "c5bd28364f592d17cc664b00238efd3c",
+    "semantic_hash": ""
+  },
+  "versions/v30/weights/tree_opponents/xgb_cluster_3.json": {
+    "mtime": 1784565046.105672,
+    "ast_hash": "4192fd4facac2005f64de3e101cccd8e",
+    "semantic_hash": ""
+  },
+  "versions/v30/weights/tree_opponents/xgb_cluster_manifest.json": {
+    "mtime": 1784565046.095917,
+    "ast_hash": "390bc7154101e67fcfb98537fd874d6d",
+    "semantic_hash": ""
+  },
+  "versions/v40/__init__.py": {
+    "mtime": 1784573759.2148633,
+    "ast_hash": "d41d8cd98f00b204e9800998ecf8427e",
+    "semantic_hash": ""
+  },
+  "versions/v40/core/__init__.py": {
+    "mtime": 1784573759.2527876,
+    "ast_hash": "d41d8cd98f00b204e9800998ecf8427e",
+    "semantic_hash": ""
+  },
+  "versions/v40/core/contract.py": {
+    "mtime": 1784573759.2527876,
+    "ast_hash": "59e196c6c194dbd61b1c5542a81815aa",
+    "semantic_hash": ""
+  },
+  "versions/v40/core/manifest.py": {
+    "mtime": 1784574136.6251197,
+    "ast_hash": "610a399e6d209da1e9039daa122114ac",
+    "semantic_hash": ""
+  },
+  "versions/v40/core/model.py": {
+    "mtime": 1784573759.2527876,
+    "ast_hash": "259db10f0cfeefc746ea5a08ece855f3",
+    "semantic_hash": ""
+  },
+  "versions/v40/self_play/__init__.py": {
+    "mtime": 1784573759.3003678,
+    "ast_hash": "d41d8cd98f00b204e9800998ecf8427e",
+    "semantic_hash": ""
+  },
+  "versions/v40/self_play/calibrate_bet1.py": {
+    "mtime": 1784573776.9334395,
+    "ast_hash": "c323b557fa1d235a6f83b5c2087b27b0",
+    "semantic_hash": ""
+  },
+  "versions/v40/self_play/calibrate_critic_consistency.py": {
+    "mtime": 1784573776.9984288,
+    "ast_hash": "7e18ea9045fd98b9cf3612de35376218",
+    "semantic_hash": ""
+  },
+  "versions/v40/self_play/calibrate_multistreet_ev.py": {
+    "mtime": 1784573777.0460756,
+    "ast_hash": "64d8cead7889d262f5bb16dc7d9d9b9e",
+    "semantic_hash": ""
+  },
+  "versions/v40/self_play/eval_pure_policy.py": {
+    "mtime": 1784573777.0953307,
+    "ast_hash": "768fbdbc4b0c23d979bc19c75aa32f06",
+    "semantic_hash": ""
+  },
+  "versions/v40/self_play/gameplay_eval.py": {
+    "mtime": 1784573777.1435068,
+    "ast_hash": "8adf31912a7b5310d97c2654d01eee10",
+    "semantic_hash": ""
+  },
+  "versions/v40/self_play/inspect_aux_heads.py": {
+    "mtime": 1784573777.1897144,
+    "ast_hash": "7b74ba47aac4fe8bdbabcb44f44851dd",
+    "semantic_hash": ""
+  },
+  "versions/v40/self_play/opponent_bots.py": {
+    "mtime": 1784573759.3067782,
+    "ast_hash": "7d8c572a85a30de1117e9d28b8c3c2f4",
+    "semantic_hash": ""
+  },
+  "versions/v40/self_play/opponents.py": {
+    "mtime": 1784573777.2372131,
+    "ast_hash": "33377a93fb01363b85abf7a9155dd683",
+    "semantic_hash": ""
+  },
+  "versions/v40/self_play/overfit_sanity.py": {
+    "mtime": 1784573777.3275602,
+    "ast_hash": "90637e6370b68416ec49558a7687e4b7",
+    "semantic_hash": ""
+  },
+  "versions/v40/self_play/preflop_ranking.json": {
+    "mtime": 1784573759.3043766,
+    "ast_hash": "a29b7b46fd29e7868be89cb1992be6b4",
+    "semantic_hash": ""
+  },
+  "versions/v40/self_play/simulator.py": {
+    "mtime": 1784574076.319901,
+    "ast_hash": "378f64f48345d99ef7cbf3eed7136daa",
+    "semantic_hash": ""
+  },
+  "versions/v40/self_play/telemetry.py": {
+    "mtime": 1784573759.3057785,
+    "ast_hash": "68fd2c0c6ce1a76428ed0f9a3022260d",
+    "semantic_hash": ""
+  },
+  "versions/v40/self_play/train.py": {
+    "mtime": 1784574100.318437,
+    "ast_hash": "9eba5df0ce1e4008fbab472d26d7e8c1",
+    "semantic_hash": ""
+  },
+  "versions/v40/self_play/tree_opponent.py": {
+    "mtime": 1784573759.3033767,
+    "ast_hash": "3d01454da63870bf1cc34045569c8e6b",
+    "semantic_hash": ""
+  },
+  "versions/v40/weights/tree_opponents/player_clusters.json": {
+    "mtime": 1784573759.3756013,
+    "ast_hash": "f4a8d64799d32fe9ed6f7df80cfd79a7",
+    "semantic_hash": ""
+  },
+  "versions/v40/weights/tree_opponents/xgb_cluster_0.json": {
+    "mtime": 1784573759.3832793,
+    "ast_hash": "a7e14fbe6c1fabb76d87df0558702e72",
+    "semantic_hash": ""
+  },
+  "versions/v40/weights/tree_opponents/xgb_cluster_1.json": {
+    "mtime": 1784573759.3675785,
+    "ast_hash": "8bac2872e6eef2ddac372e45d4184193",
+    "semantic_hash": ""
+  },
+  "versions/v40/weights/tree_opponents/xgb_cluster_2.json": {
+    "mtime": 1784573759.3756013,
+    "ast_hash": "c5bd28364f592d17cc664b00238efd3c",
+    "semantic_hash": ""
+  },
+  "versions/v40/weights/tree_opponents/xgb_cluster_3.json": {
+    "mtime": 1784573759.389794,
+    "ast_hash": "4192fd4facac2005f64de3e101cccd8e",
+    "semantic_hash": ""
+  },
+  "versions/v40/weights/tree_opponents/xgb_cluster_manifest.json": {
+    "mtime": 1784573759.368586,
+    "ast_hash": "390bc7154101e67fcfb98537fd874d6d",
+    "semantic_hash": ""
+  },
+  ".agents/skills/OFK/references/fable-review-consolidated.md": {
+    "mtime": 1784567045.3768282,
+    "ast_hash": "0bf59815d72b7d3a6df6173b1151a3ec",
+    "semantic_hash": ""
+  },
+  ".agents/skills/OFK/references/fable-review-contract-encoding.md": {
+    "mtime": 1784567098.9451644,
+    "ast_hash": "3b03331144565a76a7cd0d6b11e8cfd6",
+    "semantic_hash": ""
+  },
+  ".agents/skills/OFK/references/fable-review-live-serving.md": {
+    "mtime": 1784567242.4155598,
+    "ast_hash": "649e7ef00a5a69d4394d9f71ea9ca5ae",
+    "semantic_hash": ""
+  },
+  ".agents/skills/OFK/references/fable-review-resolution-log.md": {
+    "mtime": 1784643824.8024762,
+    "ast_hash": "b054ad5d2239e6d0236364ea3542c5dc",
+    "semantic_hash": ""
+  },
+  ".agents/skills/OFK/references/fable-review-simulation.md": {
+    "mtime": 1784567144.3547654,
+    "ast_hash": "2028732189f2727d28afe7e5685c74d2",
+    "semantic_hash": ""
+  },
+  ".agents/skills/OFK/references/fable-review-training.md": {
+    "mtime": 1784567192.662788,
+    "ast_hash": "b216ba4e77ee811d29e19e0f04183ea6",
+    "semantic_hash": ""
+  },
+  "versions/v30/SPECS.md": {
+    "mtime": 1784565046.1202743,
+    "ast_hash": "f32ab6202767293bce798f56356824eb",
+    "semantic_hash": ""
+  },
+  "versions/v30/self_play/config.yaml": {
+    "mtime": 1784565046.0660284,
+    "ast_hash": "bbcaaf34ff41c21c3b759bdb487f7404",
+    "semantic_hash": ""
+  },
+  "versions/v40/SPECS.md": {
+    "mtime": 1784616846.232842,
+    "ast_hash": "4eff5f25ff5a13ac90c671cbf95f6976",
+    "semantic_hash": ""
+  },
+  "versions/v40/self_play/config.yaml": {
+    "mtime": 1784574140.5095453,
+    "ast_hash": "e2fcf1e7c2099f5478ed8e787c705559",
+    "semantic_hash": ""
+  },
+  "versions/v41/__init__.py": {
+    "mtime": 1784587803.8143961,
+    "ast_hash": "d41d8cd98f00b204e9800998ecf8427e",
+    "semantic_hash": ""
+  },
+  "versions/v41/core/__init__.py": {
+    "mtime": 1784587803.8319259,
+    "ast_hash": "d41d8cd98f00b204e9800998ecf8427e",
+    "semantic_hash": ""
+  },
+  "versions/v41/core/contract.py": {
+    "mtime": 1784587803.8329272,
+    "ast_hash": "59e196c6c194dbd61b1c5542a81815aa",
+    "semantic_hash": ""
+  },
+  "versions/v41/core/manifest.py": {
+    "mtime": 1784631658.5473979,
+    "ast_hash": "853937ebc07bae9a02c9e535ba151fef",
+    "semantic_hash": ""
+  },
+  "versions/v41/core/model.py": {
+    "mtime": 1784587803.8319259,
+    "ast_hash": "259db10f0cfeefc746ea5a08ece855f3",
+    "semantic_hash": ""
+  },
+  "versions/v41/self_play/__init__.py": {
+    "mtime": 1784587803.877854,
+    "ast_hash": "d41d8cd98f00b204e9800998ecf8427e",
+    "semantic_hash": ""
+  },
+  "versions/v41/self_play/calibrate_bet1.py": {
+    "mtime": 1784587804.2799296,
+    "ast_hash": "8f37c91092c9ed3283731758a4ee8d6e",
+    "semantic_hash": ""
+  },
+  "versions/v41/self_play/calibrate_critic_consistency.py": {
+    "mtime": 1784587804.347652,
+    "ast_hash": "5ab76b0ab0a316d0318de1bf30de97ea",
+    "semantic_hash": ""
+  },
+  "versions/v41/self_play/calibrate_multistreet_ev.py": {
+    "mtime": 1784587804.3952236,
+    "ast_hash": "e8f32bf7cea87add9e9bbc517ef50ee4",
+    "semantic_hash": ""
+  },
+  "versions/v41/self_play/eval_pure_policy.py": {
+    "mtime": 1784587804.446527,
+    "ast_hash": "48645b70932c93364d50d67fd965e6c3",
+    "semantic_hash": ""
+  },
+  "versions/v41/self_play/gameplay_eval.py": {
+    "mtime": 1784587804.500177,
+    "ast_hash": "517ccf029938007a89afeb0f482e740d",
+    "semantic_hash": ""
+  },
+  "versions/v41/self_play/inspect_aux_heads.py": {
+    "mtime": 1784587804.5548816,
+    "ast_hash": "146d36950943d9826bb1651fc19a861b",
+    "semantic_hash": ""
+  },
+  "versions/v41/self_play/opponent_bots.py": {
+    "mtime": 1784587803.8828552,
+    "ast_hash": "7d8c572a85a30de1117e9d28b8c3c2f4",
+    "semantic_hash": ""
+  },
+  "versions/v41/self_play/opponents.py": {
+    "mtime": 1784587936.3636498,
+    "ast_hash": "ae9ab07198365e4f07d02311180f5a3c",
+    "semantic_hash": ""
+  },
+  "versions/v41/self_play/overfit_sanity.py": {
+    "mtime": 1784587804.7133799,
+    "ast_hash": "acab7fc78be17dc85248c69e9302d31f",
+    "semantic_hash": ""
+  },
+  "versions/v41/self_play/preflop_ranking.json": {
+    "mtime": 1784587803.8883646,
+    "ast_hash": "a29b7b46fd29e7868be89cb1992be6b4",
+    "semantic_hash": ""
+  },
+  "versions/v41/self_play/simulator.py": {
+    "mtime": 1784588173.8315587,
+    "ast_hash": "3bcc86406db9925c30f306a33e6036a8",
+    "semantic_hash": ""
+  },
+  "versions/v41/self_play/telemetry.py": {
+    "mtime": 1784587803.8828552,
+    "ast_hash": "68fd2c0c6ce1a76428ed0f9a3022260d",
+    "semantic_hash": ""
+  },
+  "versions/v41/self_play/train.py": {
+    "mtime": 1784613954.8634787,
+    "ast_hash": "273fc83607a31abe8b894479193bf09e",
+    "semantic_hash": ""
+  },
+  "versions/v41/self_play/tree_opponent.py": {
+    "mtime": 1784587803.877854,
+    "ast_hash": "3d01454da63870bf1cc34045569c8e6b",
+    "semantic_hash": ""
+  },
+  "versions/v41/weights/tree_opponents/player_clusters.json": {
+    "mtime": 1784587804.0096583,
+    "ast_hash": "f4a8d64799d32fe9ed6f7df80cfd79a7",
+    "semantic_hash": ""
+  },
+  "versions/v41/weights/tree_opponents/xgb_cluster_0.json": {
+    "mtime": 1784587804.011658,
+    "ast_hash": "a7e14fbe6c1fabb76d87df0558702e72",
+    "semantic_hash": ""
+  },
+  "versions/v41/weights/tree_opponents/xgb_cluster_1.json": {
+    "mtime": 1784587804.007148,
+    "ast_hash": "8bac2872e6eef2ddac372e45d4184193",
+    "semantic_hash": ""
+  },
+  "versions/v41/weights/tree_opponents/xgb_cluster_2.json": {
+    "mtime": 1784587804.0086527,
+    "ast_hash": "c5bd28364f592d17cc664b00238efd3c",
+    "semantic_hash": ""
+  },
+  "versions/v41/weights/tree_opponents/xgb_cluster_3.json": {
+    "mtime": 1784587804.0061483,
+    "ast_hash": "4192fd4facac2005f64de3e101cccd8e",
+    "semantic_hash": ""
+  },
+  "versions/v41/weights/tree_opponents/xgb_cluster_manifest.json": {
+    "mtime": 1784587804.0096583,
+    "ast_hash": "390bc7154101e67fcfb98537fd874d6d",
+    "semantic_hash": ""
+  },
+  "versions/v41/SPECS.md": {
+    "mtime": 1784631720.6040692,
+    "ast_hash": "2c3cf358bbd7520b2090737eaee3a63a",
+    "semantic_hash": ""
+  },
+  "versions/v41/self_play/config.yaml": {
+    "mtime": 1784587805.207853,
+    "ast_hash": "8dec63fa6e6dc945ffd6e8d8a469f77a",
+    "semantic_hash": ""
+  },
+  "core/models/v40_engine.py": {
+    "mtime": 1784632775.1900575,
+    "ast_hash": "0096bd6bf543dae98f3ebf50a4cec5d5",
+    "semantic_hash": ""
+  },
+  "core/models/v41_engine.py": {
+    "mtime": 1784632763.500834,
+    "ast_hash": "61b341404f76f70f4363c5c947f56d06",
+    "semantic_hash": ""
+  },
+  "history/Double_Or_Nothing_1171528078/flagged/turn_9_20260721_091010/telemetry.json": {
+    "mtime": 1784617810.9436476,
+    "ast_hash": "5c10d2ca2b37e5e14d56c81a4bbd2f62",
+    "semantic_hash": ""
+  },
+  "history/Double_Or_Nothing_1171529935/flagged/turn_14_20260721_094752/telemetry.json": {
+    "mtime": 1784620072.606237,
+    "ast_hash": "b21b22ae863a23816b52f72c690015bc",
+    "semantic_hash": ""
+  },
+  "tools/model_verify/results/v41__expert_main.pth.json": {
+    "mtime": 1784629699.7574797,
+    "ast_hash": "d53ec67a272c2e7c95a1ddc44dc76736",
+    "semantic_hash": ""
+  },
+  ".agents/skills/OFK/references/V41/model_verify_report.html": {
+    "mtime": 1784629845.594982,
+    "ast_hash": "ee6c36be58999c441a04c5827776ac7d",
+    "semantic_hash": ""
+  },
+  "history/Double_Or_Nothing_1171528078/flagged/turn_9_20260721_091010/expected.txt": {
+    "mtime": 1784617810.944648,
+    "ast_hash": "03819b0276c9e1c5f47eebe9ed144934",
+    "semantic_hash": ""
+  },
+  "history/Double_Or_Nothing_1171528078/flagged/turn_9_20260721_091010/logs.txt": {
+    "mtime": 1784617810.944648,
+    "ast_hash": "8b805ddb4af0ed3c6b7d7e0908068786",
+    "semantic_hash": ""
+  },
+  "history/Double_Or_Nothing_1171528078/flagged/turn_9_20260721_091010/summary.txt": {
+    "mtime": 1784617810.944648,
+    "ast_hash": "0d109f36bbf619ff083f8a92c7b025d8",
+    "semantic_hash": ""
+  },
+  "history/Double_Or_Nothing_1171529935/flagged/turn_14_20260721_094752/expected.txt": {
+    "mtime": 1784620072.607237,
+    "ast_hash": "03819b0276c9e1c5f47eebe9ed144934",
+    "semantic_hash": ""
+  },
+  "history/Double_Or_Nothing_1171529935/flagged/turn_14_20260721_094752/logs.txt": {
+    "mtime": 1784620072.607237,
+    "ast_hash": "5c96305a4e2feeac91da20ce51318c50",
+    "semantic_hash": ""
+  },
+  "history/Double_Or_Nothing_1171529935/flagged/turn_14_20260721_094752/summary.txt": {
+    "mtime": 1784620072.606237,
+    "ast_hash": "730d3d01e80452ff35834f36752bb1e0",
+    "semantic_hash": ""
+  },
+  "history/Double_Or_Nothing_1171528078/flagged/turn_9_20260721_091010/screenshot.png": {
+    "mtime": 1784617810.9426455,
+    "ast_hash": "a621439010eb42f9d74cdec6355ec218",
+    "semantic_hash": ""
+  },
+  "history/Double_Or_Nothing_1171529935/flagged/turn_14_20260721_094752/screenshot.png": {
+    "mtime": 1784620072.6052368,
+    "ast_hash": "926d316a4acdb16cafa7db3db97d2252",
+    "semantic_hash": ""
+  },
+  "versions/v41/MILESTONE.md": {
+    "mtime": 1784631685.5486243,
+    "ast_hash": "bf6a2e04d64819c30a0c29ed9d653dca",
+    "semantic_hash": ""
+  },
+  "versions/v42_liveFixes/SPECS.md": {
+    "mtime": 1784638467.1931841,
+    "ast_hash": "acc8d33951630f47634b68f4b9f26f57",
+    "semantic_hash": ""
+  },
+  "versions/v42_liveFixes/verify_v42.py": {
+    "mtime": 1784633435.7892506,
+    "ast_hash": "db6ea80a14032d34f9e9aa11055feb5b",
+    "semantic_hash": ""
+  },
+  "versions/v43/__init__.py": {
+    "mtime": 1784639026.5182977,
+    "ast_hash": "d41d8cd98f00b204e9800998ecf8427e",
+    "semantic_hash": ""
+  },
+  "versions/v43/core/__init__.py": {
+    "mtime": 1784639026.4520051,
+    "ast_hash": "d41d8cd98f00b204e9800998ecf8427e",
+    "semantic_hash": ""
+  },
+  "versions/v43/core/contract.py": {
+    "mtime": 1784639026.4530053,
+    "ast_hash": "59e196c6c194dbd61b1c5542a81815aa",
+    "semantic_hash": ""
+  },
+  "versions/v43/core/manifest.py": {
+    "mtime": 1784643777.791953,
+    "ast_hash": "37ec264b6aaad7b9d59aa4035b4f8760",
+    "semantic_hash": ""
+  },
+  "versions/v43/core/model.py": {
+    "mtime": 1784639026.4520051,
+    "ast_hash": "259db10f0cfeefc746ea5a08ece855f3",
+    "semantic_hash": ""
+  },
+  "versions/v43/self_play/__init__.py": {
+    "mtime": 1784639026.4767873,
+    "ast_hash": "d41d8cd98f00b204e9800998ecf8427e",
+    "semantic_hash": ""
+  },
+  "versions/v43/self_play/ablate_dampeners.py": {
+    "mtime": 1784643398.4468863,
+    "ast_hash": "91640d19d29b04df378a5c55410c7f00",
+    "semantic_hash": ""
+  },
+  "versions/v43/self_play/calibrate_bet1.py": {
+    "mtime": 1784639061.0209577,
+    "ast_hash": "6ff5f27a4590199d9b947d6069a19a43",
+    "semantic_hash": ""
+  },
+  "versions/v43/self_play/calibrate_multistreet_ev.py": {
+    "mtime": 1784639061.0631652,
+    "ast_hash": "61bab0a8f34f958b6b0da80ac1da1102",
+    "semantic_hash": ""
+  },
+  "versions/v43/self_play/calibrate_pushfold_dampeners.py": {
+    "mtime": 1784640041.1768441,
+    "ast_hash": "f0696f6045857854aeb916608f09f2c4",
+    "semantic_hash": ""
+  },
+  "versions/v43/self_play/eval_pure_policy.py": {
+    "mtime": 1784639061.0839367,
+    "ast_hash": "3e9e6b918972518b9a88e46853f4a717",
+    "semantic_hash": ""
+  },
+  "versions/v43/self_play/gameplay_eval.py": {
+    "mtime": 1784639061.1054842,
+    "ast_hash": "a27f45680fc0fde1fdeea586497e8f6e",
+    "semantic_hash": ""
+  },
+  "versions/v43/self_play/inspect_aux_heads.py": {
+    "mtime": 1784639061.1261675,
+    "ast_hash": "f2760b159d99d71e810f46cb5f671d8a",
+    "semantic_hash": ""
+  },
+  "versions/v43/self_play/opponent_bots.py": {
+    "mtime": 1784639026.476283,
+    "ast_hash": "7d8c572a85a30de1117e9d28b8c3c2f4",
+    "semantic_hash": ""
+  },
+  "versions/v43/self_play/opponents.py": {
+    "mtime": 1784639061.1467571,
+    "ast_hash": "915214f128c18e906e5e67c90bac220d",
+    "semantic_hash": ""
+  },
+  "versions/v43/self_play/overfit_sanity.py": {
+    "mtime": 1784639061.1690786,
+    "ast_hash": "90c80e88b25c90841e4576db80d0c7aa",
+    "semantic_hash": ""
+  },
+  "versions/v43/self_play/preflop_ranking.json": {
+    "mtime": 1784639026.5137866,
+    "ast_hash": "a29b7b46fd29e7868be89cb1992be6b4",
+    "semantic_hash": ""
+  },
+  "versions/v43/self_play/probe_commit_ev_decomposition.py": {
+    "mtime": 1784640760.7352214,
+    "ast_hash": "b497054b607f7561bb77a402f7e05f04",
+    "semantic_hash": ""
+  },
+  "versions/v43/self_play/probe_nash_regression.py": {
+    "mtime": 1784639213.9049451,
+    "ast_hash": "1901cd89b1693199b381d955093578cc",
+    "semantic_hash": ""
+  },
+  "versions/v43/self_play/probe_size_collapse.py": {
+    "mtime": 1784640840.9522402,
+    "ast_hash": "873d06f27740d7c1cc200b6a49437324",
+    "semantic_hash": ""
+  },
+  "versions/v43/self_play/pushfold_calibration.json": {
+    "mtime": 1784640686.482909,
+    "ast_hash": "6dff471e5c02646fb3e1bbc8426408bc",
+    "semantic_hash": ""
+  },
+  "versions/v43/self_play/simulator.py": {
+    "mtime": 1784639772.0520172,
+    "ast_hash": "d1bb6156408c7f98ba8814c10961a75d",
+    "semantic_hash": ""
+  },
+  "versions/v43/self_play/telemetry.py": {
+    "mtime": 1784639026.4752839,
+    "ast_hash": "68fd2c0c6ce1a76428ed0f9a3022260d",
+    "semantic_hash": ""
+  },
+  "versions/v43/self_play/train.py": {
+    "mtime": 1784653297.0440161,
+    "ast_hash": "d8eb63f0c0caf47957d6df827f5d251a",
+    "semantic_hash": ""
+  },
+  "versions/v43/self_play/tree_opponent.py": {
+    "mtime": 1784639026.473279,
+    "ast_hash": "3d01454da63870bf1cc34045569c8e6b",
+    "semantic_hash": ""
+  },
+  "versions/v43/weights/tree_opponents/player_clusters.json": {
+    "mtime": 1784639026.524806,
+    "ast_hash": "f4a8d64799d32fe9ed6f7df80cfd79a7",
+    "semantic_hash": ""
+  },
+  "versions/v43/weights/tree_opponents/xgb_cluster_0.json": {
+    "mtime": 1784639026.5273163,
+    "ast_hash": "a7e14fbe6c1fabb76d87df0558702e72",
+    "semantic_hash": ""
+  },
+  "versions/v43/weights/tree_opponents/xgb_cluster_1.json": {
+    "mtime": 1784639026.5238075,
+    "ast_hash": "8bac2872e6eef2ddac372e45d4184193",
+    "semantic_hash": ""
+  },
+  "versions/v43/weights/tree_opponents/xgb_cluster_2.json": {
+    "mtime": 1784639026.524806,
+    "ast_hash": "c5bd28364f592d17cc664b00238efd3c",
+    "semantic_hash": ""
+  },
+  "versions/v43/weights/tree_opponents/xgb_cluster_3.json": {
+    "mtime": 1784639026.522807,
+    "ast_hash": "4192fd4facac2005f64de3e101cccd8e",
+    "semantic_hash": ""
+  },
+  "versions/v43/weights/tree_opponents/xgb_cluster_manifest.json": {
+    "mtime": 1784639026.5263102,
+    "ast_hash": "390bc7154101e67fcfb98537fd874d6d",
+    "semantic_hash": ""
+  },
+  "versions/v43/SPECS.md": {
+    "mtime": 1784656582.3801315,
+    "ast_hash": "bae5675ad18bf9b474035135032e90bc",
+    "semantic_hash": ""
+  },
+  "versions/v43/self_play/config.yaml": {
+    "mtime": 1784643649.7068107,
+    "ast_hash": "60397925b6aa4a26e92cc423bac35b86",
+    "semantic_hash": ""
+  },
+  "core/models/v43_engine.py": {
+    "mtime": 1784656498.715694,
+    "ast_hash": "bd77680b9075ccf6d7c9c1d4e1d54cf8",
+    "semantic_hash": ""
+  },
+  ".agents/skills/OFK/references/V43/specs.md": {
+    "mtime": 1784656612.6758764,
+    "ast_hash": "bae5675ad18bf9b474035135032e90bc",
+    "semantic_hash": ""
+  },
+  "history/Turbo_1171580052/flagged/turn_2_20260721_201440/telemetry.json": {
+    "mtime": 1784657680.47922,
+    "ast_hash": "3da7ee20047f4ecee527358d277e8d6e",
+    "semantic_hash": ""
+  },
+  "versions/v42_liveFixes/verify_front_colors.py": {
+    "mtime": 1784658894.489943,
+    "ast_hash": "ee9e3d91f03964168b566cc530abac1b",
+    "semantic_hash": ""
+  },
+  "history/Turbo_1171580052/flagged/turn_2_20260721_201440/expected.txt": {
+    "mtime": 1784657680.4802206,
+    "ast_hash": "03819b0276c9e1c5f47eebe9ed144934",
+    "semantic_hash": ""
+  },
+  "history/Turbo_1171580052/flagged/turn_2_20260721_201440/logs.txt": {
+    "mtime": 1784657680.4802206,
+    "ast_hash": "412a53d6125b0b20bd3521e1e575053c",
+    "semantic_hash": ""
+  },
+  "history/Turbo_1171580052/flagged/turn_2_20260721_201440/summary.txt": {
+    "mtime": 1784657680.47922,
+    "ast_hash": "cefedff675aa8b83990e229a88785feb",
+    "semantic_hash": ""
+  },
+  "history/Turbo_1171580052/flagged/turn_2_20260721_201440/screenshot.png": {
+    "mtime": 1784657680.4782157,
+    "ast_hash": "ce8fdd894545ba515761891ca1fee1ba",
     "semantic_hash": ""
   }
 }

@@ -146,3 +146,27 @@ so train≡serve; **LE1** drags the slider then clicks, **LE2** logs the turn fo
 - Sampling temperature: **G4** (rollout 1.0) ↔ **LD3/LG2** (serve 0.5) — eval must match serve temp.
 - Fold-when-free mask: **H2** ↔ **LD3**.  · Raise sizing: **H3** (`_raise_size_for_fraction`) ↔ **LD4** (`_v14_size_to_slider`).
 - Range-aware equity: **P3** ↔ **LB3** (same `compute_range_aware_equity`).  · Action space: **G7** ↔ **LG3**.
+
+### [V42_liveFixes, 2026-07-21] Live-path corrections — what changed in LB2/LB3/LP1/LD3
+
+- **LB3's equity implementation is now chosen by the VERSION, not by PHPHelp.** It used to walk a
+  per-version substring ladder inside `PHPHelp.py` that stopped at `'v29'`, so V40 and V41 were
+  served **vs-random** equity and a constant `hand_strength=0.5` while live — the P3↔LB3 invariant
+  above, silently broken by a deployment that touched no invariant-related code. The engine now
+  declares `live_features()` and `core/decision.py::live_feature_providers()` resolves it; an
+  unresolved model is logged as an ERROR instead of degrading. **When adding a version, give its
+  engine `make_bridge()` AND `live_features()` — then no ladder can forget it.**
+- **LB2's `call_amount` is no longer 0-on-failure.** An unreadable Call button used to read as
+  "free check", which LD3's fold-when-free mask turned into *FOLD is illegal*. `make_decision` now
+  takes `call_amount_known`; LD3 masks FOLD only on a positively identified free check. Units are
+  digit-stripped to match vision (decimal-stake tables were 100× off), and the fabricated 2.0/100.0
+  chip constants are gone. LD3 also masks **CALL** when the Call button is absent (it previously
+  accepted `check_call_available` and ignored it, so LE1 could click a button that wasn't there).
+- **LP1's unknown-HUD default is Yellow/Green, not Blue** — matching training's absent-profile
+  default (0.30/0.46) instead of encoding an unclassified opponent as the tightest possible nit.
+- **LB2's positions are counted over the OCCUPIED ring**, so 3–5 handed DoN endgames no longer
+  encode hero as UTG when hero is the BB. Opponents are written into the contract slot whose
+  derived position equals their true one — identity mapping at a full table.
+- **LB2 refuses to build a 1–2 card board state** (the contract aliased it to River).
+
+Details and measured before/after: `versions/v42_liveFixes/SPECS.md`.

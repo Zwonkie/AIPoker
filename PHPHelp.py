@@ -26,7 +26,14 @@ sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 # HEROCULES_CRITIC_ARGMAX left in the shell. The HUD shows an amber "Q-CRITIC MODE" header when on.
 # ============================================================================================
 CRITIC_ARGMAX_MODE = False   # <-- flip to True to test Q-critic mode, then just run PHPHelp
-##os.environ['HEROCULES_CRITIC_ARGMAX'] = '1' if CRITIC_ARGMAX_MODE else '0'
+# [V42_liveFixes / Fable review live-L3] This line was COMMENTED OUT, which made the flag above a
+# dead variable -- assigned and read by nothing. `core/decision.py` reads ONLY the environment, so
+# with this disabled the "Authoritative: this wins over any HEROCULES_CRITIC_ARGMAX left in the
+# shell" promise four lines up was false, and a leftover env var from a testing session silently
+# put live play into an eval-unvalidated action-selection mode (critic argmax instead of the
+# sampled actor policy) -- exactly the review's L3. Re-armed: the flag in THIS file now decides,
+# both ways, every run.
+os.environ['HEROCULES_CRITIC_ARGMAX'] = '1' if CRITIC_ARGMAX_MODE else '0'
 
 
 # Canonical action ordering for diagnostics. Covers the v13 3-way {FOLD,CALL,RAISE} and the
@@ -261,36 +268,29 @@ class PHPHelpApp(ctk.CTk):
         self.mode_dropdown = ctk.CTkOptionMenu(self.sidebar, values=["Recommendation Only", "Automatic Play"], variable=self.mode_var)
         self.mode_dropdown.grid(row=4, column=0, padx=20, pady=5, sticky="ew")
         
-        # Model Selection. Default MUST match core/decision.py's active model (v29) so
-        # the UI label reflects what actually runs — the engine defaults to v29
-        # regardless, but a stale label here would be misleading (this dropdown's values/default
-        # do NOT update themselves when core/decision.py's registry changes — bump both here too).
-        self.model_var = ctk.StringVar(value="Herocules (v29)")
+        # Model Selection — DERIVED from core/decision.py's registry, never hardcoded.
+        #
+        # [Fable review #16/H4] This list used to be a hand-maintained copy of the registry with a
+        # hand-maintained default, and it drifted the moment V40 was deployed: decision.py served
+        # v40 while the dropdown offered v29..v13 and *displayed* "Herocules (v29)" — the HUD label
+        # naming a different model than the one actually acting. That is the same "hand-synchronized
+        # ladder" failure mode as decision.py's own is_vN chains, one layer up in the UI.
+        #
+        # Now: values ARE the registry keys (insertion order = newest first) and the default IS the
+        # engine's active model, so deploying a new version needs no change here at all. Engines
+        # that failed to load their weights are filtered out — decision.py refuses to act on them
+        # anyway (the `.loaded` guard), so offering them would only produce a FOLD naming a load
+        # error. Legacy engines predating that guard have no `.loaded` and are assumed fine.
+        _registered = [
+            name for name, eng in self.decision_engine.models.items()
+            if getattr(eng, 'loaded', True)
+        ]
+        self.model_var = ctk.StringVar(value=self.decision_engine.active_model_name)
         self.model_label = ctk.CTkLabel(self.sidebar, text="Decision Model:", anchor="w")
         self.model_label.grid(row=5, column=0, padx=20, pady=(10, 0), sticky="w")
         self.model_dropdown = ctk.CTkOptionMenu(
             self.sidebar,
-            # Only models that actually load are listed (see core/decision.py registry). The
-            # legacy Pluribus/v8-v11 entries were pruned — their weights are missing or use the
-            # old 159-feature contract, so selecting them would output random actions live.
-            # v28/v26/v25/v21_auxhead/v20_preflopEq_AI/v20_preflopEq/v20/v19/v17_gauntlet/v17/v15/v14 =
-            # discretized bet-size action space (raises-to-X / all-in); v13 kept as fallback.
-            values=[
-                "Herocules (v29)",
-                "Herocules (v28)",
-                "Herocules (v26)",
-                "Herocules (v25)",
-                "Herocules (v21_auxhead)",
-                "Herocules (v20_preflopEq_AI)",
-                "Herocules (v20_preflopEq)",
-                "Herocules (v20)",
-                "Herocules (v19)",
-                "Herocules (v17_gauntlet)",
-                "Herocules (v17 Actor-Critic)",
-                "Herocules (v15 DoN)",
-                "Herocules (v14 Sized)",
-                "Herocules (v13 Range-Aware)",
-            ],
+            values=_registered,
             variable=self.model_var,
             command=self.on_model_changed
         )
@@ -1052,7 +1052,25 @@ class PHPHelpApp(ctk.CTk):
                         self.state_machine.error_occurred()
                         time.sleep(2)
                         continue
-                        
+
+                    # [V42_liveFixes / Fable review #10-CE] A 1- or 2-card community read is a
+                    # transient mid-deal or partially-matched frame, and the contract has no
+                    # encoding for it: ContractV12 buckets `board_len` as 0/3/4 and sends
+                    # EVERYTHING ELSE to street_level = 3.0, so a 2-card board is fed to the model
+                    # as a RIVER state carrying three PAD cards -- a combination with exactly zero
+                    # training support, on the same tick a decision can be requested. Wait for the
+                    # frame to settle rather than deciding on a fiction. (Community cards are
+                    # monotonic in TableState, so this resolves as soon as the flop is fully read.)
+                    if len(stabilized_state['community_cards']) in (1, 2):
+                        self.append_log(
+                            f"[Decision] Partial board read "
+                            f"({stabilized_state['community_cards']}) -- mid-deal frame, no valid "
+                            f"street encoding. Waiting for a complete board.")
+                        self.state_machine.error_occurred()
+                        time.sleep(1)
+                        continue
+
+
                     # Calculate Win Equity via Monte Carlo
                     self.append_log("[Decision] Parsing thread execution path...")
                     # Automatically use detected opponents count, fallback to GUI slider if none found
@@ -1071,50 +1089,30 @@ class PHPHelpApp(ctk.CTk):
                     equity = None
                     sim_msg = None
                     equity_meta = {"method": "vs-random", "opp_colors": None, "num_opponents": num_opponents}
-                    # V13/V14/V15/V17/V17_gauntlet/V19/V20 were all trained with RANGE-AWARE
+                    # [V42_liveFixes] Every model in this lineage was trained with RANGE-AWARE
                     # equity (hero equity vs each opponent's VPIP-color range); feeding vs-random
-                    # here would be a silent train/serve mismatch. Use the matching version's
-                    # identical impl.
-                    _active_lower = self.decision_engine.active_model_name.lower()
-                    if 'v29' in _active_lower or 'v28' in _active_lower or 'v26' in _active_lower or 'v25' in _active_lower or 'v21_auxhead' in _active_lower or 'v20_preflopeq_ai' in _active_lower or 'v20_preflopeq' in _active_lower or 'v20' in _active_lower or 'v19' in _active_lower or 'v17' in _active_lower or 'v15' in _active_lower or 'v14' in _active_lower or 'v13' in _active_lower:
+                    # here is a silent train/serve mismatch on the model's single most load-bearing
+                    # input. This used to be selected by a per-version substring ladder maintained
+                    # HERE, in a file that has no reason to know which versions exist -- and it
+                    # stopped at 'v29', so V40 and V41 both went live being served vs-random equity
+                    # and a constant hand_strength=0.5, silently, for as long as they were active.
+                    # The version now declares its own implementations (engine `live_features()`),
+                    # resolved by core/decision.py; the legacy name mapping lives there too, as the
+                    # single copy. `source == 'unresolved'` is logged as an ERROR rather than
+                    # degrading quietly -- that quiet degradation IS the bug this replaced.
+                    _providers = self.decision_engine.live_feature_providers()
+                    equity_meta["feature_source"] = _providers.get('source')
+                    if _providers.get('error'):
+                        self.append_log(f"[Equity] ERROR resolving live features: {_providers['error']}")
+                    compute_range_aware_equity = _providers.get('equity_fn')
+                    if compute_range_aware_equity is None:
+                        self.append_log(
+                            f"[Equity] WARNING: no range-aware equity implementation for "
+                            f"'{self.decision_engine.active_model_name}' (source="
+                            f"{_providers.get('source')}) -- falling back to VS-RANDOM equity, "
+                            f"which the model was NOT trained on.")
+                    else:
                         try:
-                            # NOTE: resolution order matters -- 'v20_preflopeq' is a substring of
-                            # 'v20_preflopeq_ai', and 'v20' is a substring of both, so each must be
-                            # checked before the shorter name it contains or the naive ordering
-                            # would always match the wrong (earlier-fix-less) branch. 'v29'/'v28'/
-                            # 'v26'/'v25'/'v21_auxhead' don't collide with any of these, checked
-                            # first for clarity -- V29 has its OWN 54-feature contract (versions/
-                            # v29/core/contract.py, +10 per-opponent-seat raise features over V25/
-                            # V26/V28's shared 44); range-aware equity itself is UNCHANGED from V28
-                            # (this fn lives in simulator.py, untouched by the OPP-2/contract change).
-                            if 'v29' in _active_lower:
-                                from versions.v29.self_play.simulator import compute_range_aware_equity
-                            elif 'v28' in _active_lower:
-                                from versions.v28.self_play.simulator import compute_range_aware_equity
-                            elif 'v26' in _active_lower:
-                                from versions.v26.self_play.simulator import compute_range_aware_equity
-                            elif 'v25' in _active_lower:
-                                from versions.v25.self_play.simulator import compute_range_aware_equity
-                            elif 'v21_auxhead' in _active_lower:
-                                from versions.v21_auxhead.self_play.simulator import compute_range_aware_equity
-                            elif 'v20_preflopeq_ai' in _active_lower:
-                                from versions.v20_preflopEq_AI.self_play.simulator import compute_range_aware_equity
-                            elif 'v20_preflopeq' in _active_lower:
-                                from versions.v20_preflopEq.self_play.simulator import compute_range_aware_equity
-                            elif 'v20' in _active_lower:
-                                from versions.v20.self_play.simulator import compute_range_aware_equity
-                            elif 'v19' in _active_lower:
-                                from versions.v19.self_play.simulator import compute_range_aware_equity
-                            elif 'v17_gauntlet' in _active_lower:
-                                from versions.v17_gauntlet.self_play.simulator import compute_range_aware_equity
-                            elif 'v17' in _active_lower:
-                                from versions.v17.self_play.simulator import compute_range_aware_equity
-                            elif 'v15' in _active_lower:
-                                from versions.v15.self_play.simulator import compute_range_aware_equity
-                            elif 'v14' in _active_lower:
-                                from versions.v14.self_play.simulator import compute_range_aware_equity
-                            else:
-                                from versions.v13.self_play.simulator import compute_range_aware_equity
                             # [V20_preflopEq Finding 1] An opponent whose HUD color hasn't been
                             # classified yet (vpip_color is None) is a real, demonstrably-contesting
                             # seat -- NOT the same as them not being there. Map unknown -> 'Yellow'
@@ -1140,7 +1138,7 @@ class PHPHelpApp(ctk.CTk):
                             # brings 2*SE down to ~6.3pp. Doesn't touch training's own sims=150 call
                             # (versions/*/self_play/simulator.py) or its default -- same formula
                             # either way, just less noise around the same expected value live.
-                            if ('v20_preflopeq' in _active_lower or 'v21_auxhead' in _active_lower or 'v25' in _active_lower or 'v26' in _active_lower or 'v28' in _active_lower or 'v29' in _active_lower) and colors_in_pot is not None:
+                            if _providers.get('use_front_colors') and colors_in_pot is not None:
                                 # [V20_preflopEq Finding 2] front (already acted this round,
                                 # guaranteed in -- no VPIP fold-roll) vs after (still to act,
                                 # normal roll), using the SAME positional classifier already
@@ -1173,30 +1171,17 @@ class PHPHelpApp(ctk.CTk):
                             equity_meta["fallback_reason"] = f"range-aware raised: {e}"
                             self.append_log(f"[Equity] range-aware failed ({e}); vs-random fallback")
 
-                    # [V20_preflopEq] hand_strength: field-independent card-quality signal, only
-                    # meaningful (and only computed, to avoid a needless live MC call for every
-                    # other model) when v20_preflopEq, v20_preflopEq_AI, v21_auxhead, v25, v26, or
-                    # v28 is active (identical feature -- V25/V26/V28's contract inherits it
-                    # unchanged, just appended new features after it, doesn't touch this one).
+                    # hand_strength (contract index 36, [V20_preflopEq]): field-independent
+                    # card-quality signal. Only computed when the ACTIVE version's contract actually
+                    # reads it -- the version says so itself via `live_features()['hand_strength']`
+                    # (see the equity note above; this was the second substring ladder, and it
+                    # stopped at 'v29' too, so V40/V41 fed a constant 0.5 into a real feature).
                     # Preflop: O(1) lookup. Postflop: a cheap vs-1-random MC call, same recipe as
                     # simulator.py's own _hand_strength.
                     hand_strength = 0.5
-                    if 'v20_preflopeq' in _active_lower or 'v21_auxhead' in _active_lower or 'v25' in _active_lower or 'v26' in _active_lower or 'v28' in _active_lower or 'v29' in _active_lower:
+                    preflop_hand_strength = _providers.get('hand_strength_fn')
+                    if preflop_hand_strength is not None:
                         try:
-                            if 'v29' in _active_lower:
-                                from versions.v29.core.contract import preflop_hand_strength
-                            elif 'v28' in _active_lower:
-                                from versions.v28.core.contract import preflop_hand_strength
-                            elif 'v26' in _active_lower:
-                                from versions.v26.core.contract import preflop_hand_strength
-                            elif 'v25' in _active_lower:
-                                from versions.v25.core.contract import preflop_hand_strength
-                            elif 'v21_auxhead' in _active_lower:
-                                from versions.v21_auxhead.core.contract import preflop_hand_strength
-                            elif 'v20_preflopeq_ai' in _active_lower:
-                                from versions.v20_preflopEq_AI.core.contract import preflop_hand_strength
-                            else:
-                                from versions.v20_preflopEq.core.contract import preflop_hand_strength
                             _hero_cards = stabilized_state['hero_cards']
                             _community = stabilized_state['community_cards']
                             if len(_community) == 0:
@@ -1271,33 +1256,82 @@ class PHPHelpApp(ctk.CTk):
                                 bet_raise_available = False
                                 self.append_log("[Vision] Bet/Raise button is unavailable (greyed out/hidden).")
 
-                # Parse call amount from Check/Call button or mock files
+                # Parse call amount from Check/Call button or mock files.
+                #
+                # [V42_liveFixes / Fable review #13 + H2 + M6] Three defects lived in this block,
+                # all of which turned a VISION failure into a confident, wrong model input:
+                #
+                #  1. `call_amount` was initialised to 0.0 and every failure path left it there. A
+                #     Check/Call OCR miss while a real bet was pending therefore read as "checking is
+                #     free", which `core/decision.py` turns into `free_check` -> `probs['FOLD']=0.0`:
+                #     the model was FORBIDDEN FROM FOLDING a bet it could not see. decision.py's
+                #     `call_amount is None` parse-miss sentinel was never reachable from live.
+                #     Now every path reports whether the price is KNOWN (`call_amount_known`), and an
+                #     unknown price never masks FOLD.
+                #  2. A matched call button with no readable digits fabricated `2.0` chips, and an
+                #     unavailable button fabricated `100.0` chips -- both absolute chip counts at a
+                #     table whose blind level they know nothing about (2.0 chips is 0.1bb at bb=20 and
+                #     20bb at bb=0.1). Replaced by real evidence: the largest bet actually observed on
+                #     this street (`table_state.current_street_bet_level`, the same tracker [OPP-2]'s
+                #     raise classifier uses), and hero's own stack when there is no call button at all
+                #     (no call button == the only way to continue is to put the stack in).
+                #  3. Money units: `core/vision.py` reads stacks/pot by STRIPPING non-digits
+                #     ("1.50" -> 150) and the window title parser multiplies decimal blinds by 100, so
+                #     the whole pipeline works in cents on a decimal-stake table -- but this parser
+                #     used `float("0.20") = 0.2`. A EUR0.20 bet at bb=20 arrived as 0.01bb, i.e.
+                #     "free". `_parse_button_money` below mirrors vision's digit-strip exactly.
                 call_amount = 0.0
+                call_amount_known = True
                 cc_text = ""
                 text_upper = ""
-                
+
+                # Best available estimate of the price hero faces when the button can't be read:
+                # the largest single-player contribution seen on this street. Seeded to the big
+                # blind preflop by TableState.reset, and 0.0 on a street where nobody has bet --
+                # which is itself the right answer (nothing to call).
+                _street_price = float(getattr(self.table_state, 'current_street_bet_level', 0.0) or 0.0)
+
                 if not source.startswith("Mock:"):
                     if check_call_available:
                         fold_x, fold_y = fold_btn_coord
                         # Crop and OCR Check/Call button
                         cc_text = self.vision.ocr_roi(img, (fold_x + 190, fold_y + 15, 160, 60))
                         text_upper = cc_text.upper().replace(',', '.')
-                        
+
                         if any(w in text_upper for w in ["KALD", "CALL", "KLD", "KND"]):
-                            match = re.search(r'(\d+(?:\.\d+)?)', text_upper)
-                            if match:
-                                try:
-                                    call_amount = float(match.group(1))
-                                except ValueError:
-                                    call_amount = 2.0
+                            parsed = self._parse_button_money(text_upper)
+                            if parsed is not None:
+                                call_amount = parsed
+                                self.append_log(f"[Vision] Facing bet! Parsed Call Amount: {call_amount}")
                             else:
-                                call_amount = 2.0
-                            self.append_log(f"[Vision] Facing bet! Parsed Call Amount: {call_amount}")
+                                # Button says "call" so a bet IS pending -- only the amount is lost.
+                                call_amount = _street_price
+                                call_amount_known = False
+                                self.append_log(
+                                    f"[Vision] Call button matched but no amount parsed from "
+                                    f"'{cc_text}' -- estimating {call_amount} from this street's "
+                                    f"observed bet level; FOLD stays available.")
+                        elif any(w in text_upper for w in ["CHECK", "CHEC", "CHE", "TJEK", "TJK", "KOLLA", "PASS"]):
+                            call_amount = 0.0   # genuine free check, positively identified
+                            self.append_log(f"[Vision] Check button (free). Text: '{cc_text}'")
                         else:
-                            self.append_log(f"[Vision] No bet detected on Check/Call button. Text: '{cc_text}'")
+                            # Matched NOTHING. Previously this silently meant "free check".
+                            call_amount = _street_price
+                            call_amount_known = False
+                            self.append_log(
+                                f"[Vision] Check/Call button unreadable ('{cc_text}') -- price "
+                                f"UNKNOWN, estimating {call_amount} from this street's observed bet "
+                                f"level; FOLD stays available.")
                     else:
-                        # If call button is unavailable (e.g. all-in situation), force facing a large bet
-                        call_amount = 100.0
+                        # No call button at all (all-in situation): hero cannot call, so the price of
+                        # continuing is the whole stack. CALL is also masked in make_decision -- see
+                        # check_call_available there -- so the executor can never click a button that
+                        # isn't on screen.
+                        call_amount = float(self.table_state.hero_stack or 0.0) or _street_price
+                        call_amount_known = False
+                        self.append_log(
+                            f"[Vision] No Check/Call button -- treating the price as hero's stack "
+                            f"({call_amount}); CALL masked, FOLD stays available.")
                 else:
                     # Mock Mode fallback
                     if "board4" in source or "2_postflop_river" in source:
@@ -1327,7 +1361,12 @@ class PHPHelpApp(ctk.CTk):
                     use_bluff_engine=self.layer_bluff_var.get(),
                     use_dynamic_sizing=self.layer_sizing_var.get(),
                     bet_raise_available=bet_raise_available,
-                    check_call_available=check_call_available
+                    check_call_available=check_call_available,
+                    # [V42_liveFixes] False when the Check/Call button could not be read -- see the
+                    # call-amount block above. `call_amount` is then a best-effort ESTIMATE, and
+                    # make_decision must not treat a 0 estimate as a positively-identified free
+                    # check (which would force-mask FOLD on a bet nobody could see).
+                    call_amount_known=call_amount_known,
                 )
                 
                 action = decision_tuple[0]
@@ -1540,12 +1579,12 @@ class PHPHelpApp(ctk.CTk):
         # scheduled via self.after, so it's always the meta for THIS equity value.
         meta = self.last_equity_meta or {}
 
-        # [V20_preflopEq] Hand Win% / Eq Edge side stats -- only meaningful for v20_preflopEq/
-        # v20_preflopEq_AI/v21_auxhead/v25/v26/v28 (every other model neither computes
-        # hand_strength nor trains with equity_edge), so show "-" rather than a misleading number
-        # otherwise.
-        _active_lower_ui = self.decision_engine.active_model_name.lower()
-        if 'v20_preflopeq' in _active_lower_ui or 'v21_auxhead' in _active_lower_ui or 'v25' in _active_lower_ui or 'v26' in _active_lower_ui or 'v28' in _active_lower_ui or 'v29' in _active_lower_ui:
+        # [V20_preflopEq] Hand Win% / Eq Edge side stats -- only meaningful for a model whose
+        # contract actually reads hand_strength/equity_edge, so show "-" rather than a misleading
+        # number otherwise. [V42_liveFixes] Asks the version itself (same resolver the decision path
+        # uses) instead of carrying a THIRD copy of the version ladder here -- this one was stale in
+        # the same way, blanking the panel for V40/V41.
+        if (self.decision_engine.live_feature_providers().get('hand_strength_fn')) is not None:
             hs = meta.get("hand_strength")
             self.hand_strength_val.configure(text=f"{hs * 100:.1f}%" if hs is not None else "-")
             edge = meta.get("equity_edge")
@@ -1827,28 +1866,32 @@ class PHPHelpApp(ctk.CTk):
         of the context vector). Ground truth — unlike re-deriving from the raw vision state, which
         can diverge (a bridge bug).
 
-        Scale constants depend on which model family is active: v20/v20_preflopEq/v20_preflopEq_AI/
-        v21_auxhead/v25/v26/v28 share the money-feature rescale (STACK_SCALE=100, POT_SCALE=250,
-        CALL_SCALE=100 -- see versions/v20/core/contract.py and
-        versions/v20_preflopEq/core/contract.py, byte-identical in versions/v21_auxhead; V25's own
-        versions/v25/core/contract.py raised the CEILING (V22: 100bb/200bb/100bb) but kept these
-        same SCALE constants -- see that file's own docstring; V26/V28 are architecturally
-        identical to V25, only the training opponent pool / target formula differ); every
-        earlier model (v13/v14/v15/v17/v19) uses the original bridge_v13 scale (/400 stack+call,
-        /1000 pot). Decoding with the wrong constant silently produces plausible-but-wrong numbers
-        -- this is what happened before this fix (see
-        history/Double_Or_Nothing_1171073366/flagged/turn_3_20260717_083117: displayed
-        hero_stack=200BB/pot=6BB for a v20_preflopEq_AI turn that actually saw the clamped
-        50BB/1.5BB, decoded with the stale /400,/1000 constants).
+        The money-feature divisors depend on which contract the active model uses, and decoding
+        with the wrong one silently produces plausible-but-wrong numbers. That has now happened
+        TWICE from a hand-maintained list living in this file:
+          * history/Double_Or_Nothing_1171073366/flagged/turn_3_20260717_083117 -- a
+            v20_preflopEq_AI turn that really saw the clamped 50BB/1.5BB rendered as 200BB/6BB.
+          * history/Turbo_1171580052/flagged/turn_2_20260721_201440 -- the `is_v20_family`
+            substring check that replaced it stopped at 'v29', so this V43 turn's real
+            75BB/1.5BB/1.0BB rendered as 300BB/6.0BB/4.0BB AND tripped the "MODEL-INPUT vs RAW-OCR
+            MISMATCH -> BRIDGE issue" banner against a bridge that was working correctly. Wasted
+            triage on a false lead while the real bug (front_colors, see
+            _classify_opponents_by_action_order) sat one layer away.
+        So the scales are no longer written down here at all: core/decision.py's `context_scales()`
+        reads them from the version contract's own STACK_SCALE/POT_SCALE/CALL_SCALE -- the actual
+        constants the encoder divided by, which cannot drift from the encoder by construction.
         Returns {} if no tensor was captured."""
         try:
             last = (ev or {}).get("model_input", {}).get("ctx")[0][-1]
             street = {0: "Preflop", 1: "Flop", 2: "Turn", 3: "River"}.get(round(last[6] * 3.0), "?")
-            active_name = getattr(self.decision_engine, "active_model_name", "").lower()
-            is_v20_family = "v20" in active_name or "v21_auxhead" in active_name or "v25" in active_name or "v26" in active_name or "v28" in active_name or "v29" in active_name
-            stack_scale = 100.0 if is_v20_family else 400.0
-            pot_scale = 250.0 if is_v20_family else 1000.0
-            call_scale = 100.0 if is_v20_family else 400.0
+            scales = self.decision_engine.context_scales()
+            if scales.get('error'):
+                self.append_log(f"[Diagnostic] WARNING: context scales for "
+                                f"'{self.decision_engine.active_model_name}' "
+                                f"(source={scales.get('source')}): {scales['error']}")
+            stack_scale = scales['stack']
+            pot_scale = scales['pot']
+            call_scale = scales['call']
             out = {
                 "position": round(last[0] * 5.0, 2),
                 "hero_stack_bb": round(last[1] * stack_scale, 1),
@@ -1869,12 +1912,41 @@ class PHPHelpApp(ctk.CTk):
         except Exception:
             return {}
 
+    def _parse_button_money(self, text_upper: str):
+        """[V42_liveFixes / Fable review M6] Money amount off a button's OCR text, in the SAME unit
+        the rest of the pipeline uses -- or None if there is no number in it.
+
+        `core/vision.py` reads every stack and the pot with `clean_stack_string`/`clean_pot_string`,
+        which strip all non-digits: "1.50" becomes 150. The window-title blind parser matches that by
+        multiplying decimal blinds by 100 (PHPHelp ~L889). So on a EUR0.10/EUR0.20 table the entire
+        system is denominated in cents -- except this button parser, which used `float(...)` and
+        produced 0.2 against a big blind of 20. A pot-sized bet arrived as 0.01bb, i.e. free.
+
+        Digit-stripping the matched NUMBER (not the whole string -- `clean_stack_string`'s misread
+        table maps 'A'->'4', so running it over "KALD 0.20" would yield 4020) reproduces vision's
+        semantics exactly, including its own rounding quirk on a single decimal place.
+        """
+        match = re.search(r'(\d+(?:[.,]\d+)?)', text_upper)
+        if not match:
+            return None
+        digits = "".join(c for c in match.group(1) if c.isdigit())
+        if not digits:
+            return None
+        try:
+            return float(int(digits))
+        except ValueError:
+            return None
+
     def _classify_opponents_by_action_order(self, stabilized_state, active_opps_by_seat):
-        """Best-effort split of active opponents' HUD colors into 'in pot' (already acted this
-        street) vs 'still to act' (haven't acted yet this street) -- purely from seat position +
-        dealer button + street, since vision/table_state don't track per-seat action status
-        directly. NOT aware of reopened action (a check-raise means an earlier seat must act
-        again, which this can't detect) -- a positional approximation, not ground truth.
+        """Best-effort split of active opponents' HUD colors into 'in pot' (committed, no fold-roll)
+        vs 'still to act' (may yet fold) -- from seat position + dealer button + street for the
+        ORDER, then gated on chips actually committed this hand, since vision/table_state don't
+        track per-seat action status directly. NOT aware of reopened action (a check-raise means an
+        earlier seat must act again, which this can't detect) -- an approximation, not ground truth.
+
+        Deliberately asymmetric: a seat joins 'in pot' only on positive evidence, and everything
+        uncertain lands in 'still to act'. See the inline note at the split for what the previous
+        purely-positional version cost.
 
         [V20_preflopEq] When that model is active, this split now ALSO drives the actual equity
         call (front -> compute_range_aware_equity's `front_colors`, guaranteed in, no VPIP roll;
@@ -1905,8 +1977,58 @@ class PHPHelpApp(ctk.CTk):
         if 'hero' not in order:
             return None, None
         hero_pos = order.index('hero')
-        before_hero = order[:hero_pos]        # already had their turn this street -> "in pot"
+        before_hero = order[:hero_pos]        # positionally had their turn this street
         after_hero = order[hero_pos + 1:]     # haven't acted yet this street -> "still to act"
+
+        # [2026-07-21] Sitting BEFORE hero is NOT evidence of being in the pot, and this used to
+        # treat it as proof. `front` means "guaranteed to showdown, no VPIP fold-roll" -- the
+        # strongest claim the equity model can make about an opponent -- so it must be earned by
+        # chips actually in the pot, which is exactly what training requires of it (the simulator
+        # builds front from real `acted_this_round[s]` / `folded[s]` / all-in state, see
+        # versions/v43/self_play/simulator.py L1592). Live has no per-seat fold detection, so
+        # positional order alone silently promoted folded seats to locked-in showdown opponents.
+        #
+        # Cost of getting this wrong, measured on the QQ hand at
+        # history/Turbo_1171580052/flagged/turn_2_20260721_201440: an unopened pot (30 chips = the
+        # blinds, pot_type=0, every opp_raised_* flag 0) classified THREE opponents as front, which
+        # took QQ from 0.64 equity to 0.38 and bought a 100%-confidence FOLD the bot then clicked.
+        # V43 raises that hand at every opponent count 1-6 once fed the real number.
+        #
+        # Failing seats fall through to `after` rather than being dropped: they still get a VPIP
+        # fold-roll, so a genuine limper we couldn't confirm is only under-weighted, not erased.
+        # Omitting them entirely would be the most hero-favorable wrong answer (same reasoning as
+        # [V20_preflopEq] Finding 1 above).
+        ts = self.table_state
+        big_blind = float(getattr(ts, 'big_blind', 0.0) or 0.0)
+        sb_key, bb_key = ts.blind_seat_keys()
+        blind_keys = {k for k in (sb_key, bb_key) if k}
+
+        def is_in_pot(seat_key):
+            state_key = 'Hero' if seat_key == 'hero' else seat_key
+            committed = ts.committed_chips(state_key)
+            if committed <= 0:
+                return False
+
+            # A seat recorded as raising THIS street is in, wherever it sits. Position cannot see
+            # this: a 3-bet from behind hero reopens the action, so the raiser is both committed
+            # and positionally "after" -- the reopened-action blind spot noted above. Chips in the
+            # pot are the criterion; seat order was only ever a proxy for them.
+            if ts.raised_this_street.get(state_key, False):
+                return True
+
+            if is_preflop:
+                # Preflop, committed chips ARE this street's chips, so position is not needed at
+                # all -- except that a posted blind is involuntary and can still fold behind it.
+                # A blind only counts once it puts in more than it was forced to.
+                if state_key in blind_keys:
+                    return committed > big_blind + 1e-9
+                return True
+
+            # Postflop, `committed` spans earlier streets too, so it cannot distinguish "already
+            # bet this street" from "called preflop and is now facing a flop bet". Fall back to
+            # the positional read for THAT question -- sound postflop, where action simply opens
+            # left of the button -- with chips-in-hand filtering out folded and phantom seats.
+            return seat_key in before_hero
 
         def colors_for(seat_list):
             colors = []
@@ -1918,7 +2040,10 @@ class PHPHelpApp(ctk.CTk):
                     colors.append(opp.get('vpip_color') or 'Yellow')
             return colors
 
-        return colors_for(before_hero), colors_for(after_hero)
+        contesting = before_hero + after_hero
+        confirmed_in = [s for s in contesting if is_in_pot(s)]
+        may_still_fold = [s for s in contesting if not is_in_pot(s)]
+        return colors_for(confirmed_in), colors_for(may_still_fold)
 
     def _curate_opponents(self, state):
         """Per-seat opponent snapshot for the board-state layer (objective read from vision)."""
@@ -1958,8 +2083,11 @@ class PHPHelpApp(ctk.CTk):
         # to_call is NOT stored in stabilized_state (it's computed downstream in the decision loop
         # and passed straight to the board_state), so state.get('call_amount') was always None ->
         # to_call/to_call_bb/pot_odds logged as null. Source the AUTHORITATIVE price the model
-        # actually consumed from its input tensor (ctx[9]*400 = to_call BB; ctx[4] = pot_odds),
-        # falling back to the raw state only if no tensor was captured.
+        # actually consumed from its input tensor (ctx[9] * the contract's own CALL_SCALE =
+        # to_call BB; ctx[4] = pot_odds), falling back to the raw state only if no tensor was
+        # captured. NOTE this inherits _decode_model_input's scale resolution -- while that used a
+        # stale substring ladder, every turn recorded under V40/V41/V43 logged a to_call 4x too
+        # large (the flagged QQ turn shows 80.0/4.0BB for a real 20-chip/1.0BB price).
         seen = self._decode_model_input(ev)
         to_call_bb = seen.get("to_call_bb")
         if to_call_bb is not None:

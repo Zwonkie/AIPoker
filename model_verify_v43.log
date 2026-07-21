@@ -1,0 +1,29 @@
+model_verify | version=v43 weights=expert_main.pth action_space=('fold', 'call', 'raise_33', 'raise_66', 'raise_pot', 'allin')
+  check                        status detail
+----------------------------------------------------------------------------------------------------
+  equity_ablation_monotonic    PASS   P(fold) 0.99->0.00, P(aggressive) 0.00->0.89
+  nash_pushfold_vs_chart       WARN   SB jam commit-vs-fold agreement over 1498 unambiguous Nash cells: 971 (65%) | 971/971 commits use a sized RAISE not a literal jam (expected post-V29 anti-jam) | 527 disagreements e.g. 94s@5bb(Nash fold,model shove:agg=0.82/F=0.00); 93s@5bb(Nash fold,model shove:agg=0.81/F=0.00); 92s@5bb(Nash fold,model shove:agg=0.81/F=0.00); 83s@5bb(Nash fold,model shove:agg=0.81/F=0.00)
+  nash_bbcall_vs_jam           WARN   BB call-vs-fold-facing-a-jam agreement over 1507 unambiguous Nash cells: 704 (47%) | 803 disagreements e.g. T4s@5bb(Nash fold,model call:F=0.00); T3s@5bb(Nash fold,model call:F=0.00); T2s@5bb(Nash fold,model call:F=0.00); 95s@5bb(Nash fold,model call:F=0.00)
+  free_check_low_fold          WARN   max raw P(fold) when call_bb=0 across sweep: 0.996 (covered by decision.py's free-check mask, but worth tracking)
+  air_folds_mostly             PASS   avg P(fold) at ~12% equity facing a real bet: 0.99  (per-stack [1.0, 1.0, 1.0, 0.98])
+  nuts_aggressive_mostly       PASS   avg aggressive mass at ~92% equity: 0.89
+  deep_stack_ood_guard         PASS   no marginal-equity/deep-stack/single-modest-bet cell jams all-in
+  short_stack_polarization     PASS   avg P(call) in clear shove-or-fold spots: 0.15
+  multiway_shortstack_aggression PASS   multiway aggression holds up (HU->3way agg): 5bb/eq0.55: 0.84->0.82; 5bb/eq0.65: 0.86->0.86; 6bb/eq0.55: 0.84->0.82; 6bb/eq0.65: 0.86->0.86; 8bb/eq0.55: 0.84->0.82; 8bb/eq0.65: 0.86->0.86
+  action_diversity             PASS   argmax distribution across the equity x stack grid: {'fold': 9, 'raise_66': 8, 'call': 1, 'raise_pot': 2, 'allin': 1}
+  no_nan_or_crash              PASS   4 edge cases: no NaN/crash
+  hand_strength_sensitivity    PASS   avg policy shift (total variation) between hand_strength=0.15 vs 0.85 at fixed equity: 0.301
+  equity_edge_sensitivity      PASS   avg policy shift (total variation) between low vs high equity_edge at fixed equity/field: 0.613
+  committed_sensitivity        PASS   avg policy shift (total variation) between opp committed=0bb vs =60%stack at fixed equity/stack: 0.050
+  pot_type_sensitivity         PASS   avg policy shift (total variation) between pot_type=limped vs =3bet+ at fixed equity/stack: 0.052
+  stack_full_sweep             PASS   max action-probability range across the full stack sweep: 0.989  (argmax path: ['raise_66', 'raise_66', 'raise_66', 'call', 'call', 'call', 'fold', 'fold', 'fold'])
+  position_sweep               PASS   P(fold) across position 0-5: [0.05, 0.41, 0.9, 0.99, 0.87, 0.06] (spread 0.936)
+  opponent_style_sweep         PASS   avg P(fold) spread across Blue->Red opponent archetypes (same bet, fixed equity): 0.054
+  allin_exploits_opponent_foldiness WARN   avg P(all-in) spread across NIT/TAG/LAG/CALLING_STATION at fixed equity: 0.015 -- [OPP-8] all-in frequency barely differs by real opponent archetype despite wildly different actual fold-to-pressure
+  allin_vs_nextbest_qgap       PASS   WORST-cell Q-gap (allin - next-best, as fraction of pot) by stack: 15bb=-0.34, 20bb=-0.38, 25bb=-0.42, 30bb=-0.46, 40bb=-0.59 | by archetype: NIT=-0.12, TAG=-0.13, LAG=-0.13, CALLING_STATION=-0.18 | worst overall: stack=15bb (-0.34), archetype=NIT (-0.12)
+  opponent_color_isolated_ablation PASS   table-scalar TV (0.0 vs 1.0): 0.021 | per-seat-block TV (0.0 vs 1.0): 0.793 -- responds at extremes but opponent_style_sweep found realistic-archetype values flat; reads as a training-population artifact (network CAN use this input, population never taught it to care within realistic bounds), not dead wiring
+  hand_strength_sweep          PASS   max action-probability range across the hand_strength=0.1-0.9 sweep: 0.997
+  equity_edge_sweep            PASS   max action-probability range across the equity_edge=0.4-3.2 sweep: 0.997
+----------------------------------------------------------------------------------------------------
+  vpip_adapts_to_style         FAIL   short: tight=42.4% loose=47.9% (delta +5.4pts); deep: tight=36.4% loose=40.6% (delta +4.2pts) -- [P4] VPIP not conforming to opponent tightness (need >=5pt delta)
+  beats_offformula_stress      PASS   short: +32.3 BB/100 (VPIP 52%); deep: +21.0 BB/100 (VPIP 46%)

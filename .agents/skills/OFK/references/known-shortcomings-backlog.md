@@ -250,7 +250,28 @@ isolation, so their individual contributions aren't separately attributable — 
 (21 PASS/2 WARN/0 FAIL/1 SKIP, the cleanest scorecard in this whole lineage). Verified, NOT yet
 deployed live (V28 stays active pending user evaluation).
 
-### [BET-3] Multiway passivity — model collapses to call/fold with 3+ opponents 🔴 OPEN (LIVE-CONFIRMED, V29, 2026-07-20 — HIGH PRIORITY)
+### [BET-3] Multiway passivity — model collapses to call/fold with 3+ opponents ✅ RESOLVED (V41, 2026-07-21)
+
+> **RESOLUTION (2026-07-21, V41 — DEPLOYED LIVE).** `multiway_shortstack_aggression` PASSES:
+> 3-way aggression at eq 0.65 is **0.81**, flat from heads-up, where V29 gave ~0.01. Fixed across
+> two versions, both driven by the Fable review:
+> - **V40** — the root cause. A single check ended the betting round, so check-behind, check-raise,
+>   "checked to me", delayed c-bet and BB-option nodes had **never appeared in any training sample**
+>   (0 of 849 postflop checks in an instrumented run were followed by anyone acting). CALL was also
+>   exempt from the variance penalty and continuation credit every sized raise received — a
+>   structural anti-raise tilt that scaled with pot size, i.e. bit hardest exactly here. V40 fixed
+>   3 of 6 collapsed cells.
+> - **V41** — the simulation-realism package (dead blinds, NN opponents no longer a degraded self,
+>   asymmetric stacks, min-raise floor, [OPP-7] tensor boundary) carried the remaining 3 cells.
+>
+> Do NOT read this as "multiway is solved". Postflop average active players in training is still
+> **1.96**, and the eq-0.55 multiway cells still soften (0.81 → ~0.68). The last member of the
+> reviewer's [BET-3] bundle is untouched: **every opponent raise is still exactly 0.75 pot**
+> (review #6), so hero has never faced an open-jam, overbet or min-raise. That is the natural next
+> version. Verify before trusting the resolution — see [VAL-5] and the false "RESOLVED (V22)" label
+> this backlog previously carried on [BET-1].
+
+**Original entry (V29, 2026-07-20) follows.**
 **First identified**: 2026-07-20, triaging a real live complaint ("v29 is really bad — too tight,
 almost not aggressive") against recorded Double-or-Nothing turns
 (`history/Double_Or_Nothing_1171441087` & `_1171442571`, normal actor-policy serving temp~0.2-0.5).
@@ -289,6 +310,24 @@ rewarded (the current target/population evidently teaches multiway=call/fold); l
 worth considering: a Nash push/fold override below ~8-10bb (the [VAL-1] solver already produced the
 ranges) to bypass the model where it's provably weakest. See [[v30-val1-external-nash-axis]] and
 [[ofk-known-shortcomings-backlog]].
+
+**Update 2026-07-20 (Fable review → V40, BUILT NOT TRAINED)**: the 4-area V29 audit produced two
+CODE-LEVEL mechanisms for this, both now fixed in `versions/v40` (clone of V29, no contract change):
+1. **The betting round ended on any check.** Postflop `highest_bet` starts 0, so the round's
+   `all_matched and last_raiser == -1` terminator was true from the street's first instant and only
+   the opening seat ever acted — empirically 0 of 849 postflop checks were followed by anyone
+   acting, and the BB never once got its limped-pot option. The model had ZERO training samples for
+   check-behind, check-raise, "checked to me", delayed c-bet or BB-option nodes. Fixed using the
+   already-maintained `acted_this_round`; verified postflop actions/hand 3.13 → 5.16 and BB-option
+   decisions 0 → 259/750 hands.
+2. **CALL was exempt from both the V28/V29 variance penalty and the V25 continuation credit**, while
+   every raise carried both — and the penalty scales with pot size, i.e. it bit hardest in exactly
+   the multiway/high-equity spots where the model refuses to raise. Both now applied to CALL (with a
+   deliberate no-penalty carve-out at `to_call == 0`, so a free check is never pushed below fold).
+Status stays 🔴 OPEN until a V40 training run + `model_verify --full` measures the effect; the
+suggestion above (a multiway short-stack aggression check — the suite's blind spot) is still
+unbuilt and should land first so the effect is measurable. See `versions/v40/SPECS.md` and
+`.agents/skills/OFK/references/fable-review-resolution-log.md`.
 
 ### [BET-2] Short-stack polarization — residual flatting 🟡 LIKELY RESOLVED (V29, 2026-07-20 — unconfirmed side effect)
 **First identified**: tracked since V15/V16 era as `[P3]`. **Last confirmed failing**: V22
@@ -523,7 +562,49 @@ regardless of size) — see `ContractV12.to_tensors`'s action sequence construct
 never widened to carry size info alongside action type.
 
 **Suggestion**: Same category as [OPP-2] — a sequence-encoding change, not addressed by any
-contract iteration so far (V13→V20_preflopEq_AI all share this gap).
+contract iteration so far (V13→V20_preflopEq_AI all share this gap). **See [OPP-10]**: size-blindness
+is one facet of a bigger gap — the sequence carries only hero's own decision points, so opponents'
+actions aren't sequence events at all. If [OPP-10] is ever built, fixing this comes with it.
+
+### [OPP-10] Training sequence is hero's decision points only — no full hand history 🔴 OPEN (idea, user-raised 2026-07-21)
+**First identified**: 2026-07-21, user question — "is the full hand history fed into the hero, so it
+has the whole record of what the preflop equity was and so on?" Investigated against V41's code
+rather than answered from memory; the answer is *partly*, and the gap is worth tracking.
+
+**Simple**: The model gets a step for every point where HERO had to act, and each step carries a
+full snapshot (equity, board, pot, stack, position, opponent block). So yes — the preflop equity is
+still visible at the river, because the preflop step is still in the sequence. What it does NOT get
+is a record of what everyone ELSE did between those steps. Villain's whole line gets flattened into
+a few flags by the time hero acts again.
+
+**Technical**: The sequence is up to `max_seq_len=20` steps, left-padded, reset per hand, built from
+`record.decision_points` (`vectorize_hand_samples`, train.py) on the gradient path and from
+`model_state_histories[seat]` (`_query_model_decide` → `ContractV12.to_tensors`) on the rollout/live
+path. One step == one hero decision. Per step the model sees its own 54-feature context and its own
+previous action token (fold→7/call→3/raise→6, shifted by one inside `PokerEVModelV4.forward`); hole
+cards are a single embedding broadcast across all steps. Consequences:
+- **Opponent actions are not sequence events.** They survive only as derived per-step features:
+  `pot_type` (limped/single-raised/3-bet+, a hand-level bucket), [OPP-2]'s per-seat
+  `raised_this_hand`/`raised_this_street`, and `committed`. "Villain bet, I raised, villain 3-bet"
+  and "villain raised once" can look identical at hero's next decision point.
+- **ORDER and COUNT between hero's turns are lost** — three bets and one bet both set the same flag;
+  who acted first is not recoverable.
+- **Nodes where hero doesn't act contribute nothing.** (Directly related: before V40's betting-round
+  fix, post-check nodes did not exist in training data AT ALL — see [BET-3].)
+- Compounding gaps already tracked separately: [OPP-3] (raise size absent from the action token) and
+  [OPP-6] (no adversarial exploiter in the pool).
+
+**Suggestion**: Consider building a genuine full-hand action history during training — a token
+stream of EVERY seat's actions in real order (actor seat, action type, size bucket, street), not
+just hero's decision snapshots. That is a sequence-encoding + contract change (same class as
+[OPP-2]/[OPP-3], bigger than either), so it wants its own version and a careful look at
+`max_seq_len` — a 6-handed hand can easily exceed 20 total actions where it rarely exceeds 20 HERO
+decisions, so the current window would need to grow or the truncation would start discarding
+preflop. Worth weighing against [OPP-6] as the higher-leverage opponent-modelling investment: this
+one gives the model the raw material to read a line, that one gives it something worth reading.
+Note the live path can supply this — `core/table_state.py` already tracks per-seat actions for
+[OPP-2]/`pot_type` — so a train/serve-consistent version is feasible, but the live bridge would have
+to be extended in lockstep (the exact failure mode [OPP-7] hit).
 
 ### [OPP-4] Live front/after equity — reopened-action blindness 🔴 OPEN (live-only)
 **First identified**: 2026-07-17, while wiring V20_preflopEq's Finding 2 fix into live serving.
@@ -620,7 +701,7 @@ exploiter is a full training run of its own (comparable to any other NN opponent
 ongoing re-training to stay a meaningful adversary as the hero moves — an ongoing cost, not a
 one-off. Not yet scoped against the actual pipeline.
 
-### [OPP-7] NN-opponent self-play queries are self-referential and hero-blind 🟢 FIXED (V27, 2026-07-19)
+### [OPP-7] NN-opponent self-play queries are self-referential and hero-blind 🟢 FIXED (V27 in the dict, V41 at the tensor boundary — see the STATUS CORRECTION below)
 **First identified**: 2026-07-17, while reviewing V22's training dashboard (Lagged-Self (NN)'s
 -31.7 BB/100 prompted a closer look at how NN opponents perceive the table). Present since V18's
 opponent refactor introduced NN opponents (lagged-self mirrors, frozen checkpoints) -- not
@@ -645,6 +726,29 @@ committed values) -- while seat_0 (real hero) is structurally never representabl
 range is fixed to 1-5. Every per-seat context field built inside this function (VPIP/AGG color,
 and now `committed`) inherits this same self-referential/hero-blind construction for non-hero
 queries.
+
+**STATUS CORRECTION 2026-07-21 (Fable review finding #11) — this was NOT actually fixed by V27.**
+V27's remap was right in the `board_state` dict but **defeated at the tensor boundary**: it keyed
+each slot by the ABSOLUTE seat number (`seat_{seat_id}`) while `ContractV12.to_tensors` reads only
+`seat_1..seat_5`. For any non-hero actor `other_seats` contains 0, so the real hero was written to a
+`seat_0` key the encoder never reads — hero stayed structurally invisible to every non-hero NN
+query, i.e. the exact symptom this entry describes — AND the surviving slots were misaligned (for
+`actor_seat=4` the code wrote seat_0/1/2/3/5, so the encoder's 4th slot looked up a missing `seat_4`
+and fell back to an inactive default). V27's verification checked the dict, not what survived
+encoding — the same "verified the wrong object" failure mode as the `beats_frozen_predecessor` bug
+(review #4). Measured 2026-07-21: **V40 dropped the hero on 128 of 128 NN-opponent queries; V41
+drops zero.**
+
+Genuinely fixed in `versions/v41` by keying each slot by SLOT INDEX (`seat_{idx+1}`), which is what
+the encoder addresses, with the real seat number retained in `name` and `opponents_profiles` looked
+up by the absolute key. For `actor_seat == 0` the two indices coincide, so hero's own query is
+byte-identical. Fixed alongside it (review #10, same block): `is_active` was `idx < num_opponents`
+(marking the first N SLOTS rather than the seats actually live) and every opponent's `stack` was a
+`hero_stack` placeholder — both now read ground truth threaded through `table_state`. See
+`versions/v41/SPECS.md` and `.agents/skills/OFK/references/fable-review-resolution-log.md`.
+
+**Lesson worth keeping**: a fix to a data structure that feeds an encoder is not verified until you
+check what the ENCODER sees. Both this and review #4 passed their original verification.
 
 **Suggestion**: Fix requires a genuine seat-relative remap inside `_query_model_decide` -- compute
 the ACTUAL other-live-seats list relative to whichever seat is querying (excluding itself,

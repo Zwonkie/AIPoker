@@ -1,0 +1,139 @@
+{
+    "timestamp": "20260721_091010",
+    "chosen_action": "FOLD",
+    "bet_size": 0.0,
+    "reason": "V40 CRITIC-ARGMAX(Q) -> FOLD: {FOLD 0.99, CALL 0.01, RAISE_33 0.00, RAISE_66 0.00, RAISE_POT 0.00, ALLIN 0.00}",
+    "actor_policy": {
+        "FOLD": 0.9911467432975769,
+        "CALL": 0.00878147967159748,
+        "RAISE_33": 4.633923890651204e-05,
+        "RAISE_66": 1.143673580372706e-05,
+        "RAISE_POT": 1.348159094050061e-05,
+        "ALLIN": 6.379610795193003e-07
+    },
+    "critic_q_vals": {
+        "FOLD": 0.0023904219269752502,
+        "CALL": -0.4118305444717407,
+        "RAISE_33": -0.7384107112884521,
+        "RAISE_66": -0.7029394507408142,
+        "RAISE_POT": -0.8558873534202576,
+        "ALLIN": -5.9567389488220215
+    },
+    "equity": 0.3895,
+    "equity_meta": {
+        "method": "vs-random",
+        "opp_colors": null,
+        "num_opponents": 2,
+        "hand_strength": 0.5,
+        "value": 0.3895,
+        "equity_edge": 1.1685
+    },
+    "context_vector": [
+        0.0,
+        0.0095,
+        0.004,
+        0.3895,
+        0.0,
+        0.2,
+        0.0,
+        0.45,
+        0.46
+    ],
+    "context_labeled": {
+        "position": 0.0,
+        "bankroll": 0.0095,
+        "pot": 0.004,
+        "equity": 0.3895,
+        "pot_odds": 0.0,
+        "num_opponents": 0.2,
+        "street_level": 0.0,
+        "opp_vpip_norm": 0.45,
+        "opp_agg_norm": 0.46
+    },
+    "model_seen": {
+        "position": 0.0,
+        "hero_stack_bb": 19.0,
+        "pot_bb": 8.0,
+        "equity": 0.389,
+        "pot_odds": 0.333,
+        "num_active": 2,
+        "street": "Preflop",
+        "to_call_bb": 4.0,
+        "equity_edge": 1.168,
+        "hand_strength": 0.5
+    },
+    "decision_path": {
+        "preflop_chart": {
+            "status": "Bypassed",
+            "details": "Deprecated in V8/V9"
+        },
+        "active_model": {
+            "status": "Active",
+            "details": "Loaded Herocules (v40)"
+        },
+        "bluff_engine": {
+            "status": "Passed",
+            "details": "Handled natively by V8/V9"
+        },
+        "math_engine": {
+            "status": "Passed",
+            "details": "Math checks out OK"
+        }
+    },
+    "table_state": {
+        "community_cards": [],
+        "hero_cards": [
+            "8d",
+            "Ah"
+        ],
+        "pot_size": 200,
+        "hero_stack": 475,
+        "opponents": {
+            "seat_1": {
+                "name": "vasekk18",
+                "stack": 1179,
+                "is_active": true,
+                "state": "Active",
+                "vpip_color": "Red",
+                "agg_color": "Blue"
+            },
+            "seat_2": {
+                "name": "DES1000",
+                "stack": 1023,
+                "is_active": true,
+                "state": "Active",
+                "vpip_color": "Yellow",
+                "agg_color": "Green"
+            },
+            "seat_3": {
+                "name": "Tid: 11",
+                "stack": 748,
+                "is_active": false,
+                "state": "Folded",
+                "vpip_color": "Red",
+                "agg_color": "Blue"
+            },
+            "seat_5": {
+                "name": "DOlya76",
+                "stack": 995,
+                "is_active": false,
+                "state": "Folded",
+                "vpip_color": "Blue",
+                "agg_color": null
+            }
+        },
+        "num_active_players": 2,
+        "active_buttons": [
+            "button_fold"
+        ],
+        "street": "Preflop",
+        "dealer_name": "Hero",
+        "dealer_idx": 0,
+        "hero_position": 0,
+        "action_history": [],
+        "opp_vpip_norm": 0.45,
+        "opp_agg_norm": 0.46,
+        "big_blind": 100.0
+    },
+    "hand_history_len": 1
+}

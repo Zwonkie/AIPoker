@@ -1,0 +1,163 @@
+{
+    "timestamp": "20260721_201440",
+    "chosen_action": "FOLD",
+    "bet_size": 0.0,
+    "reason": "V43 sampled (temp=0.50) -> FOLD: {FOLD 1.00, CALL 0.00, RAISE_33 0.00, RAISE_66 0.00, RAISE_POT 0.00, ALLIN 0.00}",
+    "actor_policy": {
+        "FOLD": 0.9972599744796753,
+        "CALL": 0.002735197078436613,
+        "RAISE_33": 1.3717947240365902e-06,
+        "RAISE_66": 2.2137605810712557e-06,
+        "RAISE_POT": 1.0342000678065233e-06,
+        "ALLIN": 4.222496050726443e-12
+    },
+    "critic_q_vals": {
+        "FOLD": -0.0034040287137031555,
+        "CALL": -0.8713529706001282,
+        "RAISE_33": -1.266864538192749,
+        "RAISE_66": -1.3202027082443237,
+        "RAISE_POT": -1.6774265766143799,
+        "ALLIN": -31.94970703125
+    },
+    "equity": 0.38,
+    "equity_meta": {
+        "method": "range-aware",
+        "opp_colors": [
+            "Yellow",
+            "Green",
+            "Yellow",
+            "Yellow",
+            "Yellow"
+        ],
+        "num_opponents": 5,
+        "feature_source": "engine",
+        "opp_colors_in_pot": [
+            "Yellow",
+            "Yellow",
+            "Yellow"
+        ],
+        "opp_colors_still_to_act": [
+            "Yellow",
+            "Green"
+        ],
+        "hand_strength": 0.8038,
+        "value": 0.38,
+        "equity_edge": 2.2800000000000002
+    },
+    "context_vector": [
+        0.0,
+        0.15,
+        0.003,
+        0.38,
+        0.0,
+        0.5,
+        0.0,
+        0.22,
+        0.85
+    ],
+    "context_labeled": {
+        "position": 0.0,
+        "bankroll": 0.15,
+        "pot": 0.003,
+        "equity": 0.38,
+        "pot_odds": 0.0,
+        "num_opponents": 0.5,
+        "street_level": 0.0,
+        "opp_vpip_norm": 0.22,
+        "opp_agg_norm": 0.85
+    },
+    "model_seen": {
+        "position": 0.0,
+        "hero_stack_bb": 300.0,
+        "pot_bb": 6.0,
+        "equity": 0.38,
+        "pot_odds": 0.4,
+        "num_active": 5,
+        "street": "Preflop",
+        "to_call_bb": 4.0,
+        "equity_edge": 2.28,
+        "hand_strength": 0.804
+    },
+    "decision_path": {
+        "preflop_chart": {
+            "status": "Bypassed",
+            "details": "Deprecated in V8/V9"
+        },
+        "active_model": {
+            "status": "Active",
+            "details": "Loaded Herocules (v43)"
+        },
+        "bluff_engine": {
+            "status": "Passed",
+            "details": "Handled natively by V8/V9"
+        },
+        "math_engine": {
+            "status": "Passed",
+            "details": "Math checks out OK"
+        }
+    },
+    "table_state": {
+        "community_cards": [],
+        "hero_cards": [
+            "Qc",
+            "Qs"
+        ],
+        "pot_size": 30,
+        "hero_stack": 1500,
+        "opponents": {
+            "seat_1": {
+                "name": "512371714thevery",
+                "stack": 1500,
+                "is_active": false,
+                "state": "Folded",
+                "vpip_color": null,
+                "agg_color": null
+            },
+            "seat_2": {
+                "name": "AntoshXXX",
+                "stack": 1500,
+                "is_active": true,
+                "state": "Active",
+                "vpip_color": "Green",
+                "agg_color": "Red"
+            },
+            "seat_3": {
+                "name": "Johnnyflann80",
+                "stack": 1480,
+                "is_active": true,
+                "state": "Active",
+                "vpip_color": null,
+                "agg_color": null
+            },
+            "seat_4": {
+                "name": "nikfero666",
+                "stack": 1470,
+                "is_active": true,
+                "state": "Active",
+                "vpip_color": null,
+                "agg_color": null
+            },
+            "seat_5": {
+                "name": "Bulbeye1985",
+                "stack": 1460,
+                "is_active": true,
+                "state": "Active",
+                "vpip_color": null,
+                "agg_color": null
+            }
+        },
+        "num_active_players": 5,
+        "active_buttons": [
+            "button_fold"
+        ],
+        "street": "Preflop",
+        "dealer_name": "",
+        "dealer_idx": 0,
+        "hero_position": 0,
+        "action_history": [],
+        "opp_vpip_norm": 0.22,
+        "opp_agg_norm": 0.85,
+        "big_blind": 20.0
+    },
+    "hand_history_len": 1
+}

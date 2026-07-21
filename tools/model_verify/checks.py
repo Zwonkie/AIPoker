@@ -858,12 +858,58 @@ FAST_CHECKS = [
 # SLOW checks -- real simulated hands via the version's own simulator. --full only.
 # =====================================================================================
 
+def _seat_opponent_pool(rc, sim, pool_config, model_loader=None):
+    """[Fable review #4 fix, 2026-07-20] ACTUALLY seat the opponents a SLOW check asks for.
+
+    Since the V18 opponent refactor, `SixMaxSimulator` resolves every opponent seat from
+    `self.opponent_pool` (a {style: Opponent} dict built by `opponents.build_opponent_pool`).
+    This tool never called that builder, so the dict stayed `{}` and EVERY seat fell through
+    simulator.py's lookup-miss fallback -- `HeuristicOpponent(style, self.tag_heuristic,
+    forced=True)`, i.e. the TAG bot wearing the requested style's stat-forcing rule. Consequences,
+    both confirmed by the review:
+      - `_run_field`'s "nit field" / "fish field" were the TAG bot, not the real NIT /
+        CALLING_STATION archetypes;
+      - `check_beats_frozen_predecessor`'s 'past' seat was a plain TAG heuristic ('past' has no
+        forcing rule at all), so the whole V26>V25 / V27>V26 / V28>V27 promotion chain measured
+        "beats a TAG field", not "beats its predecessor".
+    That is the SAME dead-attribute class of bug as v17_gauntlet's `tag_model` (a frozen opponent
+    that was never actually seated) -- the second recurrence, hence the fail-loud guard in
+    `check_beats_frozen_predecessor` rather than another silent best-effort.
+
+    Mirrors `train.py`'s `simulate_worker` exactly (same heuristic_bots mapping, same injected
+    query/error functions) so an eval seats opponents the same way training does.
+
+    `model_loader` maps a pool entry's `model` path to a loaded model; omitted means "heuristics
+    only". Returns the built pool, or None for a pre-V18 version whose `opponents` module has no
+    builder (those versions keep the legacy fallback -- nothing to seat).
+    """
+    import importlib
+    try:
+        opp_mod = importlib.import_module(f"versions.{rc.version_id}.self_play.opponents")
+        builder = getattr(opp_mod, 'build_opponent_pool')
+    except (ImportError, AttributeError):
+        return None   # pre-V18 layout: no pool to build, legacy per-style wiring still applies
+    heuristic_bots = {
+        'fish': sim.fish_heuristic, 'maniac': sim.maniac_heuristic,
+        'nit': sim.nit_heuristic, 'tag': sim.tag_heuristic, 'past': sim.tag_heuristic,
+    }
+    sim.opponent_pool = builder(
+        pool_config, heuristic_bots,
+        query_fn=sim._query_model_decide, error_fn=sim._note_query_error,
+        load_model_fn=(model_loader or (lambda _path: None)),
+    )
+    return sim.opponent_pool
+
+
 def _run_field(rc, pool, weights, stack_bb_range, n_hands, equity_sims=120):
     sim = rc.sim_module.SixMaxSimulator(bb_size=10.0, equity_sims=equity_sims,
                                         hero_personality='main', bootstrap_alpha=0.0)
     sim.hero_model = rc.model
     sim.opponent_pool_styles = pool
     sim.opponent_pool_weights = weights
+    # [Fable review #4] Seat the REAL archetype bots for these styles -- see _seat_opponent_pool.
+    # Without this the 'nit'/'fish' fields below are the TAG bot with stat-forcing.
+    _seat_opponent_pool(rc, sim, [{'style': s} for s in pool])
     sim.live_players = 6
     sim.fixed_stack_bb = stack_bb_range
     sim.disable_exploration = True
@@ -961,8 +1007,27 @@ def check_beats_frozen_predecessor(rc):
     sim.fixed_stack_bb = [5, 50]
     sim.disable_exploration = True
     sim.range_aware_equity = rc.range_aware
-    sim.disable_past_self = False
-    sim.past_model = frozen_model
+    # [Fable review #4 fix, 2026-07-20] This used to be `sim.disable_past_self = False` +
+    # `sim.past_model = frozen_model` -- two attributes the V18+ simulator does not read at all
+    # (it resolves seats from `self.opponent_pool`). The 'past' seat was therefore a plain TAG
+    # heuristic and this check measured "beats a TAG field" for every version since V18. Now the
+    # frozen predecessor is seated for real, as an NNOpponent, via the same `build_opponent_pool`
+    # path training uses. See _seat_opponent_pool.
+    frozen_path = os.path.join(_REPO_ROOT, 'versions', rc.version_id, 'weights',
+                               rc.frozen_predecessor_filename)
+    pool = _seat_opponent_pool(rc, sim, [
+        {'style': 'fish', 'weight': 0.40},
+        {'style': 'tag',  'weight': 0.20},
+        {'style': 'nit',  'weight': 0.20},
+        {'style': 'past', 'weight': 0.20, 'model': frozen_path},
+    ], model_loader=lambda _path: frozen_model)
+    # Fail LOUD rather than silently benchmarking against a heuristic again -- this exact bug has
+    # now recurred twice (v17_gauntlet's tag_model, then this one), always by degrading quietly.
+    past_seat = (pool or {}).get('past')
+    if past_seat is None or getattr(past_seat, 'kind', None) != 'NN':
+        return CheckResult('SKIP', "could not seat the frozen predecessor as an NN opponent "
+                                   f"(got {getattr(past_seat, 'label', None)!r}) -- refusing to "
+                                   "report a head-to-head against a heuristic field")
     # BUG FIX (2026-07-15): simulator.py reads this via getattr(self, 'policy_temperature', 1.0)
     # -- it is NEVER pre-declared in __init__, so hasattr() on a fresh instance is always False
     # and this assignment was silently skipped, leaving every eval running at temp=1.0 (the
@@ -976,9 +1041,11 @@ def check_beats_frozen_predecessor(rc):
         sim.simulate_hand(current_hand=700000 + i)
     h = sim.seat_histories[0]
     bb100 = (h['profit'] / 10.0) / max(1, n_hands) * 100.0
-    detail = f"vs field incl. frozen predecessor ({rc.frozen_predecessor_filename}): {bb100:+.1f} BB/100 over {n_hands} hands"
+    detail = (f"vs field incl. frozen predecessor SEATED AS {past_seat.label} "
+              f"({rc.frozen_predecessor_filename}): {bb100:+.1f} BB/100 over {n_hands} hands")
     data = [{"opponent": rc.frozen_predecessor_filename, "bb100": round(bb100, 1),
-             "n_hands": n_hands, "field": "fish/tag/nit/past(frozen)"}]
+             "n_hands": n_hands, "field": "fish/tag/nit/past(frozen)",
+             "past_seat": past_seat.label}]
     if bb100 > 0:
         return CheckResult('PASS', detail, data)
     return CheckResult('FAIL', detail + " -- must beat the frozen predecessor benchmark", data)
