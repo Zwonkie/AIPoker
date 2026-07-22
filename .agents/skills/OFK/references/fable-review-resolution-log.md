@@ -468,6 +468,24 @@ version names in a consumer file is not a mechanism, it is a countdown. Each ins
 surfaced through a live hand. Prefer asking the authoritative source — the engine, or the contract
 module itself.
 
+**Third finding, same round — `is_active` was not monotonic within a hand.** `TableState.update()`
+assigned `is_active = raw_active` unconditionally, so a folded seat could go False → True on one
+bright frame (deal animation, timer overlay, chip graphic over the name plate). A folded player
+cannot re-enter; the section header already claimed "Monotonic Decay" and the inline comment
+already claimed "they stay folded". Cost of one phantom seat, AKs preflop: **4 opponents → CALL
+(fold 0.12), 5 opponents → FOLD (fold 0.91)** — `num_active` feeds equity AND
+`equity_edge = equity × (num_active + 1)`. Fixed with a per-hand `folded_this_hand` latch;
+`verify_fold_monotonic.py` 15/15.
+
+**A false lead worth recording, because the reasoning error generalises.** The turn record listed
+5 active opponents while the stored screenshot plainly shows a player sitting out — which looked
+like proof that vision cannot detect folds, and nearly bought a card-back detector plus a retuned
+brightness threshold. Running the real `read_board_state` on that frame disproves it (`seat_1:
+is_active=False, state='Folded'` → `num_active_players = 4`). The record and the screenshot are
+**different frames**: `save_diagnostics` stores `last_raw_img` at F12-press time, seconds after the
+decision. **When a record and a screenshot disagree, confirm they describe the same instant before
+blaming the detector.**
+
 **Watch next**: this depressed equity on *multiway* hands specifically, and it has been live for
 every version since V20_preflopEq. Any conclusion that a model "plays too tight" drawn from live
 observation during that window is suspect, since `model_verify` measures in the simulator where

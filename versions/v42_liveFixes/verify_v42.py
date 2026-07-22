@@ -103,11 +103,28 @@ def decide(call_amount, known=True, cc_avail=True, br_avail=True, n=400):
     return acts
 
 
-a = decide(0.0, known=True)
-check("known free check -> FOLD masked", 'FOLD' in a, False)
-a = decide(0.0, known=False)
-print(f"      unknown price, estimate 0 -> actions seen: {sorted(set(a))}")
-check("unknown price -> FOLD available", 'FOLD' in a, True)
+def fold_sampling_mass(call_amount, known):
+    """The [Fable #13] invariant is about MASKING, so read it off the POST-MASK sampling
+    distribution the decision actually drew from (`ev['sampled_probs']`) -- a hard 0 iff FOLD was
+    masked. The raw policy `ev['FOLD']` can't distinguish the two (masking is applied to the
+    sampler, not the reported policy), and sampling-APPEARANCE over N draws was a proxy that broke
+    on V44: at this spot raw P(FOLD)=0.038, which temp-0.5 sharpening drops to ~0.001, so FOLD is
+    legal-but-rare and often absent from 400 draws -- a calibration artifact, not a masking bug."""
+    eng.hand_history_buffer = []
+    eng.hero_action_buffer = []
+    eng._last_hole_cards = None
+    b = ts.to_board_state(call_amount=call_amount, equity=0.35, big_blind=20.0)
+    b.hand_strength = 0.4
+    _a, _r, _sz, ev = eng.make_decision(b, bet_raise_available=True, check_call_available=True,
+                                        call_amount_known=known)
+    sp = ev.get('sampled_probs') or {}
+    return float(sp.get('FOLD', 0.0))
+
+fm_known = fold_sampling_mass(0.0, known=True)
+fm_unknown = fold_sampling_mass(0.0, known=False)
+print(f"      sampled P(FOLD): known free check={fm_known:.4f}  unknown price={fm_unknown:.4f}")
+check("known free check -> FOLD masked (sampled P==0)", fm_known == 0.0, True)
+check("unknown price -> FOLD available (sampled P>0)", fm_unknown > 0.0, True)
 a = decide(200.0, known=True, cc_avail=False)
 check("no call button -> CALL never chosen", 'CALL' in a, False)
 a = decide(200.0, known=True, cc_avail=False, br_avail=False)

@@ -255,7 +255,45 @@ that bake the divisor inline. Engine resolution is shared with `live_feature_pro
 so *every* turn recorded under V40/V41/V43 logged a `to_call` 4× too large — the flagged hand shows
 `80.0`/`4.0BB` for a real 20-chip/1.0BB price. Fixed by the same change.
 
+### Same round: `is_active` was not monotonic within a hand
+
+Chasing the field-size question produced a **false lead worth recording**, because the reasoning
+error is more instructive than the fix. The flagged turn's record listed all 5 opponents active
+while the stored screenshot clearly shows one player sitting out, which looked like proof that
+vision could not detect folds. Running the real `PokerVision.read_board_state` on that exact frame
+disproves it:
+
+```
+RAW vision   seat_1: is_active=False  state='Folded'  stack=0
+AFTER update num_active_players = 4        <- correct
+```
+
+The record's stacks (`1500/1500/1480/1480/1480`) and the frame's (`0/1560/1480/1470/1460`) are
+**different frames**: `save_diagnostics` stores `last_raw_img` at F12-press time, three seconds
+after the decision. A decision was being compared against a later picture. **When a record and a
+screenshot disagree, check they describe the same instant before blaming the detector.**
+
+The real defect it did expose: `TableState.update()` assigned `tracked_opp['is_active'] =
+raw_active` unconditionally in *both* branches, so `is_active` was free to go False → True inside a
+hand. A folded player cannot re-enter, so one bright frame (deal animation, timer overlay, a chip
+graphic over the name plate) silently put a folded seat back in the pot for the rest of the hand.
+The section header already claimed "Monotonic Decay" and the inline comment already claimed "they
+stay folded" — `pot_size` and stacks were monotonic, `is_active` never was.
+
+Cost of a single phantom seat, AKs preflop with training-computed equity: **4 opponents → CALL
+(fold 0.12); 5 opponents → FOLD (fold 0.91)**. One flicker turns a clear continue into a 91% fold
+of a top-5 hand, because `num_active` feeds equity *and* `equity_edge = equity × (num_active + 1)`.
+
+Fixed with a per-hand `folded_this_hand` latch, cleared in `reset()`. Safe in the other direction
+because the underlying signal is bimodal rather than marginal: across all 16 stored flagged frames
+the name-plate brightness clusters at **58–105** (out) and **242–254** (in) with nothing between,
+and vision's threshold (160.0) sits in the middle of that gap. A false fold needs a ~140-point
+excursion; the resurrect path needed one frame.
+
 ## Verification
+
+`versions/v42_liveFixes/verify_fold_monotonic.py`, 15/15 passing — flicker-resurrect, cumulative
+folds, folded-on-first-frame, per-hand reset, and all-in seats (stack 0) staying in.
 
 `versions/v42_liveFixes/verify_front_colors.py`, 7/7 passing — the flagged hand (front must be
 empty), posted-blinds-only, a real raiser, a 3-bet from behind hero, postflop positional read,

@@ -250,7 +250,92 @@ isolation, so their individual contributions aren't separately attributable — 
 (21 PASS/2 WARN/0 FAIL/1 SKIP, the cleanest scorecard in this whole lineage). Verified, NOT yet
 deployed live (V28 stays active pending user evaluation).
 
-### [BET-3] Multiway passivity — model collapses to call/fold with 3+ opponents ✅ RESOLVED (V41, 2026-07-21)
+### [BET-3] Multiway passivity — model collapses to call/fold with 3+ opponents ⚠️ REOPENED (entry side, V43, 2026-07-21)
+
+> **REOPENED 2026-07-21 (V43, live).** The **aggression** side stays resolved (see V41 resolution
+> below); the **entry** side was never fixed and is measurable on the live model. `equity_edge`
+> exists precisely to say "this hand is strong *for this field size*" — and the model ignores it.
+>
+> AKs preflop, equity computed exactly as training computes it (range-aware vs N Yellow opponents,
+> all still-to-act, VPIP fold-roll applied, all-fold samples skipped), `hand_strength` constant at
+> 0.661 throughout:
+>
+> | opp | equity | equity_edge | P(FOLD) | P(raise) | chosen |
+> |---|---|---|---|---|---|
+> | 1 | 0.670 | 1.34 | 0.000 | **0.826** | RAISE_POT |
+> | 2 | 0.610 | 1.83 | 0.006 | 0.723 | RAISE_POT |
+> | 3 | 0.600 | 2.40 | 0.008 | 0.674 | CALL |
+> | 4 | 0.570 | 2.85 | 0.120 | 0.339 | CALL |
+> | 5 | 0.520 | **3.12** | **0.907** | **0.005** | **FOLD** |
+>
+> `equity_edge` climbs 1.34 → 3.12 exactly as designed while `P(raise)` collapses 0.826 → 0.005.
+> **A top-5 starting hand is folded 91% of the time at the exact moment its edge feature peaks**,
+> and the cliff sits between 4 and 5 opponents — a full ring.
+>
+> Threshold sweep confirms the model gates on near-constant ABSOLUTE equity, not edge: the entry
+> switch sits at eq* ≈ 0.51 from 2 opponents up (0.393 / 0.492 / 0.509 / 0.516 / 0.514), so edge*
+> rises linearly with field size (0.79 / 1.47 / 2.04 / 2.58 / 3.08). **If the model used the edge
+> feature, edge\* would be flat.**
+>
+> **A design flaw in the feature itself, which likely explains why it was never learned.** `equity`
+> is measured against the EFFECTIVE contested field (each still-to-act opponent is rolled at their
+> VPIP and all-fold samples are skipped, so 5 Yellow opponents = only **1.80** expected contesting
+> opponents, fair share 0.357), while `equity_edge = equity × (num_active + 1)` normalizes by the
+> NOMINAL field (fair share 0.167). The two halves use different denominators, and the discrepancy
+> grows with field size — so the feature is not the clean "equity vs fair share" ratio its docstring
+> claims. Against the honest effective-field yardstick the model still tightens 0.79× → 1.44×
+> across 1→5 opponents, i.e. the defect is real but ~1.8×, not the ~4× the naive reading suggests.
+>
+> **Deferred to the next trained version by user decision (2026-07-21)**, since it cannot be fixed
+> live. Fix the denominator disagreement FIRST, then retrain. Note this also reframes
+> [P4]/`vpip_adapts_to_style`: entry-range behaviour has been measured for many versions against a
+> feature that could not do its job.
+>
+> #### PROPOSED FIX (user's, 2026-07-21) — reuse the effective contested field as the `n` in `n+1`
+>
+> Closed form, no MC, no added noise, using the same `_COLOR_TO_VPIP` the equity roll already uses:
+>
+> ```
+> E[k | k>=1] = (|front| + sum(p_after)) / (1 - prod(1 - p_after))
+> ```
+>
+> Front opponents are `p = 1`; if any front exists the denominator is 1 (someone is guaranteed in,
+> so no conditioning is needed). **Postflop it degenerates to the nominal count** — there is no
+> fold-roll postflop — so this is a PREFLOP-ONLY change and postflop semantics do not move.
+>
+> Validated on AKs (equity computed exactly as training computes it):
+>
+> | opp | equity | nominal | effective | edge NOW | edge NEW |
+> |---|---|---|---|---|---|
+> | 1 | 0.660 | 1 | 1.00 | 1.32 | **1.32** |
+> | 3 | 0.580 | 3 | 1.37 | 2.32 | **1.37** |
+> | 5 | 0.520 | 5 | 1.80 | 3.12 | **1.46** |
+>
+> A 2.4x field-size swing becomes flat (spread 0.19), and the feature STILL separates hands, which
+> is the point of it: AA 1.70-2.16, AKs 1.30-1.49, JTs 0.88-1.01, 94o 0.64-0.67, 72o 0.59-0.62.
+> The residual drift on AA is real signal (a monster's share does outgrow fair share as the field
+> widens), not noise.
+>
+> **Compute it at the CALLER, not inside `equity_edge_feature`** — the contract only receives
+> `num_active` and cannot know the front/after split, while the simulator already builds
+> `front_colors`/`after_colors` immediately before the equity call (`simulator.py` ~L1592) and
+> PHPHelp already has `colors_in_pot`/`colors_still_to_act`. Populate it onto `BoardState`, the
+> same caller-populated pattern `equity` and `hand_strength` already use. **Keep `ctx[5]
+> num_active` NOMINAL** — the model should still know how many players are seated; only the edge
+> denominator changes.
+>
+> **Why this half of the fork and not the other**: dropping the fold-roll from `equity` instead
+> would move `ctx[3]`, the most load-bearing feature in an equity-primary architecture, and would
+> destroy the conditional-on-contested property that stops 72o and AA both reading ~0.9 (see
+> `compute_range_aware_equity`'s own "everyone folded -> SKIP the sample" note). This touches only
+> `ctx[35]`, a feature the model demonstrably ignores today, so there is almost nothing to unlearn.
+> Still a contract change (ctx[35] semantics move) -> new `contract_version`, new slice, fresh
+> weights per [VAL-5].
+>
+> The live half of this thread WAS fixed and needs no retrain — see Tier 7 of
+> `fable-review-resolution-log.md` (`front_colors` awarded on seat position alone; `is_active` not
+> monotonic within a hand). Both inflated the field size the model was told about, which pushed it
+> further up the very curve measured above.
 
 > **RESOLUTION (2026-07-21, V41 — DEPLOYED LIVE).** `multiway_shortstack_aggression` PASSES:
 > 3-way aggression at eq 0.65 is **0.81**, flat from heads-up, where V29 gave ~0.01. Fixed across

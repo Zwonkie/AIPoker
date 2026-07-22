@@ -27,3 +27,8 @@ model_verify | version=v43 weights=expert_main.pth action_space=('fold', 'call',
 ----------------------------------------------------------------------------------------------------
   vpip_adapts_to_style         FAIL   short: tight=42.4% loose=47.9% (delta +5.4pts); deep: tight=36.4% loose=40.6% (delta +4.2pts) -- [P4] VPIP not conforming to opponent tightness (need >=5pt delta)
   beats_offformula_stress      PASS   short: +32.3 BB/100 (VPIP 52%); deep: +21.0 BB/100 (VPIP 46%)
+  bb100_vs_standard_fields     PASS   loose_short: +34.3 BB/100, no baseline recorded yet VPIP 53% | loose_deep: +104.8 BB/100, no baseline recorded yet VPIP 46% | tight_short: +41.6 BB/100, no baseline recorded yet VPIP 56% | tight_deep: +53.5 BB/100, no baseline recorded yet VPIP 49%
+  beats_frozen_predecessor     PASS   vs field incl. frozen predecessor SEATED AS V41 (NN) (frozen_v41.pth): +74.6 BB/100 over 4000 hands
+----------------------------------------------------------------------------------------------------
+  22 PASS, 4 WARN, 1 FAIL, 0 SKIP
+  raw results written to C:\REPO\Antigravity\AIPoker\tools\model_verify\results\v43__expert_main.pth.json

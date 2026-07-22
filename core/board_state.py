@@ -67,6 +67,25 @@ class BoardState:
     # and those are different situations). Optional/additive: inert (0) for every version whose
     # contract doesn't read it.
     pot_type: int = 0
+    # [V44] Expected number of opponents who will actually CONTEST the pot, E[k | k>=1] -- the
+    # denominator `equity` is really measured against, as opposed to the nominal seat count.
+    #
+    # Preflop, `compute_range_aware_equity` rolls every still-to-act opponent at their VPIP and
+    # SKIPS all-fold samples, so hero's equity vs "5 Yellow opponents" is actually equity against
+    # ~1.80 expected contesting opponents. `equity_edge` normalized by the nominal count instead,
+    # so its two halves counted different things and the ratio grew with field size rather than
+    # measuring hand strength -- which is why no model in this lineage ever learned to use it.
+    # See versions/v44/core/manifest.py for the measurements and [BET-3] in the backlog.
+    #
+    # Populated by the CALLER (mirrors `equity`/`hand_strength`), because only the caller knows the
+    # front/after split: the contract sees seat state, not action order. Postflop there is no
+    # fold-roll, so callers set this to the nominal active-opponent count and the feature is
+    # byte-identical to V43's.
+    #
+    # Optional/additive: 0.0 means "caller did not supply one", and ContractV12 falls back to the
+    # nominal count -- so every pre-V44 contract, and any construction site not yet updated, keeps
+    # exactly its old behaviour.
+    effective_field: float = 0.0
 
     @property
     def num_active_players(self) -> int:

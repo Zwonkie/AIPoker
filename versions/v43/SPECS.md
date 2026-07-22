@@ -13,6 +13,26 @@ Training: 2.5h, fresh weights (no `--resume_path`, per [VAL-5]), checkpoints at 
 masked by the exploration anchor and must not be trusted (guardrails §0); `eval_pure_policy.py` is
 the honest number.
 
+### RESOLVED 2026-07-21: the head-to-head went FOR V43 — keep it, do not roll back
+
+The slow checks finished after deployment and answer the open question below decisively:
+
+| check | result |
+|---|---|
+| `beats_frozen_predecessor` | **PASS — +74.6 BB/100 over 4000 hands** vs `frozen_v41.pth` seated as a real NN |
+| `bb100_vs_standard_fields` | **PASS** — loose_short +34.3, loose_deep +104.8, tight_short +41.6, tight_deep +53.5 |
+| `beats_offformula_stress` | **PASS** — short +32.3, deep +21.0 |
+
+**Final: 22 PASS / 4 WARN / 1 FAIL.** `nash_bbcall_vs_jam` also softened from FAIL to WARN on the
+full run. So **the realization discount was NOT load-bearing**: the looser, more diverse style wins
+against this population even though a GTO chart dislikes parts of it, exactly the question this
+version was built to settle. The rollback plan below is retained for the record but was not needed.
+
+The one remaining FAIL is `vpip_adapts_to_style` ([P4]), now understood to be downstream of a
+different defect: `equity_edge` normalizes by the nominal field while `equity` is measured against
+the effective contested one, so entry-range behaviour has been measured for many versions against a
+feature whose two halves disagreed. Fixed in `versions/v44`. See [BET-3] in the backlog.
+
 ### model_verify --full at deploy time: 19 PASS / 4 WARN / **1 FAIL** (slow checks still running)
 
 **Better than V41 — what the cleanup bought:**

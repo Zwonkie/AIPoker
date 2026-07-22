@@ -1354,6 +1354,37 @@ class PHPHelpApp(ctk.CTk):
                 # so set it directly here, same as `equity` itself is threaded through above.
                 board_state.hand_strength = self.last_equity_meta.get("hand_strength", 0.5) if self.last_equity_meta else 0.5
 
+                # [V44] Effective contested field for ctx[35]'s denominator. The ACTIVE version
+                # supplies its own implementation via live_feature_providers (None for pre-V44
+                # contracts, which ignore this field). Mirror the simulator's street branch EXACTLY:
+                # preflop each still-to-act opponent is rolled at its VPIP (front are guaranteed in),
+                # postflop there is no roll so it is simply the nominal active-opponent count. Left
+                # at BoardState's 0.0 default when unavailable -> the V44 contract falls back to the
+                # nominal count, i.e. exactly V43's feature, so this can never make things worse.
+                # Fetched fresh (not the equity block's local `_providers`) so this cannot NameError
+                # if that block was skipped; resolution is idempotent and importlib-cached.
+                _v44_providers = self.decision_engine.live_feature_providers()
+                _eff_fn = _v44_providers.get('effective_field_fn') if isinstance(_v44_providers, dict) else None
+                if _eff_fn is not None:
+                    try:
+                        _em = self.last_equity_meta or {}
+                        if len(stabilized_state.get('community_cards') or []) == 0:
+                            _front = _em.get("opp_colors_in_pot")
+                            _after = _em.get("opp_colors_still_to_act")
+                            # (None, None) means the dealer button wasn't read this frame, so the
+                            # front/after split is unknown -- fall back to the flat active count
+                            # rather than guessing, same conservative default as the equity path.
+                            if _front is None and _after is None:
+                                board_state.effective_field = float(len(active_opps))
+                            else:
+                                board_state.effective_field = float(_eff_fn(_front or [], _after or []))
+                        else:
+                            board_state.effective_field = float(len(active_opps))
+                    except Exception as _e:
+                        self.append_log(f"[V44] effective_field computation failed ({_e}); "
+                                        f"falling back to nominal count.")
+                        board_state.effective_field = float(len(active_opps))
+
                 decision_tuple = self.decision_engine.make_decision(
                     board_state,
                     use_preflop_chart=self.layer_preflop_var.get(),

@@ -17,15 +17,25 @@ from torch.utils.data import TensorDataset, DataLoader
 import yaml
 
 class Tee:
-    def __init__(self, name, mode):
-        self.file = open(name, mode)
+    """Writes to any number of files plus the real stdout.
+
+    `active_training.log` is a CONTRACT (documented in .agents/AGENTS.md, enforced by
+    tools/training_monitor/check_telemetry_contract.py): the dashboard watcher polls that exact
+    path every 5s. Renaming it per version stopped runs clobbering each other but silently took
+    training out of the dashboard's view. Writing both files satisfies both requirements.
+    """
+    def __init__(self, name, mode, *extra_names):
+        self.files = [open(n, mode) for n in (name,) + extra_names]
+        self.file = self.files[0]        # back-compat for any caller reaching in
         self.stdout = sys.stdout
         sys.stdout = self
     def write(self, data):
-        self.file.write(data)
+        for f in self.files:
+            f.write(data)
         self.stdout.write(data)
     def flush(self):
-        self.file.flush()
+        for f in self.files:
+            f.flush()
         self.stdout.flush()
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', '..')))
 
@@ -1474,8 +1484,9 @@ if __name__ == '__main__':
     # it are copies someone made by hand afterwards, which only worked when they remembered.
     # Named from THIS slice's own manifest, so a version cannot clobber another's log.
     from versions.v43.core.manifest import MANIFEST as _M
+    contract_log_path = os.path.join(repo_root, 'active_training.log')
     active_log_path = os.path.join(repo_root, f'active_training_{_M.version_id}.log')
-    sys.stdout = Tee(active_log_path, 'w')
+    sys.stdout = Tee(contract_log_path, 'w', active_log_path)
 
     parser = argparse.ArgumentParser(description="Herocules V11 self-play training loop.")
     parser.add_argument('--personality', type=str, default='main', choices=['main', 'maniac', 'nit', 'sticky'],

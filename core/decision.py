@@ -1,23 +1,12 @@
 import os
 import random
 from core.models.engine import ModelEngine
-from core.models.v13_engine import V13ModelEngine
-from core.models.v14_engine import V14ModelEngine, V14_ACTION_KEYS
-from core.models.v15_engine import V15ModelEngine
-from core.models.v17_engine import V17ModelEngine
-from core.models.v17_gauntlet_engine import V17GauntletModelEngine
-from core.models.v19_engine import V19ModelEngine
-from core.models.v20_engine import V20ModelEngine
-from core.models.v20_preflopEq_engine import V20PreflopEqModelEngine
-from core.models.v20_preflopEq_AI_engine import V20PreflopEqAIModelEngine
-from core.models.v21_auxhead_engine import V21AuxheadModelEngine
-from core.models.v25_engine import V25ModelEngine
-from core.models.v26_engine import V26ModelEngine
-from core.models.v28_engine import V28ModelEngine
+from core.models.v14_engine import V14_ACTION_KEYS
 from core.models.v29_engine import V29ModelEngine
 from core.models.v40_engine import V40ModelEngine
 from core.models.v41_engine import V41ModelEngine
 from core.models.v43_engine import V43ModelEngine
+from core.models.v44_engine import V44ModelEngine
 
 # Live action selection: SAMPLE from the actor policy (matching training/eval, which sample rather
 # than argmax) but SHARPEN with a temperature < 1 so genuine mixing survives on close spots while
@@ -307,6 +296,18 @@ class PokerDecisionEngine:
             # Genuinely better than V41: allin_vs_nextbest_qgap negative at EVERY cell,
             # opponent_style_sweep WARN->PASS, action_diversity genuinely mixed, [BET-3] resolved.
             # ROLLBACK: set active_model_name back to 'Herocules (v41)' (still registered below).
+            # V44: effective-contested-field `equity_edge` (contract_version 8->9; ctx[35]
+            # keeps its width but changes meaning). Own bridge (make_bridge -> versions.v44),
+            # live_features(), is_sized/display_tag/has_aux all declared -- no ladder here or in
+            # PHPHelp can misroute it. model_verify --full 2026-07-22: 21 PASS / 6 WARN / 0 FAIL;
+            # vpip_adapts_to_style [P4] PASS for the FIRST time (short +6.1/deep +5.9),
+            # beats_frozen_predecessor +91.7 BB/100 vs frozen V43. Cost: committed_sensitivity /
+            # pot_type_sensitivity dropped to WARN. Its live edge denominator needs
+            # BoardState.effective_field, supplied by live_feature_providers()['effective_field_fn']
+            # and set in PHPHelp (falls back to nominal -> V43 behaviour if absent). DEPLOYED LIVE
+            # 2026-07-22 by explicit user decision on the 0-FAIL scorecard + first-ever [P4] pass.
+            # ROLLBACK: set active_model_name back to 'Herocules (v43)'. See versions/v44/SPECS.md.
+            'Herocules (v44)': V44ModelEngine(weight_name="expert_main.pth"),
             'Herocules (v43)': V43ModelEngine(weight_name="expert_main.pth"),
             'Herocules (v41)': V41ModelEngine(weight_name="expert_main.pth"),
             # V40: the [BET-3] package -- same 54/8 contract as V29/V41, so it reuses V29's live
@@ -320,175 +321,13 @@ class PokerDecisionEngine:
             # beats_frozen_predecessor were cut short to free CPU). See versions/v40/SPECS.md.
             'Herocules (v40)': V40ModelEngine(weight_name="expert_main.pth"),
             'Herocules (v29)': V29ModelEngine(weight_name="expert_main.pth"),
-            # V28: IDENTICAL architecture/tensor schema to V25/V26 (context_dim=44,
-            # contract_version=7) -- shares bridge_v25 below, gated by is_v28_model alongside
-            # is_v25_model/is_v26_model. Changed ONLY _mc_target_evs_sized's per-size EV target:
-            # adds a closed-form risk/variance penalty (risk_adjusted_ev = raw_ev - 0.10 *
-            # sqrt(Var[X])), applied UNIFORMLY to every sized action, not an is_allin special case
-            # -- see versions/v28/SPECS.md and core/models/v28_engine.py's own docstring for the
-            # full derivation, calibration, and results. model_verify --full: 19 PASS/4 WARN/1
-            # FAIL/0 SKIP -- the targeted allin_vs_nextbest_qgap [BET-1] metric shrank ~40-50% at
-            # every cell AND the pathological worse-with-stack-depth pattern from V27 is GONE.
-            # V27's own regression cluster (action_diversity collapse, stack_full_sweep all-allin,
-            # position_sweep flat) substantially resolved too. beats_frozen_predecessor PASSED
-            # vs a frozen V27 at +29.7 BB/100. deep_stack_ood_guard FAIL is the same persistent
-            # pre-existing issue every version since V19 carries ([STACK-1]), though at
-            # meaningfully lower confidence (0.33 -> 0.24). Deployed live 2026-07-19, superseded by
-            # V29 above (2026-07-20); kept as fallback.
-            'Herocules (v28)': V28ModelEngine(weight_name="expert_main.pth"),
-            # V26: IDENTICAL architecture/tensor schema to V25 (context_dim=44, contract_version=7)
-            # -- shares bridge_v25 below, gated by is_v26_model alongside is_v25_model. Changed ONLY
-            # the training opponent pool: 2 of 5 seats (maniac/nit) swapped from heuristic archetypes
-            # to TreeOpponent (XGBoost models fit on real Pluribus/WSOP hand-history decisions) --
-            # see versions/v26/SPECS.md and core/models/v26_engine.py's own docstring for the full
-            # pipeline. model_verify --full: 19 PASS/3 WARN/1 FAIL/0 SKIP -- beats_frozen_predecessor
-            # PASSED head-to-head vs a frozen V25 snapshot at +42.8 BB/100 (4000 hands). Two checks
-            # that were WARN at V25's own 100k (committed_sensitivity, position_sweep) recovered to
-            # PASS here -- not conclusively attributed to the real-data opponents specifically.
-            # allin_exploits_opponent_foldiness [OPP-8] unchanged (spread 0.011, same as V25).
-            # deep_stack_ood_guard FAIL is the same persistent pre-existing issue every version since
-            # V19 carries. Deployed live (2026-07-19) on a clean head-to-head win over V25, no new
-            # regressions. Superseded by V28 above (2026-07-19); kept as fallback.
-            'Herocules (v26)': V26ModelEngine(weight_name="expert_main.pth"),
-            # V25: multi-street EV rollout fix (see versions/v25/SPECS.md) on top of V21_auxhead's
-            # aux-head architecture, inherited unchanged through V22 (entry-sizing features) and
-            # V23 (pot_type) -- context_dim=44, contract_version=7, a DIFFERENT scale+width than
-            # V21_auxhead's 37/5, so it needs its own bridge (self.bridge_v25), gated by
-            # is_v25_model. Loads `expert_main.pth`, the 100k-hand from-scratch confirmatory run.
-            # model_verify --full @ 100k: 17 PASS/5 WARN/1 FAIL/0 SKIP -- MIXED vs. the 50k
-            # diagnostic that prompted this run (18/2/1/1): vpip_adapts_to_style held and
-            # strengthened (the core hypothesis this version tests), beats_frozen_predecessor ran
-            # for the first time and PASSED (+74.0 BB/100), but the direct allin-vs-next-best
-            # Q-gap widened back to 1.73-1.78x (from 50k's 1.35-1.36x) and two previously-clean
-            # checks (committed_sensitivity, position_sweep) drifted to WARN. deep_stack_ood_guard
-            # FAIL is the same persistent issue every version since V19 carries. Deployed live
-            # (2026-07-18) for user evaluation per explicit request despite the mixed verification --
-            # see core/models/v25_engine.py's own docstring for the full caveat.
-            # Superseded by V26 above (2026-07-19); kept as fallback.
-            'Herocules (v25)': V25ModelEngine(weight_name="expert_main.pth"),
-            # V21_auxhead: IDENTICAL architecture/tensor schema to V20_preflopEq/V20_preflopEq_AI
-            # (context_dim=37, contract_version=5 -- versions/v21_auxhead/core/contract.py and
-            # core/model.py are byte-identical to V20_preflopEq_AI's). Changed ONLY the training-time
-            # aux-head loss (bluff/strength/equity heads on the shared transformer trunk, previously
-            # trained at aux_loss_weight=0.0 since V14 -- genuinely inert). Shares bridge_v20_preflopEq
-            # (same contract class, no new bridge needed), gated by is_v21_auxhead_model below (checked
-            # BEFORE is_v20_preflopEq_AI_model/is_v20_preflopEq_model/is_v20_model -- no substring
-            # collision with those names, but kept first for clarity). Loads `expert_main.pth` (Phase 8:
-            # fresh 100k-hand run with the fully chosen aux config -- corrected opp_bluff_prob label
-            # gated on last_raiser, sqrt-dampened bluff-loss reweighting, per-head weights
-            # bluff=0.05/strength=0.10/equity=0.05). model_verify --full @ Phase 8: 15 PASS/3 WARN/
-            # 1 FAIL/0 SKIP -- same shape as V21/Phase 2, no new failures. inspect_aux_heads.py: equity
-            # r=0.922, strength r=0.171 (best of all 8 phases), bluff r=0.091 -- all three heads show
-            # real, non-collapsed correlation for the first time in this lineage. action_diversity
-            # recovered to 3 actions (fold/allin/raise_33, a real raise_33 plateau across 5/9 stack
-            # points) vs the continuation-damaged Phase 7a arm's 2-action collapse -- confirms training
-            # the final aux config FRESH (not warm-started) avoids a real, separate diversity
-            # regression traced to the continuation mechanism itself, not the aux tuning (see
-            # versions/v21_auxhead/SPECS.md Phase 7/8). deep_stack_ood_guard FAIL / opponent_style_sweep
-            # WARN are the SAME pre-existing issues every version in this lineage carries
-            # ([STACK-1]/[OPP-5]). Deployed live (2026-07-17), superseding V20_preflopEq_AI.
-            # Superseded by V25 above (2026-07-18); kept as fallback.
-            'Herocules (v21_auxhead)': V21AuxheadModelEngine(weight_name="expert_main.pth"),
-            # V20_preflopEq_AI: IDENTICAL architecture/tensor schema to V20_preflopEq (context_dim=37,
-            # contract_version=5) -- this version only changed the training opponent pool (shifted
-            # toward real NN opponents: a lagged self-play mirror + V20_preflopEq's own 25k/50k
-            # checkpoints, testing whether that reduces the shove-preference traced to the heuristic
-            # bots' price-insensitive value-branch -- see versions/v20_preflopEq_AI/SPECS.md). Shares
-            # bridge_v20_preflopEq (same contract class, no new bridge needed), gated by
-            # is_v20_preflopEq_AI_model below (checked BEFORE is_v20_preflopEq_model -- same substring
-            # trap as v20/v20_preflopeq: 'v20_preflopeq' is contained in 'v20_preflopeq_ai'). Loads
-            # `expert_main.pth`, the 150k-hand final checkpoint. model_verify --full @ 150k: 12 PASS/
-            # 1 WARN/1 FAIL/0 SKIP -- the sizing-diversity hypothesis did NOT pan out (action_diversity
-            # stayed allin-dominant, deep_stack_ood_guard still FAILs, same as V20_preflopEq), but the
-            # model is a clear overall improvement: beats_frozen_predecessor actually RAN this time
-            # (same architecture as V20_preflopEq, no scale-mismatch skip) and PASSED at +53.5 BB/100
-            # vs a field including frozen V20_preflopEq -- the first real validated predecessor win
-            # this lineage has managed. Also beats V20_preflopEq's own bb100_vs_standard_fields
-            # baseline in all 4 fields and shows stronger vpip_adapts_to_style deltas. Deployed for
-            # user testing per explicit request (2026-07-17). V20_preflopEq and V20 both stay fully
-            # intact below as rollback options. Superseded by V21_auxhead above (2026-07-17); kept
-            # as fallback.
-            'Herocules (v20_preflopEq_AI)': V20PreflopEqAIModelEngine(weight_name="expert_main.pth"),
-            # V20_preflopEq: same PokerEVModelV4 arch + 6-action contract as V20, but WIDER context
-            # (context_dim 35->37, contract_version 4->5) -- two new appended features (equity_edge,
-            # hand_strength) plus a fix to the shared range-aware equity function (hero's opponents
-            # now split front/already-acted [guaranteed in] vs after/still-to-act [normal VPIP roll],
-            # instead of one flat roll for everyone). DIFFERENT input SCALE+WIDTH than every other
-            # model here -- uses its OWN bridge (self.bridge_v20_preflopEq, versions.v20_preflopEq
-            # .core.contract), gated by is_v20_preflopEq below. Loads `expert_main.pth`, the 75k-hand
-            # final checkpoint from this version's first production run (see
-            # versions/v20_preflopEq/SPECS.md). model_verify --full @ 75k: 11 PASS/1 WARN/1 FAIL/
-            # 1 SKIP -- vpip_adapts_to_style PASS (short +6.6pt, deep +7.1pt, the metric most directly
-            # downstream of the equity fix), bb100_vs_standard_fields PASS positive across all 4
-            # fields, beats_offformula_stress PASS, both new-feature sensitivity checks PASS
-            # (confirmed load-bearing). deep_stack_ood_guard FAIL / free_check_low_fold WARN are the
-            # SAME long-standing soft spots V19/V20 also carry, not new. beats_frozen_predecessor
-            # SKIPs (no cross-scale-compatible frozen checkpoint -- same limitation V20 itself hit) --
-            # NO direct head-to-head number exists against V20 specifically. Deployed anyway per
-            # explicit user decision (2026-07-17), accepting that gap for the strong broad evidence
-            # above. V20 (below) stays fully intact as the rollback. ACTIVE.
-            'Herocules (v20_preflopEq)': V20PreflopEqModelEngine(weight_name="expert_main.pth"),
-            # V20: rescaled context-feature resolution (stack/pot/call_amount ctx[1]/ctx[2]/ctx[9]
-            # + 5x opp_stack, /400(/1000) -> /100(/250)) to fit the actual 5-50bb training range --
-            # DIFFERENT input SCALE than every other model here (contract_version 3->4), so it uses
-            # its OWN bridge (self.bridge_v20, versions.v20.core.contract), gated by is_v20_model
-            # below -- NOT the shared bridge_v13 every other sized model was trained on. Loads
-            # `expert_main_200k.pth`, a preserved snapshot cloned at the end of the 120k->200k
-            # continuation (see versions/v20/SPECS.md) so live weights stay fixed regardless of any
-            # further training. LIVE-SAFETY CLAMP applied before deployment: the rescale's
-            # resolution gain trades away headroom past the 50bb training ceiling -- contract.py
-            # clamps stack/pot/call_amount-derived features to that ceiling so real 80-150bb+
-            # tables stay in-distribution (verified: set-of-aces fold rate no longer climbs with
-            # real depth). model_verify --full @ 120k: 9 PASS/1 WARN/1 FAIL/1 SKIP. @ 200k:
-            # 8 PASS/2 WARN/1 FAIL/1 SKIP -- a real tradeoff, not a strict improvement:
-            # deep_stack_ood_guard's failure narrowed sharply (1 failing cell vs 5 uniformly-jamming
-            # cells at 120k) but short_stack_polarization flipped PASS->WARN ([P3] shove-or-fold
-            # call-mass roughly doubled, 0.12->0.25, still open). Deployed at 200k per explicit user
-            # decision (accepting the short-stack regression for the deep-stack gain). ACTIVE.
-            'Herocules (v20)': V20ModelEngine(weight_name="expert_main_200k.pth"),
-            # V19: three targeted content fixes on top of v18's opponent-architecture refactor
-            # (same 6-action sized contract, same PokerEVModelV4 arch): [P0] a size-aware preflop
-            # opponent fold-bar (targets the deep-stack trash-jam target-EV inflation), a real
-            # button-relative hero_position fed to every training-time query (Hero's own AND every
-            # opponent's -- previously silently defaulted to Button for all of them), and a
-            # Past-Self VPIP mystery investigation (documented, not fixed -- see
-            # versions/v19/SPECS.md). model_verify --full: 10 PASS/1 WARN/1 FAIL --
-            # deep_stack_ood_guard STILL FAILS (NOT fixed by [P0]; the failure grid is roughly
-            # FLAT across stack depth, eq>=0.43 argmax-jams 13/25 cells regardless of stack --
-            # doesn't match the stack-scaling hypothesis [P0] targeted, points instead at a
-            # `policy_tightness_bb` threshold effect near eq 0.45, not yet investigated). Deployed
-            # anyway per explicit user decision (2026-07-16): every other gate passes strongly --
-            # vpip_adapts_to_style short +9.7pt/deep +6.8pt, bb100_vs_standard_fields positive
-            # across all 4 fields, beats_frozen_predecessor +56.8 BB/100 vs the v17_gauntlet field,
-            # beats_offformula_stress PASS. deep_stack_ood_guard carried forward as backlog. ACTIVE.
-            'Herocules (v19)': V19ModelEngine(weight_name="expert_main.pth"),
-            # V17_gauntlet: same actor-critic/fold-relative recipe as V17, opponent pool widened
-            # to frozen V15 (nit seat) and a true lagged self-play mirror (past seat) -- the tag
-            # seat was INTENDED to load frozen V16 but a wiring bug silently nullified it (see
-            # versions/v17_gauntlet/SPECS.md "CORRECTION"); this checkpoint actually trained
-            # against the TAG heuristic there, not frozen V16. Still a real, valid improvement --
-            # per-seat action-forcing bypassed for the real models that DID load correctly.
-            # Beats V17 on 3/4 bb100_vs_standard_fields (loose_short +28.9->+32.5, tight_short
-            # +18.4->+26.8, tight_deep +32.6->+35.4; loose_deep +90.3->+69.8 -- still strongly
-            # positive, reads as more balanced not a regression) and more than doubles V17's
-            # deep-stack vpip_adapts_to_style delta (+5.8pt->+12.3pt). model_verify: 10 PASS/1
-            # WARN/1 FAIL (the FAIL is the same pre-existing deep-stack OOD defect every version
-            # in this line carries, tracked as V18 [P0]). Beats frozen-V17 by +84.3 BB/100. ACTIVE.
-            'Herocules (v17_gauntlet)': V17GauntletModelEngine(weight_name="expert_main.pth"),
-            # V17: same 6-action sized contract as V14/V15, actor regret-matching routed through
-            # the critic's own (detached) Q-values past 30k hands with a fold-relative baseline.
-            # Fixes the air/draws overcontinuation V16 had (air_folds_mostly 0.62->1.00) WITHOUT
-            # v16_foldregret's style-flip regression (loose_deep BB/100 +62.1->+90.3, not a
-            # collapse). Superseded by V17_gauntlet above; kept as fallback.
-            'Herocules (v17 Actor-Critic)': V17ModelEngine(weight_name="expert_main.pth"),
-            # V15: same 6-action sized contract as V14, retrained on a DoN-shaped stack mixture
-            # (5-50bb) + a frozen-V14 expert opponent. Fixes v14's deep-stack OOD; loose-aggressive
-            # style that crushes loose/station fields (the live population). Kept as fallback.
-            'Herocules (v15 DoN)': V15ModelEngine(weight_name="expert_main.pth"),
-            # V14: discretized bet-size action space; short-stack winner. Kept as fallback.
-            'Herocules (v14 Sized)': V14ModelEngine(weight_name="expert_main.pth"),
-            # V13: equity-primary + range-aware equity. Kept as the tagged MILESTONE fallback.
-            'Herocules (v13 Range-Aware)': V13ModelEngine(weight_name="expert_main.pth"),
+            # --- Live dropdown pruned 2026-07-22 (user request: keep the 5 newest iterations) ---
+            # Registered live models are now v44 (active), v43, v41, v40, v29. Versions v28, v26,
+            # v25, v21_auxhead, v20_preflopEq_AI, v20_preflopEq, v20, v19, v17_gauntlet, v17, v15,
+            # v14 and v13 were REMOVED FROM THE SELECTOR ONLY -- their version slices, weights,
+            # engine files (core/models/vNN_engine.py) and bridge branches all remain on disk, so
+            # re-registering any of them is a one-line add here (deprecate-not-delete, guardrails
+            # Rule 6). v13 was the tagged MILESTONE and v41 the other; both weights are preserved.
         }
         # DEPLOYED 2026-07-21: V41 replaces V40 (which was live for a few hours as an interim
         # play-test model). Trained 100,000 hands; model_verify --full 22 PASS / 5 WARN / 0 FAIL /
@@ -503,7 +342,7 @@ class PokerDecisionEngine:
         # DEPLOYED 2026-07-21: V43 replaces V41 by explicit user decision, on a MIXED scorecard and
         # before beats_frozen_predecessor finished -- see the registry entry above for exactly what
         # was known at deploy time. V41 (the MILESTONE) stays registered as the one-line rollback.
-        self.active_model_name = 'Herocules (v43)'
+        self.active_model_name = 'Herocules (v44)'  # V43 registered above as rollback
         self.bridge_v9 = ContractV8V9()
         self.bridge_v11 = ContractV11()
         self.bridge_v13 = ContractV12(max_seq_len=20)
@@ -702,19 +541,34 @@ class PokerDecisionEngine:
                     'source': 'unresolved', 'error': resolve_error}
 
         package = spec.get('version_package')
-        equity_fn = hand_strength_fn = None
+        equity_fn = hand_strength_fn = effective_field_fn = None
         error = None
         try:
+            simulator = importlib.import_module(f"{package}.self_play.simulator")
+            contract = importlib.import_module(f"{package}.core.contract")
             if spec.get('range_aware_equity', True):
-                equity_fn = getattr(importlib.import_module(f"{package}.self_play.simulator"),
-                                    'compute_range_aware_equity', None)
+                equity_fn = getattr(simulator, 'compute_range_aware_equity', None)
             if spec.get('hand_strength', False):
-                hand_strength_fn = getattr(importlib.import_module(f"{package}.core.contract"),
-                                           'preflop_hand_strength', None)
+                hand_strength_fn = getattr(contract, 'preflop_hand_strength', None)
+            # [V44] If this version's contract exposes `effective_contested_field` (contract_version
+            # >= 9), give the live caller a closure that turns the SAME front/after HUD-colour split
+            # PHPHelp already computes for the equity call into the effective-field denominator for
+            # ctx[35]. Built from the version's OWN `effective_contested_field` and its OWN colour->
+            # VPIP map (`_COLOR_TO_VPIP`), so live and training use one implementation -- feeding the
+            # nominal count here instead would be a silent train/serve mismatch on exactly the
+            # feature V44 exists to fix. Absent (older contracts) -> None, and the caller leaves
+            # BoardState.effective_field at 0.0, which every pre-V44 contract ignores anyway.
+            _eff = getattr(contract, 'effective_contested_field', None)
+            _vpip_map = getattr(simulator, '_COLOR_TO_VPIP', None)
+            if _eff is not None and _vpip_map is not None:
+                def effective_field_fn(front_colors, after_colors, _eff=_eff, _vm=_vpip_map):
+                    after_vpips = [_vm.get(c, 0.30) for c in (after_colors or [])]
+                    return _eff(after_vpips, n_front=len(front_colors or []))
         except Exception as e:
             error = f"importing {package} for '{name}' failed: {e!r}"
 
         return {'equity_fn': equity_fn, 'hand_strength_fn': hand_strength_fn,
+                'effective_field_fn': effective_field_fn,
                 'use_front_colors': bool(spec.get('front_colors', False)),
                 'source': source, 'error': error}
 

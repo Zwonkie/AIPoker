@@ -27,6 +27,11 @@ class TableState:
         self.pot_size = 0.0
         self.hero_stack = 0
         self.opponents = {}
+        # [2026-07-21] Seats confirmed out of THIS hand. `is_active` is one-way within a hand (a
+        # folded player cannot re-enter), so this latches the fold and survives a bright frame --
+        # see the note at the merge in update(). Cleared here, per hand, deliberately: a player who
+        # folded last hand is dealt into the next one.
+        self.folded_this_hand = set()
         self.active_buttons = []
         self.dealer_name = ""
         self.dealer_idx = 0
@@ -135,6 +140,34 @@ class TableState:
         # --- Opponents (Monotonic Decay & State Persistence) ---
         raw_opps = raw_state.get('opponents', {})
         for seat_key, raw_opp in raw_opps.items():
+            # [2026-07-21] A player who has folded CANNOT re-enter the hand, so `is_active` is
+            # monotonically non-increasing within a hand -- the same one-way rule this method
+            # already applies to `pot_size` (only grows) and stacks (only shrink), and what the
+            # comment below has always claimed ("they stay folded") without the code doing it:
+            # BOTH branches simply assigned `tracked_opp['is_active'] = raw_active`, so a single
+            # bright frame (deal animation, hover/timer overlay, a chip graphic crossing the name
+            # plate) silently put a folded seat back in the hand for the rest of it.
+            #
+            # That is expensive, not cosmetic. `num_active` sets the field size the model reasons
+            # about, and it feeds BOTH equity (more opponents to beat) and `equity_edge`
+            # (= equity x (num_active+1)). One phantom seat measured on AKs preflop:
+            #     4 opponents -> CALL   (fold 0.12)
+            #     5 opponents -> FOLD   (fold 0.91)
+            # i.e. a single flicker turns a clear continue into a 91% fold of a top-5 hand.
+            #
+            # Safe in the other direction because the underlying signal is strongly bimodal, not
+            # marginal: across all 16 stored flagged frames the name-plate brightness that drives
+            # `is_active` clusters at 58-105 (out) and 242-254 (in) with NOTHING in between, and
+            # vision's threshold (160.0) sits in the middle of that gap. A false fold -- which
+            # would under-count the field and make hero too loose -- needs a ~140-point excursion,
+            # while the resurrect path needed only one frame.
+            if seat_key in self.folded_this_hand:
+                raw_opp = dict(raw_opp)
+                raw_opp['is_active'] = False
+                raw_opp['state'] = 'Folded'
+            elif not bool(raw_opp.get('is_active', False)) or raw_opp.get('state') == 'Folded':
+                self.folded_this_hand.add(seat_key)
+
             if seat_key not in self.opponents:
                 # First time seeing this opponent this hand
                 self.opponents[seat_key] = raw_opp.copy()
@@ -144,12 +177,9 @@ class TableState:
                 raw_stack = raw_opp.get('stack', 0)
                 raw_state_lbl = raw_opp.get('state', 'Folded')
                 raw_active = bool(raw_opp.get('is_active', False))
-                
+
                 # If they folded or have 0 stack (and are not all-in), they stay folded
                 if not raw_active or raw_state_lbl == 'Folded':
-                    # Only accept a fold if the raw read is highly confident they are inactive
-                    # (To prevent obscuring timers from falsely folding them, we might be cautious.
-                    # But the vision module handles this via `is_active` check.)
                     tracked_opp['state'] = raw_state_lbl
                     tracked_opp['is_active'] = raw_active
                     if raw_stack > 0:

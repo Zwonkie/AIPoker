@@ -58,6 +58,23 @@ def _scaled(value_bb, ceil, scale):
     return v / scale
 
 
+def _effective_contested_field(after_vpips, n_front=0):
+    """[V44] E[k | k>=1] for the effective-contested-field `equity_edge` denominator. MUST match
+    versions/v44/core/contract.py::effective_contested_field exactly -- this is the verify-side
+    copy (scenarios.py stays version-agnostic and cannot import a specific version's contract).
+    Kept in sync by tools/model_verify against that file; the closed form is small and stable."""
+    ps = [float(p) for p in (after_vpips or [])]
+    expected = float(n_front) + sum(ps)
+    if n_front > 0:
+        return expected
+    p_none = 1.0
+    for p in ps:
+        p_none *= (1.0 - p)
+    if p_none >= 1.0:
+        return 0.0
+    return expected / (1.0 - p_none)
+
+
 def build_ctx(equity, stack_bb, pot_bb, call_bb, position=2, street=0,
               num_active_opp=2, opp_vpip=0.30, opp_agg=0.40,
               per_opp_vpip=None, per_opp_agg=None, opp_stack_bb=None,
@@ -120,7 +137,23 @@ def build_ctx(equity, stack_bb, pot_bb, call_bb, position=2, street=0,
         ctx.append(a)
 
     if contract_version >= 5:
-        eff_equity_edge = equity * (num_active_opp + 1) if equity_edge is None else equity_edge
+        if equity_edge is not None:
+            eff_equity_edge = equity_edge
+        elif contract_version >= 9:
+            # [V44] ctx[35] normalizes by the EFFECTIVE contested field, not the nominal opponent
+            # count -- mirror versions/v44/core/contract.py::effective_contested_field exactly, or
+            # the checks feed V44 a feature from a distribution it never trained on and it looks
+            # broken. Preflop each still-to-act opponent is rolled at its VPIP (all-fold samples
+            # skipped -> conditional on k>=1); postflop there is no roll, so effective == nominal.
+            if street == 0:
+                vpips = [(per_opp_vpip[j] if per_opp_vpip and j < len(per_opp_vpip) else opp_vpip)
+                         for j in range(num_active_opp)]
+                eff_field = _effective_contested_field(vpips)
+            else:
+                eff_field = float(num_active_opp)
+            eff_equity_edge = equity * (eff_field + 1)
+        else:
+            eff_equity_edge = equity * (num_active_opp + 1)
         eff_hand_strength = 0.5 if hand_strength is None else hand_strength
         ctx.append(eff_equity_edge)
         ctx.append(eff_hand_strength)
