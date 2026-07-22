@@ -499,6 +499,13 @@ truly-deep tournament-style stacks past that. Extend further in a future version
 priority.
 
 ### [STACK-3] 6-max short-stack open-jam under-aggression — actor folds commits its own critic prefers 🔴 OPEN (live observation, not yet quantified)
+
+**V47 note (2026-07-22)**: the V47 gate wanted this probed; it remains UNQUANTIFIED (the
+battery has no actor-vs-critic divergence check and no dedicated probe was run). Indirect
+signals from the V47 battery point the RIGHT way: first literal-jam commits since V29 in the
+Nash sweep (74/971 vs V44's 0/971, the [M9] collapse signature), all-in argmax cells in
+`action_diversity`, and `allin_vs_nextbest_qgap` all-negative. Build the 7–14bb first-in
+actor-vs-critic probe before V48 judges this item.
 **First identified**: 2026-07-20, live V29 (Herocules) Double-or-Nothing board
 `history/Double_Or_Nothing_1171442571` — user flagged the stack bleeding
 74→48→27→13→6→5.2bb straight into a bust-bound final jam, over 45 recorded decisions.
@@ -869,6 +876,16 @@ despite this regression cluster; WHICH of the two fixes (or plain run-to-run var
 caused the broader shift has not been isolated -- open question, not resolved.
 
 ### [OPP-8] Opponent fold-tendency signal is a coarse 4-way color, not the real underlying trait 🔴 OPEN (severity likely overstated below — see 2026-07-18 correction)
+
+**V47 note (2026-07-22) — WATCH, moved the wrong way**: `opponent_style_sweep` fold-spread
+collapsed 0.127 (V44) → 0.027 (V47) and the isolated ablation's table-scalar TV fell
+0.750 → 0.019 (per-seat block TV 0.307 — wiring alive, response flat at realistic values).
+Working hypothesis: V47's occupant-true fold models ([M4]) made training-time fold behavior
+depend on what is ACTUALLY seated rather than archetype labels, homogenizing the archetype
+signal the sweep perturbs — a realism↔exploitability tension. Also relevant: the new
+hand-history opponent DB (tools/handhistory/, 2026-07-22) can supply REAL per-account
+VPIP/AF/fold-to-pressure — the long-term fix for this item is exact stats in, not sharper
+color response.
 **First identified**: 2026-07-18, investigating why V25's own trained policy barely differentiates
 all-in frequency by opponent archetype (0.239 vs NIT, 0.216 vs CALLING_STATION at the SAME
 eq=0.55) despite the opponent bots' actual fold-to-a-shove behavior being wildly different (NIT
@@ -1057,6 +1074,13 @@ prioritized.
 ## Validation & tooling (methodology gaps, not model behavior bugs)
 
 ### [VAL-1] No external GTO/solver ground truth 🟡 PARTIAL (external axis built + Tier B in-repo Nash solver, V30 2026-07-20)
+
+**V47 note (2026-07-22)**: P0.3 re-scored the Nash axis with a LITERAL jam-vs-fold primary
+metric (composite kept as secondary) and re-baselined the lineage: V41 82%, V43 65%, V44 71%
+(composites 78/65/66). V47 scored 65/65 — literal down vs V44, composite flat; top
+disagreement cells are IDENTICAL to V44's (92s–94s@5bb overplayed, T2s–T4s@5bb called vs
+jams): a lineage-wide ≤5bb looseness. Finding (A) (BB overcalls jams) still reproduces.
+V48 P48-0 adds the 3-max solver; judge future models on the literal metric.
 **Simple**: We've never checked our play against real game-theory-optimal solutions — all
 validation is "do we beat our own training opponents," not "are we close to unexploitable play."
 

@@ -800,9 +800,42 @@ def check_multiway_shortstack_aggression(rc):
     return CheckResult('PASS', f"multiway aggression holds up (HU->3way agg): {profile}", data)
 
 
+def check_table_size_sweep(rc):
+    """[V48, P48-0.2] True-table-size geometry sweep: the TABLE is 3/4/5/6-handed (inactive
+    trailing slots, compressed position map 0..N-1), not merely fewer active opponents inside
+    6-seat geometry. A geometry-blind model (every version before V48 -- trained only on
+    6-seat tables with pre-folds) shows a flat aggression profile across N at fixed
+    equity/stack; the V48 joint curriculum's claim is that blind pressure at small N raises
+    aggression. WARN-only, tracked not gated (V47 flat here is EXPECTED baseline)."""
+    agg_idx = _aggressive_indices(rc.action_keys)
+    if not agg_idx:
+        return CheckResult('SKIP', 'no aggressive actions in action space')
+    cv = rc.manifest.contract_version
+    data = {}
+    for n in (3, 4, 5, 6):
+        vals = []
+        for pos in range(n):
+            ctx = build_ctx(equity=0.50, stack_bb=8, pot_bb=1.5, call_bb=1.0,
+                            num_active_opp=n - 1, position=pos, street=0,
+                            contract_version=cv, hand_strength=0.55,
+                            equity_edge=0.50 * n)
+            pol, _q = run_policy(rc.model, ctx, rc.action_keys, device=rc.device)
+            vals.append(sum(pol[rc.action_keys[i]] for i in agg_idx))
+        data[n] = round(sum(vals) / len(vals), 3)
+    spread = max(data.values()) - min(data.values())
+    profile = ", ".join(f"{n}-handed {v:.3f}" for n, v in data.items())
+    if spread < 0.03:
+        return CheckResult('WARN', f"[P48-0.2] aggression FLAT across true table sizes "
+                           f"(spread {spread:.3f}): {profile} -- geometry-blind", data)
+    return CheckResult('PASS', f"aggression responds to table size (spread {spread:.3f}): {profile}", data)
+
+
 # VAL-1 external ground-truth axis (self-contained plug-in -- see tools/model_verify/nash/).
 from tools.model_verify.nash.pushfold_check import (
     check_nash_pushfold_vs_chart, check_nash_bbcall_vs_jam)
+# [V48, P48-0.1] the 3-max extension of the same axis (SKIPs until the solver JSON exists).
+from tools.model_verify.nash.pushfold3_check import (
+    check_nash3_btn_jam, check_nash3_bb_call)
 
 FAST_CHECKS = [
     ("equity_ablation_monotonic", "P(fold) falls / P(aggressive) rises as equity rises",
@@ -811,6 +844,10 @@ FAST_CHECKS = [
      "VAL-1 -- external GTO reference axis (SB jam)", check_nash_pushfold_vs_chart),
     ("nash_bbcall_vs_jam", "BB call/fold-facing-a-jam agrees with in-repo heads-up Nash, range-conditioned equity (EXTERNAL ground truth, WARN-only)",
      "VAL-1 -- external GTO reference axis (BB call)", check_nash_bbcall_vs_jam),
+    ("nash3_btn_jam", "BTN first-in jam/fold at a TRUE 3-handed table agrees with the in-repo 3-max Nash (literal, WARN-only)",
+     "V48 P48-0.1 -- VAL-1 3-max extension (BTN jam)", check_nash3_btn_jam),
+    ("nash3_bb_call", "BB call/fold facing a 3-max BTN jam agrees with the in-repo 3-max Nash (literal, WARN-only)",
+     "V48 P48-0.1 -- VAL-1 3-max extension (BB call)", check_nash3_bb_call),
     ("free_check_low_fold", "never wants to fold a free option (call_amount == 0)",
      "train/serve fold-mask consistency", check_free_check_low_fold),
     ("air_folds_mostly", "~12% equity facing a real bet folds more than it doesn't",
@@ -823,6 +860,8 @@ FAST_CHECKS = [
      "P3 -- preflop flattening (WARN, tracked not gated)", check_short_stack_polarization),
     ("multiway_shortstack_aggression", "aggression doesn't collapse from heads-up to 3+ opponents at short stacks",
      "BET-3 -- live-confirmed V29 multiway passivity (WARN, tracked)", check_multiway_shortstack_aggression),
+    ("table_size_sweep", "aggression responds to TRUE table size 3/4/5/6-handed at fixed equity/stack (WARN-only)",
+     "V48 P48-0.2 -- geometry sensitivity (pre-V48 models expected flat)", check_table_size_sweep),
     ("action_diversity", "at least most actions appear as argmax somewhere in the grid",
      "V11 raise-/call-everything collapse", check_action_diversity),
     ("no_nan_or_crash", "edge-case seat/stack/street combos never NaN or throw",
@@ -944,9 +983,61 @@ def _play_hands(sim, n_hands, base_hand, seed_base=None):
     return profits
 
 
-def _run_field(rc, pool, weights, stack_bb_range, n_hands, equity_sims=120):
+def _don_seat_mix(rc):
+    """[V48 P48-0.3] Marginal seat-count mix ([n, weight] rows) derived from the version's own
+    measured `table_stack_joint_mix` in self_play/config.yaml. Single source of truth: the same
+    rows training samples from. None when the version declares no joint mix (pre-V48)."""
+    cfg_path = os.path.join(_REPO_ROOT, 'versions', rc.version_id, 'self_play', 'config.yaml')
+    try:
+        import yaml
+        with open(cfg_path, encoding='utf-8') as f:
+            cfg = yaml.safe_load(f)
+    except Exception:
+        return None
+
+    def find_key(node, key):
+        if isinstance(node, dict):
+            if key in node:
+                return node[key]
+            for v in node.values():
+                hit = find_key(v, key)
+                if hit is not None:
+                    return hit
+        return None
+
+    joint = find_key(cfg, 'table_stack_joint_mix')
+    if not joint:
+        return None
+    agg = {}
+    for row in joint:
+        agg[int(row[0])] = agg.get(int(row[0]), 0.0) + float(row[3])
+    total = sum(agg.values())
+    if total <= 0:
+        return None
+    return [[n, w / total] for n, w in sorted(agg.items())]
+
+
+def _supports_table_mix(rc):
+    """True when this version's simulator PRE-DECLARES `table_size_mix` in __init__ (V48+,
+    Change 1/2). Setting the attribute on an older sim is silently ignored -- the dead-attribute
+    bug class (v17_gauntlet tag_model, fable review #4) -- so capability is checked, never
+    assumed."""
+    if '_supports_table_mix' not in rc.collected:
+        probe = rc.sim_module.SixMaxSimulator(bb_size=10.0, equity_sims=10,
+                                              hero_personality='main', bootstrap_alpha=0.0)
+        rc.collected['_supports_table_mix'] = hasattr(probe, 'table_size_mix')
+    return rc.collected['_supports_table_mix']
+
+
+def _run_field(rc, pool, weights, stack_bb_range, n_hands, equity_sims=120,
+               table_size_mix=None):
     sim = rc.sim_module.SixMaxSimulator(bb_size=10.0, equity_sims=equity_sims,
                                         hero_personality='main', bootstrap_alpha=0.0)
+    if table_size_mix:
+        if not hasattr(sim, 'table_size_mix'):
+            raise RuntimeError("simulator does not declare table_size_mix -- refusing to run a "
+                               "'DoN mix' field silently 6-handed (dead-attribute guard)")
+        sim.table_size_mix = table_size_mix
     sim.hero_model = rc.model
     sim.opponent_pool_styles = pool
     sim.opponent_pool_weights = weights
@@ -1011,24 +1102,38 @@ def check_bb100_vs_standard_fields(rc):
     baseline = (rc.baselines.get(rc.version_id) or {}).get('bb100', {})
     measured = {}
     lines, data, warn = [], [], False
-    for key, pool, weights, stack_range in fields:
-        bb100, vpip, ci95 = _run_field(rc, pool, weights, stack_range, rc.n_hands_field)
-        measured[key] = round(bb100, 1)
-        prior = baseline.get(key)
-        # [V47 P0.1] regression call is CI-aware: a drop smaller than the run's own 95% CI is
-        # noise, not a regression -- require the drop to exceed BOTH the old flat 15 BB/100
-        # floor and the measurement's uncertainty before flagging.
-        regressed = prior is not None and (bb100 - prior) < -max(15.0, ci95)
-        if regressed:
-            warn = True
-            lines.append(f"{key}: {bb100:+.1f} ±{ci95:.1f} BB/100 (baseline {prior:+.1f}, DOWN {prior - bb100:.1f}) VPIP {vpip:.0f}%")
-        else:
-            note = f", baseline {prior:+.1f}" if prior is not None else ", no baseline recorded yet"
-            lines.append(f"{key}: {bb100:+.1f} ±{ci95:.1f} BB/100{note} VPIP {vpip:.0f}%")
-        data.append({"field": key, "pool": pool, "stack_range": stack_range,
-                     "bb100": round(bb100, 1), "ci95": round(ci95, 1),
-                     "vpip": round(vpip, 1), "baseline": prior,
-                     "regressed": regressed})
+    # [V48 P48-0.3] BOTH table-size axes when the version supports them: forced 6-handed
+    # (comparability with every historical baseline) and the measured DoN seat mix (the
+    # environment the model actually trains/plays in). Each gets its own baseline key.
+    don_mix = _don_seat_mix(rc)
+    variants = [('', None)]
+    if don_mix and _supports_table_mix(rc):
+        variants.append(('@donmix', don_mix))
+    elif don_mix:
+        lines.append("donmix axis SKIPPED: config has table_stack_joint_mix but this sim "
+                     "doesn't declare table_size_mix")
+    for suffix, mix in variants:
+        for key, pool, weights, stack_range in fields:
+            bb100, vpip, ci95 = _run_field(rc, pool, weights, stack_range, rc.n_hands_field,
+                                           table_size_mix=mix)
+            bkey = key + suffix
+            measured[bkey] = round(bb100, 1)
+            prior = baseline.get(bkey)
+            # [V47 P0.1] regression call is CI-aware: a drop smaller than the run's own 95% CI is
+            # noise, not a regression -- require the drop to exceed BOTH the old flat 15 BB/100
+            # floor and the measurement's uncertainty before flagging.
+            regressed = prior is not None and (bb100 - prior) < -max(15.0, ci95)
+            if regressed:
+                warn = True
+                lines.append(f"{bkey}: {bb100:+.1f} ±{ci95:.1f} BB/100 (baseline {prior:+.1f}, DOWN {prior - bb100:.1f}) VPIP {vpip:.0f}%")
+            else:
+                note = f", baseline {prior:+.1f}" if prior is not None else ", no baseline recorded yet"
+                lines.append(f"{bkey}: {bb100:+.1f} ±{ci95:.1f} BB/100{note} VPIP {vpip:.0f}%")
+            data.append({"field": bkey, "pool": pool, "stack_range": stack_range,
+                         "table_size_mix": mix or "6-handed",
+                         "bb100": round(bb100, 1), "ci95": round(ci95, 1),
+                         "vpip": round(vpip, 1), "baseline": prior,
+                         "regressed": regressed})
     rc.collected['bb100'] = measured   # available to run.py for --update-baseline
     detail = " | ".join(lines)
     return CheckResult('WARN' if warn else 'PASS', detail, data)
@@ -1061,10 +1166,14 @@ def check_beats_frozen_predecessor(rc):
                                rc.frozen_predecessor_filename)
     n_hands = rc.n_hands_field
 
-    def _run_leg(hero_model, past_model):
+    def _run_leg(hero_model, past_model, table_size_mix=None):
         """One leg of the pair; returns (per-hand profits, past_seat) or (None, past_seat)."""
         sim = rc.sim_module.SixMaxSimulator(bb_size=10.0, equity_sims=120,
                                             hero_personality='main', bootstrap_alpha=0.0)
+        if table_size_mix:
+            if not hasattr(sim, 'table_size_mix'):
+                raise RuntimeError("simulator does not declare table_size_mix (dead-attribute guard)")
+            sim.table_size_mix = table_size_mix
         sim.hero_model = hero_model
         sim.opponent_pool_styles = ['fish', 'tag', 'nit', 'past']
         sim.opponent_pool_weights = [0.40, 0.20, 0.20, 0.20]
@@ -1093,33 +1202,51 @@ def check_beats_frozen_predecessor(rc):
         sim.policy_temperature = 0.5
         return _play_hands(sim, n_hands, 700000, seed_base=_MIRROR_SEED), past_seat
 
-    profits_a, seat_a = _run_leg(rc.model, frozen_model)
-    if profits_a is None:
-        return CheckResult('SKIP', "could not seat the frozen predecessor as an NN opponent "
-                                   f"(got {getattr(seat_a, 'label', None)!r}) -- refusing to "
-                                   "report a head-to-head against a heuristic field")
-    profits_b, seat_b = _run_leg(frozen_model, rc.model)
-    if profits_b is None:
-        return CheckResult('SKIP', "could not seat the CANDIDATE as an NN opponent in the "
-                                   f"swapped leg (got {getattr(seat_b, 'label', None)!r})")
-    diffs = [a - b for a, b in zip(profits_a, profits_b)]
-    diff_bb100, ci = _ci95_bb100(diffs)
-    bb100_a, ci_a = _ci95_bb100(profits_a)
-    bb100_b, ci_b = _ci95_bb100(profits_b)
+    # [V48 P48-0.3] Two paired head-to-heads when supported: forced 6-handed (the axis every
+    # historical promotion was measured on) and the measured DoN seat mix (the environment the
+    # candidate actually plays). The PROMOTION GATE stays on the 6-handed pair for cross-version
+    # comparability; a decisive disagreement between the axes downgrades PASS to WARN.
+    don_mix = _don_seat_mix(rc)
+    axes = [('6-handed', None)]
+    if don_mix and _supports_table_mix(rc):
+        axes.append(('donmix', don_mix))
+    results, detail_parts, data = {}, [], []
+    for axis_label, mix in axes:
+        profits_a, seat_a = _run_leg(rc.model, frozen_model, table_size_mix=mix)
+        if profits_a is None:
+            return CheckResult('SKIP', "could not seat the frozen predecessor as an NN opponent "
+                                       f"(got {getattr(seat_a, 'label', None)!r}) -- refusing to "
+                                       "report a head-to-head against a heuristic field")
+        profits_b, seat_b = _run_leg(frozen_model, rc.model, table_size_mix=mix)
+        if profits_b is None:
+            return CheckResult('SKIP', "could not seat the CANDIDATE as an NN opponent in the "
+                                       f"swapped leg (got {getattr(seat_b, 'label', None)!r})")
+        diffs = [a - b for a, b in zip(profits_a, profits_b)]
+        diff_bb100, ci = _ci95_bb100(diffs)
+        bb100_a, ci_a = _ci95_bb100(profits_a)
+        bb100_b, ci_b = _ci95_bb100(profits_b)
+        results[axis_label] = (diff_bb100, ci)
+        detail_parts.append(f"[{axis_label}] candidate-as-hero {bb100_a:+.1f} ±{ci_a:.1f}, "
+                            f"frozen-as-hero {bb100_b:+.1f} ±{ci_b:.1f}, paired diff "
+                            f"{diff_bb100:+.1f} ±{ci:.1f} BB/100")
+        data.append({"opponent": rc.frozen_predecessor_filename, "n_hands": n_hands,
+                     "axis": axis_label, "table_size_mix": mix or "6-handed",
+                     "field": "fish/tag/nit/past(frozen)", "past_seat": seat_a.label,
+                     "bb100_candidate_hero": round(bb100_a, 1), "ci95_candidate_hero": round(ci_a, 1),
+                     "bb100_frozen_hero": round(bb100_b, 1), "ci95_frozen_hero": round(ci_b, 1),
+                     "paired_diff_bb100": round(diff_bb100, 1), "paired_diff_ci95": round(ci, 1)})
     detail = (f"mirrored-deal paired head-to-head vs {rc.frozen_predecessor_filename} "
-              f"(SEATED AS {seat_a.label}): candidate-as-hero {bb100_a:+.1f} ±{ci_a:.1f}, "
-              f"frozen-as-hero {bb100_b:+.1f} ±{ci_b:.1f}, paired diff {diff_bb100:+.1f} "
-              f"±{ci:.1f} BB/100 (95% CI, {n_hands} paired hands)")
-    data = [{"opponent": rc.frozen_predecessor_filename, "n_hands": n_hands,
-             "field": "fish/tag/nit/past(frozen)", "past_seat": seat_a.label,
-             "bb100_candidate_hero": round(bb100_a, 1), "ci95_candidate_hero": round(ci_a, 1),
-             "bb100_frozen_hero": round(bb100_b, 1), "ci95_frozen_hero": round(ci_b, 1),
-             "paired_diff_bb100": round(diff_bb100, 1), "paired_diff_ci95": round(ci, 1)}]
-    if diff_bb100 - ci > 0:
+              f"({n_hands} paired hands/axis, 95% CIs): " + " | ".join(detail_parts))
+    gate_diff, gate_ci = results['6-handed']
+    if gate_diff - gate_ci > 0:
+        dm = results.get('donmix')
+        if dm and dm[0] + dm[1] < 0:
+            return CheckResult('WARN', detail + " -- 6-handed PASS but DECISIVELY behind on the "
+                                                "DoN seat mix (axes disagree)", data)
         return CheckResult('PASS', detail, data)
-    if diff_bb100 + ci < 0:
-        return CheckResult('FAIL', detail + " -- DECISIVELY behind the frozen predecessor (CI fully below 0)", data)
-    return CheckResult('WARN', detail + " -- not decisive (95% CI includes 0); more hands or a real improvement needed", data)
+    if gate_diff + gate_ci < 0:
+        return CheckResult('FAIL', detail + " -- DECISIVELY behind the frozen predecessor (6-handed CI fully below 0)", data)
+    return CheckResult('WARN', detail + " -- not decisive (6-handed 95% CI includes 0); more hands or a real improvement needed", data)
 
 
 def check_beats_offformula_stress(rc):

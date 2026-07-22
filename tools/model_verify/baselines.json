@@ -1,18 +1,26 @@
 {
   "v20_preflopEq": {
     "bb100": {
-      "loose_short": 16.8,
       "loose_deep": 36.2,
-      "tight_short": 22.8,
-      "tight_deep": 61.1
+      "loose_short": 16.8,
+      "tight_deep": 61.1,
+      "tight_short": 22.8
     }
   },
   "v20_preflopEq_AI": {
     "bb100": {
-      "loose_short": 31.1,
       "loose_deep": 57.7,
-      "tight_short": 27.0,
-      "tight_deep": 65.1
+      "loose_short": 31.1,
+      "tight_deep": 65.1,
+      "tight_short": 27.0
+    }
+  },
+  "v47": {
+    "bb100": {
+      "loose_deep": 66.5,
+      "loose_short": 24.3,
+      "tight_deep": 74.6,
+      "tight_short": 25.9
     }
   }
 }

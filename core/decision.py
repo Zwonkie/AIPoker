@@ -11,6 +11,7 @@ from core.models.v40_engine import V40ModelEngine
 from core.models.v41_engine import V41ModelEngine
 from core.models.v43_engine import V43ModelEngine
 from core.models.v44_engine import V44ModelEngine
+from core.models.v47_engine import V47ModelEngine
 
 # Live action selection: SAMPLE from the actor policy (matching training/eval, which sample rather
 # than argmax) but SHARPEN with a temperature < 1 so genuine mixing survives on close spots while
@@ -266,6 +267,17 @@ class PokerDecisionEngine:
             # and set in PHPHelp (falls back to nominal -> V43 behaviour if absent). DEPLOYED LIVE
             # 2026-07-22 by explicit user decision on the 0-FAIL scorecard + first-ever [P4] pass.
             # ROLLBACK: set active_model_name back to 'Herocules (v43)'. See versions/v44/SPECS.md.
+            # V47: opponent raise-size realism (#6) + all-in-by-chips aliasing collapse ([M9],
+            # serve mirror gated on this engine's `collapse_aliased_allin = True`) + occupant-true
+            # counterfactual fold models ([M4]/[L4]). Same cv9/54-dim contract as V44 (clone).
+            # model_verify --full 2026-07-22: 20 PASS / 7 WARN / 0 FAIL. Held V44's wins
+            # (vpip_adapts +6.2/+7.9), HEALED committed/pot_type WARNs, position_sweep spread
+            # 0.167->0.948. DEPLOYED LIVE 2026-07-22 by explicit user decision, with the review's
+            # caveats known at deploy time: mirrored-deal head-to-head vs frozen V44 was PARITY
+            # (+2.6 +/-45.0 BB/100, CI includes 0 -- NOT a proven win), literal-Nash 71%->65%, and
+            # opponent_style_sweep went flat (0.127->0.027). See resolution-log Tier 10.
+            # ROLLBACK: set active_model_name back to 'Herocules (v44)' (registered below).
+            'Herocules (v47)': V47ModelEngine(weight_name="expert_main.pth"),
             'Herocules (v44)': V44ModelEngine(weight_name="expert_main.pth"),
             'Herocules (v43)': V43ModelEngine(weight_name="expert_main.pth"),
             'Herocules (v41)': V41ModelEngine(weight_name="expert_main.pth"),
@@ -301,7 +313,7 @@ class PokerDecisionEngine:
         # DEPLOYED 2026-07-21: V43 replaces V41 by explicit user decision, on a MIXED scorecard and
         # before beats_frozen_predecessor finished -- see the registry entry above for exactly what
         # was known at deploy time. V41 (the MILESTONE) stays registered as the one-line rollback.
-        self.active_model_name = 'Herocules (v44)'  # V43 registered above as rollback
+        self.active_model_name = 'Herocules (v47)'  # V44 registered above as rollback
         # [Fable review #16/H4, completed by v46_legacySweep] ENGINE-OWNED BRIDGES are the ONLY
         # tensor-dispatch mechanism: every registered engine declares `make_bridge()` and gets its
         # own contract instance here. The former per-version bridge fields and the 13-flag `is_vN`
@@ -669,6 +681,27 @@ class PokerDecisionEngine:
                 _rs, _ = self._v14_size_to_slider(rfrac, board_state)
                 if _rs >= _allin_chips - 1e-9:
                     probs[rk] = 0.0
+        # [V48, Change 0 -- train≡serve mirror, GENERALIZED] For an engine declaring
+        # collapse_aliased_buckets=True, ANY raise buckets resolving to identical slider chips
+        # (min-raise floor / stack clamp -- ~73% of preflop raise decisions, not just the 2.4%
+        # shove case) are ONE physical action. Training keeps one canonical per chip-group
+        # (ALLIN for the shove group, else the lowest-index bucket -- simulator.py Change 0)
+        # and zeroes the duplicates' actor-target regret; serving masks the duplicates
+        # identically before sampling. V47 engines declare only the narrower allin flag above;
+        # pre-V47 engines declare neither, so no deployed distribution changes.
+        if getattr(active_model, 'collapse_aliased_buckets', False) and bet_raise_available:
+            _stack = float(getattr(board_state, 'hero_stack', 0.0) or 0.0)
+            _sizes = {}
+            for rk, rfrac in V14_RAISE_FRAC.items():
+                _rs = _stack if rfrac is None else self._v14_size_to_slider(rfrac, board_state)[0]
+                _sizes.setdefault(round(min(_rs, _stack), 6), []).append(rk)
+            for _group in _sizes.values():
+                if len(_group) < 2:
+                    continue
+                _canon = 'ALLIN' if 'ALLIN' in _group else _group[0]
+                for rk in _group:
+                    if rk != _canon:
+                        probs[rk] = 0.0
         sharp = {a: (v ** (1.0 / temp)) for a, v in probs.items()}
         names = [a for a in keys if sharp[a] > 0.0]
         sharp_total = sum(sharp[a] for a in names) or 1.0

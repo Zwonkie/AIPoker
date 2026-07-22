@@ -1,4 +1,5 @@
 import difflib
+import re
 
 class TableState:
     """
@@ -145,6 +146,15 @@ class TableState:
         # --- Opponents (Monotonic Decay & State Persistence) ---
         raw_opps = raw_state.get('opponents', {})
         for seat_key, raw_opp in raw_opps.items():
+            # [2026-07-22, flagged turn_10 JJ-fold] The seat countdown timer can be OCR'd as
+            # the player NAME ("Tid: 18"), REGISTERING A PHANTOM OPPONENT: field 3 -> 4,
+            # range-aware equity for JJ 0.45 -> 0.38, and the net folds (the exact
+            # phantom-seat cost the resurrection comment below measured on AKs). A timer
+            # read can never be a first registration; if the seat is real, a later frame
+            # shows the actual name plate and registers it then.
+            _nm = str(raw_opp.get('name', '') or '').strip()
+            if seat_key not in self.opponents and re.match(r'(?i)^tid\s*[:.]?\s*\d*$', _nm):
+                continue
             # [2026-07-21] A player who has folded CANNOT re-enter the hand, so `is_active` is
             # monotonically non-increasing within a hand -- the same one-way rule this method
             # already applies to `pot_size` (only grows) and stacks (only shrink), and what the

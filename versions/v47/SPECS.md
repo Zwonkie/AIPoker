@@ -236,6 +236,16 @@ model_verify's SLOW checks run the same world; calibration scripts flip them off
    own simulator instance/RNG/opponent draws — never enter the train split; single-worker
    ramp-up batch falls back to a sequential 90/10 split). NO replay buffer.
 
+**KNOWN SCOPE BOUNDARY (user decision 2026-07-22, mid-run)**: Change 2 collapses the ALL-IN
+aliasing only (T-M9's literal case, ~2.4% of decisions). The resolution log's Tier 6 measurement
+records a LARGER un-collapsed aliasing — the min-raise floor swallowing every pot fraction
+(raise_33/66/pot = the same min-raise chips), **40.7% of decisions / 56% preflop** — which also
+triple-counts one physical action's regret in the actor-target normalization (a structural
+min-raise over-weight at preflop entry). The V47 100k run trains WITHOUT the generalized
+collapse by explicit decision (finish + measure first); the generalization (group buckets by
+resolved chips, one canonical per group, same masks/mirror) is the leading V47.1/V48 candidate.
+Judge VPIP-level and preflop-entry gates with this in mind.
+
 **Pre-training verification: `self_play/verify_v47.py` 28/28** (M9 EV-unification + actor-mass
 collapse both paths + without-mask regression demo; M4 analytic==sampled-mean, tree/NN validity,
 history non-mutation; C1 wiring; curriculum band densities; VAL-5 bit-identical round trip;

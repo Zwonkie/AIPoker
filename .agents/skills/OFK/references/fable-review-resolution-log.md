@@ -552,6 +552,57 @@ files stay on disk per guardrails Rule 6.
 
 ---
 
+## Tier 10 — V47 (opponent realism + target alignment), 2026-07-22
+
+**Scope**: versions/v47 (V44 clone, same 54-dim cv9 contract) + Phase-0 evaluation tooling.
+Closes **#5** (P0.1 normal-approx CIs on every bb100 check + MIRRORED-DEAL paired head-to-head
+with per-hand seeded decks, gate = paired CI excluding 0; P0.2 `gameplay_eval` temp 1.0→0.5
+serve-match), **#12** (P0.4 `contract_version` hard validation in `shared/manifest.py`,
+`allow_contract_mismatch=True` opt-in for deliberate frozen seating), **#6** (Change 1:
+per-archetype raise-size repertoires TAG/LAG/Nit/Station incl. jams/overbets/min-raises,
+C1/C2-calibrated, 0 bucket-execution mismatches over 2129 instrumented events; NN 'raise_k'
+startswith-fix recovers post-V18 dropped raise records), **[M9]** (Change 2: `allin_by_chips`
+ON + aliased-bucket EV copy + regret-mask train-side + serve-side sampler mask behind engine
+flag `collapse_aliased_allin` — new train≡serve pair in pipeline-flow.md), **[M4]/[M6]/[M7]**
+(Change 3: occupant-true counterfactual fold models — NN seats batched policy pass, Tree seats
+class probs, heuristic seats analytic closed form; 1.05x cost) and **[L4]** (10-roll Bernoulli
+noise → analytic closed form, kept only for non-Fuzzy bots).
+
+**Outcome** (100k fresh, battery 20 PASS/7 WARN/0 FAIL — full report in `references/V47/`):
+- **Gate 2 (hold the wins) MET**: `vpip_adapts_to_style` +6.2/+7.9 (vs V44 +6.1/+5.9 — deep
+  improved), `multiway_shortstack_aggression` PASS, `deep_stack_ood_guard` PASS,
+  `allin_vs_nextbest_qgap` all-negative worst cells.
+- **Gate 4 (regression watch) MET, plus healed WARNs**: `committed_sensitivity` 0.023→0.030
+  (WARN→PASS), `pot_type_sensitivity` 0.024→0.167 (WARN→PASS, now clearly load-bearing —
+  plausibly BECAUSE opponents now size raises), `position_sweep` spread 0.167→**0.948**
+  (position awareness restored, best since V27-era flattening), `action_diversity` PASS with
+  all-in argmax cells appearing, VPIP levels ~flat vs V44 (no V27-mode inflation).
+- **Gate 1 (mirrored head-to-head) INCONCLUSIVE**: paired diff **+2.6 ±45.0 BB/100** (4000
+  paired hands) — statistical parity with frozen V44. The OLD methodology would have reported
+  +68.3 "beats predecessor"; the honest gate does not.
+- **Gate 3 (point of the version) MIXED**: corrected-Nash literal agreement 71%→**65%**
+  (composite 66%→65% ~flat); BUT first literal-jam commits since V29 appear (74/971 vs 0/971
+  in V44 — the [M9] signature, direction right, magnitude small), and the top disagreement
+  cells are IDENTICAL to V44's (92s-94s@5bb overplay) — a lineage-wide 5bb looseness, not a
+  V47 regression. C2 re-run on the real run confirms exposure (37% jams/28% min-raise/16%
+  pot/1% overbet; 0 mismatches). [STACK-3] actor-vs-critic probe still NOT quantified (open).
+- **New WARNs to carry**: `opponent_style_sweep` fold-spread 0.127→**0.027** (flat;
+  hypothesis: occupant-true fold models made training-time archetype response more
+  homogeneous — a realism↔exploitability tension worth a targeted V48 look; the isolated
+  ablation still shows per-seat block TV 0.307, so wiring is alive), and
+  `short_stack_polarization` 0.19→0.22 (WARN, [P3] residual).
+- **Min-raise-floor aliasing (T-M9 scope boundary, measured post-run as agreed)**:
+  prevalence ~73% of curriculum-weighted preflop raise decisions (geometry-driven — 33%-pot
+  floors to min-raise at ANY depth), but NO pathology: V47 slightly TIGHTER than V44 at
+  aliased cells (raise mass 0.242 vs 0.274) and intra-group Q spread ratio 0.01 vs 0.03.
+  Change-0 generalized collapse stays a V48 correctness item, NOT a V47.1 prerequisite.
+- **Deploy**: initially held back per the SPECS rollback rule (gate 1 inconclusive + gate 3
+  regression) — then **DEPLOYED LIVE 2026-07-22 (same evening) by explicit user decision**,
+  caveats known at deploy time (parity head-to-head, style-flatness WARN; provenance in the
+  core/decision.py registry comment). V44 = one-line rollback, V41 = MILESTONE fallback.
+  V47 is also the BASE for V48, with the opponent-style flatness and 5bb looseness as V48
+  watch items.
+
 ## Tier 2+ — not addressed
 
 All **OPEN**. Listed so nothing silently drops off; ranking is the reviewer's, not a work order.
@@ -559,14 +610,14 @@ All **OPEN**. Listed so nothing silently drops off; ranking is the reviewer's, n
 | # | Finding | Note |
 |---|---|---|
 | 4 | `beats_frozen_predecessor` never seats the frozen predecessor (dead `past_model`/`disable_past_self` attrs) | **FIXED 2026-07-20** — see below. |
-| 5 | No confidence intervals anywhere; `gameplay_eval.py` runs temp 1.0 vs serve 0.5; Goodhart on `deep_stack_ood_guard`'s own grid | Now the binding limit on #4's gate: the head-to-head is real, but at 4k hands SE(BB/100) ≈ ±13–19. |
-| 6 | Every opponent raise is exactly 0.75 pot | **The last open member of the [BET-3] bundle** and the natural next version: it is what the OPP-2 raise features and every fold-vs-raise response are ultimately calibrated against. Hero has never faced an open-jam, overbet or min-raise. |
+| 5 | No confidence intervals anywhere; `gameplay_eval.py` runs temp 1.0 vs serve 0.5; Goodhart on `deep_stack_ood_guard`'s own grid | **FIXED 2026-07-22 (V47 Phase 0)** — see Tier 10: CIs on every bb100 check, mirrored-deal paired head-to-head (CI-gated), gameplay_eval serve-temp match. Goodhart note stays open by design (grid unchanged). |
+| 6 | Every opponent raise is exactly 0.75 pot | **FIXED 2026-07-22 (V47 Change 1)** — see Tier 10: per-archetype raise-size repertoires (jams/overbets/min-raises/pot), C1/C2-calibrated, 0 bucket-execution mismatches. Hero's world now: ~37% jams / 28% min-raises / 16% pot+ / 1% overbet. |
 | 7 | Dead blinds | **FIXED in V41** — see Tier 3. |
 | 8 | NN opponents play a degraded self | **FIXED in V41** — see Tier 3. |
 | 9 | All six stacks identical; min-raise floor; short all-ins reopen action | **FIXED in V41** — see Tier 3. |
 | 10 | Rollout queries use a third, drifted encoder | **FIXED in V41** — see Tier 3. |
 | 11 | [OPP-7]'s V27 fix defeated at the tensor boundary | **FIXED in V41** — see Tier 3. Backlog status "RESOLVED" still needs the correction noted there. |
-| 12 | `contract_version` never validated — only `context_dim` width | |
+| 12 | `contract_version` never validated — only `context_dim` width | **FIXED 2026-07-22 (V47 Phase 0, P0.4)** — `shared/manifest.py::load_state_dict` raises on checkpoint/manifest `contract_version` mismatch; `allow_contract_mismatch=True` opt-in prints a NOTICE (used for deliberate frozen-predecessor seating). |
 | 13 | Call-button OCR miss silently becomes "free check" and force-masks FOLD | **FIXED 2026-07-21 (V42_liveFixes)** — see Tier 5. |
 | 14 | Live serves an all-PAD action-history sequence | **FIXED 2026-07-21** — see Tier 4. |
 | 15 | Missing/corrupt weights degrade to random-weight play | **FIXED 2026-07-21** (during the V41 deployment) — `core/decision.py`'s `make_decision` now refuses to act when the active engine's `.loaded` is False, returning FOLD with the load error in the reason string instead of serving random weights. Engines without the flag are treated as loaded (legacy). Verified by pointing the engine at a missing checkpoint: `FOLD — Model 'Herocules (v41)' failed to load (FileNotFoundError...) - refusing to act`. The engine constructor still swallows the exception on purpose — the registry builds every engine at init and one missing rollback checkpoint must not take the app down — so `.loaded` is the contract. |

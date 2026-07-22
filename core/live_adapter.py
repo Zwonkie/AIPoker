@@ -129,7 +129,15 @@ def observation_to_board_state(obs: LiveObservation, equity: float = 0.0,
         dealer_idx=obs.dealer_idx,
         hero_position=obs.hero_position,
         street=obs.street,
-        call_amount=float(obs.call_amount) if obs.call_amount is not None else 0.0,
+        # [2026-07-22, flagged turn_10 JJ-fold] An OCR-missed call amount (None) must NOT
+        # encode as 0.0: price-slot zeros read as a FREE CHECK to the net, whose known
+        # free_check_low_fold pathology then folds ~0.9+, while the FOLD mask correctly
+        # treats unknown != free (V42 #13) and does not intervene -- two layers disagreeing
+        # about one number folded pocket jacks preflop. Unknown price floors at one big
+        # blind (the minimum real price when facing action); a TRUE free check still
+        # arrives as call_amount=0.0, never None.
+        call_amount=(float(obs.call_amount) if obs.call_amount is not None
+                     else float(obs.big_blind or 0.0)),
         equity=equity,
         big_blind=obs.big_blind,
         hero_committed=obs.hero_committed,

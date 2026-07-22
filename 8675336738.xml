@@ -1,0 +1,904 @@
+<?xml version="1.0" encoding="utf-8"?>
+<session sessioncode="8675336738">
+ <general>
+  <client_version>26.1.1.34</client_version>
+  <mode>real</mode>
+  <gametype>Holdem NL</gametype>
+  <tablename>Double Or Nothing (€0.50), 1171673501</tablename>
+  <tournamentcurrency>EUR</tournamentcurrency>
+  <duration>00:10:48</duration>
+  <gamecount>20</gamecount>
+  <startdate>2026-07-22 15:40:28</startdate>
+  <currency>DKK</currency>
+  <nickname>Zwonkie</nickname>
+  <bets>1,335</bets>
+  <wins>510</wins>
+  <chipsin>800</chipsin>
+  <chipsout>0</chipsout>
+  <statuspoints>0.00</statuspoints>
+  <awardpoints>0.00</awardpoints>
+  <ipoints>0.00</ipoints>
+  <tablesize>6</tablesize>
+  <tournamentcode>1171672032</tournamentcode>
+  <tournamentname>Double Or Nothing (€0.50)</tournamentname>
+  <place>N/A</place>
+  <buyin>€0.45 + €0.05</buyin>
+  <totalbuyin>€0.50</totalbuyin>
+  <win>N/A</win>
+ </general>
+ <game gamecode="12389144455">
+  <general>
+   <startdate>2026-07-22 15:40:28</startdate>
+   <smallblind>10</smallblind>
+   <bigblind>20</bigblind>
+   <players>
+    <player addon="0" bet="0" chips="800" dealer="1" name="rabc01sky" rebuy="0" reg_code="" seat="1" win="0"/>
+    <player addon="0" bet="40" chips="800" dealer="0" name="smor02" rebuy="0" reg_code="" seat="3" win="60"/>
+    <player addon="0" bet="20" chips="800" dealer="0" name="SinodaTheFirst" rebuy="0" reg_code="" seat="5" win="0"/>
+    <player addon="0" bet="0" chips="800" dealer="0" name="karasyk71" rebuy="0" reg_code="" seat="6" win="0"/>
+    <player addon="0" bet="0" chips="800" dealer="0" name="Zwonkie" rebuy="0" reg_code="8675336738" seat="8" win="0"/>
+    <player addon="0" bet="20" chips="800" dealer="0" name="frkmaria" rebuy="0" reg_code="" seat="10" win="0"/>
+   </players>
+  </general>
+  <round no="0">
+   <action no="1" player="smor02" sum="10" type="1"/>
+   <action no="2" player="SinodaTheFirst" sum="20" type="2"/>
+  </round>
+  <round no="1">
+   <cards player="rabc01sky" type="Pocket">X X</cards>
+   <cards player="smor02" type="Pocket">X X</cards>
+   <cards player="SinodaTheFirst" type="Pocket">X X</cards>
+   <cards player="karasyk71" type="Pocket">X X</cards>
+   <cards player="Zwonkie" type="Pocket">D6 C3</cards>
+   <cards player="frkmaria" type="Pocket">X X</cards>
+   <action no="3" player="karasyk71" sum="0" type="0"/>
+   <action no="4" player="Zwonkie" sum="0" type="0"/>
+   <action no="5" player="frkmaria" sum="20" type="3"/>
+   <action no="6" player="rabc01sky" sum="0" type="0"/>
+   <action no="7" player="smor02" sum="10" type="3"/>
+   <action no="8" player="SinodaTheFirst" sum="0" type="4"/>
+  </round>
+  <round no="2">
+   <action no="9" player="smor02" sum="20" type="5"/>
+   <action no="10" player="SinodaTheFirst" sum="0" type="0"/>
+   <action no="11" player="frkmaria" sum="0" type="0"/>
+   <cards type="Flop">H10 HA C4</cards>
+  </round>
+ </game>
+ <game gamecode="12389144539">
+  <general>
+   <startdate>2026-07-22 15:40:58</startdate>
+   <smallblind>10</smallblind>
+   <bigblind>20</bigblind>
+   <players>
+    <player addon="0" bet="0" chips="800" dealer="0" name="rabc01sky" rebuy="0" reg_code="" seat="1" win="0"/>
+    <player addon="0" bet="0" chips="840" dealer="1" name="smor02" rebuy="0" reg_code="" seat="3" win="0"/>
+    <player addon="0" bet="10" chips="780" dealer="0" name="SinodaTheFirst" rebuy="0" reg_code="" seat="5" win="0"/>
+    <player addon="0" bet="20" chips="800" dealer="0" name="karasyk71" rebuy="0" reg_code="" seat="6" win="20"/>
+    <player addon="0" bet="0" chips="800" dealer="0" name="Zwonkie" rebuy="0" reg_code="8675336738" seat="8" win="0"/>
+    <player addon="0" bet="0" chips="780" dealer="0" name="frkmaria" rebuy="0" reg_code="" seat="10" win="0"/>
+   </players>
+  </general>
+  <round no="0">
+   <action no="1" player="SinodaTheFirst" sum="10" type="1"/>
+   <action no="2" player="karasyk71" sum="20" type="2"/>
+  </round>
+  <round no="1">
+   <cards player="rabc01sky" type="Pocket">X X</cards>
+   <cards player="smor02" type="Pocket">X X</cards>
+   <cards player="SinodaTheFirst" type="Pocket">X X</cards>
+   <cards player="karasyk71" type="Pocket">X X</cards>
+   <cards player="Zwonkie" type="Pocket">S3 H10</cards>
+   <cards player="frkmaria" type="Pocket">X X</cards>
+   <action no="3" player="Zwonkie" sum="0" type="0"/>
+   <action no="4" player="frkmaria" sum="0" type="0"/>
+   <action no="5" player="rabc01sky" sum="0" type="0"/>
+   <action no="6" player="smor02" sum="0" type="0"/>
+   <action no="7" player="SinodaTheFirst" sum="0" type="0"/>
+  </round>
+ </game>
+ <game gamecode="12389144578">
+  <general>
+   <startdate>2026-07-22 15:41:15</startdate>
+   <smallblind>10</smallblind>
+   <bigblind>20</bigblind>
+   <players>
+    <player addon="0" bet="0" chips="800" dealer="0" name="rabc01sky" rebuy="0" reg_code="" seat="1" win="0"/>
+    <player addon="0" bet="140" chips="840" dealer="0" name="smor02" rebuy="0" reg_code="" seat="3" win="230"/>
+    <player addon="0" bet="0" chips="770" dealer="1" name="SinodaTheFirst" rebuy="0" reg_code="" seat="5" win="0"/>
+    <player addon="0" bet="10" chips="810" dealer="0" name="karasyk71" rebuy="0" reg_code="" seat="6" win="0"/>
+    <player addon="0" bet="100" chips="800" dealer="0" name="Zwonkie" rebuy="0" reg_code="8675336738" seat="8" win="0"/>
+    <player addon="0" bet="20" chips="780" dealer="0" name="frkmaria" rebuy="0" reg_code="" seat="10" win="0"/>
+   </players>
+  </general>
+  <round no="0">
+   <action no="1" player="karasyk71" sum="10" type="1"/>
+   <action no="2" player="Zwonkie" sum="20" type="2"/>
+  </round>
+  <round no="1">
+   <cards player="rabc01sky" type="Pocket">X X</cards>
+   <cards player="smor02" type="Pocket">X X</cards>
+   <cards player="SinodaTheFirst" type="Pocket">X X</cards>
+   <cards player="karasyk71" type="Pocket">X X</cards>
+   <cards player="Zwonkie" type="Pocket">HQ HK</cards>
+   <cards player="frkmaria" type="Pocket">X X</cards>
+   <action no="3" player="frkmaria" sum="20" type="3"/>
+   <action no="4" player="rabc01sky" sum="0" type="0"/>
+   <action no="5" player="smor02" sum="40" type="23"/>
+   <action no="6" player="SinodaTheFirst" sum="0" type="0"/>
+   <action no="7" player="karasyk71" sum="0" type="0"/>
+   <action no="8" player="Zwonkie" sum="100" type="23"/>
+   <action no="9" player="frkmaria" sum="0" type="0"/>
+   <action no="10" player="smor02" sum="60" type="3"/>
+  </round>
+  <round no="2">
+   <action no="11" player="Zwonkie" sum="0" type="4"/>
+   <action no="12" player="smor02" sum="0" type="4"/>
+   <cards type="Flop">S10 C4 C5</cards>
+  </round>
+  <round no="3">
+   <action no="13" player="Zwonkie" sum="0" type="4"/>
+   <action no="14" player="smor02" sum="40" type="5"/>
+   <action no="15" player="Zwonkie" sum="0" type="0"/>
+   <cards type="Turn">H4</cards>
+  </round>
+ </game>
+ <game gamecode="12389144736">
+  <general>
+   <startdate>2026-07-22 15:42:06</startdate>
+   <smallblind>10</smallblind>
+   <bigblind>20</bigblind>
+   <players>
+    <player addon="0" bet="20" chips="800" dealer="0" name="rabc01sky" rebuy="0" reg_code="" seat="1" win="0"/>
+    <player addon="0" bet="465" chips="970" dealer="0" name="smor02" rebuy="0" reg_code="" seat="3" win="570"/>
+    <player addon="0" bet="180" chips="770" dealer="0" name="SinodaTheFirst" rebuy="0" reg_code="" seat="5" win="0"/>
+    <player addon="0" bet="0" chips="800" dealer="1" name="karasyk71" rebuy="0" reg_code="" seat="6" win="0"/>
+    <player addon="0" bet="10" chips="700" dealer="0" name="Zwonkie" rebuy="0" reg_code="8675336738" seat="8" win="0"/>
+    <player addon="0" bet="180" chips="760" dealer="0" name="frkmaria" rebuy="0" reg_code="" seat="10" win="0"/>
+   </players>
+  </general>
+  <round no="0">
+   <action no="1" player="Zwonkie" sum="10" type="1"/>
+   <action no="2" player="frkmaria" sum="20" type="2"/>
+  </round>
+  <round no="1">
+   <cards player="rabc01sky" type="Pocket">X X</cards>
+   <cards player="smor02" type="Pocket">X X</cards>
+   <cards player="SinodaTheFirst" type="Pocket">X X</cards>
+   <cards player="karasyk71" type="Pocket">X X</cards>
+   <cards player="Zwonkie" type="Pocket">H9 S6</cards>
+   <cards player="frkmaria" type="Pocket">X X</cards>
+   <action no="3" player="rabc01sky" sum="20" type="3"/>
+   <action no="4" player="smor02" sum="20" type="3"/>
+   <action no="5" player="SinodaTheFirst" sum="20" type="3"/>
+   <action no="6" player="karasyk71" sum="0" type="0"/>
+   <action no="7" player="Zwonkie" sum="0" type="0"/>
+   <action no="8" player="frkmaria" sum="0" type="4"/>
+  </round>
+  <round no="2">
+   <action no="9" player="frkmaria" sum="0" type="4"/>
+   <action no="10" player="rabc01sky" sum="0" type="4"/>
+   <action no="11" player="smor02" sum="40" type="5"/>
+   <action no="12" player="SinodaTheFirst" sum="40" type="3"/>
+   <action no="13" player="frkmaria" sum="40" type="3"/>
+   <action no="14" player="rabc01sky" sum="0" type="0"/>
+   <cards type="Flop">C2 C9 C8</cards>
+  </round>
+  <round no="3">
+   <action no="15" player="frkmaria" sum="0" type="4"/>
+   <action no="16" player="smor02" sum="60" type="5"/>
+   <action no="17" player="SinodaTheFirst" sum="120" type="23"/>
+   <action no="18" player="frkmaria" sum="120" type="3"/>
+   <action no="19" player="smor02" sum="60" type="3"/>
+   <cards type="Turn">S4</cards>
+  </round>
+  <round no="4">
+   <action no="20" player="frkmaria" sum="0" type="4"/>
+   <action no="21" player="smor02" sum="285" type="5"/>
+   <action no="22" player="SinodaTheFirst" sum="0" type="0"/>
+   <action no="23" player="frkmaria" sum="0" type="0"/>
+   <cards type="River">H8</cards>
+  </round>
+ </game>
+ <game gamecode="12389144891">
+  <general>
+   <startdate>2026-07-22 15:43:00</startdate>
+   <smallblind>15</smallblind>
+   <bigblind>30</bigblind>
+   <players>
+    <player addon="0" bet="180" chips="780" dealer="0" name="rabc01sky" rebuy="0" reg_code="" seat="1" win="0"/>
+    <player addon="0" bet="30" chips="1,360" dealer="0" name="smor02" rebuy="0" reg_code="" seat="3" win="0"/>
+    <player addon="0" bet="0" chips="590" dealer="0" name="SinodaTheFirst" rebuy="0" reg_code="" seat="5" win="0"/>
+    <player addon="0" bet="30" chips="800" dealer="0" name="karasyk71" rebuy="0" reg_code="" seat="6" win="0"/>
+    <player addon="0" bet="180" chips="690" dealer="1" name="Zwonkie" rebuy="0" reg_code="8675336738" seat="8" win="435"/>
+    <player addon="0" bet="15" chips="580" dealer="0" name="frkmaria" rebuy="0" reg_code="" seat="10" win="0"/>
+   </players>
+  </general>
+  <round no="0">
+   <action no="1" player="frkmaria" sum="15" type="1"/>
+   <action no="2" player="rabc01sky" sum="30" type="2"/>
+  </round>
+  <round no="1">
+   <cards player="rabc01sky" type="Pocket">S2 CA</cards>
+   <cards player="smor02" type="Pocket">X X</cards>
+   <cards player="SinodaTheFirst" type="Pocket">X X</cards>
+   <cards player="karasyk71" type="Pocket">X X</cards>
+   <cards player="Zwonkie" type="Pocket">D6 D4</cards>
+   <cards player="frkmaria" type="Pocket">X X</cards>
+   <action no="3" player="smor02" sum="30" type="3"/>
+   <action no="4" player="SinodaTheFirst" sum="0" type="0"/>
+   <action no="5" player="karasyk71" sum="30" type="3"/>
+   <action no="6" player="Zwonkie" sum="30" type="3"/>
+   <action no="7" player="frkmaria" sum="0" type="0"/>
+   <action no="8" player="rabc01sky" sum="0" type="4"/>
+  </round>
+  <round no="2">
+   <action no="9" player="rabc01sky" sum="0" type="4"/>
+   <action no="10" player="smor02" sum="0" type="4"/>
+   <action no="11" player="karasyk71" sum="0" type="4"/>
+   <action no="12" player="Zwonkie" sum="0" type="4"/>
+   <cards type="Flop">HQ D2 CQ</cards>
+  </round>
+  <round no="3">
+   <action no="13" player="rabc01sky" sum="30" type="5"/>
+   <action no="14" player="smor02" sum="0" type="0"/>
+   <action no="15" player="karasyk71" sum="0" type="0"/>
+   <action no="16" player="Zwonkie" sum="150" type="23"/>
+   <action no="17" player="rabc01sky" sum="120" type="3"/>
+   <cards type="Turn">C4</cards>
+  </round>
+  <round no="4">
+   <action no="18" player="rabc01sky" sum="0" type="4"/>
+   <action no="19" player="Zwonkie" sum="0" type="4"/>
+   <cards type="River">H7</cards>
+  </round>
+ </game>
+ <game gamecode="12389145082">
+  <general>
+   <startdate>2026-07-22 15:43:57</startdate>
+   <smallblind>15</smallblind>
+   <bigblind>30</bigblind>
+   <players>
+    <player addon="0" bet="600" chips="600" dealer="0" name="rabc01sky" rebuy="0" reg_code="" seat="1" win="0"/>
+    <player addon="0" bet="30" chips="1,330" dealer="0" name="smor02" rebuy="0" reg_code="" seat="3" win="0"/>
+    <player addon="0" bet="0" chips="590" dealer="0" name="SinodaTheFirst" rebuy="0" reg_code="" seat="5" win="0"/>
+    <player addon="0" bet="90" chips="770" dealer="0" name="karasyk71" rebuy="0" reg_code="" seat="6" win="0"/>
+    <player addon="0" bet="0" chips="945" dealer="0" name="Zwonkie" rebuy="0" reg_code="8675336738" seat="8" win="0"/>
+    <player addon="0" bet="565" chips="565" dealer="1" name="frkmaria" rebuy="0" reg_code="" seat="10" win="1,250"/>
+   </players>
+  </general>
+  <round no="0">
+   <action no="1" player="rabc01sky" sum="15" type="1"/>
+   <action no="2" player="smor02" sum="30" type="2"/>
+  </round>
+  <round no="1">
+   <cards player="rabc01sky" type="Pocket">C8 S8</cards>
+   <cards player="smor02" type="Pocket">X X</cards>
+   <cards player="SinodaTheFirst" type="Pocket">X X</cards>
+   <cards player="karasyk71" type="Pocket">X X</cards>
+   <cards player="Zwonkie" type="Pocket">DA C4</cards>
+   <cards player="frkmaria" type="Pocket">D5 S5</cards>
+   <action no="3" player="SinodaTheFirst" sum="0" type="0"/>
+   <action no="4" player="karasyk71" sum="30" type="3"/>
+   <action no="5" player="Zwonkie" sum="0" type="0"/>
+   <action no="6" player="frkmaria" sum="30" type="3"/>
+   <action no="7" player="rabc01sky" sum="90" type="23"/>
+   <action no="8" player="smor02" sum="0" type="0"/>
+   <action no="9" player="karasyk71" sum="60" type="3"/>
+   <action no="10" player="frkmaria" sum="60" type="3"/>
+  </round>
+  <round no="2">
+   <action no="11" player="rabc01sky" sum="510" type="5"/>
+   <action no="12" player="karasyk71" sum="0" type="0"/>
+   <action no="13" player="frkmaria" sum="475" type="7"/>
+   <cards type="Flop">H2 H5 H6</cards>
+  </round>
+  <round no="3">
+   <cards type="Turn">C9</cards>
+  </round>
+  <round no="4">
+   <cards type="River">S9</cards>
+  </round>
+ </game>
+ <game gamecode="12389156409">
+  <general>
+   <startdate>2026-07-22 15:44:42</startdate>
+   <smallblind>25</smallblind>
+   <bigblind>50</bigblind>
+   <ante>5</ante>
+   <players>
+    <player addon="0" bet="35" chips="35" dealer="1" name="rabc01sky" rebuy="0" reg_code="" seat="1" win="0"/>
+    <player addon="0" bet="55" chips="1,300" dealer="0" name="smor02" rebuy="0" reg_code="" seat="3" win="0"/>
+    <player addon="0" bet="55" chips="590" dealer="0" name="SinodaTheFirst" rebuy="0" reg_code="" seat="5" win="0"/>
+    <player addon="0" bet="55" chips="680" dealer="0" name="karasyk71" rebuy="0" reg_code="" seat="6" win="0"/>
+    <player addon="0" bet="5" chips="945" dealer="0" name="Zwonkie" rebuy="0" reg_code="8675336738" seat="8" win="0"/>
+    <player addon="0" bet="105" chips="1,250" dealer="0" name="frkmaria" rebuy="0" reg_code="" seat="10" win="260"/>
+   </players>
+  </general>
+  <round no="0">
+   <action no="1" player="smor02" sum="5" type="15"/>
+   <action no="2" player="SinodaTheFirst" sum="5" type="15"/>
+   <action no="3" player="karasyk71" sum="5" type="15"/>
+   <action no="4" player="Zwonkie" sum="5" type="15"/>
+   <action no="5" player="frkmaria" sum="5" type="15"/>
+   <action no="6" player="rabc01sky" sum="5" type="15"/>
+   <action no="7" player="smor02" sum="25" type="1"/>
+   <action no="8" player="SinodaTheFirst" sum="50" type="2"/>
+  </round>
+  <round no="1">
+   <cards player="rabc01sky" type="Pocket">DA HQ</cards>
+   <cards player="smor02" type="Pocket">X X</cards>
+   <cards player="SinodaTheFirst" type="Pocket">X X</cards>
+   <cards player="karasyk71" type="Pocket">X X</cards>
+   <cards player="Zwonkie" type="Pocket">S3 H8</cards>
+   <cards player="frkmaria" type="Pocket">C7 CK</cards>
+   <action no="9" player="karasyk71" sum="50" type="3"/>
+   <action no="10" player="Zwonkie" sum="0" type="0"/>
+   <action no="11" player="frkmaria" sum="50" type="3"/>
+   <action no="12" player="rabc01sky" sum="30" type="7"/>
+   <action no="13" player="smor02" sum="25" type="3"/>
+   <action no="14" player="SinodaTheFirst" sum="0" type="4"/>
+  </round>
+  <round no="2">
+   <action no="15" player="smor02" sum="0" type="4"/>
+   <action no="16" player="SinodaTheFirst" sum="0" type="4"/>
+   <action no="17" player="karasyk71" sum="0" type="4"/>
+   <action no="18" player="frkmaria" sum="50" type="5"/>
+   <action no="19" player="smor02" sum="0" type="0"/>
+   <action no="20" player="SinodaTheFirst" sum="0" type="0"/>
+   <action no="21" player="karasyk71" sum="0" type="0"/>
+   <cards type="Flop">SK C8 D5</cards>
+  </round>
+  <round no="3">
+   <cards type="Turn">HA</cards>
+  </round>
+  <round no="4">
+   <cards type="River">S7</cards>
+  </round>
+ </game>
+ <game gamecode="12389156560">
+  <general>
+   <startdate>2026-07-22 15:45:40</startdate>
+   <smallblind>25</smallblind>
+   <bigblind>50</bigblind>
+   <ante>5</ante>
+   <players>
+    <player addon="0" bet="5" chips="1,245" dealer="1" name="smor02" rebuy="0" reg_code="" seat="3" win="0"/>
+    <player addon="0" bet="30" chips="535" dealer="0" name="SinodaTheFirst" rebuy="0" reg_code="" seat="5" win="0"/>
+    <player addon="0" bet="55" chips="625" dealer="0" name="karasyk71" rebuy="0" reg_code="" seat="6" win="75"/>
+    <player addon="0" bet="5" chips="940" dealer="0" name="Zwonkie" rebuy="0" reg_code="8675336738" seat="8" win="0"/>
+    <player addon="0" bet="5" chips="1,455" dealer="0" name="frkmaria" rebuy="0" reg_code="" seat="10" win="0"/>
+   </players>
+  </general>
+  <round no="0">
+   <action no="1" player="SinodaTheFirst" sum="5" type="15"/>
+   <action no="2" player="karasyk71" sum="5" type="15"/>
+   <action no="3" player="Zwonkie" sum="5" type="15"/>
+   <action no="4" player="frkmaria" sum="5" type="15"/>
+   <action no="5" player="smor02" sum="5" type="15"/>
+   <action no="6" player="SinodaTheFirst" sum="25" type="1"/>
+   <action no="7" player="karasyk71" sum="50" type="2"/>
+  </round>
+  <round no="1">
+   <cards player="smor02" type="Pocket">X X</cards>
+   <cards player="SinodaTheFirst" type="Pocket">X X</cards>
+   <cards player="karasyk71" type="Pocket">X X</cards>
+   <cards player="Zwonkie" type="Pocket">H6 CK</cards>
+   <cards player="frkmaria" type="Pocket">X X</cards>
+   <action no="8" player="Zwonkie" sum="0" type="0"/>
+   <action no="9" player="frkmaria" sum="0" type="0"/>
+   <action no="10" player="smor02" sum="0" type="0"/>
+   <action no="11" player="SinodaTheFirst" sum="0" type="0"/>
+  </round>
+ </game>
+ <game gamecode="12389156605">
+  <general>
+   <startdate>2026-07-22 15:45:55</startdate>
+   <smallblind>25</smallblind>
+   <bigblind>50</bigblind>
+   <ante>5</ante>
+   <players>
+    <player addon="0" bet="5" chips="1,240" dealer="0" name="smor02" rebuy="0" reg_code="" seat="3" win="0"/>
+    <player addon="0" bet="5" chips="505" dealer="1" name="SinodaTheFirst" rebuy="0" reg_code="" seat="5" win="0"/>
+    <player addon="0" bet="30" chips="670" dealer="0" name="karasyk71" rebuy="0" reg_code="" seat="6" win="0"/>
+    <player addon="0" bet="55" chips="935" dealer="0" name="Zwonkie" rebuy="0" reg_code="8675336738" seat="8" win="75"/>
+    <player addon="0" bet="5" chips="1,450" dealer="0" name="frkmaria" rebuy="0" reg_code="" seat="10" win="0"/>
+   </players>
+  </general>
+  <round no="0">
+   <action no="1" player="karasyk71" sum="5" type="15"/>
+   <action no="2" player="Zwonkie" sum="5" type="15"/>
+   <action no="3" player="frkmaria" sum="5" type="15"/>
+   <action no="4" player="smor02" sum="5" type="15"/>
+   <action no="5" player="SinodaTheFirst" sum="5" type="15"/>
+   <action no="6" player="karasyk71" sum="25" type="1"/>
+   <action no="7" player="Zwonkie" sum="50" type="2"/>
+  </round>
+  <round no="1">
+   <cards player="smor02" type="Pocket">X X</cards>
+   <cards player="SinodaTheFirst" type="Pocket">X X</cards>
+   <cards player="karasyk71" type="Pocket">X X</cards>
+   <cards player="Zwonkie" type="Pocket">SA C4</cards>
+   <cards player="frkmaria" type="Pocket">X X</cards>
+   <action no="8" player="frkmaria" sum="0" type="0"/>
+   <action no="9" player="smor02" sum="0" type="0"/>
+   <action no="10" player="SinodaTheFirst" sum="0" type="0"/>
+   <action no="11" player="karasyk71" sum="0" type="0"/>
+  </round>
+ </game>
+ <game gamecode="12389156650">
+  <general>
+   <startdate>2026-07-22 15:46:14</startdate>
+   <smallblind>25</smallblind>
+   <bigblind>50</bigblind>
+   <ante>5</ante>
+   <players>
+    <player addon="0" bet="5" chips="1,235" dealer="0" name="smor02" rebuy="0" reg_code="" seat="3" win="0"/>
+    <player addon="0" bet="5" chips="500" dealer="0" name="SinodaTheFirst" rebuy="0" reg_code="" seat="5" win="0"/>
+    <player addon="0" bet="5" chips="640" dealer="1" name="karasyk71" rebuy="0" reg_code="" seat="6" win="0"/>
+    <player addon="0" bet="55" chips="980" dealer="0" name="Zwonkie" rebuy="0" reg_code="8675336738" seat="8" win="0"/>
+    <player addon="0" bet="55" chips="1,445" dealer="0" name="frkmaria" rebuy="0" reg_code="" seat="10" win="125"/>
+   </players>
+  </general>
+  <round no="0">
+   <action no="1" player="Zwonkie" sum="5" type="15"/>
+   <action no="2" player="frkmaria" sum="5" type="15"/>
+   <action no="3" player="smor02" sum="5" type="15"/>
+   <action no="4" player="SinodaTheFirst" sum="5" type="15"/>
+   <action no="5" player="karasyk71" sum="5" type="15"/>
+   <action no="6" player="Zwonkie" sum="25" type="1"/>
+   <action no="7" player="frkmaria" sum="50" type="2"/>
+  </round>
+  <round no="1">
+   <cards player="smor02" type="Pocket">X X</cards>
+   <cards player="SinodaTheFirst" type="Pocket">X X</cards>
+   <cards player="karasyk71" type="Pocket">X X</cards>
+   <cards player="Zwonkie" type="Pocket">S10 C6</cards>
+   <cards player="frkmaria" type="Pocket">HK H4</cards>
+   <action no="8" player="smor02" sum="0" type="0"/>
+   <action no="9" player="SinodaTheFirst" sum="0" type="0"/>
+   <action no="10" player="karasyk71" sum="0" type="0"/>
+   <action no="11" player="Zwonkie" sum="25" type="3"/>
+   <action no="12" player="frkmaria" sum="0" type="4"/>
+  </round>
+  <round no="2">
+   <action no="13" player="Zwonkie" sum="0" type="4"/>
+   <action no="14" player="frkmaria" sum="0" type="4"/>
+   <cards type="Flop">CJ HQ H3</cards>
+  </round>
+  <round no="3">
+   <action no="15" player="Zwonkie" sum="0" type="4"/>
+   <action no="16" player="frkmaria" sum="0" type="4"/>
+   <cards type="Turn">C8</cards>
+  </round>
+  <round no="4">
+   <action no="17" player="Zwonkie" sum="0" type="4"/>
+   <action no="18" player="frkmaria" sum="0" type="4"/>
+   <cards type="River">SQ</cards>
+  </round>
+ </game>
+ <game gamecode="12389156743">
+  <general>
+   <startdate>2026-07-22 15:46:43</startdate>
+   <smallblind>50</smallblind>
+   <bigblind>100</bigblind>
+   <ante>10</ante>
+   <players>
+    <player addon="0" bet="210" chips="1,230" dealer="0" name="smor02" rebuy="0" reg_code="" seat="3" win="0"/>
+    <player addon="0" bet="10" chips="495" dealer="0" name="SinodaTheFirst" rebuy="0" reg_code="" seat="5" win="0"/>
+    <player addon="0" bet="210" chips="635" dealer="0" name="karasyk71" rebuy="0" reg_code="" seat="6" win="500"/>
+    <player addon="0" bet="10" chips="925" dealer="1" name="Zwonkie" rebuy="0" reg_code="8675336738" seat="8" win="0"/>
+    <player addon="0" bet="60" chips="1,515" dealer="0" name="frkmaria" rebuy="0" reg_code="" seat="10" win="0"/>
+   </players>
+  </general>
+  <round no="0">
+   <action no="1" player="frkmaria" sum="10" type="15"/>
+   <action no="2" player="smor02" sum="10" type="15"/>
+   <action no="3" player="SinodaTheFirst" sum="10" type="15"/>
+   <action no="4" player="karasyk71" sum="10" type="15"/>
+   <action no="5" player="Zwonkie" sum="10" type="15"/>
+   <action no="6" player="frkmaria" sum="50" type="1"/>
+   <action no="7" player="smor02" sum="100" type="2"/>
+  </round>
+  <round no="1">
+   <cards player="smor02" type="Pocket">C7 DA</cards>
+   <cards player="SinodaTheFirst" type="Pocket">X X</cards>
+   <cards player="karasyk71" type="Pocket">SA H10</cards>
+   <cards player="Zwonkie" type="Pocket">D2 D5</cards>
+   <cards player="frkmaria" type="Pocket">X X</cards>
+   <action no="8" player="SinodaTheFirst" sum="0" type="0"/>
+   <action no="9" player="karasyk71" sum="100" type="3"/>
+   <action no="10" player="Zwonkie" sum="0" type="0"/>
+   <action no="11" player="frkmaria" sum="0" type="0"/>
+   <action no="12" player="smor02" sum="0" type="4"/>
+  </round>
+  <round no="2">
+   <action no="13" player="smor02" sum="0" type="4"/>
+   <action no="14" player="karasyk71" sum="0" type="4"/>
+   <cards type="Flop">SJ H2 H6</cards>
+  </round>
+  <round no="3">
+   <action no="15" player="smor02" sum="0" type="4"/>
+   <action no="16" player="karasyk71" sum="0" type="4"/>
+   <cards type="Turn">H7</cards>
+  </round>
+  <round no="4">
+   <action no="17" player="smor02" sum="100" type="5"/>
+   <action no="18" player="karasyk71" sum="100" type="3"/>
+   <cards type="River">D10</cards>
+  </round>
+ </game>
+ <game gamecode="12389156845">
+  <general>
+   <startdate>2026-07-22 15:47:21</startdate>
+   <smallblind>50</smallblind>
+   <bigblind>100</bigblind>
+   <ante>10</ante>
+   <players>
+    <player addon="0" bet="210" chips="1,020" dealer="0" name="smor02" rebuy="0" reg_code="" seat="3" win="250"/>
+    <player addon="0" bet="110" chips="485" dealer="0" name="SinodaTheFirst" rebuy="0" reg_code="" seat="5" win="0"/>
+    <player addon="0" bet="10" chips="925" dealer="0" name="karasyk71" rebuy="0" reg_code="" seat="6" win="0"/>
+    <player addon="0" bet="10" chips="915" dealer="0" name="Zwonkie" rebuy="0" reg_code="8675336738" seat="8" win="0"/>
+    <player addon="0" bet="10" chips="1,455" dealer="1" name="frkmaria" rebuy="0" reg_code="" seat="10" win="0"/>
+   </players>
+  </general>
+  <round no="0">
+   <action no="1" player="smor02" sum="10" type="15"/>
+   <action no="2" player="SinodaTheFirst" sum="10" type="15"/>
+   <action no="3" player="karasyk71" sum="10" type="15"/>
+   <action no="4" player="Zwonkie" sum="10" type="15"/>
+   <action no="5" player="frkmaria" sum="10" type="15"/>
+   <action no="6" player="smor02" sum="50" type="1"/>
+   <action no="7" player="SinodaTheFirst" sum="100" type="2"/>
+  </round>
+  <round no="1">
+   <cards player="smor02" type="Pocket">X X</cards>
+   <cards player="SinodaTheFirst" type="Pocket">X X</cards>
+   <cards player="karasyk71" type="Pocket">X X</cards>
+   <cards player="Zwonkie" type="Pocket">S5 C3</cards>
+   <cards player="frkmaria" type="Pocket">X X</cards>
+   <action no="8" player="karasyk71" sum="0" type="0"/>
+   <action no="9" player="Zwonkie" sum="0" type="0"/>
+   <action no="10" player="frkmaria" sum="0" type="0"/>
+   <action no="11" player="smor02" sum="50" type="3"/>
+   <action no="12" player="SinodaTheFirst" sum="0" type="4"/>
+  </round>
+  <round no="2">
+   <action no="13" player="smor02" sum="0" type="4"/>
+   <action no="14" player="SinodaTheFirst" sum="0" type="4"/>
+   <cards type="Flop">C2 S9 SK</cards>
+  </round>
+  <round no="3">
+   <action no="15" player="smor02" sum="0" type="4"/>
+   <action no="16" player="SinodaTheFirst" sum="0" type="4"/>
+   <cards type="Turn">H6</cards>
+  </round>
+  <round no="4">
+   <action no="17" player="smor02" sum="100" type="5"/>
+   <action no="18" player="SinodaTheFirst" sum="0" type="0"/>
+   <cards type="River">H10</cards>
+  </round>
+ </game>
+ <game gamecode="12389156916">
+  <general>
+   <startdate>2026-07-22 15:47:47</startdate>
+   <smallblind>50</smallblind>
+   <bigblind>100</bigblind>
+   <ante>10</ante>
+   <players>
+    <player addon="0" bet="200" chips="1,160" dealer="1" name="smor02" rebuy="0" reg_code="" seat="3" win="300"/>
+    <player addon="0" bet="60" chips="375" dealer="0" name="SinodaTheFirst" rebuy="0" reg_code="" seat="5" win="0"/>
+    <player addon="0" bet="110" chips="915" dealer="0" name="karasyk71" rebuy="0" reg_code="" seat="6" win="0"/>
+    <player addon="0" bet="10" chips="905" dealer="0" name="Zwonkie" rebuy="0" reg_code="8675336738" seat="8" win="0"/>
+    <player addon="0" bet="10" chips="1,445" dealer="0" name="frkmaria" rebuy="0" reg_code="" seat="10" win="0"/>
+   </players>
+  </general>
+  <round no="0">
+   <action no="1" player="SinodaTheFirst" sum="10" type="15"/>
+   <action no="2" player="karasyk71" sum="10" type="15"/>
+   <action no="3" player="Zwonkie" sum="10" type="15"/>
+   <action no="4" player="frkmaria" sum="10" type="15"/>
+   <action no="5" player="smor02" sum="10" type="15"/>
+   <action no="6" player="SinodaTheFirst" sum="50" type="1"/>
+   <action no="7" player="karasyk71" sum="100" type="2"/>
+  </round>
+  <round no="1">
+   <cards player="smor02" type="Pocket">X X</cards>
+   <cards player="SinodaTheFirst" type="Pocket">X X</cards>
+   <cards player="karasyk71" type="Pocket">X X</cards>
+   <cards player="Zwonkie" type="Pocket">D5 HJ</cards>
+   <cards player="frkmaria" type="Pocket">X X</cards>
+   <action no="8" player="Zwonkie" sum="0" type="0"/>
+   <action no="9" player="frkmaria" sum="0" type="0"/>
+   <action no="10" player="smor02" sum="200" type="23"/>
+   <action no="11" player="SinodaTheFirst" sum="0" type="0"/>
+   <action no="12" player="karasyk71" sum="0" type="0"/>
+  </round>
+ </game>
+ <game gamecode="12389156959">
+  <general>
+   <startdate>2026-07-22 15:48:02</startdate>
+   <smallblind>50</smallblind>
+   <bigblind>100</bigblind>
+   <ante>10</ante>
+   <players>
+    <player addon="0" bet="10" chips="1,350" dealer="0" name="smor02" rebuy="0" reg_code="" seat="3" win="0"/>
+    <player addon="0" bet="10" chips="315" dealer="1" name="SinodaTheFirst" rebuy="0" reg_code="" seat="5" win="0"/>
+    <player addon="0" bet="60" chips="805" dealer="0" name="karasyk71" rebuy="0" reg_code="" seat="6" win="0"/>
+    <player addon="0" bet="210" chips="895" dealer="0" name="Zwonkie" rebuy="0" reg_code="8675336738" seat="8" win="0"/>
+    <player addon="0" bet="310" chips="1,435" dealer="0" name="frkmaria" rebuy="0" reg_code="" seat="10" win="500"/>
+   </players>
+  </general>
+  <round no="0">
+   <action no="1" player="karasyk71" sum="10" type="15"/>
+   <action no="2" player="Zwonkie" sum="10" type="15"/>
+   <action no="3" player="frkmaria" sum="10" type="15"/>
+   <action no="4" player="smor02" sum="10" type="15"/>
+   <action no="5" player="SinodaTheFirst" sum="10" type="15"/>
+   <action no="6" player="karasyk71" sum="50" type="1"/>
+   <action no="7" player="Zwonkie" sum="100" type="2"/>
+  </round>
+  <round no="1">
+   <cards player="smor02" type="Pocket">X X</cards>
+   <cards player="SinodaTheFirst" type="Pocket">X X</cards>
+   <cards player="karasyk71" type="Pocket">X X</cards>
+   <cards player="Zwonkie" type="Pocket">S7 H4</cards>
+   <cards player="frkmaria" type="Pocket">X X</cards>
+   <action no="8" player="frkmaria" sum="100" type="3"/>
+   <action no="9" player="smor02" sum="0" type="0"/>
+   <action no="10" player="SinodaTheFirst" sum="0" type="0"/>
+   <action no="11" player="karasyk71" sum="0" type="0"/>
+   <action no="12" player="Zwonkie" sum="0" type="4"/>
+  </round>
+  <round no="2">
+   <action no="13" player="Zwonkie" sum="0" type="4"/>
+   <action no="14" player="frkmaria" sum="100" type="5"/>
+   <action no="15" player="Zwonkie" sum="100" type="3"/>
+   <cards type="Flop">DQ S6 H3</cards>
+  </round>
+  <round no="3">
+   <action no="16" player="Zwonkie" sum="0" type="4"/>
+   <action no="17" player="frkmaria" sum="100" type="5"/>
+   <action no="18" player="Zwonkie" sum="0" type="0"/>
+   <cards type="Turn">SA</cards>
+  </round>
+ </game>
+ <game gamecode="12389157069">
+  <general>
+   <startdate>2026-07-22 15:48:40</startdate>
+   <smallblind>75</smallblind>
+   <bigblind>150</bigblind>
+   <ante>15</ante>
+   <players>
+    <player addon="0" bet="315" chips="1,340" dealer="0" name="smor02" rebuy="0" reg_code="" seat="3" win="0"/>
+    <player addon="0" bet="15" chips="305" dealer="0" name="SinodaTheFirst" rebuy="0" reg_code="" seat="5" win="0"/>
+    <player addon="0" bet="745" chips="745" dealer="1" name="karasyk71" rebuy="0" reg_code="" seat="6" win="900"/>
+    <player addon="0" bet="90" chips="685" dealer="0" name="Zwonkie" rebuy="0" reg_code="8675336738" seat="8" win="0"/>
+    <player addon="0" bet="165" chips="1,725" dealer="0" name="frkmaria" rebuy="0" reg_code="" seat="10" win="0"/>
+   </players>
+  </general>
+  <round no="0">
+   <action no="1" player="Zwonkie" sum="15" type="15"/>
+   <action no="2" player="frkmaria" sum="15" type="15"/>
+   <action no="3" player="smor02" sum="15" type="15"/>
+   <action no="4" player="SinodaTheFirst" sum="15" type="15"/>
+   <action no="5" player="karasyk71" sum="15" type="15"/>
+   <action no="6" player="Zwonkie" sum="75" type="1"/>
+   <action no="7" player="frkmaria" sum="150" type="2"/>
+  </round>
+  <round no="1">
+   <cards player="smor02" type="Pocket">X X</cards>
+   <cards player="SinodaTheFirst" type="Pocket">X X</cards>
+   <cards player="karasyk71" type="Pocket">X X</cards>
+   <cards player="Zwonkie" type="Pocket">S5 SA</cards>
+   <cards player="frkmaria" type="Pocket">X X</cards>
+   <action no="8" player="smor02" sum="300" type="23"/>
+   <action no="9" player="SinodaTheFirst" sum="0" type="0"/>
+   <action no="10" player="karasyk71" sum="300" type="3"/>
+   <action no="11" player="Zwonkie" sum="0" type="0"/>
+   <action no="12" player="frkmaria" sum="0" type="0"/>
+  </round>
+  <round no="2">
+   <action no="13" player="smor02" sum="0" type="4"/>
+   <action no="14" player="karasyk71" sum="430" type="5"/>
+   <action no="15" player="smor02" sum="0" type="0"/>
+   <cards type="Flop">H6 C5 C8</cards>
+  </round>
+ </game>
+ <game gamecode="12389157159">
+  <general>
+   <startdate>2026-07-22 15:49:14</startdate>
+   <smallblind>75</smallblind>
+   <bigblind>150</bigblind>
+   <ante>15</ante>
+   <players>
+    <player addon="0" bet="165" chips="1,025" dealer="0" name="smor02" rebuy="0" reg_code="" seat="3" win="225"/>
+    <player addon="0" bet="15" chips="290" dealer="0" name="SinodaTheFirst" rebuy="0" reg_code="" seat="5" win="0"/>
+    <player addon="0" bet="15" chips="1,330" dealer="0" name="karasyk71" rebuy="0" reg_code="" seat="6" win="0"/>
+    <player addon="0" bet="15" chips="595" dealer="1" name="Zwonkie" rebuy="0" reg_code="8675336738" seat="8" win="0"/>
+    <player addon="0" bet="90" chips="1,560" dealer="0" name="frkmaria" rebuy="0" reg_code="" seat="10" win="0"/>
+   </players>
+  </general>
+  <round no="0">
+   <action no="1" player="frkmaria" sum="15" type="15"/>
+   <action no="2" player="smor02" sum="15" type="15"/>
+   <action no="3" player="SinodaTheFirst" sum="15" type="15"/>
+   <action no="4" player="karasyk71" sum="15" type="15"/>
+   <action no="5" player="Zwonkie" sum="15" type="15"/>
+   <action no="6" player="frkmaria" sum="75" type="1"/>
+   <action no="7" player="smor02" sum="150" type="2"/>
+  </round>
+  <round no="1">
+   <cards player="smor02" type="Pocket">X X</cards>
+   <cards player="SinodaTheFirst" type="Pocket">X X</cards>
+   <cards player="karasyk71" type="Pocket">X X</cards>
+   <cards player="Zwonkie" type="Pocket">D2 D8</cards>
+   <cards player="frkmaria" type="Pocket">X X</cards>
+   <action no="8" player="SinodaTheFirst" sum="0" type="0"/>
+   <action no="9" player="karasyk71" sum="0" type="0"/>
+   <action no="10" player="Zwonkie" sum="0" type="0"/>
+   <action no="11" player="frkmaria" sum="0" type="0"/>
+  </round>
+ </game>
+ <game gamecode="12389157211">
+  <general>
+   <startdate>2026-07-22 15:49:30</startdate>
+   <smallblind>75</smallblind>
+   <bigblind>150</bigblind>
+   <ante>15</ante>
+   <players>
+    <player addon="0" bet="165" chips="1,160" dealer="0" name="smor02" rebuy="0" reg_code="" seat="3" win="0"/>
+    <player addon="0" bet="275" chips="275" dealer="0" name="SinodaTheFirst" rebuy="0" reg_code="" seat="5" win="0"/>
+    <player addon="0" bet="15" chips="1,315" dealer="0" name="karasyk71" rebuy="0" reg_code="" seat="6" win="0"/>
+    <player addon="0" bet="15" chips="580" dealer="0" name="Zwonkie" rebuy="0" reg_code="8675336738" seat="8" win="0"/>
+    <player addon="0" bet="315" chips="1,470" dealer="1" name="frkmaria" rebuy="0" reg_code="" seat="10" win="745"/>
+   </players>
+  </general>
+  <round no="0">
+   <action no="1" player="smor02" sum="15" type="15"/>
+   <action no="2" player="SinodaTheFirst" sum="15" type="15"/>
+   <action no="3" player="karasyk71" sum="15" type="15"/>
+   <action no="4" player="Zwonkie" sum="15" type="15"/>
+   <action no="5" player="frkmaria" sum="15" type="15"/>
+   <action no="6" player="smor02" sum="75" type="1"/>
+   <action no="7" player="SinodaTheFirst" sum="150" type="2"/>
+  </round>
+  <round no="1">
+   <cards player="smor02" type="Pocket">X X</cards>
+   <cards player="SinodaTheFirst" type="Pocket">D6 CJ</cards>
+   <cards player="karasyk71" type="Pocket">X X</cards>
+   <cards player="Zwonkie" type="Pocket">S5 HJ</cards>
+   <cards player="frkmaria" type="Pocket">H9 C9</cards>
+   <action no="8" player="karasyk71" sum="0" type="0"/>
+   <action no="9" player="Zwonkie" sum="0" type="0"/>
+   <action no="10" player="frkmaria" sum="150" type="3"/>
+   <action no="11" player="smor02" sum="75" type="3"/>
+   <action no="12" player="SinodaTheFirst" sum="0" type="4"/>
+  </round>
+  <round no="2">
+   <action no="13" player="smor02" sum="0" type="4"/>
+   <action no="14" player="SinodaTheFirst" sum="0" type="4"/>
+   <action no="15" player="frkmaria" sum="150" type="5"/>
+   <action no="16" player="smor02" sum="0" type="0"/>
+   <action no="17" player="SinodaTheFirst" sum="110" type="7"/>
+   <cards type="Flop">H5 S9 DK</cards>
+  </round>
+  <round no="3">
+   <cards type="Turn">C7</cards>
+  </round>
+  <round no="4">
+   <cards type="River">CK</cards>
+  </round>
+ </game>
+ <game gamecode="12389157341">
+  <general>
+   <startdate>2026-07-22 15:50:15</startdate>
+   <smallblind>75</smallblind>
+   <bigblind>150</bigblind>
+   <ante>15</ante>
+   <players>
+    <player addon="0" bet="15" chips="995" dealer="1" name="smor02" rebuy="0" reg_code="" seat="3" win="0"/>
+    <player addon="0" bet="165" chips="1,300" dealer="0" name="karasyk71" rebuy="0" reg_code="" seat="6" win="0"/>
+    <player addon="0" bet="15" chips="565" dealer="0" name="Zwonkie" rebuy="0" reg_code="8675336738" seat="8" win="0"/>
+    <player addon="0" bet="315" chips="1,940" dealer="0" name="frkmaria" rebuy="0" reg_code="" seat="10" win="360"/>
+   </players>
+  </general>
+  <round no="0">
+   <action no="1" player="karasyk71" sum="15" type="15"/>
+   <action no="2" player="Zwonkie" sum="15" type="15"/>
+   <action no="3" player="frkmaria" sum="15" type="15"/>
+   <action no="4" player="smor02" sum="15" type="15"/>
+   <action no="5" player="karasyk71" sum="150" type="2"/>
+  </round>
+  <round no="1">
+   <cards player="smor02" type="Pocket">X X</cards>
+   <cards player="karasyk71" type="Pocket">X X</cards>
+   <cards player="Zwonkie" type="Pocket">C9 SQ</cards>
+   <cards player="frkmaria" type="Pocket">X X</cards>
+   <action no="6" player="Zwonkie" sum="0" type="0"/>
+   <action no="7" player="frkmaria" sum="150" type="3"/>
+   <action no="8" player="smor02" sum="0" type="0"/>
+   <action no="9" player="karasyk71" sum="0" type="4"/>
+  </round>
+  <round no="2">
+   <action no="10" player="karasyk71" sum="0" type="4"/>
+   <action no="11" player="frkmaria" sum="150" type="5"/>
+   <action no="12" player="karasyk71" sum="0" type="0"/>
+   <cards type="Flop">S5 H6 S3</cards>
+  </round>
+ </game>
+ <game gamecode="12389157409">
+  <general>
+   <startdate>2026-07-22 15:50:37</startdate>
+   <smallblind>100</smallblind>
+   <bigblind>200</bigblind>
+   <ante>20</ante>
+   <players>
+    <player addon="0" bet="400" chips="980" dealer="0" name="smor02" rebuy="0" reg_code="" seat="3" win="580"/>
+    <player addon="0" bet="120" chips="1,135" dealer="0" name="karasyk71" rebuy="0" reg_code="" seat="6" win="0"/>
+    <player addon="0" bet="220" chips="550" dealer="0" name="Zwonkie" rebuy="0" reg_code="8675336738" seat="8" win="0"/>
+    <player addon="0" bet="20" chips="2,135" dealer="0" name="frkmaria" rebuy="0" reg_code="" seat="10" win="0"/>
+   </players>
+  </general>
+  <round no="0">
+   <action no="1" player="karasyk71" sum="20" type="15"/>
+   <action no="2" player="Zwonkie" sum="20" type="15"/>
+   <action no="3" player="frkmaria" sum="20" type="15"/>
+   <action no="4" player="smor02" sum="20" type="15"/>
+   <action no="5" player="karasyk71" sum="100" type="1"/>
+   <action no="6" player="Zwonkie" sum="200" type="2"/>
+  </round>
+  <round no="1">
+   <cards player="smor02" type="Pocket">X X</cards>
+   <cards player="karasyk71" type="Pocket">X X</cards>
+   <cards player="Zwonkie" type="Pocket">H7 S3</cards>
+   <cards player="frkmaria" type="Pocket">X X</cards>
+   <action no="7" player="frkmaria" sum="0" type="0"/>
+   <action no="8" player="smor02" sum="400" type="23"/>
+   <action no="9" player="karasyk71" sum="0" type="0"/>
+   <action no="10" player="Zwonkie" sum="0" type="0"/>
+  </round>
+ </game>
+ <game gamecode="12389157452">
+  <general>
+   <startdate>2026-07-22 15:50:53</startdate>
+   <smallblind>100</smallblind>
+   <bigblind>200</bigblind>
+   <ante>20</ante>
+   <players>
+    <player addon="0" bet="20" chips="1,340" dealer="0" name="smor02" rebuy="0" reg_code="" seat="3" win="0"/>
+    <player addon="0" bet="330" chips="1,015" dealer="1" name="karasyk71" rebuy="0" reg_code="" seat="6" win="900"/>
+    <player addon="0" bet="330" chips="330" dealer="0" name="Zwonkie" rebuy="0" reg_code="8675336738" seat="8" win="0"/>
+    <player addon="0" bet="220" chips="2,115" dealer="0" name="frkmaria" rebuy="0" reg_code="" seat="10" win="0"/>
+   </players>
+  </general>
+  <round no="0">
+   <action no="1" player="Zwonkie" sum="20" type="15"/>
+   <action no="2" player="frkmaria" sum="20" type="15"/>
+   <action no="3" player="smor02" sum="20" type="15"/>
+   <action no="4" player="karasyk71" sum="20" type="15"/>
+   <action no="5" player="Zwonkie" sum="100" type="1"/>
+   <action no="6" player="frkmaria" sum="200" type="2"/>
+  </round>
+  <round no="1">
+   <cards player="smor02" type="Pocket">X X</cards>
+   <cards player="karasyk71" type="Pocket">H10 DK</cards>
+   <cards player="Zwonkie" type="Pocket">C10 D8</cards>
+   <cards player="frkmaria" type="Pocket">X X</cards>
+   <action no="7" player="smor02" sum="0" type="0"/>
+   <action no="8" player="karasyk71" sum="200" type="3"/>
+   <action no="9" player="Zwonkie" sum="210" type="7"/>
+   <action no="10" player="frkmaria" sum="0" type="0"/>
+   <action no="11" player="karasyk71" sum="110" type="3"/>
+  </round>
+  <round no="2">
+   <cards type="Flop">SK C6 SJ</cards>
+  </round>
+  <round no="3">
+   <cards type="Turn">H6</cards>
+  </round>
+  <round no="4">
+   <cards type="River">C7</cards>
+  </round>
+ </game>
+</session>

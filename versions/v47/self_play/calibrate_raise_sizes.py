@@ -92,7 +92,7 @@ def c1_static():
     return not degenerate
 
 
-def c2_instrumented(n_hands):
+def c2_instrumented(n_hands, weights='frozen_v44.pth'):
     from versions.v47.self_play.simulator import SixMaxSimulator
     from versions.v47.self_play.opponents import build_opponent_pool
     from shared.registry import load_model
@@ -126,7 +126,7 @@ def c2_instrumented(n_hands):
             return size
 
     random.seed(4242)
-    model = load_model('v47', 'frozen_v44.pth')
+    model = load_model('v47', weights)
     sim = InstrumentedSim(bb_size=10.0, equity_sims=60, hero_personality='main', bootstrap_alpha=0.0)
     sim.hero_model = model
     sim.range_aware_equity = True
@@ -196,8 +196,11 @@ if __name__ == '__main__':
     ap = argparse.ArgumentParser()
     ap.add_argument('--hands', type=int, default=1000)
     ap.add_argument('--skip-c2', action='store_true')
+    ap.add_argument('--weights', default='frozen_v44.pth',
+                    help="checkpoint for hero + lagged-self pool (post-training: expert_main.pth)")
+    ap.add_argument('--skip-c1', action='store_true')
     args = ap.parse_args()
-    ok1 = c1_static()
-    ok2 = True if args.skip_c2 else c2_instrumented(args.hands)
+    ok1 = True if args.skip_c1 else c1_static()
+    ok2 = True if args.skip_c2 else c2_instrumented(args.hands, weights=args.weights)
     print(f"\nC1 {'OK' if ok1 else 'DEGENERATE'} | C2 {'OK' if ok2 else 'FAIL'}")
     sys.exit(0 if (ok1 and ok2) else 1)
