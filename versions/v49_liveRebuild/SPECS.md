@@ -42,11 +42,18 @@ bug class in a single decision:
 
 ## Components (`live2/`)
 
-### `live2/service` — native bet365 interaction agent
-Capture (PrintWindow `PW_RENDERFULLCONTENT` → Windows.Graphics.Capture fallback, per V48 3a —
-works occluded, no `SetFocus()` except for clicks), OCR invocation on request, click/slider
-primitives. Exposes a localhost-only WS/JSON API: `capture(roi)`, `read(rois)`,
-`click(action)`, `move_slider(frac)`. Single process, no model imports.
+### `live2/phpserver` — "PHPserver", the native bet365 interaction agent
+(Named by the owner 2026-07-22, sibling of the PHPHelper dashboard; folder renamed from
+`live2/service`.) Capture (PrintWindow `PW_RENDERFULLCONTENT` → Windows.Graphics.Capture
+fallback, per V48 3a — HEADLESS, works unfocused/occluded), click/slider primitives.
+Focus model (owner decision): bet365 raises its own window when it becomes hero's turn, so
+clicks VERIFY foreground rather than forcing it (fallback-raise once, then fail loud).
+Mouse movement follows a human motor model (owner spec): Fitts's-law durations
+(T = a + b·log2(2D/W), no static intervals), curved Bezier trajectories with min-jerk
+accel/decel, decaying micro-jitter, variable ~125Hz event timing, frequent
+overshoot/undershoot + micro-correction, 60–150ms normally-distributed click holds.
+Exposes a localhost-only WS/JSON API: `capture(roi)`, `move_to`, `click`,
+`move_slider(track, frac)`. Single process, no model imports.
 
 ### `live2/assembler` — the state assembler (replaces TableState inference)
 Fuses three feeds into `LiveObservation`:
@@ -119,7 +126,17 @@ three-layer diagnostic, the `flagged/` flow rendered properly).
   collapses into `capture(roi)` and ALL interpretation (CV/OCR) moves to the assembler.
   Click/slider deliberately NOT yet fired at the real client (user had a live
   registration); first interaction test belongs to the shadow-parity phase.
-  Run: `.venv/Scripts/python.exe -m live2.service`.
+- 2026-07-22 (later): **service renamed PHPserver** (`live2/phpserver/`, owner naming) and
+  **interact.py rebuilt on a human motor model** (owner spec): Fitts's-law movement
+  durations (validated: 30px→~330ms vs 1500px→~930ms, log growth; 8px target ~880ms vs
+  64px ~550ms at same distance), min-jerk velocity profile (measured bell: 230→1300→33
+  px/s), Bezier arc + decaying tremor, variable 4–12ms event intervals, 58% measured
+  overshoot+micro-correction rate on long moves, 60–150ms gaussian click holds (mean
+  96ms). Focus model changed to match the client: bet365 raises itself on hero's turn →
+  `_ensure_foreground` verifies + fallback-raises once + raises FocusError rather than
+  clicking blind. New `move_to` API method. All planning functions PURE (validated
+  statistically without touching the cursor); real-client interaction still untested by
+  design. Run: `.venv/Scripts/python.exe -m live2.phpserver`.
 - 2026-07-22: **SQLite derived index ADDED** (`live2/historydb/sqlindex.py`, user decision):
   `history/handhistory/index.sqlite` (hands/players/actions tables + full record JSON) as a
   DISPOSABLE query index -- hands.jsonl stays the source of truth; schema change = delete +

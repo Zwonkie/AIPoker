@@ -1,89 +1,112 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
-<meta charset="utf-8">
-<title>AIPoker live2</title>
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<link rel="stylesheet" href="/static/style.css">
-</head>
-<body>
-<header>
-  <h1>AIPoker <span class="accent">live2</span></h1>
-  <nav>
-    <button data-tab="live" class="active">Live</button>
-    <button data-tab="opponents">Opponents</button>
-    <button data-tab="hands">Hands</button>
-    <button data-tab="flags">Flags</button>
-  </nav>
-  <div id="feed-status" class="feed-badge stale">no feed</div>
-</header>
 
-<main>
-  <section id="tab-live" class="tab active">
-    <div id="live-empty" class="empty">Waiting for a live session&hellip;</div>
-    <div id="live-view" class="hidden">
-      <div class="live-grid">
-        <div class="panel" id="table-panel">
-          <div class="panel-title">Table <span id="board-id" class="dim"></span></div>
-          <div id="board-row">
-            <div id="community-cards" class="cards"></div>
-            <div id="pot-line"></div>
+<head>
+  <meta charset="utf-8">
+  <title>PHPHelper dashboard</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+
+<body>
+  <header>
+    <h1>AIPoker <span class="accent">live2</span></h1>
+    <nav>
+      <button data-tab="live" class="active">Live</button>
+      <button data-tab="opponents">Opponents</button>
+      <button data-tab="hands">Hands</button>
+      <button data-tab="flags">Flags</button>
+    </nav>
+    <div id="feed-status" class="feed-badge stale">no feed</div>
+  </header>
+
+  <main>
+    <section id="tab-live" class="tab active">
+      <div id="live-empty" class="empty">Waiting for a live session&hellip;</div>
+      <div id="live-view" class="hidden">
+        <div class="live-grid">
+          <div class="panel" id="table-panel">
+            <div class="panel-title">Table <span id="board-id" class="dim"></span></div>
+            <div id="board-row">
+              <div id="community-cards" class="cards"></div>
+              <div id="pot-line"></div>
+            </div>
+            <div id="seats"></div>
           </div>
-          <div id="seats"></div>
-        </div>
-        <div class="panel" id="decision-panel">
-          <div class="panel-title">Decision <span id="model-name" class="dim"></span></div>
-          <div id="hero-cards" class="cards"></div>
-          <div id="eval-line"></div>
-          <div id="policy-bars"></div>
-          <div id="action-line"></div>
-          <div id="reason-line" class="dim"></div>
+          <div class="panel" id="decision-panel">
+            <div class="panel-title">Decision <span id="model-name" class="dim"></span></div>
+            <div id="hero-cards" class="cards"></div>
+            <div id="eval-line"></div>
+            <div id="policy-bars"></div>
+            <div id="action-line"></div>
+            <div id="reason-line" class="dim"></div>
+          </div>
         </div>
       </div>
-    </div>
-  </section>
+    </section>
 
-  <section id="tab-opponents" class="tab">
-    <div class="panel">
-      <div class="panel-title">Opponent profiles
-        <span class="dim">lifetime vs last-<span id="opp-window">100</span> &middot;
-        <span id="opp-total"></span> hands in store</span></div>
-      <table id="opp-table">
-        <thead><tr>
-          <th>player</th><th>scope</th><th class="num">hands</th><th class="num">VPIP</th>
-          <th class="num">PFR</th><th class="num">limp%</th><th class="num">3bet%</th>
-          <th class="num">AF</th><th class="num">WTSD</th><th class="num">WSD</th>
-          <th class="num">think s</th><th class="num">open bb</th>
-        </tr></thead>
-        <tbody></tbody>
-      </table>
-    </div>
-  </section>
-
-  <section id="tab-hands" class="tab">
-    <div class="hands-grid">
+    <section id="tab-opponents" class="tab">
       <div class="panel">
-        <div class="panel-title">Hands <span class="dim">(ground truth, one behind)</span></div>
-        <table id="hands-table">
-          <thead><tr><th>hand</th><th>players</th><th>winner</th><th class="num">pot</th><th>street</th><th>src</th></tr></thead>
+        <div class="panel-title">Opponent profiles
+          <span class="dim">lifetime vs last-<span id="opp-window">100</span> &middot;
+            <span id="opp-total"></span> hands in store</span>
+        </div>
+        <table id="opp-table">
+          <thead>
+            <tr>
+              <th>player</th>
+              <th>scope</th>
+              <th class="num">hands</th>
+              <th class="num">VPIP</th>
+              <th class="num">PFR</th>
+              <th class="num">limp%</th>
+              <th class="num">3bet%</th>
+              <th class="num">AF</th>
+              <th class="num">WTSD</th>
+              <th class="num">WSD</th>
+              <th class="num">think s</th>
+              <th class="num">open bb</th>
+            </tr>
+          </thead>
           <tbody></tbody>
         </table>
       </div>
-      <div class="panel">
-        <div class="panel-title">Replay</div>
-        <div id="hand-detail" class="empty">Select a hand.</div>
+    </section>
+
+    <section id="tab-hands" class="tab">
+      <div class="hands-grid">
+        <div class="panel">
+          <div class="panel-title">Hands <span class="dim">(ground truth, one behind)</span></div>
+          <table id="hands-table">
+            <thead>
+              <tr>
+                <th>hand</th>
+                <th>players</th>
+                <th>winner</th>
+                <th class="num">pot</th>
+                <th>street</th>
+                <th>src</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+        <div class="panel">
+          <div class="panel-title">Replay</div>
+          <div id="hand-detail" class="empty">Select a hand.</div>
+        </div>
       </div>
-    </div>
-  </section>
+    </section>
 
-  <section id="tab-flags" class="tab">
-    <div class="panel">
-      <div class="panel-title">Flagged turns <span class="dim">(F12 review queue)</span></div>
-      <div id="flags-list"></div>
-    </div>
-  </section>
-</main>
+    <section id="tab-flags" class="tab">
+      <div class="panel">
+        <div class="panel-title">Flagged turns <span class="dim">(F12 review queue)</span></div>
+        <div id="flags-list"></div>
+      </div>
+    </section>
+  </main>
 
-<script src="/static/app.js"></script>
+  <script src="/static/app.js"></script>
 </body>
+
 </html>

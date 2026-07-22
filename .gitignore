@@ -38,3 +38,7 @@ node_modules/
 # OS generated files
 .DS_Store
 Thumbs.db
+
+# 3-way equity MC cache (derived by tools/model_verify/nash/solve_nash_3max.py; ~200MB, regenerable)
+tools/model_verify/nash/equity3_cache.json
+tools/model_verify/nash/equity3_cache.json.tmp

@@ -18,7 +18,7 @@ from live2.webapp import sources
 
 STATIC = os.path.join(os.path.dirname(__file__), 'static')
 
-app = FastAPI(title='AIPoker live2 dashboard', docs_url=None, redoc_url=None)
+app = FastAPI(title='PHPHelper dashboard', docs_url=None, redoc_url=None) ## owner: do not change title
 
 
 @app.get('/')

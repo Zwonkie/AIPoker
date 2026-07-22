@@ -92,14 +92,27 @@ class Eq3:
         eqs = [w / _N_SIMS_3WAY for w in wins]
         self.cache[key] = eqs
         self.dirty += 1
-        if self.dirty >= 2000:
+        # Flush interval scales with cache size: dumping the whole JSON is O(cache), so a
+        # fixed interval makes flush overhead grow linearly with progress (measured ~40% of
+        # wall time by the 100MB mark). Amortized this keeps flushing ~constant-fraction.
+        if self.dirty >= max(2000, len(self.cache) // 10):
             self.flush()
         return eqs
 
     def flush(self):
-        with open(_EQ3_CACHE_PATH, 'w') as f:
-            json.dump(self.cache, f)
-        self.dirty = 0
+        # Atomic + non-fatal: the cache is an optimization, a failed flush must not kill an
+        # hours-long solve (2026-07-22: a mid-solve open() raised a transient OSError 22 on
+        # the 27MB file and lost the run). tmp+replace also keeps a concurrent reader from
+        # ever seeing a half-written file.
+        tmp = _EQ3_CACHE_PATH + '.tmp'
+        try:
+            with open(tmp, 'w') as f:
+                json.dump(self.cache, f)
+            os.replace(tmp, _EQ3_CACHE_PATH)
+            self.dirty = 0
+        except OSError as e:
+            print(f"  ! eq3 cache flush failed ({e}) -- continuing, will retry", flush=True)
+            self.dirty = 1000   # halfway to the 2000 threshold: retry soon-ish, not every entry
 
 
 def solve_stack(S, hands, w, eq2, eq3, iters=_FP_ITERS, seed=_SEED):
