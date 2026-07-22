@@ -58,11 +58,16 @@ def build_contract(version_id: str):
     return _import_attr(get_manifest(version_id).contract_class)()
 
 
-def load_model(version_id: str, weights_filename: str, device: str = "cpu"):
-    """Build the version's model and load a self-describing checkpoint fail-loud."""
+def load_model(version_id: str, weights_filename: str, device: str = "cpu",
+               allow_contract_mismatch: bool = False):
+    """Build the version's model and load a self-describing checkpoint fail-loud.
+
+    `allow_contract_mismatch` is ONLY for deliberately seating a frozen cross-contract ancestor
+    as an opponent (see shared/manifest.py::load_state_dict [V47 P0.4])."""
     manifest = get_manifest(version_id)
     model = _import_attr(manifest.model_class)().to(device)
     weights_path = os.path.join(_REPO_ROOT, manifest.weights_dir, weights_filename)
-    model.load_state_dict(load_state_dict(weights_path, manifest, map_location=device))
+    model.load_state_dict(load_state_dict(weights_path, manifest, map_location=device,
+                                          allow_contract_mismatch=allow_contract_mismatch))
     model.eval()
     return model

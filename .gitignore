@@ -20,6 +20,18 @@ core/cuda_evaluator/*.pt
 # Diagnostic Logs
 diagnostics/
 
+# Run artifacts that churn every session (untracked in v46_legacySweep, 2026-07-22;
+# __pycache__/graphify-out were already declared here but had pre-rule tracked files --
+# those are now git rm --cached'd. graphify-out/.graphify_labels.json stays tracked
+# deliberately: curated labels, not generated output.)
+active_training*.log
+model_verify_*.log
+tools/training_monitor/telemetry*.json
+
+# Live turn recordings (history/<board_id>/turns.jsonl + flagged frames) -- session data,
+# not source. Remove this rule if turn history should ship with the repo.
+history/
+
 # Node.js dependencies
 node_modules/
 

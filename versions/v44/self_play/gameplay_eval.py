@@ -41,7 +41,12 @@ def evaluate_model(model_path: str, num_hands: int = 500, bb_size: float = 10.0,
         bootstrap_alpha=0.0  # Pure model, no exploration/heuristics
     )
     sim.hero_model = model
-    
+    # [V47 P0.2] Evaluate at the LIVE SERVE temperature, not the training-exploration default
+    # (temp=1.0) -- the documented trap: a winning model looks like a loser at the wrong temp.
+    # Assign unconditionally; the simulator reads this via getattr(self, 'policy_temperature', 1.0)
+    # and never pre-declares it, so a hasattr guard would silently skip.
+    sim.policy_temperature = 0.5
+
     print(f"\nRunning {num_hands} hands against heuristic lineup...")
     
     records = []

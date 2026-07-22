@@ -68,10 +68,17 @@ def save_checkpoint(state_dict, path: str, manifest: VersionManifest,
     return _robust_save(payload, path)
 
 
-def load_state_dict(path: str, manifest: VersionManifest, map_location="cpu"):
+def load_state_dict(path: str, manifest: VersionManifest, map_location="cpu",
+                    allow_contract_mismatch: bool = False):
     """Load a checkpoint FAIL-LOUD: raise on a missing-metadata or contract mismatch.
 
     Returns the bare state_dict. Never silently falls back to random weights.
+
+    [V47 P0.4] contract_version is validated as hard as context_dim: two contracts can share a
+    width while a slot's MEANING differs (V43 vs V44 are both 54-wide but ctx[35] normalizes by
+    nominal vs effective field) -- width-checking alone cannot catch that. Seating a frozen
+    cross-contract ancestor as an OPPONENT is the one deliberate exception; those call sites pass
+    `allow_contract_mismatch=True` and the mismatch is still printed, never silent.
     """
     ckpt = torch.load(path, map_location=map_location)
     if not isinstance(ckpt, dict) or "state_dict" not in ckpt:
@@ -85,4 +92,15 @@ def load_state_dict(path: str, manifest: VersionManifest, map_location="cpu"):
             f"Checkpoint {path} is context_dim={ck_dim} (contract v{ckpt.get('contract_version')}), "
             f"but {manifest.version_id} expects context_dim={manifest.context_dim}. Refusing to load."
         )
+    ck_cv = ckpt.get("contract_version")
+    if ck_cv != manifest.contract_version:
+        msg = (f"Checkpoint {path} is contract_version={ck_cv} (saved by "
+               f"{ckpt.get('version_id')!r}), but {manifest.version_id} expects "
+               f"contract_version={manifest.contract_version} -- same width does not mean same "
+               f"feature semantics.")
+        if not allow_contract_mismatch:
+            raise ValueError(
+                msg + " Refusing to load. If this is a DELIBERATE cross-contract frozen-opponent "
+                      "seating, pass allow_contract_mismatch=True at the call site.")
+        print(f"NOTICE: {msg} Loading anyway (allow_contract_mismatch=True -- frozen-opponent seating).")
     return ckpt["state_dict"]

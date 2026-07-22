@@ -494,6 +494,64 @@ mind.
 
 ---
 
+## Tier 8 — V45_liveHandover: the live↔model handover boundary (pass 8, 2026-07-22)
+
+Not a review finding; the structural completion the #16/H4 thread kept pointing at, built per
+explicit user direction ("the live boardstate should just provide raw structured output which the
+model can then preprocess to comply with its training approach"). Live layer only, no retrain —
+see `versions/v45_liveHandover/SPECS.md` for the full design.
+
+- **`core/live_observation.py`** — `LiveObservation`, a frozen, JSON-serializable, RAW-facts-only
+  snapshot produced by `TableState.to_observation()`. Boundary rules: sentinels are `None` (never
+  plausible values), append-only schema, no model-specific values.
+- **`core/live_adapter.py`** — `BaseLiveAdapter.decide(obs)`: the entire version-owned
+  interpretation pipeline (range-aware equity + front/after split, hand_strength,
+  effective_field, BoardState assembly), driven by what the engine declares; hands off to the
+  untouched `make_decision`. The front/after classifier moved here as a pure function;
+  `PHPHelp._classify_opponents_by_action_order` is now a delegate to it.
+- **`PHPHelp.py`** — the ~190-line inline model-side block replaced by
+  `to_observation()` → `decision_engine.decide(obs)` → render `LiveDecision`. The dashboard now
+  contains **zero per-version logic on the decision path**; the two PHPHelp ladders #16 flagged
+  ("still open" above) have no remaining consumer there.
+- **Recorder** — turns.jsonl gains an additive `"observation"` key: any recorded turn is
+  replayable offline through any version's adapter (`LiveObservation.from_json_dict`, verified
+  lossless).
+
+**Parity-verified, not just plumbed**: `versions/v45_liveHandover/verify_handover.py` 14/14 —
+BoardState field-for-field parity (incl. short-handed slot remap), JSON round-trip, and
+end-to-end old-path vs new-path on V44's real weights with identical seeds: same action, size,
+reason string, and full model-output dict over a two-street sequence with aligned buffers.
+Regressions re-run green: `verify_front_colors.py` 7/7 (now exercising the delegate),
+`verify_fold_monotonic.py` 15/15, `verify_v42.py` all pass. NOT yet confirmed at a real table
+(same caveat class as V42's own note).
+
+**Still open after this pass**: `make_decision`'s legacy `is_vN` ladders (now reachable only for
+engines that don't declare `make_bridge()`/`is_sized` — none of the 5 registered ones), and the
+serve-transform constants (temp ramp) still living in `decision.py` rather than being declared
+per version where model_verify could read them (live-M3).
+
+---
+
+## Tier 9 — v46_legacySweep: pre-v30 legacy retirement (pass 9, 2026-07-22)
+
+User policy decision: "treat all versions before v3xx as legacy." Live layer + repo hygiene, no
+retrain — full inventory in `versions/v46_legacySweep/SPECS.md`. This closes #16/H4: the 13-flag
+`is_vN` ladder, per-version bridge chain, `_LEGACY_LIVE_FEATURES` name-ladder, display-tag
+ternary, v9 river guardrail, math/bluff/preflop-chart override layers (+ their `use_*` kwargs and
+PHPHelp toggle vars) and the legacy 3-way actor path are DELETED, not just bypassed. V29
+deregistered (registry = v44/v43/v41/v40, all fully self-declaring; V40/V41 gained the
+`is_sized`/`display_tag`/`has_aux` declarations they were missing). An engine without
+declarations now refuses loudly BEFORE touching the history buffers. Also: `PokerModelInterface`
+ABC replaced by a declaration doc; PHPHelp's dead `SEAT_ORDER_CLOCKWISE`/hero-stack-fallback
+(live-M5)/CHECK-safeguard removed; tracked `__pycache__`/logs/telemetry/graphify outputs
+untracked + gitignored; `tools/self_play` (v8–v11 pre-`versions/` stack) moved to
+`attic/tools_self_play/`. Verified: `verify_legacy_sweep.py` **31/31** (incl. source-level
+proof the ladders are gone and fail-loud paths), plus the full battery re-run green
+(handover 14/14, v42 all, front_colors 7/7, fold_monotonic 15/15). Legacy slices/weights/engine
+files stay on disk per guardrails Rule 6.
+
+---
+
 ## Tier 2+ — not addressed
 
 All **OPEN**. Listed so nothing silently drops off; ranking is the reviewer's, not a work order.
@@ -512,7 +570,7 @@ All **OPEN**. Listed so nothing silently drops off; ranking is the reviewer's, n
 | 13 | Call-button OCR miss silently becomes "free check" and force-masks FOLD | **FIXED 2026-07-21 (V42_liveFixes)** — see Tier 5. |
 | 14 | Live serves an all-PAD action-history sequence | **FIXED 2026-07-21** — see Tier 4. |
 | 15 | Missing/corrupt weights degrade to random-weight play | **FIXED 2026-07-21** (during the V41 deployment) — `core/decision.py`'s `make_decision` now refuses to act when the active engine's `.loaded` is False, returning FOLD with the load error in the reason string instead of serving random weights. Engines without the flag are treated as loaded (legacy). Verified by pointing the engine at a missing checkpoint: `FOLD — Model 'Herocules (v41)' failed to load (FileNotFoundError...) - refusing to act`. The engine constructor still swallows the exception on purpose — the registry builds every engine at init and one missing rollback checkpoint must not take the app down — so `.loaded` is the contract. |
-| 16 | Version dispatch fragility | **PARTIAL 2026-07-21** — the two silent-failure paths are closed; the ladders themselves remain. See Tier 4. |
+| 16 | Version dispatch fragility | **FIXED 2026-07-22 (V45_liveHandover Tier 8 + v46_legacySweep Tier 9)** — the dashboard's decision path holds zero per-version logic (observation → engine-declared adapter), and the `is_vN` ladders, per-version bridge chain, `_LEGACY_LIVE_FEATURES`, display-tag ternary, v9 guardrail and math/bluff/chart override layers are DELETED (pre-v30 = legacy; V29 deregistered). Dispatch is 100% engine-declared; undeclared/unknown models refuse loudly. Verified `verify_legacy_sweep.py` 31/31 + full regression battery green. Residual (tracked, not dispatch): per-version serve-transform declarations (live-M3 temp ramp). |
 | — | Second-tier live list (raise attribution inversion, pot under-reads, `committed` excludes blinds, HUD default colour, empty-seat position arithmetic, serve-only temp ramp, decimal stakes, 2-card board reads) | **PARTIAL 2026-07-21 (V42_liveFixes)** — HUD default colour, empty-seat position arithmetic, decimal stakes and 2-card board reads are FIXED (Tier 5). Still open: raise-attribution inversion, pot under-reads/latching, `committed` excluding blinds, the serve-only temp ramp. See `fable-review-consolidated.md`'s closing paragraph. |
 
 ## Guidelines

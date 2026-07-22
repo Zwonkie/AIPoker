@@ -46,6 +46,11 @@ V40_ACTION_KEYS = ("FOLD", "CALL", "RAISE_33", "RAISE_66", "RAISE_POT", "ALLIN")
 
 
 class V40ModelEngine:
+    # [v46_legacySweep] Declarations the shared layer asks for (the is_vN flags below are legacy
+    # relics of the deleted decision.py ladder, kept harmless).
+    is_sized = True
+    display_tag = "V40"
+    has_aux = True
     is_v40 = True
     is_v41 = False
     is_v29 = False

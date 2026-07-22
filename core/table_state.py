@@ -35,6 +35,11 @@ class TableState:
         self.active_buttons = []
         self.dealer_name = ""
         self.dealer_idx = 0
+        # [V45_liveHandover] Whether the button was ever actually READ this hand (template match /
+        # baseline seed), vs `dealer_idx` still sitting at its 0 default. Informational only -- no
+        # existing consumer changes behaviour on it -- but recorded in LiveObservation so replay
+        # can tell "hero really had the button" from "we never found the button".
+        self._dealer_seen = False
         self.hero_position = 0
         # [V42_liveFixes] Button-relative position per seat key, counted over the OCCUPIED ring --
         # see _recompute_positions. `seated_count` is how many players are actually at the table
@@ -223,6 +228,7 @@ class TableState:
         if raw_dealer_idx != -1:
             self.dealer_idx = raw_dealer_idx
             self.dealer_name = raw_state.get('dealer_name', '')
+            self._dealer_seen = True   # [V45_liveHandover] a real read, not the 0 default
         # Recomputed every tick, not only when the button moves: the occupied ring can change as
         # seats are read in (see _recompute_positions).
         self._recompute_positions()
@@ -492,6 +498,80 @@ class TableState:
             )
         return bs
 
+    def to_observation(self, call_amount=None, call_amount_known: bool = False,
+                       check_call_available: bool = True, bet_raise_available: bool = True,
+                       big_blind: float = None, ts_epoch: float = 0.0,
+                       source: str = "live") -> 'LiveObservation':
+        """[V45_liveHandover] The frozen, model-agnostic snapshot of this decision point -- the
+        ONLY object the model-side adapter layer (core/live_adapter.py) reads. Pure read: builds
+        from already-tracked state, mutates nothing, and carries RAW facts only (no equity, no
+        hand_strength, no per-version defaults -- rule 1/2 in core/live_observation.py).
+
+        `call_amount`/`call_amount_known`/button availability are frame facts the dashboard OCRs
+        outside this class, threaded through verbatim (same division of labour as
+        `to_board_state(call_amount=...)` always had). `big_blind` defaults to the tracked blind.
+        """
+        from core.live_observation import LiveObservation, SeatObservation, street_from_board
+
+        bb = float(self.big_blind if big_blind is None else big_blind)
+        sb_key, bb_key = self.blind_seat_keys()
+
+        seats = []
+        for i in range(1, 6):
+            seat_key = f"seat_{i}"
+            opp = self.opponents.get(seat_key)
+            if opp is None:
+                seats.append(SeatObservation(seat_key=seat_key, occupied=False))
+                continue
+            pos = self.seat_positions.get(seat_key)
+            slot = self._contract_slot_for(seat_key)
+            seats.append(SeatObservation(
+                seat_key=seat_key,
+                occupied=True,
+                name=opp.get('name', '') or '',
+                is_active=bool(opp.get('is_active', False)),
+                state_label=opp.get('state', 'Active') or 'Active',
+                stack=float(opp.get('stack', 0.0) or 0.0),
+                committed=self.committed_chips(seat_key),
+                raised_this_hand=bool(self.raised_this_hand.get(seat_key, False)),
+                raised_this_street=bool(self.raised_this_street.get(seat_key, False)),
+                vpip_color=opp.get('vpip_color') or None,     # raw; None == unread (rule 2)
+                agg_color=opp.get('agg_color') or None,
+                position=pos,
+                contract_slot=slot,
+                is_small_blind=(seat_key == sb_key),
+                is_big_blind=(seat_key == bb_key),
+            ))
+
+        return LiveObservation(
+            community_cards=tuple(self.community_cards),
+            street=street_from_board(self.community_cards),
+            pot_size=float(self.pot_size),
+            big_blind=bb,
+            hero_cards=tuple(self.hero_cards),
+            hero_stack=float(self.hero_stack or 0.0),
+            hero_committed=self.committed_chips('Hero'),
+            hero_position=int(self.hero_position),
+            hero_is_small_blind=(sb_key == 'Hero'),
+            hero_is_big_blind=(bb_key == 'Hero'),
+            hero_raised_this_hand=bool(self.raised_this_hand.get('Hero', False)),
+            hero_raised_this_street=bool(self.raised_this_street.get('Hero', False)),
+            dealer_idx=int(self.dealer_idx),
+            dealer_detected=bool(getattr(self, '_dealer_seen', False)),
+            seated_count=int(self.seated_count),
+            raise_count=int(self.raise_count),
+            current_street_bet_level=float(self.current_street_bet_level or 0.0),
+            seats=tuple(seats),
+            call_amount=(None if call_amount is None else float(call_amount)),
+            call_amount_known=bool(call_amount_known),
+            check_call_available=bool(check_call_available),
+            bet_raise_available=bool(bet_raise_available),
+            active_buttons=tuple(self.active_buttons or ()),
+            hero_action_history=tuple(self.action_history or ()),
+            ts_epoch=float(ts_epoch or 0.0),
+            source=source,
+        )
+
     def seed_stacks(self, baseline_stacks: dict, hero_name: str, dealer_name: str = ""):
         """
         Seeds player stacks using the baseline XML data.
@@ -543,6 +623,8 @@ class TableState:
         # 3. Calculate Hero's GTO Position relative to the Button
         # BU = 0, SB = 1, BB = 2, UTG = 3, MP = 4, CO = 5
         self.dealer_idx = 0  # Default to Hero
+        if dealer_name:
+            self._dealer_seen = True   # [V45_liveHandover] baseline XML told us who the dealer is
         if self.dealer_name and self.dealer_name != hero_name:
             # Check which seat key matches the dealer name
             for seat_key, tracked_opp in self.opponents.items():

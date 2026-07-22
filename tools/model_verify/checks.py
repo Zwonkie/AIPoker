@@ -901,6 +901,49 @@ def _seat_opponent_pool(rc, sim, pool_config, model_loader=None):
     return sim.opponent_pool
 
 
+def _ci95_bb100(profits_chips, bb_size=10.0):
+    """[V47 P0.1] Mean and 95% CI half-width of a per-hand profit series, both in BB/100.
+    Normal-approximation CI (1.96 * s / sqrt(n)) -- per-hand poker profit is heavy-tailed but
+    n is in the thousands, so the CLT approximation is adequate for a gate."""
+    n = len(profits_chips)
+    if n == 0:
+        return 0.0, float('inf')
+    bb = [p / bb_size for p in profits_chips]
+    mean = sum(bb) / n
+    if n > 1:
+        var = sum((x - mean) ** 2 for x in bb) / (n - 1)
+        ci = 1.96 * (var ** 0.5) / (n ** 0.5)
+    else:
+        ci = float('inf')
+    return mean * 100.0, ci * 100.0
+
+
+_MIRROR_SEED = 47_000_000   # fixed seed base for mirrored-deal pairing (arbitrary, stable)
+
+
+def _play_hands(sim, n_hands, base_hand, seed_base=None):
+    """Run n_hands on a configured simulator, returning the PER-HAND hero profit series (chips)
+    by diffing the cumulative seat_histories[0]['profit'] counter.
+
+    [V47 P0.1] `seed_base`: when set, the global `random` module is re-seeded (seed_base + i)
+    before each deal. The simulator -- including treys' Deck() -- draws every shuffle, stack
+    draw, and seat/style assignment from the global RNG, so two runs given the same seed_base
+    replay the SAME decks/stacks/seatings hand-for-hand: the mirrored-deal mechanism for the
+    paired head-to-head. In-hand randomness diverges after the first model-dependent branch,
+    which pairing tolerates -- the shared card luck is what the pairing cancels."""
+    import random as _random
+    profits = []
+    prev = sim.seat_histories[0]['profit']
+    for i in range(n_hands):
+        if seed_base is not None:
+            _random.seed(seed_base + i)
+        sim.simulate_hand(current_hand=base_hand + i)
+        cur = sim.seat_histories[0]['profit']
+        profits.append(cur - prev)
+        prev = cur
+    return profits
+
+
 def _run_field(rc, pool, weights, stack_bb_range, n_hands, equity_sims=120):
     sim = rc.sim_module.SixMaxSimulator(bb_size=10.0, equity_sims=equity_sims,
                                         hero_personality='main', bootstrap_alpha=0.0)
@@ -922,12 +965,11 @@ def _run_field(rc, pool, weights, stack_bb_range, n_hands, equity_sims=120):
     # deploys. Always assign unconditionally -- Python allows setting a new attribute regardless
     # of whether it existed before, so the hasattr guard was never doing anything useful.
     sim.policy_temperature = 0.5   # match live serve (core/decision.py LIVE_POLICY_TEMPERATURE)
-    for i in range(n_hands):
-        sim.simulate_hand(current_hand=500000 + i)
+    profits = _play_hands(sim, n_hands, 500000)
+    bb100, ci95 = _ci95_bb100(profits)
     h = sim.seat_histories[0]
-    bb100 = (h['profit'] / 10.0) / max(1, n_hands) * 100.0
     vpip = (h['vpip_acts'] / h['vpip_ops'] * 100.0) if h.get('vpip_ops') else 0.0
-    return bb100, vpip
+    return bb100, vpip, ci95
 
 
 def check_vpip_adapts_to_style(rc):
@@ -937,15 +979,17 @@ def check_vpip_adapts_to_style(rc):
         return CheckResult('SKIP', 'requires --full (simulator not loaded)')
     parts, data, ok = [], [], True
     for depth_label, stack_range in (('short', [5, 14]), ('deep', [30, 50])):
-        bb100_tight, vpip_tight = _run_field(rc, ['nit'], [1.0], stack_range, rc.n_hands_style)
-        bb100_loose, vpip_loose = _run_field(rc, ['fish'], [1.0], stack_range, rc.n_hands_style)
+        bb100_tight, vpip_tight, ci_tight = _run_field(rc, ['nit'], [1.0], stack_range, rc.n_hands_style)
+        bb100_loose, vpip_loose, ci_loose = _run_field(rc, ['fish'], [1.0], stack_range, rc.n_hands_style)
         delta = vpip_loose - vpip_tight
         ok = ok and delta >= 5.0
         parts.append(f"{depth_label}: tight={vpip_tight:.1f}% loose={vpip_loose:.1f}% (delta {delta:+.1f}pts)")
         data.append({"depth": depth_label, "stack_range": stack_range,
                      "vpip_tight": round(vpip_tight, 1), "vpip_loose": round(vpip_loose, 1),
                      "delta": round(delta, 1), "bb100_tight": round(bb100_tight, 1),
-                     "bb100_loose": round(bb100_loose, 1), "pass": delta >= 5.0})
+                     "bb100_loose": round(bb100_loose, 1),
+                     "ci95_tight": round(ci_tight, 1), "ci95_loose": round(ci_loose, 1),
+                     "pass": delta >= 5.0})
     detail = "; ".join(parts)
     if ok:
         return CheckResult('PASS', detail, data)
@@ -968,18 +1012,22 @@ def check_bb100_vs_standard_fields(rc):
     measured = {}
     lines, data, warn = [], [], False
     for key, pool, weights, stack_range in fields:
-        bb100, vpip = _run_field(rc, pool, weights, stack_range, rc.n_hands_field)
+        bb100, vpip, ci95 = _run_field(rc, pool, weights, stack_range, rc.n_hands_field)
         measured[key] = round(bb100, 1)
         prior = baseline.get(key)
-        regressed = prior is not None and (bb100 - prior) < -15.0
+        # [V47 P0.1] regression call is CI-aware: a drop smaller than the run's own 95% CI is
+        # noise, not a regression -- require the drop to exceed BOTH the old flat 15 BB/100
+        # floor and the measurement's uncertainty before flagging.
+        regressed = prior is not None and (bb100 - prior) < -max(15.0, ci95)
         if regressed:
             warn = True
-            lines.append(f"{key}: {bb100:+.1f} BB/100 (baseline {prior:+.1f}, DOWN {prior - bb100:.1f}) VPIP {vpip:.0f}%")
+            lines.append(f"{key}: {bb100:+.1f} ±{ci95:.1f} BB/100 (baseline {prior:+.1f}, DOWN {prior - bb100:.1f}) VPIP {vpip:.0f}%")
         else:
             note = f", baseline {prior:+.1f}" if prior is not None else ", no baseline recorded yet"
-            lines.append(f"{key}: {bb100:+.1f} BB/100{note} VPIP {vpip:.0f}%")
+            lines.append(f"{key}: {bb100:+.1f} ±{ci95:.1f} BB/100{note} VPIP {vpip:.0f}%")
         data.append({"field": key, "pool": pool, "stack_range": stack_range,
-                     "bb100": round(bb100, 1), "vpip": round(vpip, 1), "baseline": prior,
+                     "bb100": round(bb100, 1), "ci95": round(ci95, 1),
+                     "vpip": round(vpip, 1), "baseline": prior,
                      "regressed": regressed})
     rc.collected['bb100'] = measured   # available to run.py for --update-baseline
     detail = " | ".join(lines)
@@ -988,67 +1036,90 @@ def check_bb100_vs_standard_fields(rc):
 
 def check_beats_frozen_predecessor(rc):
     """Every version must beat a frozen snapshot of its immediate predecessor (the
-    `frozen_v{N-1}.pth` benchmark pattern used since V15)."""
+    `frozen_v{N-1}.pth` benchmark pattern used since V15).
+
+    [V47 P0.1] Now a MIRRORED-DEAL PAIRED head-to-head: two legs over the same per-hand-seeded
+    decks/stacks/seatings (see _play_hands) -- leg A seats the candidate as hero with the frozen
+    predecessor in the 'past' NN seat, leg B swaps them. The per-hand paired difference
+    d_i = heroProfit_A(i) - heroProfit_B(i) cancels the shared card luck, and the gate is the
+    95% CI of mean(d) EXCLUDING zero -- not a bare `bb100 > 0`, which at a few thousand unpaired
+    hands is dominated by variance (the pre-P0.1 gate could promote or damn a version on noise;
+    see fable review #5/M1)."""
     if rc.sim_module is None:
         return CheckResult('SKIP', 'requires --full (simulator not loaded)')
     if not rc.frozen_predecessor_filename:
         return CheckResult('SKIP', 'no frozen_v*.pth found in this version\'s weights dir')
     from shared.registry import load_model
     try:
-        frozen_model = load_model(rc.version_id, rc.frozen_predecessor_filename, device=rc.device)
+        # allow_contract_mismatch: seating a cross-contract frozen ancestor as an OPPONENT is the
+        # documented deliberate exception to [V47 P0.4]'s hard contract_version validation.
+        frozen_model = load_model(rc.version_id, rc.frozen_predecessor_filename, device=rc.device,
+                                  allow_contract_mismatch=True)
     except Exception as e:
         return CheckResult('SKIP', f'could not load {rc.frozen_predecessor_filename}: {e}')
-    sim = rc.sim_module.SixMaxSimulator(bb_size=10.0, equity_sims=120,
-                                        hero_personality='main', bootstrap_alpha=0.0)
-    sim.hero_model = rc.model
-    sim.opponent_pool_styles = ['fish', 'tag', 'nit', 'past']
-    sim.opponent_pool_weights = [0.40, 0.20, 0.20, 0.20]
-    sim.live_players = 6
-    sim.fixed_stack_bb = [5, 50]
-    sim.disable_exploration = True
-    sim.range_aware_equity = rc.range_aware
-    # [Fable review #4 fix, 2026-07-20] This used to be `sim.disable_past_self = False` +
-    # `sim.past_model = frozen_model` -- two attributes the V18+ simulator does not read at all
-    # (it resolves seats from `self.opponent_pool`). The 'past' seat was therefore a plain TAG
-    # heuristic and this check measured "beats a TAG field" for every version since V18. Now the
-    # frozen predecessor is seated for real, as an NNOpponent, via the same `build_opponent_pool`
-    # path training uses. See _seat_opponent_pool.
     frozen_path = os.path.join(_REPO_ROOT, 'versions', rc.version_id, 'weights',
                                rc.frozen_predecessor_filename)
-    pool = _seat_opponent_pool(rc, sim, [
-        {'style': 'fish', 'weight': 0.40},
-        {'style': 'tag',  'weight': 0.20},
-        {'style': 'nit',  'weight': 0.20},
-        {'style': 'past', 'weight': 0.20, 'model': frozen_path},
-    ], model_loader=lambda _path: frozen_model)
-    # Fail LOUD rather than silently benchmarking against a heuristic again -- this exact bug has
-    # now recurred twice (v17_gauntlet's tag_model, then this one), always by degrading quietly.
-    past_seat = (pool or {}).get('past')
-    if past_seat is None or getattr(past_seat, 'kind', None) != 'NN':
-        return CheckResult('SKIP', "could not seat the frozen predecessor as an NN opponent "
-                                   f"(got {getattr(past_seat, 'label', None)!r}) -- refusing to "
-                                   "report a head-to-head against a heuristic field")
-    # BUG FIX (2026-07-15): simulator.py reads this via getattr(self, 'policy_temperature', 1.0)
-    # -- it is NEVER pre-declared in __init__, so hasattr() on a fresh instance is always False
-    # and this assignment was silently skipped, leaving every eval running at temp=1.0 (the
-    # TRAINING-exploration policy) instead of 0.5 (live serve). That's exactly the documented
-    # trap: raw temp=1.0 rollout policy LOSES (-6 to -10 BB/100, VPIP 60%+) because it's not what
-    # deploys. Always assign unconditionally -- Python allows setting a new attribute regardless
-    # of whether it existed before, so the hasattr guard was never doing anything useful.
-    sim.policy_temperature = 0.5
     n_hands = rc.n_hands_field
-    for i in range(n_hands):
-        sim.simulate_hand(current_hand=700000 + i)
-    h = sim.seat_histories[0]
-    bb100 = (h['profit'] / 10.0) / max(1, n_hands) * 100.0
-    detail = (f"vs field incl. frozen predecessor SEATED AS {past_seat.label} "
-              f"({rc.frozen_predecessor_filename}): {bb100:+.1f} BB/100 over {n_hands} hands")
-    data = [{"opponent": rc.frozen_predecessor_filename, "bb100": round(bb100, 1),
-             "n_hands": n_hands, "field": "fish/tag/nit/past(frozen)",
-             "past_seat": past_seat.label}]
-    if bb100 > 0:
+
+    def _run_leg(hero_model, past_model):
+        """One leg of the pair; returns (per-hand profits, past_seat) or (None, past_seat)."""
+        sim = rc.sim_module.SixMaxSimulator(bb_size=10.0, equity_sims=120,
+                                            hero_personality='main', bootstrap_alpha=0.0)
+        sim.hero_model = hero_model
+        sim.opponent_pool_styles = ['fish', 'tag', 'nit', 'past']
+        sim.opponent_pool_weights = [0.40, 0.20, 0.20, 0.20]
+        sim.live_players = 6
+        sim.fixed_stack_bb = [5, 50]
+        sim.disable_exploration = True
+        sim.range_aware_equity = rc.range_aware
+        # [Fable review #4 fix, 2026-07-20] The 'past' model is seated for real, as an
+        # NNOpponent, via the same `build_opponent_pool` path training uses -- the old
+        # `sim.past_model` attribute was never read by the V18+ simulator and this check spent
+        # ten versions measuring "beats a TAG field". See _seat_opponent_pool.
+        pool = _seat_opponent_pool(rc, sim, [
+            {'style': 'fish', 'weight': 0.40},
+            {'style': 'tag',  'weight': 0.20},
+            {'style': 'nit',  'weight': 0.20},
+            {'style': 'past', 'weight': 0.20, 'model': frozen_path},
+        ], model_loader=lambda _path: past_model)
+        # Fail LOUD rather than silently benchmarking against a heuristic again -- this exact
+        # bug has recurred twice (v17_gauntlet's tag_model, then review #4), always quietly.
+        past_seat = (pool or {}).get('past')
+        if past_seat is None or getattr(past_seat, 'kind', None) != 'NN':
+            return None, past_seat
+        # BUG FIX (2026-07-15): assign unconditionally -- simulator reads this via getattr with
+        # default 1.0 and never pre-declares it, so a hasattr guard silently skips and the eval
+        # runs at the training-exploration temperature instead of live serve's 0.5.
+        sim.policy_temperature = 0.5
+        return _play_hands(sim, n_hands, 700000, seed_base=_MIRROR_SEED), past_seat
+
+    profits_a, seat_a = _run_leg(rc.model, frozen_model)
+    if profits_a is None:
+        return CheckResult('SKIP', "could not seat the frozen predecessor as an NN opponent "
+                                   f"(got {getattr(seat_a, 'label', None)!r}) -- refusing to "
+                                   "report a head-to-head against a heuristic field")
+    profits_b, seat_b = _run_leg(frozen_model, rc.model)
+    if profits_b is None:
+        return CheckResult('SKIP', "could not seat the CANDIDATE as an NN opponent in the "
+                                   f"swapped leg (got {getattr(seat_b, 'label', None)!r})")
+    diffs = [a - b for a, b in zip(profits_a, profits_b)]
+    diff_bb100, ci = _ci95_bb100(diffs)
+    bb100_a, ci_a = _ci95_bb100(profits_a)
+    bb100_b, ci_b = _ci95_bb100(profits_b)
+    detail = (f"mirrored-deal paired head-to-head vs {rc.frozen_predecessor_filename} "
+              f"(SEATED AS {seat_a.label}): candidate-as-hero {bb100_a:+.1f} ±{ci_a:.1f}, "
+              f"frozen-as-hero {bb100_b:+.1f} ±{ci_b:.1f}, paired diff {diff_bb100:+.1f} "
+              f"±{ci:.1f} BB/100 (95% CI, {n_hands} paired hands)")
+    data = [{"opponent": rc.frozen_predecessor_filename, "n_hands": n_hands,
+             "field": "fish/tag/nit/past(frozen)", "past_seat": seat_a.label,
+             "bb100_candidate_hero": round(bb100_a, 1), "ci95_candidate_hero": round(ci_a, 1),
+             "bb100_frozen_hero": round(bb100_b, 1), "ci95_frozen_hero": round(ci_b, 1),
+             "paired_diff_bb100": round(diff_bb100, 1), "paired_diff_ci95": round(ci, 1)}]
+    if diff_bb100 - ci > 0:
         return CheckResult('PASS', detail, data)
-    return CheckResult('FAIL', detail + " -- must beat the frozen predecessor benchmark", data)
+    if diff_bb100 + ci < 0:
+        return CheckResult('FAIL', detail + " -- DECISIVELY behind the frozen predecessor (CI fully below 0)", data)
+    return CheckResult('WARN', detail + " -- not decisive (95% CI includes 0); more hands or a real improvement needed", data)
 
 
 def check_beats_offformula_stress(rc):
@@ -1075,17 +1146,19 @@ def check_beats_offformula_stress(rc):
         sim.fixed_stack_bb = stack_range
         sim.disable_exploration = True
         sim.range_aware_equity = rc.range_aware
-        if hasattr(sim, 'policy_temperature'):
-            sim.policy_temperature = 0.5
-        for i in range(n_hands):
-            sim.simulate_hand(current_hand=900000 + i)
+        # [V47 P0.1] assign unconditionally (the hasattr guard was the documented silent-skip
+        # trap -- simulator never pre-declares this attribute) + per-hand profits for a CI.
+        sim.policy_temperature = 0.5
+        profits = _play_hands(sim, n_hands, 900000)
+        bb100, ci95 = _ci95_bb100(profits)
         h = sim.seat_histories[0]
-        bb100 = (h['profit'] / 10.0) / max(1, n_hands) * 100.0
         vpip = (h['vpip_acts'] / h['vpip_ops'] * 100.0) if h.get('vpip_ops') else 0.0
-        results[depth_label] = (bb100, vpip)
-    detail = "; ".join(f"{d}: {bb100:+.1f} BB/100 (VPIP {vpip:.0f}%)" for d, (bb100, vpip) in results.items())
-    data = [{"depth": d, "bb100": round(bb100, 1), "vpip": round(vpip, 1)} for d, (bb100, vpip) in results.items()]
-    worst = min(bb100 for bb100, _ in results.values())
+        results[depth_label] = (bb100, vpip, ci95)
+    detail = "; ".join(f"{d}: {bb100:+.1f} ±{ci95:.1f} BB/100 (VPIP {vpip:.0f}%)"
+                       for d, (bb100, vpip, ci95) in results.items())
+    data = [{"depth": d, "bb100": round(bb100, 1), "ci95": round(ci95, 1), "vpip": round(vpip, 1)}
+            for d, (bb100, vpip, ci95) in results.items()]
+    worst = min(bb100 for bb100, _, _ in results.values())
     if worst > -10.0:
         return CheckResult('PASS', detail, data)
     if worst > -30.0:
@@ -1100,8 +1173,8 @@ SLOW_CHECKS = [
      "generalization-vs-overfitting probe, 2026-07-15 discussion", check_beats_offformula_stress),
     ("bb100_vs_standard_fields", "winrate vs loose/tight fields at short+deep, diffed vs baseline",
      "general health / regression tracking", check_bb100_vs_standard_fields),
-    ("beats_frozen_predecessor", "positive BB/100 vs a field including the frozen predecessor",
-     "deploy gate (V15+)", check_beats_frozen_predecessor),
+    ("beats_frozen_predecessor", "mirrored-deal paired head-to-head vs the frozen predecessor; gate = 95% CI of the paired diff excluding 0",
+     "deploy gate (V15+; paired-CI form since V47 P0.1)", check_beats_frozen_predecessor),
 ]
 
 ALL_CHECKS = FAST_CHECKS + SLOW_CHECKS
@@ -1115,9 +1188,9 @@ ALL_CHECKS = FAST_CHECKS + SLOW_CHECKS
 # =====================================================================================
 CHECK_DOCS = {
     "nash_pushfold_vs_chart": dict(
-        what="SB open-jam decision: compares the model's commit-vs-fold lean against an IN-REPO-SOLVED heads-up Nash push/fold equilibrium (SB jam vs BB call, chip-EV), over all 169 starting hands x every solved stack depth (5-20bb). The first check that tests hero against an EXTERNAL game-theory answer rather than this project's own simulator/bots. Nash 'shove' is scored as 'commit aggressively' (any raise-family or all-in mass beating fold), since the model has a discretized sizing action space.",
-        expect="On UNAMBIGUOUS Nash cells (jam-freq near 0 or 1; mixed hands are skipped), the model should lean the same way -- commit its Nash jam range, fold the rest. The jam-vs-sized-raise split is reported separately (a model that commits via raise_pot instead of a literal jam still AGREES on direction).",
-        if_not="WARN-only, never a deploy gate -- a 6-max cash model isn't required to match a heads-up subgame, and HU/position is mildly OOD. But low agreement, or a gross error like folding a premium or committing pure trash deep, is a real external red flag independent of how clean the self-referential checks look.",
+        what="SB open-jam decision: compares the model against an IN-REPO-SOLVED heads-up Nash push/fold equilibrium (SB jam vs BB call, chip-EV), over all 169 starting hands x every solved stack depth (5-20bb). The first check that tests hero against an EXTERNAL game-theory answer rather than this project's own simulator/bots. [V47 P0.3] PRIMARY score is the literal ALLIN-vs-FOLD preference (the binary question the Nash chart actually answers); the old 'commit aggressively' composite (any raise-family or all-in mass beating fold) is kept as a SECONDARY reported column.",
+        expect="On UNAMBIGUOUS Nash cells (jam-freq near 0 or 1; mixed hands are skipped), the model should prefer the literal jam over folding in its Nash jam range, and fold the rest. The secondary composite shows how much 'agreement' comes from sized raises standing in for jams -- a different (dominated) strategy the primary metric no longer credits.",
+        if_not="WARN-only, never a deploy gate -- a 6-max cash model isn't required to match a heads-up subgame, and HU/position is mildly OOD. A big gap between the primary and secondary columns is the anti-jam artifact ([M9]/[STACK-3] neighborhood): the model commits but refuses the literal all-in bucket. Version-to-version comparisons must use SAME-metric numbers -- pre-P0.3 percentages are composite numbers and not comparable to the primary column.",
     ),
     "nash_bbcall_vs_jam": dict(
         what="BB-facing-a-jam decision: compares the model's call/commit-vs-fold lean against the in-repo-solved Nash BB calling range, over all 169 hands x stacks. The cleaner binary spot -- facing an all-in there is no cheap-limp option to muddy the read -- with the model's equity input RANGE-CONDITIONED on SB's Nash jamming range (as it would be in real play once the opponent has committed).",
@@ -1237,12 +1310,12 @@ CHECK_DOCS = {
     "bb100_vs_standard_fields": dict(
         what="Runs real simulated hands against four standard opponent-field presets (loose/tight x short/deep stacks) and measures hero's win rate (BB/100), compared against the last recorded baseline for this version.",
         expect="Win rate should hold roughly steady or improve versus the stored baseline in all four fields.",
-        if_not="A drop of more than 15 BB/100 in any field vs baseline is flagged as a quiet regression -- the model got WORSE against a standard opponent mix, even though nothing else may be failing.",
+        if_not="A drop vs baseline exceeding both 15 BB/100 and the run's own 95% CI (reported as ± on every number since V47 P0.1) is flagged as a quiet regression -- the model got WORSE against a standard opponent mix, even though nothing else may be failing. Drops smaller than the CI are treated as measurement noise, not regressions.",
     ),
     "beats_frozen_predecessor": dict(
-        what="Plays real simulated hands against a mixed field that includes a frozen snapshot of this version's immediate predecessor, so the new model literally plays against the old one.",
-        expect="The new version should have a positive win rate (profit) in that field -- a straightforward 'did we actually get better' test.",
-        if_not="A loss (negative BB/100) here means the new version may not actually be an improvement over what it's replacing -- a serious deploy-readiness concern.",
+        what="A mirrored-deal PAIRED head-to-head (since V47 P0.1): the same per-hand-seeded decks/stacks/seatings are played twice -- once with the candidate as hero and the frozen predecessor seated as a real NN opponent, once with the roles swapped -- and the per-hand profit DIFFERENCE is what gets tested, which cancels the card luck the two runs share.",
+        expect="The 95% confidence interval of the paired difference should exclude zero in the candidate's favor. A bare positive mean is NOT enough -- at a few thousand unpaired hands the old `bb100 > 0` gate was mostly measuring variance, so promotions could ride on noise.",
+        if_not="A CI that includes zero means the head-to-head is INCONCLUSIVE (WARN) -- run more hands or accept the version on other evidence, explicitly. A CI fully below zero means the new version is decisively behind what it's replacing (FAIL).",
     ),
     "beats_offformula_stress": dict(
         what="Swaps in a structurally different opponent (a discrete equity-tier lookup bot, not just a reweighted version of the same continuous pot-odds formula every training opponent uses) to see if hero's win rate holds up against a genuinely different playing style.",

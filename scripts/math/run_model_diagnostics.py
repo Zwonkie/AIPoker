@@ -63,10 +63,9 @@ def run_diagnostics(model_name='Herocules (v9 Main)'):
     for name, street, hand, board, pot, call, stack, eq, opps, prof in scenarios:
         bs = create_mock_board_state(street, hand, board, pot, call, stack, eq, opps, prof)
         
-        # Turn OFF math guardrail so we can see the pure model output behavior
-        action, reason, bet_size, ev_dict = engine.make_decision(
-            bs, use_math_engine=False
-        )
+        # [v46_legacySweep] The math guardrail no longer exists (removed with the other legacy
+        # override layers), so the pure model output is the only output.
+        action, reason, bet_size, ev_dict = engine.make_decision(bs)
         
         ev_f = ev_dict.get('FOLD', 0.0)
         ev_c = ev_dict.get('CALL', 0.0)
@@ -92,7 +91,7 @@ def run_diagnostics(model_name='Herocules (v9 Main)'):
     for opps in [1, 3, 5]:
         for label, eq, hand in eq_groups:
             bs = create_mock_board_state("Preflop", hand, [], 15.0, 10.0, 1000.0, eq, opps, "Standard")
-            action, reason, bet_size, ev_dict = engine.make_decision(bs, use_math_engine=False)
+            action, reason, bet_size, ev_dict = engine.make_decision(bs)
             ev_f = ev_dict.get('FOLD', 0.0)
             ev_c = ev_dict.get('CALL', 0.0)
             ev_r = ev_dict.get('RAISE', 0.0)

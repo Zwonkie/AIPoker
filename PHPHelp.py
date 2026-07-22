@@ -50,7 +50,8 @@ ACTION_DISPLAY_NAMES = {
 # bottom -> seat_1 left -> seat_2 top-left -> seat_3 top-mid -> seat_4 top-right -> seat_5 right ->
 # back to hero). Used only to APPROXIMATE action order (who's already acted this street vs who
 # hasn't) for the equity panel's opponent-color breakdown -- not used by the equity math itself.
-SEAT_ORDER_CLOCKWISE = ['hero', 'seat_1', 'seat_2', 'seat_3', 'seat_4', 'seat_5']
+# [v46_legacySweep] SEAT_ORDER_CLOCKWISE moved to core/live_observation.py (the classifier that
+# used it lives in core/live_adapter.py since V45_liveHandover).
 
 # Action Distribution bar colors: RAW = the actor's untouched softmax output; SAMPLED = the same
 # distribution after live temperature-sharpening (core/decision.py), which is what the sampler
@@ -180,12 +181,10 @@ class PHPHelpApp(ctk.CTk):
         self.target_window_var = ctk.StringVar(value="Bet365")
         self.big_blind_var = ctk.DoubleVar(value=25.0)
         
-        # Toggleable decision layers (default to False to see true model actions)
-        self.layer_preflop_var = ctk.BooleanVar(value=False)
-        self.layer_math_var = ctk.BooleanVar(value=False)
-        self.layer_bluff_var = ctk.BooleanVar(value=False)
-        self.layer_sizing_var = ctk.BooleanVar(value=False)
-        
+        # [v46_legacySweep] The four decision-layer toggle vars (preflop chart / math / bluff /
+        # dynamic sizing) are gone with the override layers themselves -- they were no-ops for
+        # every sized model, and only sized models exist now.
+
         # Turn Diagnostics variables
         self.last_raw_img = None
         self.last_table_state = None
@@ -193,6 +192,7 @@ class PHPHelpApp(ctk.CTk):
         self.last_decision = None
         self.last_ev_dict = None       # full model output (policy probs + Q-values + decision path)
         self.last_equity_meta = None   # how equity was computed (range-aware vs random, opp colors)
+        self.last_observation = None   # [V45_liveHandover] the frozen LiveObservation of the last decided turn
         self.last_window_title = None  # source window title -> board id for the history session
         # Hold the last real decision on screen for a few seconds (or until the next real decision,
         # whichever comes first) instead of snapping back to "WAITING..." the moment it's no longer
@@ -216,7 +216,9 @@ class PHPHelpApp(ctk.CTk):
         self.session_history_dir = None
         self.session_turn_count = 0
         self.recent_logs = []
-        self.last_valid_hero_stack = 760  # Tracks last valid stack to tolerate timer overlays
+        # [v46_legacySweep] `last_valid_hero_stack` removed -- it only ever fed a local variable
+        # nothing read (Fable review live-M5); TableState's monotonic-decay guard is the real
+        # timer-overlay protection and feeds the observation the model actually sees.
         self.table_state = TableState()
         self.xml_tracker = XMLTracker()
         self.pending_baseline_stacks = None
@@ -343,11 +345,8 @@ class PHPHelpApp(ctk.CTk):
         self.looseness_slider.grid(row=14, column=0, padx=20, pady=5, sticky="ew")
         
         # NOTE: the preflop-chart/math-engine/bluff-engine toggle checkboxes were removed from the
-        # UI (2026-07-15) -- they're no-ops for every currently loaded model (v13/v14/v15 all
-        # bypass them; see core/decision.py's is_v13_model/is_sized_model guards), so the sidebar
-        # showed live controls with no live effect. The underlying vars stay False (their pre-existing
-        # default, "see true model actions") and are still threaded through make_decision() below for
-        # forward compatibility with a future model that does use them.
+        # UI (2026-07-15); the override layers themselves (and their vars) were removed entirely in
+        # v46_legacySweep (2026-07-22) -- the model's own policy is the only decision-maker.
         # State Machine indicator at bottom of sidebar
         self.state_frame = ctk.CTkFrame(self.sidebar, height=45, fg_color="#1e2129", corner_radius=8)
         self.state_frame.grid(row=15, column=0, padx=20, pady=20, sticky="ew")
@@ -1082,149 +1081,22 @@ class PHPHelpApp(ctk.CTk):
                         num_opponents = self.opponents_var.get()
                     num_sims = self.simulations_var.get()
                     
-                    # V13 requires RANGE-AWARE equity (hero equity vs each opponent's VPIP-color
-                    # range) to match how it was trained — using vs-random equity here would be a
-                    # silent train/serve mismatch. Falls back to vs-random if v13 isn't active or
-                    # the range-aware calc can't run.
-                    equity = None
-                    sim_msg = None
-                    equity_meta = {"method": "vs-random", "opp_colors": None, "num_opponents": num_opponents}
-                    # [V42_liveFixes] Every model in this lineage was trained with RANGE-AWARE
-                    # equity (hero equity vs each opponent's VPIP-color range); feeding vs-random
-                    # here is a silent train/serve mismatch on the model's single most load-bearing
-                    # input. This used to be selected by a per-version substring ladder maintained
-                    # HERE, in a file that has no reason to know which versions exist -- and it
-                    # stopped at 'v29', so V40 and V41 both went live being served vs-random equity
-                    # and a constant hand_strength=0.5, silently, for as long as they were active.
-                    # The version now declares its own implementations (engine `live_features()`),
-                    # resolved by core/decision.py; the legacy name mapping lives there too, as the
-                    # single copy. `source == 'unresolved'` is logged as an ERROR rather than
-                    # degrading quietly -- that quiet degradation IS the bug this replaced.
-                    _providers = self.decision_engine.live_feature_providers()
-                    equity_meta["feature_source"] = _providers.get('source')
-                    if _providers.get('error'):
-                        self.append_log(f"[Equity] ERROR resolving live features: {_providers['error']}")
-                    compute_range_aware_equity = _providers.get('equity_fn')
-                    if compute_range_aware_equity is None:
-                        self.append_log(
-                            f"[Equity] WARNING: no range-aware equity implementation for "
-                            f"'{self.decision_engine.active_model_name}' (source="
-                            f"{_providers.get('source')}) -- falling back to VS-RANDOM equity, "
-                            f"which the model was NOT trained on.")
-                    else:
-                        try:
-                            # [V20_preflopEq Finding 1] An opponent whose HUD color hasn't been
-                            # classified yet (vpip_color is None) is a real, demonstrably-contesting
-                            # seat -- NOT the same as them not being there. Map unknown -> 'Yellow'
-                            # (this codebase's existing "no info" convention elsewhere, e.g.
-                            # opponents_profiles.get(...).get('vpip', 0.3) -> Yellow's band) rather
-                            # than silently dropping them. See versions/v20_preflopEq/SPECS.md
-                            # Finding 1 -- "full range"/omission is actually the most hero-favorable
-                            # (least conservative) wrong answer, not a cautious middle ground.
-                            opp_colors = [o.get('vpip_color') or 'Yellow' for o in active_opps]
-                            equity_meta["opp_colors"] = opp_colors
-                            # For v20_preflopEq this breakdown now ALSO drives the equity call
-                            # below (front_colors=colors_in_pot); for every other model it stays
-                            # display-only (see _classify_opponents_by_action_order's docstring).
-                            colors_in_pot, colors_still_to_act = self._classify_opponents_by_action_order(
-                                stabilized_state, active_opps_by_seat
-                            )
-                            equity_meta["opp_colors_in_pot"] = colors_in_pot
-                            equity_meta["opp_colors_still_to_act"] = colors_still_to_act
-                            # sims=250 (2026-07-16, live-serving only -- default is 150, matching
-                            # what training uses): at 150 sims, 2*SE on a ~50% equity estimate is
-                            # ~8pp, comparable to a color band's own width (e.g. Yellow=[26,35], 9pp
-                            # wide) -- too noisy to reliably resolve band-driven differences. 250
-                            # brings 2*SE down to ~6.3pp. Doesn't touch training's own sims=150 call
-                            # (versions/*/self_play/simulator.py) or its default -- same formula
-                            # either way, just less noise around the same expected value live.
-                            if _providers.get('use_front_colors') and colors_in_pot is not None:
-                                # [V20_preflopEq Finding 2] front (already acted this round,
-                                # guaranteed in -- no VPIP fold-roll) vs after (still to act,
-                                # normal roll), using the SAME positional classifier already
-                                # computed above for display -- now actually driving the equity
-                                # math too, matching training's fix exactly. Falls back to the
-                                # flat legacy call below if the dealer button wasn't detected this
-                                # frame (classifier returns (None, None) when it can't establish
-                                # order, distinct from a real empty front/after list).
-                                ra = compute_range_aware_equity(
-                                    stabilized_state['hero_cards'],
-                                    stabilized_state['community_cards'],
-                                    colors_still_to_act,
-                                    sims=250,
-                                    front_colors=colors_in_pot,
-                                )
-                            else:
-                                ra = compute_range_aware_equity(
-                                    stabilized_state['hero_cards'],
-                                    stabilized_state['community_cards'],
-                                    opp_colors,
-                                    sims=250,
-                                )
-                            if ra is not None:
-                                equity = ra
-                                equity_meta["method"] = "range-aware"
-                                sim_msg = f"Range-aware equity vs {opp_colors or 'random'}: {equity:.2f}"
-                            else:
-                                equity_meta["fallback_reason"] = "range-aware returned None (no HUD colors?)"
-                        except Exception as e:
-                            equity_meta["fallback_reason"] = f"range-aware raised: {e}"
-                            self.append_log(f"[Equity] range-aware failed ({e}); vs-random fallback")
-
-                    # hand_strength (contract index 36, [V20_preflopEq]): field-independent
-                    # card-quality signal. Only computed when the ACTIVE version's contract actually
-                    # reads it -- the version says so itself via `live_features()['hand_strength']`
-                    # (see the equity note above; this was the second substring ladder, and it
-                    # stopped at 'v29' too, so V40/V41 fed a constant 0.5 into a real feature).
-                    # Preflop: O(1) lookup. Postflop: a cheap vs-1-random MC call, same recipe as
-                    # simulator.py's own _hand_strength.
-                    hand_strength = 0.5
-                    preflop_hand_strength = _providers.get('hand_strength_fn')
-                    if preflop_hand_strength is not None:
-                        try:
-                            _hero_cards = stabilized_state['hero_cards']
-                            _community = stabilized_state['community_cards']
-                            if len(_community) == 0:
-                                hand_strength = preflop_hand_strength(_hero_cards[0], _hero_cards[1])
-                            else:
-                                hand_strength, _ = self.evaluator.calculate_equity(
-                                    _community, _hero_cards, num_opponents=1, num_simulations=200
-                                )
-                        except Exception as e:
-                            self.append_log(f"[Equity] hand_strength computation failed ({e}); using neutral 0.5")
-                    equity_meta["hand_strength"] = hand_strength
-
-                    if equity is None:
-                        equity, sim_msg = self.evaluator.calculate_equity(
-                            stabilized_state['community_cards'],
-                            stabilized_state['hero_cards'],
-                            num_opponents=num_opponents,
-                            num_simulations=num_sims
-                        )
-                    equity_meta["value"] = equity
-                    # [V20_preflopEq] equity_edge: equity's edge over the field-size fair share
-                    # (equity*(num_active+1), 1.0 = exactly average for this field size) --
-                    # display-only here; contract.py derives its own copy internally from
-                    # state.equity + the active-opponent count for the actual model input, this is
-                    # just that same formula computed for the dashboard, against the FINAL equity
-                    # (post range-aware/vs-random fallback) and the same opponent count `equity`
-                    # was itself computed against (detected_opponents / num_opponents above).
-                    equity_meta["equity_edge"] = equity * (num_opponents + 1)
-                    self.last_equity_meta = equity_meta
-
-                    self.append_log(f"[Decision] {sim_msg}")
-                    self.after(0, self.update_equity_ui, equity, sim_msg)
+                    # [V45_liveHandover] Equity, hand_strength, the front/after split and
+                    # effective_field are no longer computed HERE -- they are the ACTIVE VERSION's
+                    # interpretation of the table, and they moved behind the handover boundary into
+                    # the version-owned adapter (core/live_adapter.py, BaseLiveAdapter.decide),
+                    # still resolved from what the engine itself declares (live_features()).
+                    # This file now only gathers RAW frame facts (buttons, price, cards), builds a
+                    # frozen LiveObservation after the price block below, and calls
+                    # decision_engine.decide(obs) -- the dashboard needs no edit when a new
+                    # version ships. See versions/v45_liveHandover/SPECS.md.
                     
                     # Determine is_preflop
                     is_preflop = len(stabilized_state['community_cards']) == 0
                     
-                    # Track and fall back on valid hero stack size to tolerate timer overlays
-                    hero_stack = stabilized_state['hero_stack']
-                    if hero_stack > 0:
-                        self.last_valid_hero_stack = hero_stack
-                    else:
-                        hero_stack = self.last_valid_hero_stack
-                        self.append_log(f"[Vision] Stack size OCR obscured. Falling back to: {hero_stack}")
+                    # [v46_legacySweep] The `last_valid_hero_stack` fallback block that lived here
+                    # was dead code (its result fed a local nothing read -- Fable review live-M5);
+                    # the model input reads TableState.hero_stack, which is monotonic-guarded.
 
                     # Calculate decision parameters
                     pot = stabilized_state['pot_size']
@@ -1343,62 +1215,43 @@ class PHPHelpApp(ctk.CTk):
 
                 stabilized_state['big_blind'] = self.big_blind_var.get()
                 
-                board_state = self.table_state.to_board_state(
+                # [V45_liveHandover] THE handover: freeze the raw table facts into a
+                # LiveObservation (core/live_observation.py -- raw chips, None-sentinels, no
+                # model-specific values) and hand it to the version-owned adapter. Everything that
+                # used to be computed inline here (range-aware equity with the front/after split,
+                # hand_strength, effective_field, BoardState assembly, call_amount_known
+                # semantics) happens inside BaseLiveAdapter.decide, driven by what the ACTIVE
+                # engine declares -- byte-identical pipeline, relocated behind the boundary
+                # (parity-verified: versions/v45_liveHandover/verify_handover.py).
+                obs = self.table_state.to_observation(
                     call_amount=call_amount,
-                    equity=equity,
-                    big_blind=self.big_blind_var.get()
-                )
-                # [V20_preflopEq] hand_strength computed earlier alongside equity (see
-                # equity_meta["hand_strength"]) -- to_board_state() doesn't take it as a
-                # constructor param (BoardState field is additive/optional, see core/board_state.py),
-                # so set it directly here, same as `equity` itself is threaded through above.
-                board_state.hand_strength = self.last_equity_meta.get("hand_strength", 0.5) if self.last_equity_meta else 0.5
-
-                # [V44] Effective contested field for ctx[35]'s denominator. The ACTIVE version
-                # supplies its own implementation via live_feature_providers (None for pre-V44
-                # contracts, which ignore this field). Mirror the simulator's street branch EXACTLY:
-                # preflop each still-to-act opponent is rolled at its VPIP (front are guaranteed in),
-                # postflop there is no roll so it is simply the nominal active-opponent count. Left
-                # at BoardState's 0.0 default when unavailable -> the V44 contract falls back to the
-                # nominal count, i.e. exactly V43's feature, so this can never make things worse.
-                # Fetched fresh (not the equity block's local `_providers`) so this cannot NameError
-                # if that block was skipped; resolution is idempotent and importlib-cached.
-                _v44_providers = self.decision_engine.live_feature_providers()
-                _eff_fn = _v44_providers.get('effective_field_fn') if isinstance(_v44_providers, dict) else None
-                if _eff_fn is not None:
-                    try:
-                        _em = self.last_equity_meta or {}
-                        if len(stabilized_state.get('community_cards') or []) == 0:
-                            _front = _em.get("opp_colors_in_pot")
-                            _after = _em.get("opp_colors_still_to_act")
-                            # (None, None) means the dealer button wasn't read this frame, so the
-                            # front/after split is unknown -- fall back to the flat active count
-                            # rather than guessing, same conservative default as the equity path.
-                            if _front is None and _after is None:
-                                board_state.effective_field = float(len(active_opps))
-                            else:
-                                board_state.effective_field = float(_eff_fn(_front or [], _after or []))
-                        else:
-                            board_state.effective_field = float(len(active_opps))
-                    except Exception as _e:
-                        self.append_log(f"[V44] effective_field computation failed ({_e}); "
-                                        f"falling back to nominal count.")
-                        board_state.effective_field = float(len(active_opps))
-
-                decision_tuple = self.decision_engine.make_decision(
-                    board_state,
-                    use_preflop_chart=self.layer_preflop_var.get(),
-                    use_math_engine=self.layer_math_var.get(),
-                    use_bluff_engine=self.layer_bluff_var.get(),
-                    use_dynamic_sizing=self.layer_sizing_var.get(),
-                    bet_raise_available=bet_raise_available,
-                    check_call_available=check_call_available,
-                    # [V42_liveFixes] False when the Check/Call button could not be read -- see the
-                    # call-amount block above. `call_amount` is then a best-effort ESTIMATE, and
-                    # make_decision must not treat a 0 estimate as a positively-identified free
-                    # check (which would force-mask FOLD on a bet nobody could see).
                     call_amount_known=call_amount_known,
+                    check_call_available=check_call_available,
+                    bet_raise_available=bet_raise_available,
+                    big_blind=self.big_blind_var.get(),
+                    ts_epoch=time.time(),
+                    source=("mock" if source.startswith("Mock:") else "live"),
                 )
+                self.last_observation = obs
+
+                live_decision = self.decision_engine.decide(
+                    obs,
+                    evaluator=self.evaluator,
+                    fallback_sims=num_sims,
+                    # GUI slider stands in when vision found no opponents (same fallback the old
+                    # inline block used for the vs-random path).
+                    fallback_num_opponents=num_opponents,
+                    log_fn=self.append_log,
+                )
+
+                # The dashboard renders the model's own diagnostics -- it recomputes nothing.
+                equity = live_decision.equity
+                sim_msg = live_decision.sim_msg
+                self.last_equity_meta = live_decision.equity_meta
+                board_state = live_decision.board_state
+                self.append_log(f"[Decision] {sim_msg}")
+                self.after(0, self.update_equity_ui, equity, sim_msg)
+                decision_tuple = live_decision.as_tuple()
                 
                 action = decision_tuple[0]
                 reason = decision_tuple[1]
@@ -1411,18 +1264,10 @@ class PHPHelpApp(ctk.CTk):
                 self.last_decision = (action, reason, bet_size)
                 self.last_ev_dict = ev_dict   # full model output (policy + Q-values + decision path)
                 
-                # Safeguard: If decided action is CHECK, but we detected the middle button as KALD/CALL or it's unavailable,
-                # override to FOLD to prevent accidental calling.
-                if action == 'CHECK' and not source.startswith("Mock:"):
-                    if not check_call_available or any(w in text_upper for w in ["KALD", "CALL", "KLD", "KND"]):
-                        self.append_log("[Safeguard] WARNING: Decided CHECK but Check/Call button is KALD or unavailable! Overriding to FOLD.")
-                        action = 'FOLD'
-                        reason = f"Safeguard: Blocked accidental call on CHECK decision. (OCR: '{cc_text}', Avail: {check_call_available})"
-                        if ev_dict is not None:
-                            ev_dict['thinking'] = "Thinking: Check/Call unavailable -- folding rather than risk an accidental call."
-                        # Re-save decision with safeguard applied
-                        self.last_decision = (action, reason, bet_size)
-                
+                # [v46_legacySweep] The CHECK-safeguard block that lived here is gone: sized models
+                # never emit a bare 'CHECK' (only FOLD/CALL/RAISE_SLIDER_x), and CALL is masked in
+                # make_decision when the button is absent (V42 A3), so the condition was unreachable.
+
                 # Record Hero's own action in the table state action history
                 if action == 'FOLD':
                     self.table_state.action_history.append('f')
@@ -1988,93 +1833,16 @@ class PHPHelpApp(ctk.CTk):
         Returns (colors_in_pot, colors_still_to_act), or (None, None) if the dealer button wasn't
         detected this frame (can't establish an order without it).
         """
-        dealer_idx = stabilized_state.get('dealer_idx', -1)
-        if dealer_idx not in range(0, 6):
-            return None, None
-
-        button_seat = 'hero' if dealer_idx == 0 else f'seat_{dealer_idx}'
-        if button_seat not in SEAT_ORDER_CLOCKWISE:
-            return None, None
-        start = SEAT_ORDER_CLOCKWISE.index(button_seat)
-        order = SEAT_ORDER_CLOCKWISE[start:] + SEAT_ORDER_CLOCKWISE[:start]  # button first, then clockwise
-
-        # First-to-act this street: postflop = seat right after the button; preflop = 2 seats
-        # after that (past the blinds) -- a full-ring approximation; doesn't adjust if the blinds
-        # themselves already folded.
-        is_preflop = len(stabilized_state.get('community_cards', [])) == 0
-        first_to_act_offset = 3 if is_preflop else 1
-        order = order[first_to_act_offset:] + order[:first_to_act_offset]
-
-        if 'hero' not in order:
-            return None, None
-        hero_pos = order.index('hero')
-        before_hero = order[:hero_pos]        # positionally had their turn this street
-        after_hero = order[hero_pos + 1:]     # haven't acted yet this street -> "still to act"
-
-        # [2026-07-21] Sitting BEFORE hero is NOT evidence of being in the pot, and this used to
-        # treat it as proof. `front` means "guaranteed to showdown, no VPIP fold-roll" -- the
-        # strongest claim the equity model can make about an opponent -- so it must be earned by
-        # chips actually in the pot, which is exactly what training requires of it (the simulator
-        # builds front from real `acted_this_round[s]` / `folded[s]` / all-in state, see
-        # versions/v43/self_play/simulator.py L1592). Live has no per-seat fold detection, so
-        # positional order alone silently promoted folded seats to locked-in showdown opponents.
-        #
-        # Cost of getting this wrong, measured on the QQ hand at
-        # history/Turbo_1171580052/flagged/turn_2_20260721_201440: an unopened pot (30 chips = the
-        # blinds, pot_type=0, every opp_raised_* flag 0) classified THREE opponents as front, which
-        # took QQ from 0.64 equity to 0.38 and bought a 100%-confidence FOLD the bot then clicked.
-        # V43 raises that hand at every opponent count 1-6 once fed the real number.
-        #
-        # Failing seats fall through to `after` rather than being dropped: they still get a VPIP
-        # fold-roll, so a genuine limper we couldn't confirm is only under-weighted, not erased.
-        # Omitting them entirely would be the most hero-favorable wrong answer (same reasoning as
-        # [V20_preflopEq] Finding 1 above).
-        ts = self.table_state
-        big_blind = float(getattr(ts, 'big_blind', 0.0) or 0.0)
-        sb_key, bb_key = ts.blind_seat_keys()
-        blind_keys = {k for k in (sb_key, bb_key) if k}
-
-        def is_in_pot(seat_key):
-            state_key = 'Hero' if seat_key == 'hero' else seat_key
-            committed = ts.committed_chips(state_key)
-            if committed <= 0:
-                return False
-
-            # A seat recorded as raising THIS street is in, wherever it sits. Position cannot see
-            # this: a 3-bet from behind hero reopens the action, so the raiser is both committed
-            # and positionally "after" -- the reopened-action blind spot noted above. Chips in the
-            # pot are the criterion; seat order was only ever a proxy for them.
-            if ts.raised_this_street.get(state_key, False):
-                return True
-
-            if is_preflop:
-                # Preflop, committed chips ARE this street's chips, so position is not needed at
-                # all -- except that a posted blind is involuntary and can still fold behind it.
-                # A blind only counts once it puts in more than it was forced to.
-                if state_key in blind_keys:
-                    return committed > big_blind + 1e-9
-                return True
-
-            # Postflop, `committed` spans earlier streets too, so it cannot distinguish "already
-            # bet this street" from "called preflop and is now facing a flop bet". Fall back to
-            # the positional read for THAT question -- sound postflop, where action simply opens
-            # left of the button -- with chips-in-hand filtering out folded and phantom seats.
-            return seat_key in before_hero
-
-        def colors_for(seat_list):
-            colors = []
-            for seat_key in seat_list:
-                opp = active_opps_by_seat.get(seat_key)
-                if opp:
-                    # [V20_preflopEq Finding 1] Same unknown->Yellow mapping as the main opp_colors
-                    # list above -- a seat with no HUD color read yet is still really there.
-                    colors.append(opp.get('vpip_color') or 'Yellow')
-            return colors
-
-        contesting = before_hero + after_hero
-        confirmed_in = [s for s in contesting if is_in_pot(s)]
-        may_still_fold = [s for s in contesting if not is_in_pot(s)]
-        return colors_for(confirmed_in), colors_for(may_still_fold)
+        # [V45_liveHandover] The implementation moved to core/live_adapter.py::classify_front_after
+        # (a pure function over LiveObservation), because it is MODEL-SIDE interpretation, not raw
+        # table state -- the adapter now calls it directly during decide(). This method remains as
+        # a thin delegate for diagnostics/older call sites so the two copies cannot drift; the two
+        # original parameters are ignored (the observation is built from the same tracked state
+        # they were derived from). Byte-equivalent behaviour is covered by
+        # versions/v45_liveHandover/verify_handover.py.
+        from core.live_adapter import classify_front_after
+        obs = self.table_state.to_observation(big_blind=float(getattr(self.table_state, 'big_blind', 0.0) or 0.0))
+        return classify_front_after(obs)
 
     def _curate_opponents(self, state):
         """Per-seat opponent snapshot for the board-state layer (objective read from vision)."""
@@ -2141,6 +1909,12 @@ class PHPHelpApp(ctk.CTk):
             "board_id": self.session_board_id,
             "window_title": self.last_window_title,
             "flagged": False,
+            # [V45_liveHandover] LAYER 0 — the frozen RAW handover object the adapter decided
+            # from (core/live_observation.py). Additive key, format stays 2: everything a replay
+            # needs to re-run this turn through ANY version's adapter offline, with honest
+            # sentinels (None = unread) instead of the interpreted values below.
+            "observation": (self.last_observation.to_json_dict()
+                            if self.last_observation is not None else None),
             # LAYER 1 — objective board state. Accumulate board_state across a match's turns = the match.
             "board_state": {
                 "street": street,

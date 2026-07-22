@@ -4,11 +4,15 @@ push/fold solution (nash_solved.json, produced offline by solve_nash_pushfold.py
 Two checks, both pure lookup + a single forward pass via scenarios.run_policy -- no simulator,
 no equity computation, no version code:
 
-  check_nash_pushfold_vs_chart  -- SB decision: commit (jam/raise) vs fold, over the FULL 169
-                                   hands x every solved stack. Nash "shove" maps to "commit
-                                   aggressively" (raise-family + all-in beating fold), since the
-                                   model has a discretized sizing action space; the jam-vs-raise
-                                   sizing split is reported separately.
+  check_nash_pushfold_vs_chart  -- SB decision over the FULL 169 hands x every solved stack.
+                                   [V47 P0.3] PRIMARY score is literal ALLIN-vs-FOLD (the binary
+                                   question the Nash solution actually answers); the old
+                                   commit-vs-fold composite (raise-family + all-in mass beating
+                                   fold) is kept as a SECONDARY column. The composite let a model
+                                   "agree" with a Nash jam via a small sized raise -- a different
+                                   (dominated) strategy -- so composite movement across versions
+                                   (e.g. the V40-era 83%->78%) conflated sizing-preference shifts
+                                   with genuine push/fold disagreement.
   check_nash_bbcall_vs_jam      -- BB facing a jam: call/commit vs fold. This is the cleaner
                                    binary spot (facing an all-in there is no cheap-limp option to
                                    confound the read), with the model's equity input
@@ -58,7 +62,8 @@ def check_nash_pushfold_vs_chart(rc):
     # HU SB-first geometry (0.5 SB / 1.0 BB): dead pot 1.5, cheap price to continue 0.5.
     POT_BB, CALL_BB = 1.5, 0.5
 
-    agree = total = 0
+    agree = total = 0                 # [V47 P0.3] PRIMARY: literal ALLIN-vs-FOLD
+    agree_composite = 0               # secondary: the pre-P0.3 commit-vs-fold composite
     commit_via_raise = commit_cells = 0
     gross = []
     data = []
@@ -75,26 +80,37 @@ def check_nash_pushfold_vs_chart(rc):
                             street=0, contract_version=cv)
             policy, _q = run_policy(rc.model, ctx, rc.action_keys, device=rc.device)
             p_fold = policy[rc.action_keys[fi]]
+            p_allin = policy[rc.action_keys[ai]]
             agg_mass = sum(policy[rc.action_keys[i]] for i in agg_idx)
-            model_lean = 'shove' if agg_mass > p_fold else 'fold'
+            # [V47 P0.3] Primary lean: does the model prefer the literal jam over folding --
+            # the binary sub-decision the Nash chart is actually a solution to.
+            model_lean = 'shove' if p_allin > p_fold else 'fold'
+            composite_lean = 'shove' if agg_mass > p_fold else 'fold'
             ok = (model_lean == nash)
             total += 1
             agree += int(ok)
+            agree_composite += int(composite_lean == nash)
             if not ok:
-                gross.append(f"{h}@{S}bb(Nash {nash},model {model_lean}:agg={agg_mass:.2f}/F={p_fold:.2f})")
-            elif nash == 'shove':
+                gross.append(f"{h}@{S}bb(Nash {nash},model {model_lean}:allin={p_allin:.2f}/F={p_fold:.2f})")
+            if nash == 'shove' and composite_lean == 'shove':
                 commit_cells += 1
                 top_agg = max(agg_idx, key=lambda i: policy[rc.action_keys[i]])
                 commit_via_raise += int(top_agg != ai)
             data.append({"seat": "SB", "hand": h, "stack_bb": S, "nash": nash,
                          "model_lean": model_lean, "agrees": ok,
+                         "composite_lean": composite_lean,
+                         "agrees_composite": composite_lean == nash,
+                         "p_allin": round(p_allin, 3),
                          "agg_mass": round(agg_mass, 3), "p_fold": round(p_fold, 3)})
 
     frac = agree / total if total else 0.0
-    detail = f"SB jam commit-vs-fold agreement over {total} unambiguous Nash cells: {agree} ({frac:.0%})"
+    frac_composite = agree_composite / total if total else 0.0
+    detail = (f"SB literal-jam-vs-fold agreement over {total} unambiguous Nash cells: {agree} "
+              f"({frac:.0%}) | secondary commit-vs-fold composite (pre-P0.3 metric): "
+              f"{frac_composite:.0%}")
     if commit_cells:
-        detail += (f" | {commit_via_raise}/{commit_cells} commits use a sized RAISE not a literal "
-                   f"jam (expected post-V29 anti-jam)")
+        detail += (f" | {commit_via_raise}/{commit_cells} composite-commits use a sized RAISE "
+                   f"not a literal jam")
     if gross:
         detail += f" | {len(gross)} disagreements e.g. " + "; ".join(gross[:4])
     status = 'PASS' if frac >= _PASS_THRESHOLD else 'WARN'

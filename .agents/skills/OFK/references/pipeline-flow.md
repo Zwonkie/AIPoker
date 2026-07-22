@@ -1,7 +1,7 @@
 # Pipeline Flow — Simulation/Training vs Live Play
 
 **Date Recorded**: 2026-07-15
-**Related Files**: [decision.py](file:///c:/REPO/Antigravity/AIPoker/core/decision.py) · [action_executor.py](file:///c:/REPO/Antigravity/AIPoker/core/action_executor.py) · [PHPHelp.py](file:///c:/REPO/Antigravity/AIPoker/PHPHelp.py) · [simulator.py](file:///c:/REPO/Antigravity/AIPoker/versions/v15/self_play/simulator.py) · [train.py](file:///c:/REPO/Antigravity/AIPoker/versions/v15/self_play/train.py) · [contract.py](file:///c:/REPO/Antigravity/AIPoker/versions/v13/core/contract.py)
+**Related Files**: [decision.py](file:///c:/REPO/Antigravity/AIPoker/core/decision.py) · [live_observation.py](file:///c:/REPO/Antigravity/AIPoker/core/live_observation.py) · [live_adapter.py](file:///c:/REPO/Antigravity/AIPoker/core/live_adapter.py) · [action_executor.py](file:///c:/REPO/Antigravity/AIPoker/core/action_executor.py) · [PHPHelp.py](file:///c:/REPO/Antigravity/AIPoker/PHPHelp.py) · [simulator.py](file:///c:/REPO/Antigravity/AIPoker/versions/v15/self_play/simulator.py) · [train.py](file:///c:/REPO/Antigravity/AIPoker/versions/v15/self_play/train.py) · [contract.py](file:///c:/REPO/Antigravity/AIPoker/versions/v13/core/contract.py)
 
 ## Context
 Two Mermaid flow diagrams that map every condition/logic/data tweak in (1) the self-play sim/training
@@ -12,8 +12,9 @@ and [decision-pipeline-tracing-and-gui-overrides.md](file:///c:/REPO/Antigravity
 
 ## Guidelines
 **MAINTAIN THIS** whenever a condition/logic/data tweak is added or changed in the sim/train pipeline
-(`versions/<v>/self_play/*`) or the live path (`core/*`, `PHPHelp.py`). Current: **V15 live**
-(`Herocules (v15 DoN)`); v14/v13 fallbacks. Open tweaks tracked in `versions/v16/SPECS.md`.
+(`versions/<v>/self_play/*`) or the live path (`core/*`, `PHPHelp.py`). Current: **V44 live**
+(`Herocules (v44)`); v43/v41/v40/v29 registered rollbacks. (Sim-diagram box examples still cite
+V15-era values; the live diagram is current as of V45_liveHandover, 2026-07-22.)
 
 ---
 
@@ -91,20 +92,22 @@ weights.
 ```mermaid
 flowchart TD
     subgraph LGLOBAL["🌐 GLOBAL — decision engine"]
-        LG1["LG1 active model v15 (v14/v13 fallback)"]
+        LG1["LG1 active model = registry of DECLARING engines (v44 live; v43/v41/v40 rollbacks) [V46]"]
         LG2["LG2 LIVE_POLICY_TEMPERATURE = 0.5"]
         LG3["LG3 action space + V14_RAISE_FRAC"]
     end
-    subgraph LBOARD["🎲 BOARD — per turn (vision)"]
+    subgraph LBOARD["🎲 BOARD — per turn (vision, RAW facts only)"]
         LB1["LB1 vision OCR → table_state"]
-        LB2["LB2 board_state: pot, call_amount (OCR call btn), bb, cards, street"]
-        LB3["LB3 range-aware equity vs active opp colours"]
+        LB2["LB2 frame facts: pot, call_amount + known flag (OCR call btn), bb, cards, street, buttons"]
+        LB5["LB5 to_observation() → frozen LiveObservation (RAW handover, schema 1) [V45]"]
         LB4["LB4 hand_history_buffer (per-turn snapshots)"]
     end
     subgraph LPLAYER["👤 PLAYER-STATE — per seat (vision)"]
-        LP1["LP1 HUD vpip/agg colour, stack, is_active"]
+        LP1["LP1 HUD vpip/agg colour (None if unread), stack, is_active, committed, raise flags"]
     end
-    subgraph LDEC["♠ DECISION"]
+    subgraph LDEC["♠ DECISION (version-owned from LD0 on)"]
+        LD0["LD0 BaseLiveAdapter.decide: version-declared features → BoardState [V45]"]
+        LB3["LB3 range-aware equity vs opp colours + front/after split (inside LD0)"]
         LD1["LD1 bridge → hole/board/ctx/act tensors"]
         LD2["LD2 predict_ev → 6-way policy"]
         LD3["LD3 sharpen temp0.5 + fold-when-free mask + sample"]
@@ -113,10 +116,11 @@ flowchart TD
     end
     subgraph LEXE["🖱 EXECUTE + LOG"]
         LE1["LE1 action_executor: slider drag + button click"]
-        LE2["LE2 telemetry → history/{board_id}/turns.jsonl (to_call from tensor)"]
+        LE2["LE2 telemetry → history/{board_id}/turns.jsonl (to_call from tensor + raw observation)"]
     end
 
-    LB1 --> LB2 --> LP1 --> LB3 --> LB4 --> LD1
+    LB1 --> LB2 --> LP1 --> LB5 --> LD0
+    LD0 --> LB3 --> LB4 --> LD1
     LGLOBAL --> LD2
     LD1 --> LD2 --> LD3 --> LD4 --> LE1 --> LE2
     LD3 -.-> LD5
@@ -127,9 +131,9 @@ flowchart TD
     classDef d fill:#4a3410,stroke:#e0a020,color:#fff6e0;
     classDef e fill:#3a1220,stroke:#e05070,color:#ffe6ee;
     class LG1,LG2,LG3 g;
-    class LB1,LB2,LB3,LB4 b;
+    class LB1,LB2,LB5,LB4 b;
     class LP1 p;
-    class LD1,LD2,LD3,LD4,LD5 d;
+    class LD0,LB3,LD1,LD2,LD3,LD4,LD5 d;
     class LE1,LE2 e;
 ```
 
@@ -170,3 +174,63 @@ so train≡serve; **LE1** drags the slider then clicks, **LE2** logs the turn fo
 - **LB2 refuses to build a 1–2 card board state** (the contract aliased it to River).
 
 Details and measured before/after: `versions/v42_liveFixes/SPECS.md`.
+
+### [V45_liveHandover, 2026-07-22] The live↔model boundary — LB5/LD0 added, LB3 moved inside LD0
+
+- **LB5 (`TableState.to_observation()`)** now ends the live layer's responsibility: a frozen,
+  JSON-serializable `LiveObservation` of RAW facts only (raw chips, `None` sentinels for unread
+  values, occupied-ring positions, per-seat committed/raise flags, `call_amount` + `known`,
+  button availability). Rules in `core/live_observation.py`: raw-facts-only, None-sentinels,
+  append-only schema.
+- **LD0 (`BaseLiveAdapter.decide`, `core/live_adapter.py`)** is where the ACTIVE VERSION's own
+  interpretation begins: range-aware equity with the front/after split (LB3 now lives here as a
+  pure function, `classify_front_after`), `hand_strength`, `effective_field` (V44+), and
+  BoardState assembly — all resolved from the engine's own `live_features()` declaration.
+  `PHPHelp.py` holds **zero per-version logic on the decision path**; it renders the
+  `LiveDecision` diagnostics instead of recomputing them. Engines may declare
+  `make_live_adapter()` for a custom pipeline.
+- **LE2** additionally records the raw observation (additive `"observation"` key in turns.jsonl),
+  so any recorded turn replays offline through any version's adapter.
+- The P3↔LB3 invariant is unchanged in substance (same `compute_range_aware_equity` per version)
+  — what changed is WHERE the live half runs (inside LD0, version-owned) so a new version can
+  never be silently served the wrong estimator (the V42 founding bug class).
+- Parity-verified byte-identical vs the pre-refactor path:
+  `versions/v45_liveHandover/verify_handover.py` (14/14) + the V42 suites re-run green. See
+  `versions/v45_liveHandover/SPECS.md`.
+
+### [v46_legacySweep, 2026-07-22] Legacy dispatch deleted — LG1/LD1 are declaration-only now
+
+Pre-v30 versions are LEGACY by user decision. `core/decision.py`'s `is_vN` ladders, per-version
+bridge chain, `_LEGACY_LIVE_FEATURES` name-ladder, display-tag ternary, v9 river guardrail and
+the math/bluff/preflop-chart override layers (with their `use_*` kwargs and PHPHelp toggle vars)
+are DELETED; the 3-way actor path too. LD1's bridge and LB3's feature implementations resolve
+ONLY from engine declarations; an engine without them refuses loudly. Registry = v44/v43/v41/v40.
+`tools/self_play` (pre-`versions/` stack) → `attic/`. Verified
+`versions/v46_legacySweep/verify_legacy_sweep.py` 31/31 + the full suite battery green; see
+`versions/v46_legacySweep/SPECS.md`.
+
+### [V47, 2026-07-22] Opponent-behavior realism + target alignment — H3-side changes, one NEW invariant pair
+
+Simulation-side (versions/v47 only, defaults ON in `SixMaxSimulator.__init__`):
+- **B-side (opponent execution)**: opponent raises are no longer a fixed `0.75×pot` — NN seats
+  execute the `raise_k` bucket they chose, TreeOpponents their predicted size class, heuristics
+  sample per-archetype `RAISE_SIZE_DISTRIBUTIONS` (opponent_bots.py, C1-calibrated). All sizes
+  flow through the same **H3** `_raise_size_for_fraction` (min-raise floor / reopen rules).
+- **T-side (targets)**: `_mc_target_evs_sized` fold-outs are OCCUPANT-TRUE ([M4]) — NN seats via a
+  batched policy pass on hypothetical post-raise states, Tree seats via class probs, heuristics
+  via the analytic closed form (kills the 10-roll L4 quantization noise). `allin_by_chips` is
+  adopted ([M9]): chip-identical clamped buckets get ALLIN semantics + the canonical ALLIN
+  bucket's exact EV, and their actor-target regret is masked to zero.
+
+**NEW Train ≡ Serve invariant pair (add to the list above):**
+- Aliased-bucket collapse: **T-side** (`allin_aliased` flags → `regret_match_policy*` masks in
+  train.py) ↔ **LD3** (decision.py sampler masks chip-identical raise buckets when the engine
+  declares `collapse_aliased_allin=True`; declared ONLY by v47_engine — engines trained without
+  the collapse must not declare it).
+
+Curriculum: stack_depth_mix gains [2,5]+[5,8] bands ([VAL-1(A)]). Training loop: cosine T_max =
+real batch count, checkpoints carry optimizer+scheduler state (--resume_path restores both,
+[VAL-5]), validation is a held-out worker stream ([M6]). Verified:
+`versions/v47/self_play/verify_v47.py` 28/28 + `calibrate_raise_sizes.py` C1/C2 OK.
+v47_engine.py exists but is NOT registered — deploy is one registry line after the
+versions/v47/SPECS.md acceptance gates pass.
