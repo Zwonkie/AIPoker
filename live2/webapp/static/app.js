@@ -278,15 +278,19 @@ async function loadOpponents() {
   $('#opp-window').textContent = data.window;
   const tb = $('#opp-table tbody');
   tb.innerHTML = '';
-  data.players.forEach((p) => {
+  // players currently seated at the live table first, highlighted
+  const players = [...data.players.filter((p) => p.at_table),
+                   ...data.players.filter((p) => !p.at_table)];
+  players.forEach((p) => {
     const scopes = [['lifetime', p.lifetime]];
     const w = p['last_' + data.window];
     if (w && w.hands < p.lifetime.hands) scopes.push(['last-' + data.window, w]);
     scopes.forEach(([label, s], i) => {
       const tr = document.createElement('tr');
       if (i === 1) tr.className = 'scope-window';
+      if (p.at_table) tr.classList.add('at-table');
       tr.innerHTML =
-        `<td>${i === 0 ? p.name : ''}</td><td>${label}</td>` +
+        `<td>${i === 0 ? p.name + (p.at_table ? ' <span class="table-badge">at table</span>' : '') : ''}</td><td>${label}</td>` +
         `<td class="num">${s.hands}</td><td class="num">${fmtN(s.vpip)}</td>` +
         `<td class="num">${fmtN(s.pfr)}</td><td class="num">${fmtN(s.limp)}</td>` +
         `<td class="num">${fmtN(s.threebet, 1)}</td><td class="num">${fmtN(s.af, 1)}</td>` +

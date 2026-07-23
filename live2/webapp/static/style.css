@@ -80,6 +80,10 @@ tr.rowlink { cursor: pointer; }
 tr.rowlink:hover { background: var(--panel2); }
 tr.winrow { color: var(--accent); }
 tr.scope-window td { color: var(--accent); border-bottom-color: var(--line); }
+tr.at-table td { background: color-mix(in srgb, var(--accent) 9%, transparent); }
+tr.at-table td:first-child { border-left: 3px solid var(--accent); }
+.table-badge { font-size: 10px; background: var(--accent); color: #08130d; border-radius: 4px;
+  padding: 1px 6px; vertical-align: middle; text-transform: uppercase; letter-spacing: 0.03em; }
 
 /* replay + flags */
 .street-block { margin: 8px 0; }

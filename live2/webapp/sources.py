@@ -287,8 +287,34 @@ def get_hand(sessioncode, hand_id):
 
 # ------------------------------------------------------------------ stats
 
+def _names_at_table(max_age_s=600):
+    """Lower-cased names seated in the newest recorded turn, IF that session is recent
+    (default 10 min) -- otherwise the 'current table' would be whatever table was last
+    played, which is stale and misleading on the Opponents view."""
+    board_id, path = latest_board()
+    if not path:
+        return set()
+    try:
+        import time
+        if time.time() - os.path.getmtime(path) > max_age_s:
+            return set()
+    except OSError:
+        return set()
+    records, _ = read_turns(path)
+    if not records:
+        return set()
+    obs = records[-1].get('observation') or {}
+    return {str(s.get('name') or '').strip().lower()
+            for s in (obs.get('seats') or []) if s.get('occupied') and s.get('name')}
+
+
 def opponent_profiles(window=100, min_hands=10):
     profiles, total = hstats.build(window=window, min_hands=min_hands)
+    at_table = _names_at_table()
     rows = sorted(profiles.items(), key=lambda kv: -kv[1]['lifetime']['hands'])
+    # profile keys are account ids when the blob provides one -- match on display name
     return {'total_hands': total, 'window': window,
-            'players': [{'key': k, **v} for k, v in rows]}
+            'at_table_count': len(at_table),
+            'players': [{'key': k,
+                         'at_table': str(v.get('name') or '').strip().lower() in at_table,
+                         **v} for k, v in rows]}
