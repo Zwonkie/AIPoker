@@ -103,7 +103,9 @@ $('#pilot-probe').addEventListener('click', async () => {
   $('#pilot-panel').classList.remove('hidden');
   $('#probe-out').classList.remove('hidden');
   $('#probe-text').textContent = (r.output || []).join('\n');
-  if (r.png) $('#probe-img').src = '/api/pilot/probe.png?t=' + Date.now();
+  const img = $('#probe-img');
+  img.classList.toggle('hidden', !r.png);
+  if (r.png) img.src = '/api/pilot/probe.png?t=' + Date.now();
 });
 setInterval(pilotStatus, 3000);
 pilotStatus();
