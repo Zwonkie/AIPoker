@@ -68,6 +68,11 @@ def api_shadow(limit: int = 12):
     return JSONResponse(sources.shadow_snapshot(limit=limit))
 
 
+@app.get('/api/table_log')
+def api_table_log(limit: int = 15):
+    return JSONResponse(sources.table_log(limit=limit))
+
+
 # ------------------------------------------------------------------ pilot control
 
 @app.get('/api/pilot/status')

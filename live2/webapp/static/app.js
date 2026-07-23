@@ -43,6 +43,7 @@ function connectWS() {
     lastMsgTime = Date.now();
     renderLive(JSON.parse(ev.data));
     loadShadow();
+    loadTableLog();
   };
   ws.onclose = () => setTimeout(connectWS, 2000);
 }
@@ -216,6 +217,53 @@ async function loadShadow() {
     list.appendChild(row);
   });
 }
+
+/* ---------------------------------------------------------------- table log
+   Per-hand OUTCOME log for the live table, straight from the ground-truth hand store
+   (winner/street/pot + hero's action & chip delta) -- NOT derived from the live board
+   state, which never sees showdowns. Newest hand first. */
+const ACT_LABEL = {
+  post_sb: 'posts SB', post_bb: 'posts BB', ante: 'ante', fold: 'folds', check: 'checks',
+  call: 'calls', bet: 'bets', raise: 'raises', allin: 'all-in',
+};
+async function loadTableLog() {
+  let data;
+  try { data = await (await fetch('/api/table_log?limit=15')).json(); } catch { return; }
+  const rows = data.rows || [];
+  $('#tablelog-status').textContent = data.tournament_id
+    ? `ground truth · table ${data.tournament_id} · ${rows.length} hand(s)`
+    : 'ground truth · from hand history';
+  $('#tablelog-table').classList.toggle('hidden', rows.length === 0);
+  $('#tablelog-empty').classList.toggle('hidden', rows.length > 0);
+  const tb = $('#tablelog-table tbody');
+  tb.innerHTML = '';
+  rows.forEach((r) => {
+    const tr = document.createElement('tr');
+    tr.className = 'rowlink' + (r.hero_won ? ' winrow' : '');
+    const act = r.hero_action ? (ACT_LABEL[r.hero_action] || r.hero_action) : 'sits out';
+    const street = r.hero_street ? `<span class="dim"> ${r.hero_street}</span>` : '';
+    const net = r.hero_net == null ? ''
+      : `<span class="net ${r.hero_net >= 0 ? 'pos' : 'neg'}">` +
+        `${r.hero_net > 0 ? '+' : ''}${r.hero_net}</span>`;
+    const result = r.winner_name
+      ? `<b>${r.winner_name}</b> won<span class="dim"> ${r.winner_street || '—'}</span> · ${r.pot ?? '—'}`
+      : '<span class="dim">—</span>';
+    tr.innerHTML =
+      `<td class="num">${r.seq}</td>` +
+      `<td>${act}${street} ${net}</td>` +
+      `<td>${result}</td>`;
+    if (r.sessioncode && r.hand_id != null) {
+      tr.addEventListener('click', () => {
+        activateTab('hands');
+        loadHandDetail(r.sessioncode, r.hand_id);
+      });
+    }
+    tb.appendChild(tr);
+  });
+}
+loadTableLog();
+setInterval(loadTableLog, 8000);
+
 setInterval(() => {
   const badge = $('#feed-status');
   const age = (Date.now() - lastMsgTime) / 1000;

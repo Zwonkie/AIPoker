@@ -139,6 +139,13 @@ header .feed-badge { margin-left: 12px; }
   color: var(--fg); max-height: 220px; overflow: auto; white-space: pre-wrap; }
 #probe-img { max-width: 100%; border: 1px solid var(--line); border-radius: 6px; }
 
+/* table log */
+#tablelog-table td:first-child { width: 40px; color: var(--dim); }
+#tablelog-table .net { margin-left: 6px; font-variant-numeric: tabular-nums; font-weight: 600; }
+#tablelog-table .net.pos { color: var(--accent); }
+#tablelog-table .net.neg { color: var(--bad); }
+#tablelog-empty { padding: 8px 2px; }
+
 /* assembler shadow */
 .shadow-turn { display: flex; gap: 10px; font-size: 13px; padding: 3px 0; align-items: baseline; }
 .shadow-turn .st-turn { width: 56px; color: var(--dim); }

@@ -54,6 +54,22 @@
             <div id="reason-line" class="dim"></div>
           </div>
         </div>
+        <div class="panel" id="tablelog-panel">
+          <div class="panel-title">Table log
+            <span id="tablelog-status" class="dim">ground truth &middot; from hand history</span>
+          </div>
+          <table id="tablelog-table" class="tablelog">
+            <thead>
+              <tr>
+                <th class="num">#</th>
+                <th>hero action</th>
+                <th>result</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+          <div id="tablelog-empty" class="dim">No completed hands for this table yet.</div>
+        </div>
         <div class="panel" id="shadow-panel">
           <div class="panel-title">Assembler shadow
             <span id="shadow-status" class="dim">not running</span>

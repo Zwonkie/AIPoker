@@ -12,12 +12,17 @@ labels them source='legacy-recorder'. Assembler records will carry real provenan
 import glob
 import json
 import os
+import re
 
 from live2.historydb import stats as hstats
 
 REPO = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
 HISTORY = os.path.join(REPO, 'history')
 HANDSTORE = os.path.join(HISTORY, 'handhistory')
+
+# The hero seat is the account the pilot plays; the hand store only carries player names,
+# so hero is resolved by name (same default the live view uses for its own seat card).
+HERO_NAME = 'Zwonkie'
 
 
 # ------------------------------------------------------------------ live (turns.jsonl)
@@ -294,6 +299,124 @@ def get_hand(sessioncode, hand_id):
             if str(h.get('hand_id')) == str(hand_id):
                 return h
     return None
+
+
+# ------------------------------------------------------------------ table log
+# Per-hand OUTCOME log for the live table, read straight from the ground-truth hand store --
+# deliberately NOT derived from the live board-state machine (which never sees showdowns or
+# who won). The live session and the store are correlated by the tournament id that appears
+# in both the live board_id (recorder.board_id_from_title anchors on the >=6-digit id) and
+# each stored hand's tournament_id.
+
+def _tournament_id_of_board(board_id):
+    """The >=6-digit tournament id embedded in a live board_id, as a string (or None)."""
+    nums = re.findall(r'\d{6,}', board_id or '')
+    return max(nums, key=len) if nums else None
+
+
+def _recent_hands(cap=2000):
+    """Newest-first full hand records, index-backed with a jsonl fallback. A tournament's
+    hands are contiguous at the newest end of the store, so a few-thousand-row cap always
+    covers the current live table in full while bounding the per-refresh cost."""
+    conn = _index_conn()
+    if conn:
+        try:
+            rows = conn.execute(
+                "SELECT raw FROM hands ORDER BY hand_id DESC LIMIT ?", (cap,)).fetchall()
+            out = []
+            for r in rows:
+                try:
+                    out.append(json.loads(r['raw']))
+                except json.JSONDecodeError:
+                    continue
+            return out
+        finally:
+            conn.close()
+    hands = []
+    for p in glob.glob(os.path.join(HANDSTORE, '*', 'hands.jsonl')):
+        with open(p, encoding='utf-8') as f:
+            for line in f:
+                try:
+                    hands.append(json.loads(line))
+                except json.JSONDecodeError:
+                    continue
+    hands.sort(key=lambda h: h['hand_id'], reverse=True)
+    return hands[:cap]
+
+
+def _hero_hand_summary(h):
+    """(action, street, net_chips) for the hero in a ground-truth hand record.
+
+    net: blob hands carry final_stack plus a per-action stack_before, so the hero's chip
+    delta is a DIRECT read (final_stack - the stack before the hero's first action) --
+    validated zero-sum across the whole blob corpus. xml hands lack final_stack, so net is
+    None rather than reconstructed from bet arithmetic (which does not reconcile cleanly)."""
+    seat = next((p['seat'] for p in h.get('players', []) if p.get('name') == HERO_NAME), None)
+    if seat is None:
+        return None, None, None
+    hero_acts = [a for a in h.get('actions', []) if a.get('seat') == seat]
+    action = hero_acts[-1].get('action') if hero_acts else None
+    street = hero_acts[-1].get('street') if hero_acts else None
+    net = None
+    if h.get('source') == 'blob':
+        final = next((p.get('final_stack') for p in h['players'] if p['seat'] == seat), None)
+        start = next((a.get('stack_before') for a in hero_acts
+                      if a.get('stack_before') is not None), None)
+        if final is not None and start is not None:
+            net = round(final - start, 2)
+    return action, street, net
+
+
+def table_log(limit=15):
+    """Newest-first per-hand outcome log for the CURRENT live table. Each row: the hero's
+    action + chip delta and the hand's winner/street/pot, all read from the hand store.
+    `seq` is the hand's 1-based order within the tournament. Falls back to the newest
+    tournament in the store when there is no live session."""
+    board_id, _ = latest_board()
+    target = _tournament_id_of_board(board_id)
+    hands = _recent_hands()
+    if target is None and hands:
+        target = str(hands[0].get('tournament_id'))
+    if target is None:
+        return {'board_id': board_id, 'tournament_id': None, 'sessioncode': None, 'rows': []}
+
+    # dedupe by hand_id, keeping the richer blob record when both blob and xml exist
+    by_id = {}
+    for h in hands:
+        if str(h.get('tournament_id')) != str(target):
+            continue
+        hid = h.get('hand_id')
+        prev = by_id.get(hid)
+        if prev is not None and prev.get('source') == 'blob' and h.get('source') != 'blob':
+            continue
+        by_id[hid] = h
+    ordered = sorted(by_id.values(), key=lambda h: h['hand_id'])   # oldest -> newest, for seq
+
+    rows = []
+    for seq, h in enumerate(ordered, start=1):
+        res = h.get('result') or {}
+        action, street, net = _hero_hand_summary(h)
+        hseat = next((p['seat'] for p in h.get('players', []) if p.get('name') == HERO_NAME), None)
+        winners = res.get('all_winners') or (
+            [{'seat': res.get('winner_seat')}] if res.get('winner_seat') is not None else [])
+        rows.append({
+            'seq': seq,
+            'hand_id': h.get('hand_id'),
+            'sessioncode': h.get('game_id'),
+            'source': h.get('source'),
+            'hero_action': action,
+            'hero_street': street,
+            'hero_net': net,
+            'hero_won': hseat is not None and any(w.get('seat') == hseat for w in winners),
+            'winner_name': res.get('winner_name'),
+            'winner_street': h.get('last_street'),
+            'pot': res.get('pot_won') if res.get('pot_won') is not None
+            else res.get('total_collected'),
+        })
+    rows.reverse()                                                 # newest first for display
+    return {'board_id': board_id, 'tournament_id': target,
+            'sessioncode': rows[0]['sessioncode'] if rows else None,
+            'rows': rows[:limit]}
 
 
 # ------------------------------------------------------------------ stats
