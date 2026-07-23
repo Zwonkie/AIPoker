@@ -325,13 +325,21 @@ class Assembler:
             obs['call_amount'] = derived
             out.provenance['call_amount'] = 'derived'
 
-        # -- rule 4: blinds cross-check ------------------------------------------
+        # -- rule 4: blinds cross-check (anomaly-only) ---------------------------
+        # The title-parsed bb is current and, measured over every recorded turn, exact
+        # (366/366); the store lags one hand, so a plain mismatch fires on every routine
+        # level-up -- pure noise. Only two shapes are anomalous enough to surface:
+        # vision > 3x carry-over (levels step <=2x in these structures; 3x+ means an
+        # extra-digit misread) and vision < carry-over (tournament blinds never go DOWN;
+        # a drop means a misread or the wrong window entirely).
         if last_hand:
             cb = (last_hand.get('blinds') or {}).get('bb')
-            if cb and obs.get('big_blind') and float(cb) != float(obs['big_blind']):
+            vb = obs.get('big_blind')
+            if cb and vb and (float(vb) > 3.0 * float(cb) or float(vb) < float(cb)):
                 out.contradictions.append({
-                    'field': 'big_blind', 'vision': obs['big_blind'], 'carry_over': cb,
-                    'note': 'level change or misread; vision kept'})
+                    'field': 'big_blind', 'vision': vb, 'carry_over': cb,
+                    'note': 'implausible blind level vs last completed hand '
+                            '(>3x jump or decrease) -- suspect misread; vision kept'})
 
         return out
 
