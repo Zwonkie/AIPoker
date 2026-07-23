@@ -51,9 +51,22 @@ READ_MAX_DIST = 0.24           # worst per-glyph XOR distance allowed
 READ_MIN_MARGIN = 0.03         # best-vs-second-best distance separation required
 
 
-def accept(text, worst, margin):
-    """The one gate the live reader applies to a read_number() result."""
-    return text is not None and worst <= READ_MAX_DIST and margin >= READ_MIN_MARGIN
+def accept(text, worst, margin, templates=None, font='stack'):
+    """The one gate the live reader applies to a read_number() result.
+
+    ALPHABET-COMPLETENESS: when the templates dict is passed, the font's full digit
+    set '0'..'9' must exist -- an incomplete alphabet cannot certify ANY read, because
+    a digit with no template silently matches its nearest neighbour instead of failing
+    (measured: pot '390' read as an ACCEPTED '300' at dist 0.207 while p9 was missing).
+    Live callers must pass templates; harvest-internal label comparison doesn't use
+    accept() and is unaffected."""
+    if text is None or worst > READ_MAX_DIST or margin < READ_MIN_MARGIN:
+        return False
+    if templates is not None:
+        prefix = 'p' if font == 'pot' else ''
+        if any(prefix + d not in templates for d in '0123456789'):
+            return False
+    return True
 
 
 def money_rois(record):
@@ -185,6 +198,47 @@ def collect_frames():
     return pairs
 
 
+def _diag_pot_candidates(v):
+    """Displayed digit-string candidates for an old-era telemetry pot_size. That era
+    parsed the Danish-formatted pot ('Pulje: 1.040') as a FLOAT -> 1.04, so fractional
+    values recover the displayed digits as v*1000. Integral values are ambiguous
+    ('60' vs '60.000' -> 60.0) -> both candidates; the segmented digit count picks."""
+    if v <= 0:
+        return []
+    if abs(v - round(v)) < 1e-9:
+        return [str(int(round(v))), str(int(round(v * 1000)))]
+    return [str(int(round(v * 1000)))]
+
+
+def collect_diag_pot():
+    """[(frame_path, record)] from diagnostics/turn_*/telemetry.json -- POT ONLY (that
+    era's seat layout keys don't map to current CENTERS; stack classes are already fat
+    from pilot frames). The label candidate is resolved HERE by segmenting the frame's
+    pot ROI and keeping the candidate whose digit count matches, then emitted as a
+    normal record so harvest/validate/self-clean treat it like any other source."""
+    pairs = []
+    for tj in glob.glob(os.path.join(REPO, 'diagnostics', 'turn_*', 'telemetry.json')):
+        shot = os.path.join(os.path.dirname(tj), 'screenshot.png')
+        img = cv2.imread(shot)
+        if img is None:
+            continue
+        try:
+            with open(tj, encoding='utf-8') as f:
+                v = float(json.load(f)['table_state']['pot_size'])
+        except (OSError, json.JSONDecodeError, KeyError, TypeError, ValueError):
+            continue
+        if img.shape[1] != 1536 or img.shape[0] != 1090:
+            img = cv2.resize(img, (1536, 1090), interpolation=cv2.INTER_CUBIC)
+        x, y, w, h = POT_ROI
+        boxes, ok = pot_amount_boxes(binarize(img[y:y + h, x:x + w]))
+        if not ok:
+            continue
+        matches = [c for c in _diag_pot_candidates(v) if len(c) == len(boxes)]
+        if len(matches) == 1:
+            pairs.append((shot, {'observation': {'pot_size': int(matches[0])}}))
+    return pairs
+
+
 def harvest(pairs):
     """-> samples: {label_char: [ {img, src} ]}, one entry per segmented glyph."""
     samples = {}
@@ -222,6 +276,26 @@ def harvest(pairs):
                 samples.setdefault('sep', []).append({'img': glyph(binimg, box), 'id': frame_id,
                                                       'roi': key, 'label': label})
     return samples, used, skipped
+
+
+def load_manual(samples):
+    """Merge hand-labeled glyphs from templates/manual/<class>/*.png into the harvest.
+    These exist because record-labeled harvesting SKIPS frames whose stale label
+    disagrees with the pixels -- which is exactly where the rare digits hid (every pot
+    '7'/'9' in the 2026-07 corpus sat on a mislabeled frame). Human-labeled, so the
+    self-cleaning round must never drop them: their id is the manual path, which
+    validate() can never emit as a bad frame id."""
+    n = 0
+    for p in glob.glob(os.path.join(OUT, 'manual', '*', '*.png')):
+        img = cv2.imread(p, cv2.IMREAD_GRAYSCALE)
+        if img is None:
+            continue
+        ch = os.path.basename(os.path.dirname(p))
+        samples.setdefault(ch, []).append(
+            {'img': (img >= 128).astype(np.uint8) * 255, 'id': ('manual', p),
+             'roi': 'manual', 'label': ch})
+        n += 1
+    return n
 
 
 def build_templates(samples):
@@ -342,10 +416,14 @@ def validate(pairs, templates):
 
 def main():
     pairs = collect_frames()
-    print(f"frames with records: {len(pairs)}")
+    diag = collect_diag_pot()
+    print(f"frames with records: {len(pairs)} + {len(diag)} diagnostics pot frames")
+    pairs += diag
     samples, used, skipped = harvest(pairs)
+    n_manual = load_manual(samples)
     total = sum(len(v) for v in samples.values())
-    print(f"ROIs used: {used} (skipped {skipped} count-mismatch) -> {total} glyph samples")
+    print(f"ROIs used: {used} (skipped {skipped} count-mismatch) + {n_manual} manual "
+          f"-> {total} glyph samples")
     for ch in sorted(samples):
         print(f"  '{ch}': {len(samples[ch])} samples")
 

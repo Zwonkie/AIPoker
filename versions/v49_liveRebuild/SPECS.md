@@ -256,6 +256,26 @@ three-layer diagnostic, the `flagged/` flow rendered properly).
   after more pilot sessions accumulate labeled frames. NOT wired into live vision yet;
   wiring plan = read_money() behind TableState's no-read path + hero-stack plausibility
   window (stack changes only when hero acts, bounded by pending bet).
+- **POT ALPHABET COMPLETED (2026-07-23, owner-directed "parse them from diagnostics")**:
+  (1) new harvest source `collect_diag_pot()` — July-5–9 `diagnostics/turn_*/telemetry.json`
+  frames, POT ONLY (that era's seat keys don't map to current CENTERS). Label recovery:
+  that era parsed the Danish display ('Pulje: 1.040') as FLOAT 1.04 → displayed digits =
+  v*1000 for fractional values; integral values emit both candidates and the segmented
+  digit count picks. 25 usable frames → pot classes fattened (p0 33, p1 19, p5 22 …).
+  (2) **WRONG-ACCEPTANCE FOUND AND KILLED**: with p9 missing, pot '390' was read as an
+  ACCEPTED '300' (the 9 matched '0' at dist 0.207 < gate 0.24) → `accept()` now requires
+  the font's COMPLETE '0'–'9' alphabet (an incomplete alphabet can't certify any read;
+  a template-less digit silently matches its nearest neighbour instead of failing).
+  (3) the missing 7s/9s were hiding EXACTLY on mislabeled frames (stale telemetry pots —
+  count-mismatch/label-disagree skipped them): poor-match glyph hunt across all frames →
+  33 hand-labeled samples into `templates/manual/<class>/` (new harvest-merged source,
+  ids the self-cleaning pass can never drop; p7×7, p9×12). (4) verification: all 22
+  accepted-but-label-disagreeing pot reads adjudicated against pixels — ALL 22 are stale/
+  legacy-Tesseract label errors (e.g. display 800, record said 650), reader pixel-correct
+  on every one; separators ('1,026'→1026, '2,927'→2927) ignored per cents convention.
+  Corpus: 13 label-match + 22 stale-label-correct + 3 abstain, zero wrong acceptances.
+  STATUS: pot font now READY alongside stacks — same owner review gate before wiring
+  (money-check + digit-review artifacts republished with the full alphabet).
 
 ## Migration gates
 

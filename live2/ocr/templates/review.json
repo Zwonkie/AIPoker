@@ -1,6 +1,6 @@
 {
-  "frames": 31,
-  "rois_used": 60,
+  "frames": 56,
+  "rois_used": 85,
   "rois_skipped": 7,
   "samples": {
     "1": 22,
@@ -14,18 +14,20 @@
     "8": 6,
     "6": 2,
     "2": 14,
-    "p5": 4,
-    "p0": 5,
-    "p4": 0,
-    "p6": 4,
-    "p1": 0,
-    "p3": 0,
-    "p8": 1,
-    "p2": 1
+    "p5": 3,
+    "p0": 16,
+    "p4": 6,
+    "p6": 5,
+    "p1": 8,
+    "p3": 6,
+    "p8": 0,
+    "p2": 4,
+    "p7": 7,
+    "p9": 12
   },
   "validation": {
-    "ok": 38,
-    "bad": 22,
+    "ok": 46,
+    "bad": 39,
     "unlabelable": 7,
     "mismatches": [
       {
@@ -48,9 +50,9 @@
         "src": "turn_10_20260722_181100",
         "roi": "pot",
         "label": 50,
-        "read": "65",
-        "score": 0.0,
-        "margin": 0.006
+        "read": "60",
+        "score": 0.23,
+        "margin": 0.0
       },
       {
         "src": "turn_33_20260722_182052",
@@ -59,14 +61,6 @@
         "read": "335",
         "score": 0.116,
         "margin": 0.139
-      },
-      {
-        "src": "turn_33_20260722_182052",
-        "roi": "pot",
-        "label": 400,
-        "read": "650",
-        "score": 0.369,
-        "margin": 0.006
       },
       {
         "src": "turn_15_20260722_202017",
@@ -85,6 +79,14 @@
         "margin": 0.142
       },
       {
+        "src": "turn_13_20260723_112418",
+        "roi": "pot",
+        "label": 650,
+        "read": "600",
+        "score": 0.23,
+        "margin": 0.0
+      },
+      {
         "src": "turn_13_20260723_112420",
         "roi": "seat_3_stack",
         "label": 5,
@@ -93,12 +95,28 @@
         "margin": 0.142
       },
       {
+        "src": "turn_13_20260723_112420",
+        "roi": "pot",
+        "label": 650,
+        "read": "600",
+        "score": 0.23,
+        "margin": 0.0
+      },
+      {
         "src": "turn_13_20260723_112424",
         "roi": "seat_3_stack",
         "label": 5,
         "read": "0",
         "score": 0.037,
         "margin": 0.142
+      },
+      {
+        "src": "turn_13_20260723_112424",
+        "roi": "pot",
+        "label": 650,
+        "read": "600",
+        "score": 0.23,
+        "margin": 0.0
       },
       {
         "src": "turn_2_20260723_113358",
@@ -136,17 +154,9 @@
         "src": "turn_2_20260723_113358",
         "roi": "pot",
         "label": 165,
-        "read": "605",
-        "score": 0.378,
-        "margin": 0.006
-      },
-      {
-        "src": "turn_1_20260723_121810",
-        "roi": "pot",
-        "label": 110,
-        "read": "005",
-        "score": 0.378,
-        "margin": 0.007
+        "read": "610",
+        "score": 0.23,
+        "margin": 0.0
       },
       {
         "src": "Double_Or_Nothing_1171768566",
@@ -157,12 +167,20 @@
         "margin": 0.142
       },
       {
+        "src": "Double_Or_Nothing_1171768566",
+        "roi": "pot",
+        "label": 650,
+        "read": "600",
+        "score": 0.23,
+        "margin": 0.0
+      },
+      {
         "src": "Double_Or_Nothing_1171769878",
         "roi": "pot",
         "label": 380,
-        "read": "260",
-        "score": 0.26,
-        "margin": 0.006
+        "read": "360",
+        "score": 0.23,
+        "margin": 0.0
       },
       {
         "src": "Double_Or_Nothing_1171771668",
@@ -197,12 +215,132 @@
         "margin": 0.061
       },
       {
-        "src": "Double_Or_Nothing_1171772602",
+        "src": "Double_Or_Nothing_1171771668",
         "roi": "pot",
-        "label": 110,
-        "read": "005",
-        "score": 0.378,
-        "margin": 0.007
+        "label": 280,
+        "read": "260",
+        "score": 0.224,
+        "margin": 0.012
+      },
+      {
+        "src": "turn_20260705_173045_handled",
+        "roi": "pot",
+        "label": 45,
+        "read": "75",
+        "score": 0.037,
+        "margin": 0.241
+      },
+      {
+        "src": "turn_20260705_192307",
+        "roi": "pot",
+        "label": 285,
+        "read": "921",
+        "score": 0.007,
+        "margin": 0.181
+      },
+      {
+        "src": "turn_20260705_225616",
+        "roi": "pot",
+        "label": 450,
+        "read": "200",
+        "score": 0.007,
+        "margin": 0.253
+      },
+      {
+        "src": "turn_20260707_235454",
+        "roi": "pot",
+        "label": 45,
+        "read": "75",
+        "score": 0.037,
+        "margin": 0.241
+      },
+      {
+        "src": "turn_20260708_211010",
+        "roi": "pot",
+        "label": 130,
+        "read": "150",
+        "score": 0.0,
+        "margin": 0.244
+      },
+      {
+        "src": "turn_20260708_230518",
+        "roi": "pot",
+        "label": 105,
+        "read": "210",
+        "score": 0.013,
+        "margin": 0.253
+      },
+      {
+        "src": "turn_20260709_001132",
+        "roi": "pot",
+        "label": 315,
+        "read": "465",
+        "score": 0.0,
+        "margin": 0.244
+      },
+      {
+        "src": "turn_20260709_205714",
+        "roi": "pot",
+        "label": 210,
+        "read": "410",
+        "score": 0.0,
+        "margin": 0.255
+      },
+      {
+        "src": "turn_20260709_211617",
+        "roi": "pot",
+        "label": 150,
+        "read": "390",
+        "score": 0.044,
+        "margin": 0.181
+      },
+      {
+        "src": "turn_20260710_180853",
+        "roi": "pot",
+        "label": 655,
+        "read": "455",
+        "score": 0.0,
+        "margin": 0.244
+      },
+      {
+        "src": "turn_20260710_181234",
+        "roi": "pot",
+        "label": 2125,
+        "read": "2927",
+        "score": 0.013,
+        "margin": 0.195
+      },
+      {
+        "src": "turn_20260710_184334",
+        "roi": "pot",
+        "label": 155,
+        "read": "355",
+        "score": 0.05,
+        "margin": 0.169
+      },
+      {
+        "src": "turn_20260710_195157",
+        "roi": "pot",
+        "label": 105,
+        "read": "660",
+        "score": 0.23,
+        "margin": 0.0
+      },
+      {
+        "src": "turn_20260710_200159",
+        "roi": "pot",
+        "label": 180,
+        "read": "420",
+        "score": 0.007,
+        "margin": 0.253
+      },
+      {
+        "src": "turn_20260714_145529",
+        "roi": "pot",
+        "label": 130,
+        "read": "155",
+        "score": 0.0,
+        "margin": 0.244
       }
     ]
   }
