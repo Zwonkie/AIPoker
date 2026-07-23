@@ -77,7 +77,8 @@ def live_snapshot():
     records, _ = read_turns(path)
     return {
         'board_id': board_id,
-        'feed': 'legacy-recorder',
+        # pilot records self-identify via 'recorder'; anything older is the legacy dashboard
+        'feed': (records[-1].get('recorder') or 'legacy-recorder') if records else 'legacy-recorder',
         'mtime': os.path.getmtime(path),
         'turn': records[-1] if records else None,
         'turn_count': len(records),

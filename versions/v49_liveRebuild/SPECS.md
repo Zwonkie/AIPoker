@@ -175,12 +175,38 @@ three-layer diagnostic, the `flagged/` flow rendered properly).
   busted pre-money again (blind level 150 at 12 minutes, 6th/5th).
   **Gate-1 tally: 2 of ≥3 sessions.**
 
+- **GATE DECISION (owner, 2026-07-23)**: shadow gate CLOSED at 2 sessions ("it is working
+  correctly; the issues are OCR related which we will improve at a later stage") -- jump
+  to full live2 pipeline connection.
+
+- **PILOT BUILT (`live2/pilot/`, 2026-07-23)**: the headless runtime replacing PHPHelp.
+  One process: PrintWindow capture (unfocused-safe) → legacy vision + TableState (OCR
+  reuse; improvements deferred by owner decision) → **assembler in the DECISION PATH**
+  (the model now consumes the corrected observation -- first time; corrected obs is
+  stored as the record's `observation`, raw vision preserved under `observation_raw`
+  when they differ) → V45 boundary `decide(LiveObservation)` → format-2 turns.jsonl
+  (+`recorder: live2-pilot` + `assembler` layer) + self-owned shadow_turns.jsonl →
+  webapp tails it unchanged. Clicks = phpserver motor model via `live2/pilot/actions.py`
+  (legacy ActionExecutor geometry re-expressed client-relative: main buttons off the
+  fold anchor (+90/+290/+460, +45), POT shortcuts (+65..455, -65), slider center-anchored
+  track (1153,970)→(1508,970) @1536x1090), gated behind `--auto`; default recommend-only.
+  Legacy behaviours kept: partial-board wait, <2-hero-cards guard, unknown-price
+  semantics (FOLD never masked), post-action debounce. NEW: decide-once fingerprint
+  (legacy recommend-mode re-decided the same turn every ~1.5s -- that's where the
+  duplicated stack-frozen turns in old sessions came from). XML baseline seeding + blob
+  ingest thread run inside the pilot. VALIDATED offline: 12/12 recorded turns from
+  session #2 through the full new seam (assembler → from_json_dict → decide) reproduce
+  the legacy action exactly (max policy drift ≤0.17, MC-equity noise only, actions
+  identical); records serialize. NOT yet validated: live PrintWindow frame vs vision
+  ROIs (`--probe` exists for this), first real click. Run: `python -m live2.pilot
+  [--auto|--probe|--list]`. Do NOT run `live2.assembler --watch` alongside the pilot.
+
 ## Migration gates
 
 1. **Shadow parity**: assembler runs in shadow alongside PHPHelp for ≥3 real sessions,
    per-turn `LiveObservation` diff; every disagreement adjudicated by post-hand ground truth.
    Gate: new path wins or ties ≥95% of adjudicated disagreements and introduces zero new
-   false facts.
+   false facts. **CLOSED EARLY at 2 sessions by owner decision (2026-07-23).**
 2. **Self-validation live**: the post-hand OCR diff runs automatically and appends to the
    corpus during the shadow sessions.
 3. **Latency**: assembler tick time ≤ the old path's (measured over a session).
