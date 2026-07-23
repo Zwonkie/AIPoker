@@ -606,9 +606,19 @@
   "604": ".to_tensors",
   "605": ".to_tensors",
   "606": ".to_tensors",
+  "607": "V21AuxheadModelEngine",
+  "608": "V29ModelEngine",
   "609": "__init__.py",
+  "610": "_realization_discount",
   "611": "__init__.py",
   "612": "compute_range_aware_equity",
   "613": "__init__.py",
-  "614": ".to_tensors"
+  "614": ".to_tensors",
+  "615": "_realization_discount",
+  "616": "_get_preflop_ranked",
+  "617": ".to_tensors",
+  "618": ".to_tensors",
+  "619": "__init__.py",
+  "620": "__init__.py",
+  "621": "__init__.py"
 }
