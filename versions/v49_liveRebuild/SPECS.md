@@ -157,6 +157,24 @@ three-layer diagnostic, the `flagged/` flow rendered properly).
   Session outcome: hero bubbled both DoNs (4 left, top 3 paid), 0 F12 flags.
   **Gate-1 tally: 1 of ≥3 sessions.**
 
+- **SHADOW SESSION #2 COMPLETE (2026-07-23, 1 DoN table, 12 turns)**: assembler again
+  clean — repaired heavy OCR garbage over real occupants ('ree ee ee…'→Rarefire368,
+  'cen aa nd…'→MrGray86, fuzzy MrGray8s6/nueenbright18/8kMyMonevsk), 0 false
+  quarantines. Selfcheck: cards/board/blinds clean; hero_stack 5 minor-timing diffs
+  (no MAJOR); 1 seat_name corpus entry (raw garbage, assembler had repaired it).
+  FOUND + FIXED a carry-over freshness defect: `latest()` treated the newest stored
+  hand as completed only after a fixed 90s settle margin, but this turbo's hands run
+  ~40s — carry-over lagged one EXTRA hand for up to a minute, surfacing as a big_blind
+  contradiction on EVERY turn (8/12). Fix: end = start + duration_s + 5s (blob records
+  carry exact durations; 90s stays the no-duration fallback). Replay-verified: 8→6
+  contradictions, all six now genuine first-hand-after-level-change lag (vision kept),
+  and roster/stack carry-over runs one hand fresher mid-session. NOTE: final turn
+  (t12, A3s flop all-in 115 into 990) was HUMAN-EXECUTED (user forced the action) —
+  model intent agreed (0.8% FOLD, chose the all-in slider itself; ~10:1 price), so no
+  adjudication conflict, but the turn is excluded from model-behavior reads. Hero
+  busted pre-money again (blind level 150 at 12 minutes, 6th/5th).
+  **Gate-1 tally: 2 of ≥3 sessions.**
+
 ## Migration gates
 
 1. **Shadow parity**: assembler runs in shadow alongside PHPHelp for ≥3 real sessions,

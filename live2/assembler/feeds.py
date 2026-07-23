@@ -87,8 +87,11 @@ class CarryOverFeed:
         (records are written when the cycle ends), so the newest record is correct.
         Replay mode: the whole tournament is on disk, so a turn must not see hands from
         its own future. Hand i counts as completed by T when hand i+1 had already
-        STARTED before T (the client deals the next hand immediately); the tournament's
-        final hand is completed only for turns after its start + a settle margin."""
+        STARTED before T (the client deals the next hand immediately); the newest stored
+        hand (no successor yet -- the common live case) is completed at its own recorded
+        end, start + duration_s + a small settle margin. A fixed 90s margin here made
+        carry-over lag one extra hand for up to a minute in fast turbos (~40s hands),
+        found as an every-turn big_blind contradiction in shadow session #2."""
         if before_ts is None:
             return self.hands[-1] if self.hands else None
         t = _to_epoch(before_ts)
@@ -103,7 +106,8 @@ class CarryOverFeed:
                     completed = h
             else:
                 s = start_epoch(h)
-                if s is not None and s + 90 <= t:
+                end = s + float(h.get('duration_s') or 90.0) + 5.0 if s is not None else None
+                if end is not None and end <= t:
                     completed = h
         return completed
 
