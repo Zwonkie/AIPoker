@@ -14,6 +14,7 @@ mid-deal frame with no street encoding), <2 hero cards guard, unknown-price sema
 recommend-only mode the legacy loop re-decided the same turn every ~1.5s and recorded
 duplicates; the pilot decides once per distinct decision point.
 """
+import os
 import re
 import time
 
@@ -266,6 +267,12 @@ class Pilot:
             window_title=title, obs_dict=obs_dict, obs_raw_dict=obs_raw_dict,
             assembled=assembled, decision=decision, ev_dict=ev_dict or {}, engine=self.engine)
         self.writer.write(record, assembled)
+        # rolling frame of the last DECIDED turn -- the webapp's flag endpoint copies it
+        # into flagged/turn_N_<ts>/screenshot.png so a flag captures what vision saw
+        try:
+            cv2.imwrite(os.path.join(self.writer.dir, 'last_turn.png'), img)
+        except Exception:
+            pass
 
         if self.auto:
             ok = actions.execute(hwnd, action, fold_xy, client_wh, log=self.log)

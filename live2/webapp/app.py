@@ -93,6 +93,13 @@ def api_pilot_probe():
     return JSONResponse(pilotctl.probe())
 
 
+@app.post('/api/flag')
+def api_flag():
+    """Flag the newest decided turn for review (the old F12). Annotation only -- appends
+    a pointer + artifacts under the session folder, never touches game state."""
+    return JSONResponse(sources.flag_latest_turn())
+
+
 @app.get('/api/pilot/probe.png')
 def api_pilot_probe_png():
     if not os.path.exists(pilotctl.PROBE_PNG):

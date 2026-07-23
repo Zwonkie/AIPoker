@@ -125,6 +125,43 @@ def flagged_turns(limit=50):
     return out[:limit]
 
 
+def flag_latest_turn():
+    """Mark the newest decided turn of the active session for review (the F12 flow,
+    relocated to the webapp). Appends the legacy pointer format to flags.jsonl --
+    {turn, ts, dir, action} -- and copies the pilot's rolling last_turn.png plus the
+    full turn record into flagged/turn_<n>_<ts>/, so the Flags tab and the existing
+    review tooling see exactly what a legacy F12 produced."""
+    import datetime
+    import shutil
+
+    board_id, turns_path = latest_board()
+    if not turns_path:
+        return {'ok': False, 'error': 'no active session'}
+    records, _ = read_turns(turns_path)
+    if not records:
+        return {'ok': False, 'error': 'no decided turns in this session yet'}
+    rec = records[-1]
+    board_dir = os.path.dirname(turns_path)
+    ts = datetime.datetime.now().strftime('%Y%m%d_%H%M%S')
+    turn_no = rec.get('turn')
+    art_dir = os.path.join(board_dir, 'flagged', f'turn_{turn_no}_{ts}')
+    os.makedirs(art_dir, exist_ok=True)
+
+    last_png = os.path.join(board_dir, 'last_turn.png')
+    if os.path.exists(last_png):
+        shutil.copy2(last_png, os.path.join(art_dir, 'screenshot.png'))
+    with open(os.path.join(art_dir, 'turn_record.json'), 'w', encoding='utf-8') as f:
+        json.dump(rec, f, indent=2, default=str)
+
+    flag = {'turn': turn_no, 'ts': ts, 'dir': art_dir,
+            'action': (rec.get('action') or {}).get('chosen', '?')}
+    with open(os.path.join(board_dir, 'flags.jsonl'), 'a', encoding='utf-8') as f:
+        f.write(json.dumps(flag, default=str) + '\n')
+    return {'ok': True, 'board_id': board_id, 'turn': turn_no,
+            'action': flag['action'], 'dir': art_dir,
+            'screenshot': os.path.exists(os.path.join(art_dir, 'screenshot.png'))}
+
+
 # ------------------------------------------------------------------ hand store
 # Browse queries go through the derived SQLite index (live2/historydb/sqlindex.py) when it
 # exists -- the jsonl scans remain as the fallback so a deleted/missing index degrades to

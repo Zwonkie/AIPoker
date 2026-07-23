@@ -110,6 +110,29 @@ $('#pilot-probe').addEventListener('click', async () => {
 setInterval(pilotStatus, 3000);
 pilotStatus();
 
+/* ---------------------------------------------------------------- flag turn (old F12) */
+async function flagTurn() {
+  const btn = $('#flag-btn');
+  const r = await pilotPost('/api/flag');
+  if (!r || !r.ok) return;
+  btn.classList.add('flagged');
+  btn.innerHTML = `&#9873; Flagged turn ${r.turn}`;
+  setTimeout(() => {
+    btn.classList.remove('flagged');
+    btn.innerHTML = '&#9873; Flag turn';
+  }, 2500);
+}
+$('#flag-btn').addEventListener('click', flagTurn);
+document.addEventListener('keydown', (e) => {
+  // 'F' anywhere on the Live tab (not while typing) -- browser owns F12, so plain F it is
+  if ((e.key === 'f' || e.key === 'F') && !e.ctrlKey && !e.altKey && !e.metaKey
+      && !/INPUT|TEXTAREA|SELECT/.test(document.activeElement?.tagName || '')
+      && $('#tab-live').classList.contains('active')) {
+    e.preventDefault();
+    flagTurn();
+  }
+});
+
 /* assembler shadow (per-turn corrections + provenance) */
 const PROV_LABEL = {
   'quarantine': 'quarantine', 'sticky-identity': 'sticky', 'carry-over': 'carry-over',
