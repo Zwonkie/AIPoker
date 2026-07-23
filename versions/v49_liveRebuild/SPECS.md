@@ -238,6 +238,25 @@ three-layer diagnostic, the `flagged/` flow rendered properly).
   proven bust, and a 1:1 roster deduction repairs the one-unresolved-seat/
   one-unassigned-live-player case before any quarantine.
 
+- **OCR STAGE OPENED (`live2/ocr/`, 2026-07-23, owner-directed)**: digit-TEMPLATE reading
+  to replace general OCR on money fields — templates ABSTAIN on bad frames instead of
+  returning confident wrong numbers (the hero-stack ratchet poison). Built + iterated
+  with owner review: (1) harvester from labeled recorded frames (flagged screenshots +
+  pilot last_turn.png; self-cleaning consensus pass; review sheet artifact — owner
+  reviews before anything goes live); (2) binarization = percentile contrast-stretch +
+  fixed 55% threshold, NOT Otsu (dim FOLDED pods now read: 1470 where legacy OCR said
+  '7'; un-merged the confident 1240→'12' misread); (3) acceptance gates tuned on
+  board_samples: worst XOR dist ≤0.24 AND best-vs-2nd margin ≥0.03 AND ink-completeness
+  (dropped-glyph guard) — zero wrong accepted reads on the corpus, 77/119 ROIs accepted,
+  every acceptance correct; (4) pot line: separate SMALLER font (own p<d> classes),
+  'Pulje:' colon (two stacked tiny boxes, same x) is the only safe label/amount
+  boundary — truncated-suffix reads (2021→'21') abstain wholesale. STATUS: stacks
+  READY pending owner approval of the template review sheet; pot structurally done but
+  ALL reads abstain (template classes too thin: 31 frames, p7/p9 missing) — re-harvest
+  after more pilot sessions accumulate labeled frames. NOT wired into live vision yet;
+  wiring plan = read_money() behind TableState's no-read path + hero-stack plausibility
+  window (stack changes only when hero acts, bounded by pending bet).
+
 ## Migration gates
 
 1. **Shadow parity**: assembler runs in shadow alongside PHPHelp for ≥3 real sessions,
