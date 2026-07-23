@@ -57,6 +57,13 @@ READ_MIN_MARGIN = 0.03         # best-vs-second-best distance separation require
 SOFT_MAX_DIST = 0.20
 SOFT_MIN_MARGIN = 0.05
 
+# Gates for the GRAYSCALE stack path (aliased glyph vs aliased template): the metric
+# accumulates small aliasing differences over every pixel, so correct reads sit higher
+# than the binary metrics -- corpus-measured (54 labeled ROIs, every read pixel-
+# verified): correct band dist 0.29..0.58 margin >=0.162, impostor distances 0.60+.
+STACK_SOFT_MAX_DIST = 0.60
+STACK_SOFT_MIN_MARGIN = 0.12
+
 # THE canonical pot transform (owner decision 2026-07-23): truncate the stretched gray
 # below this CONSTANT before segmenting/matching pot digits -- always, harvest and live
 # alike, so templates and reads share one transform. Chosen just above the 'Pulje'
@@ -65,6 +72,25 @@ SOFT_MIN_MARGIN = 0.05
 # located first at the 55% pass purely as a boundary/presence anchor.
 POT_TRUNC_GRAY = 176
 POT_TRUNC_TH = POT_TRUNC_GRAY / 255.0
+
+# STACK transform (owner-directed 2026-07-23 eve): truncate the stretched gray below
+# this constant and SKIP binarization -- glyphs keep their natural anti-aliased gray
+# edges (measured on the seat_3 pod: bar body ~106..137, digit ink 155..255; 160 kills
+# bar/streak/sheen while preserving glyph aliasing). Templates are built from these
+# grayscale glyphs so the aliasing lives in the template, not a threshold.
+STACK_TRUNC_GRAY = 160
+
+
+def stack_gray(crop_bgr):
+    """Contrast-stretched gray truncated below STACK_TRUNC_GRAY -- NO binarization.
+    Near-flat crops return zeros (same guard as binarize)."""
+    gray = cv2.cvtColor(crop_bgr, cv2.COLOR_BGR2GRAY) if crop_bgr.ndim == 3 else crop_bgr
+    p_lo, p_hi = np.percentile(gray, (5, 99.5))
+    if p_hi - p_lo < 10:
+        return np.zeros_like(gray)
+    st = np.clip((gray.astype(np.float32) - p_lo) * (255.0 / (p_hi - p_lo)), 0, 255)
+    st[st < STACK_TRUNC_GRAY] = 0
+    return st.astype(np.uint8)
 
 
 def accept(text, worst, margin, templates=None, font='stack'):
@@ -77,17 +103,22 @@ def accept(text, worst, margin, templates=None, font='stack'):
     Live callers must pass templates; harvest-internal label comparison doesn't use
     accept() and is unaffected.
 
-    Gate scale follows the matcher read_number() picked: a complete soft (aliased) pot
-    set means the scores came from _soft_match_glyph -> SOFT_* gates apply."""
+    Gate scale follows the matcher read_money() picked: a complete soft (aliased) set
+    for the font means the scores came from _soft_match_glyph -> SOFT_* gates apply."""
     if text is None:
         return False
-    soft_pot = font == 'pot' and templates is not None and \
-        all(f'soft_p{d}' in templates for d in '0123456789')
-    max_d, min_m = (SOFT_MAX_DIST, SOFT_MIN_MARGIN) if soft_pot else \
-        (READ_MAX_DIST, READ_MIN_MARGIN)
+    soft_prefix = 'soft_p' if font == 'pot' else 'soft_s'
+    is_soft = templates is not None and \
+        all(f'{soft_prefix}{d}' in templates for d in '0123456789')
+    if not is_soft:
+        max_d, min_m = READ_MAX_DIST, READ_MIN_MARGIN
+    elif font == 'pot':
+        max_d, min_m = SOFT_MAX_DIST, SOFT_MIN_MARGIN
+    else:
+        max_d, min_m = STACK_SOFT_MAX_DIST, STACK_SOFT_MIN_MARGIN
     if worst > max_d or margin < min_m:
         return False
-    if templates is not None and not soft_pot:
+    if templates is not None and not is_soft:
         prefix = 'p' if font == 'pot' else ''
         if any(prefix + d not in templates for d in '0123456789'):
             return False
@@ -320,9 +351,14 @@ def harvest(pairs):
                 continue
             used += 1
             frame_id = (path, key)             # unique identity for the cleaning pass
+            # stack glyphs are ALSO captured under the owner's gray transform
+            # (truncate-below-160, no binarization) -- the aliased template basis
+            gtr = stack_gray(crop) if key != 'pot' else None
             for ch, box in zip(text, boxes):
-                samples.setdefault(prefix + ch, []).append(
-                    {'img': glyph(binimg, box), 'id': frame_id, 'roi': key, 'label': label})
+                s = {'img': glyph(binimg, box), 'id': frame_id, 'roi': key, 'label': label}
+                if gtr is not None:
+                    s['gray'] = glyph(gtr, box)
+                samples.setdefault(prefix + ch, []).append(s)
             for box in seps:
                 samples.setdefault('sep', []).append({'img': glyph(binimg, box), 'id': frame_id,
                                                       'roi': key, 'label': label})
@@ -349,7 +385,7 @@ def load_manual(samples):
     return n
 
 
-def build_soft_templates(samples, pad=3):
+def build_soft_templates(samples, pad=3, key='img'):
     """Owner-spec'd 'aliased' templates (2026-07-23, refined same day): every sample of
     a class is aligned by integer translation -- no resizing -- to the position of best
     overall fit against the running class mean, where fit is SYMMETRIC: white matching
@@ -362,7 +398,9 @@ def build_soft_templates(samples, pad=3):
     scale. Seed = the sample closest to the class's median shape, pasted centered."""
     out = {}
     for ch, items in samples.items():
-        imgs = [(s['img'] > 0).astype(np.float32) for s in items]
+        # 0/255 binary samples and grayscale (aliased) samples both normalize to 0..1;
+        # alignment and per-pixel averaging generalize unchanged
+        imgs = [s[key].astype(np.float32) / 255.0 for s in items if key in s]
         if not imgs:
             continue
         med_area = float(np.median([g.shape[0] * g.shape[1] for g in imgs]))
@@ -410,8 +448,11 @@ def _soft_match_glyph(binimg, box, soft_tset):
     """Match one segmented glyph against the SOFT (aliased) templates: the glyph is
     slid over each template (integer shifts, never resized) and scored by the mean
     absolute difference against the 0..1 probability map -- a gray pixel adds or
-    detracts only its confidence fraction. -> (best_char, best_dist, second_dist)."""
-    g = (glyph(binimg, box) > 0).astype(np.float32)
+    detracts only its confidence fraction. Works for binary (0/255) AND grayscale
+    glyphs: both normalize to 0..1, so an aliased glyph edge is compared against the
+    template's aliased edge at fractional weight (owner's no-binarization stack path).
+    -> (best_char, best_dist, second_dist)."""
+    g = glyph(binimg, box).astype(np.float32) / 255.0
     gh, gw = g.shape
     best_ch, best_d, second_d = None, 1.0, 1.0
     for ch, tpl in soft_tset.items():
@@ -502,16 +543,24 @@ def read_number(binimg, templates, max_stray_frac=0.10, font='stack'):
 def read_money(crop_bgr, templates, font='stack'):
     """THE crop-level money reader -> (text, worst, margin, accepted).
 
-    font='stack': binarize at 55% -> read_number (pod-font templates).
+    font='stack' (owner-canonicalized 2026-07-23 eve): stack_gray() -- stretch,
+    truncate below STACK_TRUNC_GRAY, NO binarization -- segment on the ink mask,
+    then match the GRAYSCALE glyphs against the aliased soft_s templates: real
+    font anti-aliasing on both sides of the comparison, at fractional weight.
     font='pot' (owner-canonicalized 2026-07-23): pot_boxes() applies the ONE pot
     transform -- colon presence/boundary at 55%, then truncation below POT_TRUNC_GRAY
-    so only amount ink survives -- and the glyphs are matched by _soft_match_glyph
-    against the aliased templates, which are HARVESTED under this same transform.
-    An incomplete soft alphabet -> abstain (never fall back to a mismatched
-    template basis). All _read_boxes guards (truncation, ink-completeness) apply."""
+    so only amount ink survives -- matched against the soft_p templates harvested
+    under that same transform.
+    Either font: an incomplete soft alphabet -> abstain (never fall back to a
+    mismatched template basis). All _read_boxes guards (truncation-forbidden,
+    ink-completeness) apply."""
     if font != 'pot':
-        binimg = binarize(crop_bgr)
-        got, worst, margin = read_number(binimg, templates, font=font)
+        gtr = stack_gray(crop_bgr)
+        digits, seps = segment((gtr > 0).astype(np.uint8) * 255)
+        soft_tset = {k[6:]: v for k, v in templates.items() if k.startswith('soft_s')}
+        if not all(d in soft_tset for d in '0123456789'):
+            return None, 1.0, 0.0, False
+        got, worst, margin = _read_boxes(gtr, digits, seps, soft_tset, _soft_match_glyph)
         return got, worst, margin, accept(got, worst, margin, templates, font)
 
     bin_t, boxes, seps, ok = pot_boxes(crop_bgr)
@@ -606,6 +655,12 @@ def main():
     soft = build_soft_templates({ch: v for ch, v in cleaned.items() if ch.startswith('p')})
     for ch, tpl in soft.items():
         cv2.imwrite(os.path.join(OUT, f"soft_{ch}.png"), tpl)
+    # aliased STACK templates (owner-directed): built from the GRAYSCALE glyphs of the
+    # truncate-below-160 no-binarization transform -- files soft_s<d>.png
+    soft_stack = build_soft_templates(
+        {ch: v for ch, v in cleaned.items() if ch in '0123456789'}, key='gray')
+    for ch, tpl in soft_stack.items():
+        cv2.imwrite(os.path.join(OUT, f"soft_s{ch}.png"), tpl)
     for ch, items in cleaned.items():
         d = os.path.join(OUT, 'samples', ch)
         os.makedirs(d, exist_ok=True)

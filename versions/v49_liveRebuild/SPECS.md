@@ -313,6 +313,22 @@ three-layer diagnostic, the `flagged/` flow rendered properly).
   are the owner's crossed-out no-data frames (black, lobby, card-overlay). Accepted
   population ≤0.07 vs 0.20 gate; all 22 label disagreements = the pixel-verified
   stale-label set; zero wrong acceptances.
+- **STACK = GRAYSCALE ALIASED PATH (owner-directed, 2026-07-23 eve)**: same owner
+  debugging loop on the seat_3 '1.380' margin-fail (correct read, '3' margin 0.028 vs
+  0.03 gate — the resize+hard-XOR brittleness again). Owner spec: truncate the
+  stretched gray below `STACK_TRUNC_GRAY=160` (bar body ~106..137, digit ink 155..255)
+  and SKIP binarization — glyphs keep real font anti-aliasing; templates
+  (`soft_s0..9.png`) built from these GRAYSCALE glyphs via the same shift-align +
+  per-pixel average (build_soft_templates key='gray'); matching = _soft_match_glyph
+  gray-vs-gray (both sides /255, aliasing compared at fractional weight).
+  Gray metric sits higher (aliasing differences accumulate over every pixel) → own
+  gates `STACK_SOFT_MAX_DIST=0.60 / STACK_SOFT_MIN_MARGIN=0.12` from corpus-measured
+  bands (correct 0.29..0.58 margin ≥0.162, impostors 0.60+). ADJUDICATION: all 20
+  label-differing reads pixel-verified READER-CORRECT (stale records — incl. three
+  nearly-black dimmed showdown pods the old binary path abstained on). Labeled corpus:
+  33 match + 20 stale-correct + 1 abstain, ZERO wrong identities anywhere. Check-sheet
+  universe: 403 accepted / 45 abstain (was 375/73). read_money(font='stack') is the
+  entry; read_number kept only for harvest-internal label validation.
 
 ## Migration gates
 
