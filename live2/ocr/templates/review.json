@@ -1,0 +1,137 @@
+{
+  "frames": 31,
+  "rois_used": 49,
+  "rois_skipped": 18,
+  "samples": {
+    "1": 22,
+    "3": 17,
+    "9": 7,
+    "0": 20,
+    "sep": 24,
+    "4": 4,
+    "5": 13,
+    "7": 14,
+    "8": 6,
+    "6": 2,
+    "2": 14
+  },
+  "validation": {
+    "ok": 33,
+    "bad": 16,
+    "unlabelable": 18,
+    "mismatches": [
+      {
+        "src": "turn_10_20260722_181100",
+        "roi": "seat_1_stack",
+        "label": 1450,
+        "read": "1440",
+        "score": 0.129
+      },
+      {
+        "src": "turn_10_20260722_181100",
+        "roi": "seat_2_stack",
+        "label": 1178,
+        "read": "1278",
+        "score": 0.128
+      },
+      {
+        "src": "turn_33_20260722_182052",
+        "roi": "hero_stack",
+        "label": 255,
+        "read": "335",
+        "score": 0.083
+      },
+      {
+        "src": "turn_15_20260722_202017",
+        "roi": "seat_5_stack",
+        "label": 1466,
+        "read": "1661",
+        "score": 0.092
+      },
+      {
+        "src": "turn_13_20260723_112418",
+        "roi": "seat_3_stack",
+        "label": 5,
+        "read": "0",
+        "score": 0.092
+      },
+      {
+        "src": "turn_13_20260723_112420",
+        "roi": "seat_3_stack",
+        "label": 5,
+        "read": "0",
+        "score": 0.092
+      },
+      {
+        "src": "turn_13_20260723_112424",
+        "roi": "seat_3_stack",
+        "label": 5,
+        "read": "0",
+        "score": 0.092
+      },
+      {
+        "src": "turn_2_20260723_113358",
+        "roi": "hero_stack",
+        "label": 2135,
+        "read": "1420",
+        "score": 0.121
+      },
+      {
+        "src": "turn_2_20260723_113358",
+        "roi": "seat_1_stack",
+        "label": 3025,
+        "read": "1250",
+        "score": 0.136
+      },
+      {
+        "src": "turn_2_20260723_113358",
+        "roi": "seat_2_stack",
+        "label": 1550,
+        "read": "1480",
+        "score": 0.154
+      },
+      {
+        "src": "turn_2_20260723_113358",
+        "roi": "seat_5_stack",
+        "label": 1790,
+        "read": "1500",
+        "score": 0.158
+      },
+      {
+        "src": "Double_Or_Nothing_1171768566",
+        "roi": "seat_3_stack",
+        "label": 5,
+        "read": "0",
+        "score": 0.092
+      },
+      {
+        "src": "Double_Or_Nothing_1171771668",
+        "roi": "hero_stack",
+        "label": 1185,
+        "read": "1170",
+        "score": 0.129
+      },
+      {
+        "src": "Double_Or_Nothing_1171771668",
+        "roi": "seat_1_stack",
+        "label": 2073,
+        "read": "2058",
+        "score": 0.079
+      },
+      {
+        "src": "Double_Or_Nothing_1171771668",
+        "roi": "seat_2_stack",
+        "label": 930,
+        "read": "915",
+        "score": 0.15
+      },
+      {
+        "src": "Double_Or_Nothing_1171771668",
+        "roi": "seat_4_stack",
+        "label": 467,
+        "read": "377",
+        "score": 0.062
+      }
+    ]
+  }
+}
