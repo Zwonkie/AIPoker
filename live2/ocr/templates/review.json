@@ -15,19 +15,19 @@
     "6": 2,
     "2": 14,
     "p5": 3,
-    "p0": 16,
+    "p0": 23,
     "p4": 6,
     "p6": 5,
     "p1": 8,
-    "p3": 6,
-    "p8": 0,
-    "p2": 4,
+    "p3": 10,
+    "p8": 15,
+    "p2": 6,
     "p7": 7,
-    "p9": 12
+    "p9": 13
   },
   "validation": {
-    "ok": 46,
-    "bad": 39,
+    "ok": 48,
+    "bad": 37,
     "unlabelable": 7,
     "mismatches": [
       {
@@ -50,9 +50,9 @@
         "src": "turn_10_20260722_181100",
         "roi": "pot",
         "label": 50,
-        "read": "60",
-        "score": 0.23,
-        "margin": 0.0
+        "read": "80",
+        "score": 0.056,
+        "margin": 0.199
       },
       {
         "src": "turn_33_20260722_182052",
@@ -82,9 +82,9 @@
         "src": "turn_13_20260723_112418",
         "roi": "pot",
         "label": 650,
-        "read": "600",
-        "score": 0.23,
-        "margin": 0.0
+        "read": "800",
+        "score": 0.076,
+        "margin": 0.184
       },
       {
         "src": "turn_13_20260723_112420",
@@ -98,9 +98,9 @@
         "src": "turn_13_20260723_112420",
         "roi": "pot",
         "label": 650,
-        "read": "600",
-        "score": 0.23,
-        "margin": 0.0
+        "read": "800",
+        "score": 0.076,
+        "margin": 0.184
       },
       {
         "src": "turn_13_20260723_112424",
@@ -114,9 +114,9 @@
         "src": "turn_13_20260723_112424",
         "roi": "pot",
         "label": 650,
-        "read": "600",
-        "score": 0.23,
-        "margin": 0.0
+        "read": "800",
+        "score": 0.076,
+        "margin": 0.184
       },
       {
         "src": "turn_2_20260723_113358",
@@ -154,9 +154,9 @@
         "src": "turn_2_20260723_113358",
         "roi": "pot",
         "label": 165,
-        "read": "610",
-        "score": 0.23,
-        "margin": 0.0
+        "read": "810",
+        "score": 0.056,
+        "margin": 0.199
       },
       {
         "src": "Double_Or_Nothing_1171768566",
@@ -170,17 +170,9 @@
         "src": "Double_Or_Nothing_1171768566",
         "roi": "pot",
         "label": 650,
-        "read": "600",
-        "score": 0.23,
-        "margin": 0.0
-      },
-      {
-        "src": "Double_Or_Nothing_1171769878",
-        "roi": "pot",
-        "label": 380,
-        "read": "360",
-        "score": 0.23,
-        "margin": 0.0
+        "read": "800",
+        "score": 0.076,
+        "margin": 0.184
       },
       {
         "src": "Double_Or_Nothing_1171771668",
@@ -215,14 +207,6 @@
         "margin": 0.061
       },
       {
-        "src": "Double_Or_Nothing_1171771668",
-        "roi": "pot",
-        "label": 280,
-        "read": "260",
-        "score": 0.224,
-        "margin": 0.012
-      },
-      {
         "src": "turn_20260705_173045_handled",
         "roi": "pot",
         "label": 45,
@@ -236,15 +220,15 @@
         "label": 285,
         "read": "921",
         "score": 0.007,
-        "margin": 0.181
+        "margin": 0.188
       },
       {
         "src": "turn_20260705_225616",
         "roi": "pot",
         "label": 450,
         "read": "200",
-        "score": 0.007,
-        "margin": 0.253
+        "score": 0.076,
+        "margin": 0.184
       },
       {
         "src": "turn_20260707_235454",
@@ -259,16 +243,16 @@
         "roi": "pot",
         "label": 130,
         "read": "150",
-        "score": 0.0,
-        "margin": 0.244
+        "score": 0.056,
+        "margin": 0.199
       },
       {
         "src": "turn_20260708_230518",
         "roi": "pot",
         "label": 105,
         "read": "210",
-        "score": 0.013,
-        "margin": 0.253
+        "score": 0.076,
+        "margin": 0.184
       },
       {
         "src": "turn_20260709_001132",
@@ -276,23 +260,23 @@
         "label": 315,
         "read": "465",
         "score": 0.0,
-        "margin": 0.244
+        "margin": 0.256
       },
       {
         "src": "turn_20260709_205714",
         "roi": "pot",
         "label": 210,
         "read": "410",
-        "score": 0.0,
-        "margin": 0.255
+        "score": 0.056,
+        "margin": 0.199
       },
       {
         "src": "turn_20260709_211617",
         "roi": "pot",
         "label": 150,
         "read": "390",
-        "score": 0.044,
-        "margin": 0.181
+        "score": 0.15,
+        "margin": 0.075
       },
       {
         "src": "turn_20260710_180853",
@@ -300,7 +284,7 @@
         "label": 655,
         "read": "455",
         "score": 0.0,
-        "margin": 0.244
+        "margin": 0.261
       },
       {
         "src": "turn_20260710_181234",
@@ -308,31 +292,31 @@
         "label": 2125,
         "read": "2927",
         "score": 0.013,
-        "margin": 0.195
+        "margin": 0.244
       },
       {
         "src": "turn_20260710_184334",
         "roi": "pot",
         "label": 155,
         "read": "355",
-        "score": 0.05,
-        "margin": 0.169
+        "score": 0.156,
+        "margin": 0.062
       },
       {
         "src": "turn_20260710_195157",
         "roi": "pot",
         "label": 105,
-        "read": "660",
-        "score": 0.23,
-        "margin": 0.0
+        "read": "860",
+        "score": 0.076,
+        "margin": 0.184
       },
       {
         "src": "turn_20260710_200159",
         "roi": "pot",
         "label": 180,
         "read": "420",
-        "score": 0.007,
-        "margin": 0.253
+        "score": 0.076,
+        "margin": 0.184
       },
       {
         "src": "turn_20260714_145529",
@@ -340,7 +324,7 @@
         "label": 130,
         "read": "155",
         "score": 0.0,
-        "margin": 0.244
+        "margin": 0.261
       }
     ]
   }

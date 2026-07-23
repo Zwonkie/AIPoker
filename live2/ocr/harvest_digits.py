@@ -298,6 +298,47 @@ def load_manual(samples):
     return n
 
 
+def build_soft_templates(samples, pad=3):
+    """Owner-spec'd 'aliased' templates (2026-07-23, refined same day): every sample of
+    a class is aligned by integer translation -- no resizing -- to the position of best
+    overall fit against the running class mean, where fit is SYMMETRIC: white matching
+    white pulls the offset in, and white landing on black (either direction) pushes it
+    away (minimized |mean - sample| over the whole canvas). The aligned stack is then
+    averaged per pixel, so the two effects the owner asked for happen together: pixels
+    all renders share stay full white (the centered core); minority whites accumulate
+    as gray anti-aliasing fringe; and whites that other samples vote BLACK on are toned
+    down toward gray -- the result is the average pixel color of the font at native
+    scale. Seed = the sample closest to the class's median shape, pasted centered."""
+    out = {}
+    for ch, items in samples.items():
+        imgs = [(s['img'] > 0).astype(np.float32) for s in items]
+        if not imgs:
+            continue
+        med_area = float(np.median([g.shape[0] * g.shape[1] for g in imgs]))
+        imgs.sort(key=lambda g: abs(g.shape[0] * g.shape[1] - med_area))
+        H = max(g.shape[0] for g in imgs) + 2 * pad
+        W = max(g.shape[1] for g in imgs) + 2 * pad
+        acc = np.zeros((H, W), np.float32)
+        for n, g in enumerate(imgs):
+            gh, gw = g.shape
+            if n == 0:
+                oy, ox = (H - gh) // 2, (W - gw) // 2
+            else:
+                ref, best, (oy, ox) = acc / n, None, (0, 0)
+                for dy in range(H - gh + 1):
+                    for dx in range(W - gw + 1):
+                        canvas = np.zeros((H, W), np.float32)
+                        canvas[dy:dy + gh, dx:dx + gw] = g
+                        d = float(np.abs(ref - canvas).sum())
+                        if best is None or d < best:
+                            best, (oy, ox) = d, (dy, dx)
+            acc[oy:oy + gh, ox:ox + gw] += g
+        soft = np.rint(acc / len(imgs) * 255).astype(np.uint8)
+        ys, xs = np.nonzero(soft)
+        out[ch] = soft[ys.min():ys.max() + 1, xs.min():xs.max() + 1]
+    return out
+
+
 def build_templates(samples):
     """Median-stack each glyph class into one canonical binary template (native scale)."""
     templates = {}
@@ -442,6 +483,10 @@ def main():
     os.makedirs(OUT, exist_ok=True)
     for ch, tpl in templates.items():
         cv2.imwrite(os.path.join(OUT, f"digit_{ch}.png"), tpl)
+    # aliased/soft pot templates (owner spec) -- alignment-averaged probability maps
+    soft = build_soft_templates({ch: v for ch, v in cleaned.items() if ch.startswith('p')})
+    for ch, tpl in soft.items():
+        cv2.imwrite(os.path.join(OUT, f"soft_{ch}.png"), tpl)
     for ch, items in cleaned.items():
         d = os.path.join(OUT, 'samples', ch)
         os.makedirs(d, exist_ok=True)
