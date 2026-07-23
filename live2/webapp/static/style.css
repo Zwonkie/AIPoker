@@ -92,7 +92,7 @@ tr.scope-window td { color: var(--accent); border-bottom-color: var(--line); }
 
 /* pilot control */
 #pilot-ctl { display: flex; gap: 8px; align-items: center; margin-bottom: 12px; }
-header .pilot-chip { margin-left: auto; }
+#pilot-quick { margin-left: auto; display: flex; gap: 6px; align-items: center; }
 header .feed-badge { margin-left: 12px; }
 .pilot-chip { font-size: 12px; padding: 3px 10px; border-radius: 10px; font-weight: 600; }
 .pilot-chip.off { background: var(--panel2); color: var(--dim); border: 1px solid var(--line); }

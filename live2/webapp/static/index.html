@@ -18,7 +18,13 @@
       <button data-tab="hands">Hands</button>
       <button data-tab="flags">Flags</button>
     </nav>
-    <span id="pilot-chip" class="pilot-chip off">pilot off</span>
+    <div id="pilot-quick">
+      <span id="pilot-chip" class="pilot-chip off">pilot off</span>
+      <button class="pbtn" data-act="probe" title="One capture+vision pass, no decisions">Probe</button>
+      <button class="pbtn go" data-act="start" title="Start pilot: records + recommends, no clicks">Start</button>
+      <button class="pbtn auto" data-act="auto" title="Start pilot with LIVE CLICKS">AUTO</button>
+      <button class="pbtn stop hidden" data-act="stop">Stop</button>
+    </div>
     <div id="feed-status" class="feed-badge stale">no feed</div>
   </header>
 
@@ -60,10 +66,10 @@
       <div class="panel" id="pilot-panel">
         <div class="panel-title">Pilot control <span id="pilot-mode" class="dim"></span></div>
         <div id="pilot-ctl">
-          <button id="pilot-probe" class="pbtn" title="One capture+vision pass, no decisions">Probe</button>
-          <button id="pilot-start" class="pbtn go" title="Start pilot: records + recommends, no clicks">Start</button>
-          <button id="pilot-auto" class="pbtn auto" title="Start pilot with LIVE CLICKS">AUTO</button>
-          <button id="pilot-stop" class="pbtn stop hidden">Stop</button>
+          <button class="pbtn" data-act="probe" title="One capture+vision pass, no decisions">Probe</button>
+          <button class="pbtn go" data-act="start" title="Start pilot: records + recommends, no clicks">Start</button>
+          <button class="pbtn auto" data-act="auto" title="Start pilot with LIVE CLICKS">AUTO</button>
+          <button class="pbtn stop hidden" data-act="stop">Stop</button>
         </div>
         <pre id="pilot-log" class="pilot-log"></pre>
         <div id="probe-out" class="hidden">

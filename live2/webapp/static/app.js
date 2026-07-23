@@ -4,17 +4,18 @@
 const $ = (sel) => document.querySelector(sel);
 
 /* ---------------------------------------------------------------- tabs */
+function activateTab(name) {
+  document.querySelectorAll('nav button').forEach((x) =>
+    x.classList.toggle('active', x.dataset.tab === name));
+  document.querySelectorAll('.tab').forEach((x) => x.classList.remove('active'));
+  $('#tab-' + name).classList.add('active');
+  if (name === 'pilot') pilotStatus();
+  if (name === 'opponents') loadOpponents();
+  if (name === 'hands') loadHands();
+  if (name === 'flags') loadFlags();
+}
 document.querySelectorAll('nav button').forEach((b) => {
-  b.addEventListener('click', () => {
-    document.querySelectorAll('nav button').forEach((x) => x.classList.remove('active'));
-    document.querySelectorAll('.tab').forEach((x) => x.classList.remove('active'));
-    b.classList.add('active');
-    $('#tab-' + b.dataset.tab).classList.add('active');
-    if (b.dataset.tab === 'pilot') pilotStatus();
-    if (b.dataset.tab === 'opponents') loadOpponents();
-    if (b.dataset.tab === 'hands') loadHands();
-    if (b.dataset.tab === 'flags') loadFlags();
-  });
+  b.addEventListener('click', () => activateTab(b.dataset.tab));
 });
 
 /* ---------------------------------------------------------------- cards */
@@ -47,7 +48,11 @@ function connectWS() {
 }
 connectWS();
 
-/* ---------------------------------------------------------------- pilot control */
+/* ---------------------------------------------------------------- pilot control
+   The same actions exist twice (header shortcuts + Pilot tab) -- buttons carry
+   data-act and every handler binds/toggles them as a set. */
+const actBtns = (act) => document.querySelectorAll(`.pbtn[data-act="${act}"]`);
+
 async function pilotStatus() {
   let st;
   try { st = await (await fetch('/api/pilot/status')).json(); } catch { return; }
@@ -57,9 +62,9 @@ async function pilotStatus() {
   chip.textContent = running
     ? `pilot ${st.mode === 'auto' ? 'AUTO' : 'recommending'} · pid ${st.pid}`
     : 'pilot off';
-  $('#pilot-start').classList.toggle('hidden', running);
-  $('#pilot-auto').classList.toggle('hidden', running);
-  $('#pilot-stop').classList.toggle('hidden', !running);
+  actBtns('start').forEach((b) => b.classList.toggle('hidden', running));
+  actBtns('auto').forEach((b) => b.classList.toggle('hidden', running));
+  actBtns('stop').forEach((b) => b.classList.toggle('hidden', !running));
   const hasLog = (st.log || []).length > 0;
   $('#pilot-mode').textContent = running ? `${st.mode} · started ${st.started}` : 'stopped';
   if (hasLog) {
@@ -79,33 +84,33 @@ async function pilotPost(path, body) {
     return r;
   } catch (e) { alert('pilot control failed: ' + e); }
 }
-$('#pilot-start').addEventListener('click', async () => {
+actBtns('start').forEach((b) => b.addEventListener('click', async () => {
   await pilotPost('/api/pilot/start', { mode: 'recommend' });
   pilotStatus();
-});
-$('#pilot-auto').addEventListener('click', async () => {
+}));
+actBtns('auto').forEach((b) => b.addEventListener('click', async () => {
   if (!confirm('Start pilot in AUTO mode? It will click the real table.\n' +
                'Abort at any time: slam the cursor into a screen corner, or press Stop.')) return;
   await pilotPost('/api/pilot/start', { mode: 'auto' });
   pilotStatus();
-});
-$('#pilot-stop').addEventListener('click', async () => {
+}));
+actBtns('stop').forEach((b) => b.addEventListener('click', async () => {
   await pilotPost('/api/pilot/stop');
   pilotStatus();
-});
-$('#pilot-probe').addEventListener('click', async () => {
-  const btn = $('#pilot-probe');
-  btn.disabled = true; btn.textContent = 'Probing…';
+}));
+actBtns('probe').forEach((b) => b.addEventListener('click', async () => {
+  activateTab('pilot');            // result renders in the Pilot tab, wherever it was clicked
+  const btns = [...actBtns('probe')];
+  btns.forEach((x) => { x.disabled = true; x.textContent = 'Probing…'; });
   const r = await pilotPost('/api/pilot/probe');
-  btn.disabled = false; btn.textContent = 'Probe';
+  btns.forEach((x) => { x.disabled = false; x.textContent = 'Probe'; });
   if (!r) return;
-  $('#pilot-panel').classList.remove('hidden');
   $('#probe-out').classList.remove('hidden');
   $('#probe-text').textContent = (r.output || []).join('\n');
   const img = $('#probe-img');
   img.classList.toggle('hidden', !r.png);
   if (r.png) img.src = '/api/pilot/probe.png?t=' + Date.now();
-});
+}));
 setInterval(pilotStatus, 3000);
 pilotStatus();
 
