@@ -118,18 +118,20 @@ def money_rois(record):
     return out
 
 
-def binarize(crop_bgr):
-    """Percentile contrast-stretch then FIXED 55% threshold. Not Otsu: Otsu is invariant
-    to the stretch and on dim FOLDED pods (gray digits on dark gray) it either drowns the
-    glyphs or merges them -- measured on board_samples, Otsu read a merged '1240' as a
-    confident '12' while this variant reads all four digits, and it recovers folded-pod
-    stacks legacy OCR returned garbage for. Near-flat crops (no text) return empty."""
+def binarize(crop_bgr, th=0.55):
+    """Percentile contrast-stretch then FIXED threshold (default 55%). Not Otsu: Otsu is
+    invariant to the stretch and on dim FOLDED pods (gray digits on dark gray) it either
+    drowns the glyphs or merges them -- measured on board_samples, Otsu read a merged
+    '1240' as a confident '12' while this variant reads all four digits, and it recovers
+    folded-pod stacks legacy OCR returned garbage for. Near-flat crops return empty.
+    th is raised (0.70) by read_money's glow retry: a pot-update glow halo bridges
+    adjacent digits at 55% while the bright amount digits survive far higher."""
     gray = cv2.cvtColor(crop_bgr, cv2.COLOR_BGR2GRAY) if crop_bgr.ndim == 3 else crop_bgr
     p_lo, p_hi = np.percentile(gray, (5, 99.5))
     if p_hi - p_lo < 10:
         return np.zeros_like(gray)
     stretched = np.clip((gray.astype(np.float32) - p_lo) * (255.0 / (p_hi - p_lo)), 0, 255)
-    binimg = (stretched >= 0.55 * 255).astype(np.uint8) * 255
+    binimg = (stretched >= th * 255).astype(np.uint8) * 255
     # glyphs must be the minority-bright class; flip if the pod itself is bright
     if np.count_nonzero(binimg) > binimg.size * 0.5:
         binimg = 255 - binimg
@@ -182,14 +184,18 @@ def find_colon(seps):
     return best
 
 
-def pot_amount_boxes(binimg):
+def pot_amount_boxes(binimg, colon_x=None):
     """Digit boxes of the pot AMOUNT (right of the colon). -> (boxes, ok). ok=False when
-    no colon is found -- the caller must abstain, never guess a boundary."""
+    no colon is found -- the caller must abstain, never guess a boundary. colon_x is the
+    glow-retry hint: at the raised threshold the dim colon dots vanish, so the position
+    found at 55% is reused (a location survives a threshold change; ink does not)."""
     digits, seps = segment(binimg)
-    colon_x = find_colon(seps)
-    if colon_x is None:
+    found = find_colon(seps)
+    if found is None:
+        found = colon_x
+    if found is None:
         return [], False
-    return [b for b in digits if b[0] > colon_x], True
+    return [b for b in digits if b[0] > found], True
 
 
 def collect_frames():
@@ -426,7 +432,7 @@ def _match_glyph(binimg, box, templates):
     return best_ch, best_d, second_d
 
 
-def read_number(binimg, templates, max_stray_frac=0.10, font='stack'):
+def read_number(binimg, templates, max_stray_frac=0.10, font='stack', colon_x=None):
     """Template-read a binarized money ROI -> (string, worst_score, min_margin). Score
     per glyph = normalized XOR distance in [0,1]; lower = better. This is the reader the
     live path will use; abstention = failing accept().
@@ -444,7 +450,7 @@ def read_number(binimg, templates, max_stray_frac=0.10, font='stack'):
     -> '7'). More than max_stray_frac unclaimed ink = abstain."""
     matcher = _match_glyph
     if font == 'pot':
-        digits, ok = pot_amount_boxes(binimg)
+        digits, ok = pot_amount_boxes(binimg, colon_x=colon_x)
         if not ok:
             return None, 1.0, 0.0
         _all_digits, seps = segment(binimg)
@@ -483,6 +489,46 @@ def read_number(binimg, templates, max_stray_frac=0.10, font='stack'):
         worst = max(worst, d)
         min_margin = min(min_margin, s - d)
     return ''.join(out), worst, min_margin
+
+
+GLOW_RETRY_TH = 0.70           # amount digits stay bright; glow bridges + label drop out
+
+
+def read_money(crop_bgr, templates, font='stack'):
+    """Crop-level reader: binarize -> read_number -> accept, with ONE pot-only retry
+    for glow frames. A pot-update glow halo bridges adjacent digits at the 55%
+    threshold ('6'+'4' fused into one blob -> abstain), while at 0.70 the digits
+    separate but the dim colon vanishes. The retry therefore reuses the 55% pass's
+    colon POSITION and re-segments at 0.70 -- guarded by ink-span consistency: the
+    retry's boxes must cover the 55% amount ink extent (+-3px), so a digit fading out
+    entirely at the raised threshold cannot yield a truncated-but-confident read.
+    -> (text, worst, margin, accepted)."""
+    binimg = binarize(crop_bgr)
+    got, worst, margin = read_number(binimg, templates, font=font)
+    if accept(got, worst, margin, templates, font) or font != 'pot':
+        return got, worst, margin, accept(got, worst, margin, templates, font)
+
+    # glow retry -- needs the 55% pass to at least anchor the colon
+    digits, seps = segment(binimg)
+    colon_x = find_colon(seps)
+    if colon_x is None:
+        return got, worst, margin, False
+    amount = [b for b in digits if b[0] > colon_x]
+    if not amount:
+        return got, worst, margin, False
+    span_lo = min(b[0] for b in amount)
+    span_hi = max(b[0] + b[2] for b in amount)
+
+    retry = binarize(crop_bgr, th=GLOW_RETRY_TH)
+    got2, worst2, margin2 = read_number(retry, templates, font='pot', colon_x=colon_x)
+    if not accept(got2, worst2, margin2, templates, 'pot'):
+        return got, worst, margin, False
+    boxes2, _ = pot_amount_boxes(retry, colon_x=colon_x)
+    lo2 = min(b[0] for b in boxes2)
+    hi2 = max(b[0] + b[2] for b in boxes2)
+    if lo2 > span_lo + 3 or hi2 < span_hi - 3:
+        return got, worst, margin, False        # retry lost ink the 55% pass saw
+    return got2, worst2, margin2, True
 
 
 def validate(pairs, templates):
