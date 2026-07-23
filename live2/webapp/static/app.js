@@ -10,6 +10,7 @@ document.querySelectorAll('nav button').forEach((b) => {
     document.querySelectorAll('.tab').forEach((x) => x.classList.remove('active'));
     b.classList.add('active');
     $('#tab-' + b.dataset.tab).classList.add('active');
+    if (b.dataset.tab === 'pilot') pilotStatus();
     if (b.dataset.tab === 'opponents') loadOpponents();
     if (b.dataset.tab === 'hands') loadHands();
     if (b.dataset.tab === 'flags') loadFlags();
@@ -59,9 +60,7 @@ async function pilotStatus() {
   $('#pilot-start').classList.toggle('hidden', running);
   $('#pilot-auto').classList.toggle('hidden', running);
   $('#pilot-stop').classList.toggle('hidden', !running);
-  const panel = $('#pilot-panel');
   const hasLog = (st.log || []).length > 0;
-  panel.classList.toggle('hidden', !running && !hasLog && $('#probe-out').classList.contains('hidden'));
   $('#pilot-mode').textContent = running ? `${st.mode} · started ${st.started}` : 'stopped';
   if (hasLog) {
     const log = $('#pilot-log');
@@ -240,13 +239,24 @@ function renderLive(snap) {
   const act = t.action || {};
   const pol = ev.actor_policy || {};
   const q = ev.critic_q || {};
+  // critic preference as a comparable percentage: softmax over the Q values present
+  const qKeys = Object.keys(pol).filter((k) => q[k] != null);
+  const qMax = Math.max(...qKeys.map((k) => q[k]), -Infinity);
+  const qExp = Object.fromEntries(qKeys.map((k) => [k, Math.exp(q[k] - qMax)]));
+  const qSum = qKeys.reduce((s, k) => s + qExp[k], 0) || 1;
   Object.keys(pol).forEach((k) => {
+    const pPct = (pol[k] * 100);
+    const qPct = q[k] != null ? (qExp[k] / qSum) * 100 : null;
     const row = document.createElement('div');
     row.className = 'pbar' + (k === act.chosen ? ' chosen' : '');
     row.innerHTML =
       `<span>${k}</span>` +
-      `<span class="track"><span class="fill" style="width:${(pol[k] * 100).toFixed(1)}%"></span></span>` +
-      `<span class="q">${(pol[k] * 100).toFixed(1)}% · Q ${(q[k] ?? 0).toFixed(2)}</span>`;
+      `<span class="track">` +
+      `<span class="fill" style="width:${pPct.toFixed(1)}%"></span>` +
+      (qPct != null ? `<span class="qfill" style="width:${qPct.toFixed(1)}%"></span>` : '') +
+      `</span>` +
+      `<span class="q">${pPct.toFixed(1)}%` +
+      (qPct != null ? ` · Q ${qPct.toFixed(0)}% (${(q[k]).toFixed(2)})` : '') + `</span>`;
     bars.appendChild(row);
   });
   $('#action-line').textContent =

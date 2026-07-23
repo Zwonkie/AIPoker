@@ -37,7 +37,9 @@ REF_W, REF_H = 1536, 1090
 
 def find_table_window(title_contains=None):
     """Best-candidate poker table hwnd: prefers windows whose title carries a >=6-digit
-    tournament id AND a hold'em marker (lobby windows have neither)."""
+    tournament id AND a hold'em marker (lobby windows have neither). Windows with an
+    empty client area (closing/minimized table shells) are skipped -- a dead table would
+    otherwise be re-found in a capture-fail loop."""
     wins = capture.list_windows(title_contains)
     best, best_score = None, -1
     for w in wins:
@@ -50,6 +52,12 @@ def find_table_window(title_contains=None):
         if re.search(r'\d+\s*/\s*\d+', t):
             score += 1
         if score > best_score:
+            try:
+                cw, ch = capture.client_size(w['hwnd'])
+            except Exception:
+                continue
+            if cw <= 0 or ch <= 0:
+                continue
             best, best_score = w, score
     return (best['hwnd'], best['title']) if best and best_score >= 2 else (None, None)
 
@@ -104,6 +112,16 @@ class Pilot:
         self.awaiting_turn_clear = False
         self.last_fingerprint = None
 
+    def _reset_session(self):
+        """Clear per-table state when the table window goes away (tournament over, window
+        closed). The recorder/assembler re-key themselves on the next board_id; the hand
+        store keeps everything durable, so a reset loses nothing."""
+        self.table_state.reset(big_blind=self.big_blind)
+        self.last_fingerprint = None
+        self.awaiting_turn_clear = False
+        self.pending_baseline = None
+        self.assembler = None
+
     @property
     def engine(self):
         if self._engine is None:
@@ -157,25 +175,31 @@ class Pilot:
         _ = self.engine                  # load the model up front, not on the first turn
         _start_ingest_thread()
         hwnd = None
+        scanning_announced = False
         while True:
             try:
                 if hwnd is None:
                     hwnd, title = find_table_window(self.window_hint)
                     if hwnd is None:
+                        if not scanning_announced:
+                            self.log('[pilot] waiting for a table window ...')
+                            scanning_announced = True
                         time.sleep(2.0)
                         continue
+                    scanning_announced = False
                     self.log(f"[pilot] table window: {title!r}")
-                    self.table_state.reset(big_blind=self.big_blind)
-                    self.awaiting_turn_clear = False
+                    self._reset_session()
                 self.tick(hwnd)
                 time.sleep(1.0)
             except KeyboardInterrupt:
                 self.log('[pilot] stopped (Ctrl+C)')
                 return
             except RuntimeError as e:
-                # capture_window fail-loud path: window closed/empty -- rescan
-                self.log(f"[pilot] capture/window lost ({e}) -- rescanning")
+                # capture_window fail-loud path: table over / window closed -- reset the
+                # per-table state and go back to scanning for the next table
+                self.log(f"[pilot] table gone ({e}) -- session state reset, waiting for next table")
                 hwnd = None
+                self._reset_session()
                 time.sleep(2.0)
             except Exception as e:
                 import traceback

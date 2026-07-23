@@ -57,12 +57,17 @@ main { padding: 16px; max-width: 1280px; margin: 0 auto; }
 
 /* decision panel */
 #policy-bars { margin: 10px 0; }
-.pbar { display: grid; grid-template-columns: 74px 1fr 92px; gap: 8px; align-items: center;
+.pbar { display: grid; grid-template-columns: 74px 1fr 130px; gap: 8px; align-items: center;
   margin: 3px 0; font-size: 12.5px; }
-.pbar .track { background: var(--panel2); border-radius: 4px; height: 14px; overflow: hidden; }
-.pbar .fill { height: 100%; background: var(--accent); opacity: 0.85; }
-.pbar.chosen .fill { background: var(--warn); }
-.pbar .q { text-align: right; color: var(--dim); }
+/* track/fill are spans -- must be block-level or width/height are ignored (bars showed empty) */
+.pbar .track { display: block; position: relative; background: var(--panel2);
+  border-radius: 4px; height: 14px; overflow: hidden; }
+.pbar .fill { display: block; position: absolute; inset: 0 auto 0 0; background: var(--accent);
+  opacity: 0.85; }
+.pbar .qfill { display: block; position: absolute; left: 0; bottom: 0; height: 4px;
+  background: var(--warn); opacity: 0.95; }
+.pbar.chosen .fill { background: #3399ff; }
+.pbar .q { text-align: right; color: var(--dim); font-variant-numeric: tabular-nums; }
 #action-line { font-size: 16px; font-weight: 600; margin-top: 8px; }
 #eval-line { font-size: 13px; color: var(--dim); margin-bottom: 4px; }
 
@@ -86,7 +91,8 @@ tr.scope-window td { color: var(--accent); border-bottom-color: var(--line); }
 .flag-item .fi-head { display: flex; gap: 14px; font-size: 13px; margin-bottom: 4px; }
 
 /* pilot control */
-#pilot-ctl { margin-left: auto; display: flex; gap: 6px; align-items: center; }
+#pilot-ctl { display: flex; gap: 8px; align-items: center; margin-bottom: 12px; }
+header .pilot-chip { margin-left: auto; }
 header .feed-badge { margin-left: 12px; }
 .pilot-chip { font-size: 12px; padding: 3px 10px; border-radius: 10px; font-weight: 600; }
 .pilot-chip.off { background: var(--panel2); color: var(--dim); border: 1px solid var(--line); }
