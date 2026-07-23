@@ -238,7 +238,71 @@ its shadow sessions double as V47's live validation.
   disagrees. Micro-run (40 hands) verified both axes execute and collect.
 - **10k smoke PASSED**: 13.3 hands/sec, val loss 12.05→2.58 monotone, hero -13.3→+0.9
   BB/100, action entropy 1.39, equity-monotone action table (fold 88% air / jam 72% nuts).
-- **100k fresh RUNNING** (`--num_hands 100000 --save_name expert_main.pth`, launched 19:27).
-- PENDING: solver completion → first scored nash3 baseline on frozen_v47; 100k → model_verify
-  --full --update-baseline + gates ([W1] opponent_style must move off 0.027; table_size_sweep
-  spread must move off 0.015).
+- **100k fresh RUN** launched 19:27 (2026-07-22); orphaned at 43,583 hands by a harness
+  restart, then PARKED overnight by user instruction.
+- **P48-0.1 DONE (2026-07-23 ~01:00)**: 3-max solver completed all four stacks, `anchors OK`
+  (4.26M cached 3-way triples; two crash-fix iterations along the way: atomic+non-fatal
+  cache flush after a transient OSError-22, then flush interval scaled with cache size —
+  fixed-interval flushing was ~40% of wall time by the 100MB mark). `nash_3max_solved.json`
+  49KB. FIRST SCORED nash3 BASELINE on frozen V47 weights: `nash3_btn_jam` **74%** WARN,
+  `nash3_bb_call` **73%** WARN (threshold 0.75) — e.g. BTN folds AJs–A5s@5bb that 3-max
+  Nash jams. Extended FAST battery: **17 PASS / 9 WARN / 0 FAIL / 0 SKIP** (every check
+  scores now). NOTE: equity3_cache.json (224MB) is gitignored — regenerate via the solver
+  if ever lost; nash_3max_solved.json IS tracked.
+- **100k RESUMED (2026-07-23 ~01:05)** from checkpoints/main_hands43583.pth with full
+  optimizer/scheduler state (verified by startup notices).
+- **100k COMPLETE (2026-07-23 ~04:00)**: 43,583 + 56,418 = 100k hands, final val loss 5.91,
+  hero +76.1 BB/100 cumulative vs training pool, equity-monotone final action table (air
+  fold 92.6% → nuts jam 78.1%), action entropy 0.708.
+- **Aliasing probe DONE (Change 0 attribution)**: prevalence unchanged as expected
+  (structural: 73.2% of curriculum-weighted preflop raise decisions sit at min-raise-aliased
+  cells). Q-coherence CLEAN: intra-group Q spread 0.081 vs inter-action 3.512 (ratio 0.02;
+  V47 control 0.01) — the collapse did NOT introduce the memorized-inconsistency signature.
+  Behavior at aliased cells shifted looser: fold 0.642→0.382, call 0.116→0.307, raise mass
+  0.242→0.310 (probe output labels the control 'v44_frozen' — cosmetic leftover, line 155
+  actually loads frozen_v47.pth). Verdict on aliased-regret leak: no pathology in V48.
+- **model_verify --full --update-baseline DONE (2026-07-23 ~07:30)**: **20 PASS / 9 WARN /
+  1 FAIL / 0 SKIP** (report: OFK references/V48/model_verify_report.html; raw JSON:
+  tools/model_verify/results/v48__expert_main.pth.json; 8-key bb100 baseline recorded).
+
+## Gate verdict (2026-07-23)
+
+- **[W1] opponent_style_sweep: 0.027 → 0.105 PASS** — the headline gate MET; V47's
+  realism↔exploitability flattening is undone. `opponent_color_isolated_ablation` healthy
+  (table-scalar TV 0.323 / per-seat 0.739). Caveat: `allin_exploits_opponent_foldiness`
+  still flat (0.031, [OPP-8] stands).
+- **table_size_sweep: 0.015 → 0.027 PARTIAL** — spread nearly doubled and is monotone
+  (3h 0.739 → 6h 0.766) but still under the 0.03 WARN bar; geometry is no longer
+  invisible, not yet strongly load-bearing.
+- **nash3 vs 74/73 baseline: btn_jam 74% → 79% PASS; bb_call 73% → 73% WARN** — BTN
+  first-in geometry learned (Change 1's compressed-ring cells), BB-facing-jam unchanged.
+- **beats_frozen_predecessor: PARITY (tie-breaker final, 2026-07-23 ~09:10).** Background:
+  two concurrent batteries on the same weights gave contradictory verdicts (+15.7/+23.0 vs
+  −28.4/−53.9, ±42-44 CIs; even deterministic FAST checks drifted between them — concurrent
+  heavy load corrupts measurements, ALWAYS run batteries solo). SOLO tie-breaker (8000
+  paired hands/axis, sha-logged weights 4391a3f3/8ffb8308, CIs ~±30):
+  **6-handed −4.1 ±29.8 (dead parity), DoN mix +13.7 ±31.2 (positive lean, not decisive)**.
+  Both extreme concurrent measurements were artifacts; truth is parity with a mild edge in
+  V48's actual live environment. Same verdict class V47 itself deployed on (+2.6 ±45 vs
+  V44). No rollback trigger.
+- **bb100 fields (new baselines)**: classic 6-handed +23.9..+132.7; DoN-mix axis notably
+  stronger short-stacked (+40.8/+47.1 vs classic +27.6/+23.9) — the joint curriculum shows
+  up exactly where it trained.
+- **Change 0 semantics visible**: nash_pushfold composite-commits expressed as literal
+  ALLIN instead of a sized raise: 897/971 → 202/971 (the collapse routes chip-identical
+  raises to the canonical jam action). Aliasing probe clean (Q-coherence ratio 0.02).
+- **NEW FAIL: deep_stack_ood_guard** (eq 0.55 @ 15bb → ALLIN argmax 0.34) — REGRESSION vs
+  V47's 0-FAIL card (V29 was the first pass; V47 held it). Plausible mechanism: the
+  measured joint curriculum concentrates mass at 4-6-handed short/mid depths, thinning
+  deep-stack coverage vs V47's uniform 5-50bb. Track before deploy.
+- **WATCH: position_sweep flattened** (V47 spread 0.948 → 0.023 WARN) — likely interacts
+  with Change 1's ring-relative position encoding at sampled table sizes; needs a
+  table-size-conditioned probe before concluding the feature went dead.
+- **vpip_adapts_to_style HELD: PASS** (+10.2/+7.7pts) — the V44 [P4] fix survives the
+  geometry package.
+- **DEPLOYED LIVE 2026-07-23 (morning) by explicit user decision** — with the
+  deep_stack_ood_guard FAIL and the UNRESOLVED head-to-head (tie-breaker still running)
+  known at deploy time; both recorded in the registry provenance comment
+  (`core/decision.py`). Handover parity smoke on the active V48 engine: **14/14 PASS**.
+  ROLLBACK: `Herocules (v47)` (one line). pipeline-flow.md invariants updated with the
+  generalized chip-collapse train≡serve pair (H3 ↔ LD3 `collapse_aliased_buckets`).

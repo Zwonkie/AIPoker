@@ -423,6 +423,30 @@ three-layer diagnostic, the `flagged/` flow rendered properly).
   sessions / 57k actions after harvesting tonight's blob hands. OFK folder
   `references/live2/` created (architecture + hand-history formats docs, indexed in SKILL.md).
 
+- 2026-07-23: **Seat identity by pod-corner COLOUR** (owner-directed, calibrated + approved).
+  Root cause of the `seat_5 QUARANTINED: 'lukyn42O' busted; stale pod read ('4\n4')` spam:
+  vision decided occupancy from name-OCR (non-empty cleaned string ⇒ seat exists) + name-plate
+  brightness for active/folded. An EMPTY pod's decorative constellation art OCR'd to `'4\n4'`
+  every frame → phantom 6th seat that the assembler then had to quarantine on every turn; and
+  the inverse hole — a real player whose name didn't OCR (timer "Tid:" plates) would be dropped.
+  FIX: `PokerVision.seat_color_state(img,cx,cy)` reads a small fixed-art ROI at the pod's
+  lower-left (`SEAT_STATE_ROI=(-80,72,20,14)` from pod centre) and maps its mean colour to five
+  owner-defined categories — bright active pods run a **green→yellow→red "heat" gradient**
+  (all = ACTIVE), **blue = open seat (EMPTY)**, **grey = folded**, and any unmatched
+  near-black/overlay/oddball = **ABSTAIN** (the failover bucket, keeps last state). Thresholds
+  (on ROI mean R,G,B): abstain if `max<12 or min>60`; `r-max(g,b)>8`→red-active;
+  `r-b>6 & g-b>4 & |r-g|<12`→yellow-active; `g-r>10 & b-g<8`→green-active; `b-r>8 & b-g>6`→
+  empty; `max-min<=8`→folded (all 64 corpus folds have spread ≤3.1, wide margin); else abstain.
+  Calibrated + owner-verified 165/165 cells across 33 canonical-resolution frames; integrated
+  `read_board_state` re-verified 33/33 no-crash, phantom seat_5 now correctly EMPTY, hand-start
+  frame reads all 5 opponents active with correct stacks. REMOVED (this identification branch):
+  name-gate occupancy, name-plate top-5%-brightness active heuristic, opponent Tesseract stack
+  ALL-IN/'-' text fallback, duplicate hero name regex. Name OCR demoted to best-effort bootstrap
+  via shared `_read_seat_name` (store-locked after hand 1). Colour ROI shifted down 2px from the
+  first (`cy+70`) calibration so the widest stack digits can't overlap; that recovered the
+  warm/"yellowish" non-actor-active case (depor197) once ACTIVE was understood as a 3-colour
+  gradient rather than green-only. NOT yet live-table-confirmed.
+
 ## Open questions (user)
 
 - Web stack sign-off: FastAPI + vanilla JS/htmx (no node toolchain) — OK?

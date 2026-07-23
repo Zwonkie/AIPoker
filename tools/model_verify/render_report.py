@@ -16,6 +16,7 @@ import os
 _REPO_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
 
 TEMPLATE = """<!doctype html>
+<meta charset="utf-8">
 <title>{title}</title>
 <style>
 .viz-root {{
@@ -132,6 +133,14 @@ table.kv-table td {{
 table.kv-table tr:last-child td {{ border-bottom: none; }}
 table.kv-table tr:hover td {{ background: var(--surface-2); }}
 table.kv-table td.truncate {{ max-width: 260px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }}
+
+details.raw-cells {{ margin-top: 14px; }}
+details.raw-cells summary {{
+  cursor: pointer; font-size: 12.5px; color: var(--text-secondary); user-select: none;
+  padding: 6px 0;
+}}
+details.raw-cells summary:hover {{ color: var(--text-primary); }}
+details.raw-cells > div {{ margin-top: 8px; max-height: 480px; overflow-y: auto; }}
 
 .policy-chip {{ display: inline-flex; align-items: center; gap: 7px; }}
 .policy-chip-bar {{ display: flex; width: 84px; height: 9px; border-radius: 3px; overflow: hidden; background: var(--surface-2); flex-shrink: 0; }}
@@ -568,14 +577,58 @@ addCard('allin_exploits_opponent_foldiness', 'Sensitivity sweep — P(All-In) vs
   root.appendChild(wrap);
 }})();
 
+// Nash-vs-chart checks: the raw data is one row per solved hand cell (~1500 rows) -- show
+// an AGGREMENT SUMMARY up top (per stack, split by which side Nash takes, so over-jamming
+// vs over-folding is visible at a glance) and collapse the per-hand cells behind <details>.
+function nashAgg(subset) {{
+  const n = subset.length;
+  const a = subset.filter(d => d.agrees).length;
+  return {{n, a, pct: n ? 100 * a / n : null}};
+}}
+function nashSummaryRow(label, subset) {{
+  const all = nashAgg(subset);
+  const shove = nashAgg(subset.filter(d => d.nash === 'shove'));
+  const fold = nashAgg(subset.filter(d => d.nash === 'fold'));
+  const row = {{
+    stack: label,
+    cells: all.n,
+    agree: `${{all.a}} (${{all.pct.toFixed(0)}}%)`,
+    'nash says shove': shove.n ? `${{shove.a}}/${{shove.n}} agree (${{shove.pct.toFixed(0)}}%)` : '—',
+    'nash says fold': fold.n ? `${{fold.a}}/${{fold.n}} agree (${{fold.pct.toFixed(0)}}%)` : '—',
+  }};
+  if (subset.some(d => 'agrees_composite' in d)) {{
+    const comp = subset.filter(d => d.agrees_composite).length;
+    row['composite agree'] = `${{comp}} (${{(100 * comp / all.n).toFixed(0)}}%)`;
+  }}
+  return row;
+}}
+function nashSummary(data) {{
+  const stacks = [...new Set(data.map(d => d.stack_bb))].sort((a, b) => a - b);
+  const rows = stacks.map(s => nashSummaryRow(`${{s}}bb`, data.filter(d => d.stack_bb === s)));
+  rows.push(nashSummaryRow('ALL', data));
+  return genericTable(rows);
+}}
+
 // Every remaining check (SLOW checks with flat-record data, SKIPs, anything not explicitly
 // chart-rendered above) still gets a card -- a generic key/value table when there's data,
 // otherwise just the status + detail text. Guarantees no check is silently omitted.
 RESULTS.checks.forEach(c => {{
   if (consumed.has(c.id)) return;
   const wrap = card(c.id, null, c.detail, c.status, c.doc);
-  const table = genericTable(c.data);
-  if (table) wrap.appendChild(table);
+  const isNashCells = c.id.startsWith('nash') && c.data && c.data.length >= 20
+    && typeof c.data[0] === 'object' && 'agrees' in c.data[0];
+  if (isNashCells) {{
+    wrap.appendChild(htmlEl('p', {{class: 'detail'}},
+      'Agreement summary — "nash says shove/fold" columns show which side the disagreements sit on:'));
+    wrap.appendChild(nashSummary(c.data));
+    const det = htmlEl('details', {{class: 'raw-cells'}});
+    det.appendChild(htmlEl('summary', {{}}, `Show all ${{c.data.length}} per-hand cells`));
+    det.appendChild(genericTable(c.data));
+    wrap.appendChild(det);
+  }} else {{
+    const table = genericTable(c.data);
+    if (table) wrap.appendChild(table);
+  }}
   root.appendChild(wrap);
 }});
 </script>

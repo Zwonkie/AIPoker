@@ -3,11 +3,14 @@ import numpy as np
 import pytesseract
 import os
 import glob
+import re
 
 # [v49 live2/ocr, owner-approved 2026-07-23] Chip-count (stack/pot) NUMBERS are read by
 # the gated template reader, not Tesseract -- accept-or-abstain, zero wrong acceptances
-# on the whole labeled corpus. Tesseract remains ONLY for text fields (names) and the
-# ALL-IN / '-' textual state detection fallback when the template reader abstains.
+# on the whole labeled corpus. Seat IDENTITY (occupied / active / folded / empty) is read
+# from a calibrated pod-corner COLOUR signature (PokerVision.seat_color_state), not from
+# name OCR or name-plate brightness. Tesseract is now best-effort ONLY: player names
+# (bootstrap; store-locked after hand 1) and the hero all-in text fallback.
 from live2.ocr import harvest_digits as chip_ocr
 
 # Configure Tesseract path (Windows specific)
@@ -310,8 +313,52 @@ class PokerVision:
         # Enforce maximum distance threshold of 85 to filter out background leaks
         if min_dist > 85:
             return None
-            
+
         return best_color
+
+    # -- Seat identity by pod-corner colour (owner-calibrated 2026-07-23) ----------
+    # A small ROI at the pod's lower-left carries a stable, fixed-art colour signature
+    # that decides the seat's state directly -- no name OCR, no name-plate brightness.
+    # Five calibrated categories (bright active pods run a green->yellow->red "heat"
+    # gradient; blue = open seat; grey = folded); anything else is the ABSTAIN failover.
+    SEAT_STATE_ROI = (-80, 72, 20, 14)   # (dx, dy, w, h) relative to the pod centre
+
+    def seat_color_state(self, img, cx, cy):
+        """Classify a seat as 'active' | 'empty' | 'folded' | 'abstain' from the mean
+        colour of SEAT_STATE_ROI. Order matters: the chromatic tests win, neutral-grey
+        is folded, and everything unmatched (near-black/overlay/oddball) abstains."""
+        dx, dy, w, h = self.SEAT_STATE_ROI
+        x0, y0 = max(0, cx + dx), max(0, cy + dy)
+        roi = img[y0:y0 + h, x0:x0 + w]
+        if roi.size == 0:
+            return 'abstain'
+        b, g, r = (float(roi[:, :, i].mean()) for i in range(3))
+        mx, mn = max(r, g, b), min(r, g, b)
+        if mx < 12 or mn > 60:                          # near-black / bright overlay-card
+            return 'abstain'
+        if r - max(g, b) > 8:                           # reddish   -> active (hot)
+            return 'active'
+        if r - b > 6 and g - b > 4 and abs(r - g) < 12:  # yellowish -> active (warm)
+            return 'active'
+        if g - r > 10 and b - g < 8:                    # greenish  -> active
+            return 'active'
+        if b - r > 8 and b - g > 6:                     # bluish    -> open seat
+            return 'empty'
+        if mx - mn <= 8:                                # neutral grey -> folded
+            return 'folded'
+        return 'abstain'                                # failover bucket
+
+    def _read_seat_name(self, img, cx, cy):
+        """Best-effort name plate OCR for bootstrap only (the hand-history store is the
+        authority once the match's first hand completes). Returns '' when unreadable --
+        an empty name no longer drops the seat; colour decides occupancy."""
+        raw = self.ocr_roi(img, (cx - 75, cy + 22, 150, 26))
+        name = raw.strip()
+        name = re.sub(r'^[^a-zA-Z0-9]+', '', name)         # strip leading symbols
+        name = re.sub(r'[^a-zA-Z0-9_\'\s]+$', '', name)    # strip trailing noise
+        if len(name) <= 2 and not name.isalnum():
+            return ''
+        return name
 
     def read_board_state(self, img, board_size="6-Max"):
         """
@@ -392,103 +439,69 @@ class PokerVision:
                 resolved_centers[key] = (cx, cy)
                 found_anchors[key] = found_anchor
 
-        # Parse Opponents
+        # Parse Opponents -- seat identity is decided by the pod-corner COLOUR state
+        # (seat_color_state): one small ROI reads a fixed-art colour signature and maps
+        # it to active / empty / folded / abstain. This REPLACES the old name-OCR-gated
+        # occupancy + name-plate-brightness activity heuristics: a garbled name can no
+        # longer invent a seat (the '4\n4' empty-pod phantom), an unreadable-but-real
+        # player (timer "Tid:" plates) is no longer dropped, and a folded/all-in state is
+        # read from colour + the gated chip count rather than Tesseract text fallbacks.
         for seat_key in ['seat_1', 'seat_2', 'seat_3', 'seat_4', 'seat_5']:
             if not found_anchors.get(seat_key, False):
                 continue
             cx, cy = resolved_centers[seat_key]
-            
-            # VPIP and AGG Crops
-            vpip_crop = img[max(0, cy-12):min(img.shape[0], cy+12), max(0, cx-100):min(img.shape[1], cx-80)]
-            agg_crop = img[max(0, cy-12):min(img.shape[0], cy+12), max(0, cx+80):min(img.shape[1], cx+100)]
-            
-            # Name and Stack Crops (Name shifted down: top down 5 [cy+22], bottom down 8 [cy+48]. Stack rolled back to [cy+50, cy+84])
-            name_crop = img[max(0, cy+22):min(img.shape[0], cy+48), max(0, cx-75):min(img.shape[1], cx+75)]
-            stack_crop = img[max(0, cy+50):min(img.shape[0], cy+84), max(0, cx-65):min(img.shape[1], cx+65)]
-            
-            # Run OCR on Name using robust ocr_roi
-            name_text = self.ocr_roi(img, (cx-75, cy+22, 150, 26))
-            
-            import re
-            name = name_text.strip()
-            name = re.sub(r'^[^a-zA-Z0-9]+', '', name) # remove leading symbols
-            name = re.sub(r'[^a-zA-Z0-9_\'\s]+$', '', name) # remove trailing noise
-            if len(name) <= 2 and not name.isalnum():
-                name = ""
-                
-            if not name:
+
+            seat = self.seat_color_state(img, cx, cy)
+            if seat in ('empty', 'abstain'):
+                # empty   -> no player seated: do not emit the seat.
+                # abstain -> transient/overlay frame: emit nothing, TableState keeps the
+                #            last stabilized state for this seat (no-read semantics).
                 continue
-                
-            # Determine if player is active (5% brightest pixels in name_gray > 160.0)
-            name_gray = self.preprocess_image(name_crop)
-            flat = name_gray.flatten()
-            flat_sorted = np.sort(flat)
-            top_5_percent_idx = int(len(flat_sorted) * 0.95)
-            top_5_percent_pixels = flat_sorted[top_5_percent_idx:]
-            mean_top_5 = np.mean(top_5_percent_pixels) if len(top_5_percent_pixels) > 0 else 0.0
-            
-            is_active = mean_top_5 > 160.0
+            is_active = (seat == 'active')
+
+            # Name is best-effort (bootstrap only; locked from the store after hand 1).
+            name = self._read_seat_name(img, cx, cy)
+
             stack_val = 0
-            state_label = "Active"
-            
+            state_label = 'Active' if is_active else 'Folded'
             if is_active:
-                # [v49 live2/ocr] Gated template read of the chip count (canonical
-                # STACK transform: ROI top +6 / gray trunc 160 / baseline scrub).
+                # [v49 live2/ocr] Gated template read of the chip count (canonical STACK
+                # transform). Accepted -> the displayed value (a literal 0 = the client's
+                # all-in rendering); abstain -> 0 no-read sentinel and TableState keeps the
+                # last stabilized stack.
                 chip_crop = img[max(0, cy + 56):min(img.shape[0], cy + 84),
                                 max(0, cx - 65):min(img.shape[1], cx + 65)]
                 chips, _cd, _cm, chips_ok = chip_ocr.read_chips(
                     chip_crop, self.chip_templates, font='stack')
                 if chips_ok:
                     stack_val = int(chips)
-                    # a displayed literal 0 is the client's all-in rendering (chips in
-                    # the middle), same semantics the legacy lone-'0' branch used
-                    state_label = "All-In" if stack_val == 0 else "Active"
-                else:
-                    # Abstain -> the NUMBER stays 0 (TableState's no-read sentinel:
-                    # keeps the last stabilized value). Tesseract runs ONLY to detect
-                    # the textual states the template alphabet cannot express.
-                    stack_text = self.ocr_roi(img, (cx-65, cy+50, 130, 34), whitelist='0123456789.ALLIN-')
-                    stack_line = stack_text.strip()
-                    stack_val = 0
-                    state_label = "Active"
-                    if stack_line:
-                        stack_upper = stack_line.upper()
-                        if 'ALL' in stack_upper or 'IN' in stack_upper:
-                            state_label = "All-In"
-                        elif stack_upper == '-' or '-' in stack_upper:
-                            state_label = "Folded"
-                            is_active = False
-            else:
-                state_label = "Folded"
-                stack_val = 0
-                
-            # Classify VPIP and AGG Colors
+                    if stack_val == 0:
+                        state_label = 'All-In'
+
+            # VPIP / AGG colour bars (only meaningful while the player is in the hand)
+            vpip_crop = img[max(0, cy-12):min(img.shape[0], cy+12), max(0, cx-100):min(img.shape[1], cx-80)]
+            agg_crop = img[max(0, cy-12):min(img.shape[0], cy+12), max(0, cx+80):min(img.shape[1], cx+100)]
             vpip_color = self.classify_color(vpip_crop) if is_active else None
             agg_color = self.classify_color(agg_crop) if is_active else None
-            
+
             opponents[seat_key] = {
                 'name': name,
                 'stack': stack_val,
                 'is_active': bool(is_active),
                 'state': state_label,
                 'vpip_color': vpip_color,
-                'agg_color': agg_color
+                'agg_color': agg_color,
             }
-            
+
         state['opponents'] = opponents
         
         # Parse Hero VPIP/AGG/Stack/Name/Cards
         hcx, hcy = resolved_centers['hero']
         
-        # Hero Name using robust ocr_roi
-        hero_name_text = self.ocr_roi(img, (hcx-75, hcy+22, 150, 26))
-        import re
-        hname = hero_name_text.strip()
-        hname = re.sub(r'^[^a-zA-Z0-9]+', '', hname)
-        hname = re.sub(r'[^a-zA-Z0-9_\'\s]+$', '', hname)
-        if len(hname) <= 2 and not hname.isalnum():
-            hname = ""
-        state['hero_name'] = hname
+        # Hero name -- best-effort via the same helper as the seats (store-locked after
+        # hand 1). Hero is always seated and to-act at capture time, so no colour-state
+        # occupancy test is needed here.
+        state['hero_name'] = self._read_seat_name(img, hcx, hcy)
 
         hero_vpip_crop = img[max(0, hcy-12):min(img.shape[0], hcy+12), max(0, hcx-100):min(img.shape[1], hcx-80)]
         hero_agg_crop = img[max(0, hcy-12):min(img.shape[0], hcy+12), max(0, hcx+80):min(img.shape[1], hcx+100)]

@@ -34670,16 +34670,24 @@
     },
     {
       "id": "nash3_btn_jam",
-      "status": "SKIP",
-      "detail": "nash_3max_solved.json missing -- run tools.model_verify.nash.solve_nash_3max",
-      "data": null,
+      "status": "WARN",
+      "detail": "literal jam-vs-fold agreement over 518 unambiguous 3-max Nash cells: 381 (74%) | e.g. AJs@5bb(Nash shove,model fold:allin=0.03/F=0.05); A9s@5bb(Nash shove,model fold:allin=0.00/F=0.29); A8s@5bb(Nash shove,model fold:allin=0.00/F=0.98); A7s@5bb(Nash shove,model fold:allin=0.00/F=0.96); A6s@5bb(Nash shove,model fold:allin=0.00/F=0.95); A5s@5bb(Nash shove,model fold:allin=0.00/F=0.32)",
+      "data": {
+        "agree": 381,
+        "total": 518,
+        "pct": 0.7355
+      },
       "doc": null
     },
     {
       "id": "nash3_bb_call",
-      "status": "SKIP",
-      "detail": "nash_3max_solved.json / equity_matrix.json missing",
-      "data": null,
+      "status": "WARN",
+      "detail": "literal jam-vs-fold agreement over 524 unambiguous 3-max Nash cells: 380 (73%) | e.g. T4s@5bb(Nash shove,model fold:allin=0.00/F=0.01); T3s@5bb(Nash shove,model fold:allin=0.00/F=0.01); T2s@5bb(Nash shove,model fold:allin=0.00/F=0.01); 94s@5bb(Nash shove,model fold:allin=0.00/F=0.01); 93s@5bb(Nash shove,model fold:allin=0.00/F=0.02); 92s@5bb(Nash shove,model fold:allin=0.00/F=0.04)",
+      "data": {
+        "agree": 380,
+        "total": 524,
+        "pct": 0.7252
+      },
       "doc": null
     },
     {

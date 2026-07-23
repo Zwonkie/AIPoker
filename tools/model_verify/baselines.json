@@ -22,5 +22,17 @@
       "tight_deep": 74.6,
       "tight_short": 25.9
     }
+  },
+  "v48": {
+    "bb100": {
+      "loose_deep": 132.7,
+      "loose_deep@donmix": 89.1,
+      "loose_short": 27.6,
+      "loose_short@donmix": 40.8,
+      "tight_deep": 71.7,
+      "tight_deep@donmix": 78.7,
+      "tight_short": 23.9,
+      "tight_short@donmix": 47.1
+    }
   }
 }

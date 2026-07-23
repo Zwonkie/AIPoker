@@ -12,6 +12,7 @@ from core.models.v41_engine import V41ModelEngine
 from core.models.v43_engine import V43ModelEngine
 from core.models.v44_engine import V44ModelEngine
 from core.models.v47_engine import V47ModelEngine
+from core.models.v48_engine import V48ModelEngine
 
 # Live action selection: SAMPLE from the actor policy (matching training/eval, which sample rather
 # than argmax) but SHARPEN with a temperature < 1 so genuine mixing survives on close spots while
@@ -277,6 +278,25 @@ class PokerDecisionEngine:
             # (+2.6 +/-45.0 BB/100, CI includes 0 -- NOT a proven win), literal-Nash 71%->65%, and
             # opponent_style_sweep went flat (0.127->0.027). See resolution-log Tier 10.
             # ROLLBACK: set active_model_name back to 'Herocules (v44)' (registered below).
+            # V48: table-geometry realism package (V47 clone, same cv9/54-dim contract).
+            # Change 0 GENERALIZED chip-identity collapse (serve mirror gated on this engine's
+            # `collapse_aliased_buckets = True` -- supersedes V47's allin-only flag), Change 1
+            # true N-handed dealing (3-6 seats, ring-relative positions), Change 1b raise
+            # repertoires + pool mixture FITTED from the 99-player bet365 hand-history corpus,
+            # Change 2 measured seat-x-depth joint curriculum (DoN life-cycle). Trained 100k
+            # 2026-07-23. model_verify --full: 20 PASS / 9 WARN / 1 FAIL -- [W1] opponent_style
+            # 0.027->0.105 PASS (V47's flattening undone), nash3_btn_jam 79% PASS (first 3-max
+            # axis), vpip_adapts held (+10.2/+7.7), table_size spread 0.015->0.027 (partial).
+            # DEPLOYED LIVE 2026-07-23 by explicit user decision, with KNOWN AT DEPLOY TIME:
+            # (a) deep_stack_ood_guard FAIL -- eq0.55@15bb ALL-IN argmax 0.34, regression vs
+            # V47's 0-FAIL card, [STACK-1] REOPENED (suspected: measured curriculum thins 30bb+
+            # coverage); (b) head-to-head vs frozen V47 was UNRESOLVED at deploy (two concurrent
+            # batteries measured +15.7/+23.0 vs -28.4/-53.9 -- concurrent-load artifacts).
+            # RESOLVED ~1h post-deploy by the solo 8k-hand/axis tie-breaker: 6-handed -4.1
+            # +/-29.8 (PARITY), DoN mix +13.7 +/-31.2 (positive lean, not decisive) -- same
+            # verdict class V47 itself deployed on. See versions/v48/SPECS.md gate verdict.
+            # ROLLBACK: set active_model_name back to 'Herocules (v47)'.
+            'Herocules (v48)': V48ModelEngine(weight_name="expert_main.pth"),
             'Herocules (v47)': V47ModelEngine(weight_name="expert_main.pth"),
             'Herocules (v44)': V44ModelEngine(weight_name="expert_main.pth"),
             'Herocules (v43)': V43ModelEngine(weight_name="expert_main.pth"),
@@ -313,7 +333,7 @@ class PokerDecisionEngine:
         # DEPLOYED 2026-07-21: V43 replaces V41 by explicit user decision, on a MIXED scorecard and
         # before beats_frozen_predecessor finished -- see the registry entry above for exactly what
         # was known at deploy time. V41 (the MILESTONE) stays registered as the one-line rollback.
-        self.active_model_name = 'Herocules (v47)'  # V44 registered above as rollback
+        self.active_model_name = 'Herocules (v48)'  # V47 registered above as rollback
         # [Fable review #16/H4, completed by v46_legacySweep] ENGINE-OWNED BRIDGES are the ONLY
         # tensor-dispatch mechanism: every registered engine declares `make_bridge()` and gets its
         # own contract instance here. The former per-version bridge fields and the 13-flag `is_vN`

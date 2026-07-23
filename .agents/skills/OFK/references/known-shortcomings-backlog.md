@@ -291,6 +291,16 @@ deployed live (V28 stays active pending user evaluation).
 > [P4]/`vpip_adapts_to_style`: entry-range behaviour has been measured for many versions against a
 > feature that could not do its job.
 >
+> **LIVE EVIDENCE RE-ATTRIBUTED HERE (2026-07-23, assembler adjudication).** The flagged JJ fold
+> of 2026-07-22 (69.5bb, folded 0.92 at eq 0.38) was originally root-caused as a phantom-seat
+> count inflation ("4th opponent at a 3-opponent table"). The new live2 assembler's ground-truth
+> adjudication of that exact turn OVERTURNS the count claim: `Tid: 18` was the REAL occupant
+> Paul6969 (dealt in, limped, bet the flop), and 4 active opponents was the TRUE count at hero's
+> decision. The equity input was computed on correct occupancy — so the too-tight fold is this
+> entry-side cliff (absolute-eq gate ≈0.51 at 4-5 opponents) compounded by the V42-round-2
+> multiway equity depression, NOT a vision bug. The timer-name hotfixes remain valid (timer text
+> polluted seat names ~170 times in that one session) but were not what folded JJ.
+>
 > #### PROPOSED FIX (user's, 2026-07-21) — reuse the effective contested field as the `n` in `n+1`
 >
 > Closed form, no MC, no added noise, using the same `_COLOR_TO_VPIP` the equity roll already uses:
@@ -439,7 +449,18 @@ tracks with [BET-1]'s own mechanism specifically (both live in the same equity/s
 
 ## Stack depth
 
-### [STACK-1] Deep-stack OOD trash-jam 🟢 RESOLVED (V29, 2026-07-20)
+### [STACK-1] Deep-stack OOD trash-jam ⚠️ REOPENED (V48, 2026-07-23 — held V29→V47, regressed under the measured joint curriculum)
+
+> **REOPENED 2026-07-23 (V48, trained not deployed).** After holding PASS for the V29→V47 run
+> (exactly the multi-version confirmation this entry demanded), V48 FAILs
+> `deep_stack_ood_guard` again: eq=0.55 @ 15bb → ALL-IN argmax at 0.34 confidence. V48's only
+> curriculum change is Change 2 — the MEASURED seat×depth joint mix, which concentrates mass
+> at 4-6-handed short/mid depths and thins 30-100bb coverage relative to V47's uniform 5-50bb
+> band. That mechanism-shape (coverage thinning → guard regression) matches the V22 history
+> below: coverage buys or loses this gate even when the V29 target-formula fix stands.
+> Candidate fix for V48.1: keep the measured joint mix but floor the deep-band mass (e.g.
+> min 10% at 30bb+), re-measure. Note the regression arrived WITH real gains ([W1] opponent
+> style 0.105 PASS, nash3 btn 79%) — trade-off, not a broken build.
 **First identified**: live incident, V14/V15 era (K9o jammed 20bb into a single limper).
 **Present in EVERY version from V14 through V21_auxhead** (V19, V20, V20_preflopEq,
 V20_preflopEq_AI, V21, V21_auxhead all FAILed `deep_stack_ood_guard`, at slightly different
@@ -1081,6 +1102,15 @@ metric (composite kept as secondary) and re-baselined the lineage: V41 82%, V43 
 disagreement cells are IDENTICAL to V44's (92s–94s@5bb overplayed, T2s–T4s@5bb called vs
 jams): a lineage-wide ≤5bb looseness. Finding (A) (BB overcalls jams) still reproduces.
 V48 P48-0 adds the 3-max solver; judge future models on the literal metric.
+
+**V48 note (2026-07-23) — 3-MAX AXIS LIVE**: `solve_nash_3max.py` completed (BTN jam → SB
+call → BB call/overcall, smoothed stochastic FP, 4.26M-triple lazy MC cache, anchors OK) +
+two new FAST checks. Frozen-V47 baseline: `nash3_btn_jam` 74% / `nash3_bb_call` 73% (both
+WARN, bar 0.75). Trained V48: **btn_jam 79% PASS** (Change 1's true-3-handed geometry
+learned), bb_call 73% flat — facing-a-jam calls remain the weak side on BOTH the HU and
+3-max axes (finding (A) again: HU nash_bbcall 72%, same T2s–T4s@5bb overcall cells). V48
+HU literal: 66% (vs V47 65%), composite-commits now expressed as literal ALLIN 769/971 →
+Change 0's collapse fixed the jam-labeling semantics (was 74/971 literal on V47).
 **Simple**: We've never checked our play against real game-theory-optimal solutions — all
 validation is "do we beat our own training opponents," not "are we close to unexploitable play."
 
