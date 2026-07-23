@@ -329,6 +329,20 @@ three-layer diagnostic, the `flagged/` flow rendered properly).
   33 match + 20 stale-correct + 1 abstain, ZERO wrong identities anywhere. Check-sheet
   universe: 403 accepted / 45 abstain (was 375/73). read_money(font='stack') is the
   entry; read_number kept only for harvest-internal label validation.
+- **STACK GEOMETRY + BASELINE SCRUB, OWNER-APPROVED (2026-07-23 night)**: two owner
+  rules from step-by-step debugging of the hero-'680' abstain (active-pod gloss line
+  at the digit BASELINE welded all glyphs into one 130x21 component -> 0 boxes):
+  (1) stack ROI top edge +6px, bottom fixed -> (cx-65, cy+56, 130, 28); (2) in the
+  crop's LAST 8 LINES, the topmost line >50% white AND everything below it is deleted
+  (digit rows measure 9..18% -- can't trigger). Both live INSIDE stack_gray()/the
+  harvester so harvest≡read stays canonical; harvest+validate now segment stacks on
+  the stack_gray ink mask (not the legacy 55% binarize). FULL PASS: pot 92/3
+  bit-identical (zero shared-code impact); stack corpus 500/70; labeled 33 match +
+  20 differ (EXACTLY the previously pixel-adjudicated stale-label set, nothing new)
+  + 1 abstain; worst accepted dist 0.41 vs 0.60 gate; both showcase frames read
+  (hero 680, seat_3 1380). Check sheet 407/41. OWNER APPROVED 2026-07-23 ("im happy
+  -- the abstains are edge we will take care of later"). NEXT: wire read_money()
+  into live TableState + hero-stack plausibility window (separate gate).
 
 ## Migration gates
 

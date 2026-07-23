@@ -79,18 +79,31 @@ POT_TRUNC_TH = POT_TRUNC_GRAY / 255.0
 # bar/streak/sheen while preserving glyph aliasing). Templates are built from these
 # grayscale glyphs so the aliasing lives in the template, not a threshold.
 STACK_TRUNC_GRAY = 160
+# Baseline-artifact scrub (owner rule, 2026-07-23): the pod's gloss/timer line can
+# survive truncation as a full-width streak at the digits' baseline, welding all
+# glyphs into ONE component (hero '680' active pod: one 130x21 blob -> 0 boxes).
+# Within the crop's LAST 8 LINES, the topmost line with >50% white pixels AND every
+# line below it are deleted. Digit rows measure 9..18% white -- far from the trigger.
+STACK_LINE_WIN = 8
+STACK_LINE_FRAC = 0.50
 
 
 def stack_gray(crop_bgr):
-    """Contrast-stretched gray truncated below STACK_TRUNC_GRAY -- NO binarization.
-    Near-flat crops return zeros (same guard as binarize)."""
+    """The canonical STACK transform: contrast-stretched gray truncated below
+    STACK_TRUNC_GRAY (NO binarization), then the owner's last-8-lines baseline scrub.
+    Applied identically at harvest and read time. Near-flat crops return zeros."""
     gray = cv2.cvtColor(crop_bgr, cv2.COLOR_BGR2GRAY) if crop_bgr.ndim == 3 else crop_bgr
     p_lo, p_hi = np.percentile(gray, (5, 99.5))
     if p_hi - p_lo < 10:
         return np.zeros_like(gray)
     st = np.clip((gray.astype(np.float32) - p_lo) * (255.0 / (p_hi - p_lo)), 0, 255)
     st[st < STACK_TRUNC_GRAY] = 0
-    return st.astype(np.uint8)
+    g = st.astype(np.uint8)
+    for r in range(max(0, g.shape[0] - STACK_LINE_WIN), g.shape[0]):
+        if np.count_nonzero(g[r]) > STACK_LINE_FRAC * g.shape[1]:
+            g[r:] = 0
+            break
+    return g
 
 
 def accept(text, worst, margin, templates=None, font='stack'):
@@ -142,7 +155,8 @@ def money_rois(record):
     out = []
 
     def stack_roi(cx, cy):
-        return (cx - 65, cy + 50, 130, 34)
+        # owner 2026-07-23: top edge +6px (cuts the pod's top bloom/bar), bottom fixed
+        return (cx - 65, cy + 56, 130, 28)
 
     v = obs.get('hero_stack')
     if v and float(v) > 0:
@@ -333,7 +347,6 @@ def harvest(pairs):
             crop = img[max(0, y):y + h, max(0, x):x + w]
             if crop.size == 0:
                 continue
-            binimg = binarize(crop)
             text = str(label)
             if key == 'pot':
                 # pot renders in its OWN (smaller) font -> separate 'p<d>' template
@@ -343,7 +356,12 @@ def harvest(pairs):
                 binimg, boxes, seps, ok = pot_boxes(crop)
                 prefix = 'p'
                 seps = []
+                gtr = None
             else:
+                # canonical STACK transform for harvest too: segment on the gray
+                # transform's ink mask, exactly what read_money(font='stack') does
+                gtr = stack_gray(crop)
+                binimg = (gtr > 0).astype(np.uint8) * 255
                 boxes, seps = segment(binimg)
                 ok, prefix = True, ''
             if not ok or len(boxes) != len(text):
@@ -351,9 +369,6 @@ def harvest(pairs):
                 continue
             used += 1
             frame_id = (path, key)             # unique identity for the cleaning pass
-            # stack glyphs are ALSO captured under the owner's gray transform
-            # (truncate-below-160, no binarization) -- the aliased template basis
-            gtr = stack_gray(crop) if key != 'pot' else None
             for ch, box in zip(text, boxes):
                 s = {'img': glyph(binimg, box), 'id': frame_id, 'roi': key, 'label': label}
                 if gtr is not None:
@@ -595,7 +610,7 @@ def validate(pairs, templates):
                 binimg, boxes, seps, seg_ok = pot_boxes(crop)
                 tset = {k[1:]: v for k, v in templates.items() if k.startswith('p')}
             else:
-                binimg = binarize(crop)
+                binimg = (stack_gray(crop) > 0).astype(np.uint8) * 255
                 boxes, seps = segment(binimg)
                 seg_ok = True
                 tset = {k: v for k, v in templates.items() if not k.startswith('p')
