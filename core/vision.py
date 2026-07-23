@@ -4,6 +4,12 @@ import pytesseract
 import os
 import glob
 
+# [v49 live2/ocr, owner-approved 2026-07-23] Chip-count (stack/pot) NUMBERS are read by
+# the gated template reader, not Tesseract -- accept-or-abstain, zero wrong acceptances
+# on the whole labeled corpus. Tesseract remains ONLY for text fields (names) and the
+# ALL-IN / '-' textual state detection fallback when the template reader abstains.
+from live2.ocr import harvest_digits as chip_ocr
+
 # Configure Tesseract path (Windows specific)
 pytesseract.pytesseract.tesseract_cmd = r'C:\Program Files\Tesseract-OCR\tesseract.exe'
 
@@ -13,6 +19,19 @@ class PokerVision:
         self.card_templates = {}
         self.button_templates = {}
         self.load_templates()
+
+        # [v49 live2/ocr] Gated chip-count reader templates (soft/aliased, canonical
+        # transforms). FAIL-LOUD: an incomplete soft alphabet would make read_chips()
+        # abstain on EVERY frame -- stacks silently frozen at their first value is the
+        # exact failure class this reader exists to kill, so refuse to start instead.
+        self.chip_templates = chip_ocr.load_templates()
+        for pfx, fname in (('soft_s', 'stack'), ('soft_p', 'pot')):
+            missing = [d for d in '0123456789' if f'{pfx}{d}' not in self.chip_templates]
+            if missing:
+                raise RuntimeError(
+                    f"chip-template alphabet incomplete for {fname} font (missing "
+                    f"{missing}) -- run `python -m live2.ocr.harvest_digits` and review")
+        print(f"Loaded {len(self.chip_templates)} chip templates (gated reader active).")
 
         # Coordinates of Regions of Interest (ROI) for 1536x1090 resolution
         # format: (x, y, width, height)
@@ -312,9 +331,14 @@ class PokerVision:
         )
         state['community_cards'] = [m[0] for m in comm_matches]
         
-        # 2. OCR Pot
-        pot_text = self.ocr_roi(img, self.rois['pot'], whitelist='0123456789.Pulje: ')
-        state['pot_size'] = self.clean_pot_string(pot_text)
+        # 2. Pot chips -- gated template reader (canonical pot transform: colon anchor
+        # @55% + truncation below POT_TRUNC_GRAY, soft/aliased matching). Abstain -> 0,
+        # the no-read sentinel TableState's monotonic pot filter already tolerates.
+        px, py, pw, ph = chip_ocr.POT_ROI
+        pot_crop = img[py:py + ph, px:px + pw]
+        pot_text, _pd, _pm, pot_ok = chip_ocr.read_chips(pot_crop, self.chip_templates,
+                                                         font='pot')
+        state['pot_size'] = int(pot_text) if pot_ok else 0
         
         
         
@@ -408,30 +432,32 @@ class PokerVision:
             state_label = "Active"
             
             if is_active:
-                # Run OCR on Stack using robust ocr_roi
-                stack_text = self.ocr_roi(img, (cx-65, cy+50, 130, 34), whitelist='0123456789.ALLIN-')
-                
-                stack_line = stack_text.strip()
-                if stack_line:
-                    stack_upper = stack_line.upper()
-                    if 'ALL' in stack_upper or 'IN' in stack_upper:
-                        state_label = "All-In"
-                        stack_val = 0
-                    elif stack_upper == '-' or '-' in stack_upper:
-                        state_label = "Folded"
-                        stack_val = 0
-                        is_active = False
-                    else:
-                        stack_val = self.clean_stack_string(stack_line)
-                        if stack_val == 0:
-                            if '0' in stack_line:
-                                state_label = "All-In"
-                            else:
-                                state_label = "Folded"
-                                is_active = False
+                # [v49 live2/ocr] Gated template read of the chip count (canonical
+                # STACK transform: ROI top +6 / gray trunc 160 / baseline scrub).
+                chip_crop = img[max(0, cy + 56):min(img.shape[0], cy + 84),
+                                max(0, cx - 65):min(img.shape[1], cx + 65)]
+                chips, _cd, _cm, chips_ok = chip_ocr.read_chips(
+                    chip_crop, self.chip_templates, font='stack')
+                if chips_ok:
+                    stack_val = int(chips)
+                    # a displayed literal 0 is the client's all-in rendering (chips in
+                    # the middle), same semantics the legacy lone-'0' branch used
+                    state_label = "All-In" if stack_val == 0 else "Active"
                 else:
-                    state_label = "Active"
+                    # Abstain -> the NUMBER stays 0 (TableState's no-read sentinel:
+                    # keeps the last stabilized value). Tesseract runs ONLY to detect
+                    # the textual states the template alphabet cannot express.
+                    stack_text = self.ocr_roi(img, (cx-65, cy+50, 130, 34), whitelist='0123456789.ALLIN-')
+                    stack_line = stack_text.strip()
                     stack_val = 0
+                    state_label = "Active"
+                    if stack_line:
+                        stack_upper = stack_line.upper()
+                        if 'ALL' in stack_upper or 'IN' in stack_upper:
+                            state_label = "All-In"
+                        elif stack_upper == '-' or '-' in stack_upper:
+                            state_label = "Folded"
+                            is_active = False
             else:
                 state_label = "Folded"
                 stack_val = 0
@@ -470,29 +496,28 @@ class PokerVision:
         state['hero_vpip_color'] = self.classify_color(hero_vpip_crop)
         state['hero_agg_color'] = self.classify_color(hero_agg_crop)
         
-        # Hero Stack using robust ocr_roi (matching opponent seats approach)
-        hero_stack_text = self.ocr_roi(img, (hcx-65, hcy+50, 130, 34), whitelist='0123456789.ALLIN-')
-
+        # [v49 live2/ocr] Hero chip count via the gated template reader (canonical
+        # STACK transform), mirroring the opponent-seat wiring above: an ACCEPTED read
+        # is the displayed value (a literal 0 = the client's all-in rendering); an
+        # abstain leaves the number at the 0 no-read sentinel and falls back to
+        # Tesseract ONLY for the textual ALL-IN detection (see the [V29] note it
+        # replaces: 'ALL IN' text must be recognized BEFORE any digit mangling, else
+        # hero's own all-in is indistinguishable from a failed read).
+        hero_chip_crop = img[max(0, hcy + 56):min(img.shape[0], hcy + 84),
+                             max(0, hcx - 65):min(img.shape[1], hcx + 65)]
+        hchips, _hd, _hm, hchips_ok = chip_ocr.read_chips(
+            hero_chip_crop, self.chip_templates, font='stack')
         hero_stack_val = 0
         hero_all_in = False
-        h_stack_line = hero_stack_text.strip()
-        if h_stack_line:
-            # [V29 live-info expansion] Mirrors the opponent-seat 'ALL'/'IN' text-match above
-            # (lines ~417-419) -- checked BEFORE `clean_stack_string`'s digit-mangling character
-            # replacement, which otherwise turns literal "ALL IN" text into a garbage digit string
-            # (A->4, L->L(unchanged, filtered out), I->4, N->0 -> "440", not a real stack value).
-            # Without this, hero's own all-in was indistinguishable from a failed OCR read (both
-            # produced a bare 0), so core/table_state.py's stack tracker had to reject ALL zero
-            # reads defensively -- silently keeping hero's stack stuck at its last nonzero value
-            # through hero's own all-in specifically (found while wiring [OPP-2]/`hero_committed`
-            # live tracking; see .agents/skills/OFK/references/known-shortcomings-backlog.md).
-            h_stack_upper = h_stack_line.upper()
-            if 'ALL' in h_stack_upper or 'IN' in h_stack_upper:
-                hero_all_in = True
-                hero_stack_val = 0
-            else:
-                hero_stack_val = self.clean_stack_string(h_stack_line)
-                if hero_stack_val == 0 and '0' in h_stack_line:
+        if hchips_ok:
+            hero_stack_val = int(hchips)
+            hero_all_in = (hero_stack_val == 0)
+        else:
+            hero_stack_text = self.ocr_roi(img, (hcx-65, hcy+50, 130, 34), whitelist='0123456789.ALLIN-')
+            h_stack_line = hero_stack_text.strip()
+            if h_stack_line:
+                h_stack_upper = h_stack_line.upper()
+                if 'ALL' in h_stack_upper or 'IN' in h_stack_upper:
                     hero_all_in = True
 
         state['hero_stack'] = hero_stack_val

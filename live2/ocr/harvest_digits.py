@@ -1,4 +1,4 @@
-"""Harvest binarized digit glyph templates for the money-field ROIs.
+﻿"""Harvest binarized digit glyph templates for the chip-count ROIs (stacks and pot are tournament CHIPS, not money).
 
 Sources: every frame we can pair with its own turn record --
   history/<board>/flagged/turn_*/screenshot.png  (turn number in the dir name)
@@ -116,7 +116,7 @@ def accept(text, worst, margin, templates=None, font='stack'):
     Live callers must pass templates; harvest-internal label comparison doesn't use
     accept() and is unaffected.
 
-    Gate scale follows the matcher read_money() picked: a complete soft (aliased) set
+    Gate scale follows the matcher read_chips() picked: a complete soft (aliased) set
     for the font means the scores came from _soft_match_glyph -> SOFT_* gates apply."""
     if text is None:
         return False
@@ -149,7 +149,7 @@ def load_templates():
     return {k: v for k, v in out.items() if v is not None}
 
 
-def money_rois(record):
+def chip_rois(record):
     """[(roi_key, (x, y, w, h), label_int)] for one turn record."""
     obs = record.get('observation_raw') or record.get('observation') or {}
     out = []
@@ -178,7 +178,7 @@ def binarize(crop_bgr, th=0.55):
     drowns the glyphs or merges them -- measured on board_samples, Otsu read a merged
     '1240' as a confident '12' while this variant reads all four digits, and it recovers
     folded-pod stacks legacy OCR returned garbage for. Near-flat crops return empty.
-    th is raised (0.70) by read_money's glow retry: a pot-update glow halo bridges
+    th is raised (0.70) by read_chips's glow retry: a pot-update glow halo bridges
     adjacent digits at 55% while the bright amount digits survive far higher."""
     gray = cv2.cvtColor(crop_bgr, cv2.COLOR_BGR2GRAY) if crop_bgr.ndim == 3 else crop_bgr
     p_lo, p_hi = np.percentile(gray, (5, 99.5))
@@ -343,7 +343,7 @@ def harvest(pairs):
             continue
         if img.shape[1] != 1536 or img.shape[0] != 1090:
             img = cv2.resize(img, (1536, 1090), interpolation=cv2.INTER_CUBIC)
-        for key, (x, y, w, h), label in money_rois(rec):
+        for key, (x, y, w, h), label in chip_rois(rec):
             crop = img[max(0, y):y + h, max(0, x):x + w]
             if crop.size == 0:
                 continue
@@ -359,7 +359,7 @@ def harvest(pairs):
                 gtr = None
             else:
                 # canonical STACK transform for harvest too: segment on the gray
-                # transform's ink mask, exactly what read_money(font='stack') does
+                # transform's ink mask, exactly what read_chips(font='stack') does
                 gtr = stack_gray(crop)
                 binimg = (gtr > 0).astype(np.uint8) * 255
                 boxes, seps = segment(binimg)
@@ -510,7 +510,7 @@ def _read_boxes(binimg, digits, seps, tset, matcher, max_stray_frac=0.10):
     """Shared gated glyph-sequence read -> (string, worst_score, min_margin).
 
     A failing glyph ANYWHERE -> the whole read abstains (a truncated suffix once read
-    2021 as a confident 21 -- partial money values are never returned). Separators
+    2021 as a confident 21 -- partial chip values are never returned). Separators
     ('.'/',') are segmented out by height and ignored, matching the cents convention.
 
     INK-COMPLETENESS GUARD: ink inside the read span that no segmented box claims
@@ -542,12 +542,12 @@ def _read_boxes(binimg, digits, seps, tset, matcher, max_stray_frac=0.10):
 
 
 def read_number(binimg, templates, max_stray_frac=0.10, font='stack'):
-    """Template-read a binarized STACK-font money ROI -> (string, worst, min_margin).
+    """Template-read a binarized STACK-font chip ROI -> (string, worst, min_margin).
     Score per glyph = normalized XOR distance in [0,1]; lower = better. Pot ROIs go
-    through read_money() -- the pot path owns its own canonical binarization and must
+    through read_chips() -- the pot path owns its own canonical binarization and must
     start from the raw crop, not a pre-binarized image."""
     if font == 'pot':
-        raise ValueError("pot ROIs are read by read_money(crop) -- the canonical pot "
+        raise ValueError("pot ROIs are read by read_chips(crop) -- the canonical pot "
                          "transform starts from the raw crop")
     digits, seps = segment(binimg)
     tset = {k: v for k, v in templates.items()
@@ -555,7 +555,7 @@ def read_number(binimg, templates, max_stray_frac=0.10, font='stack'):
     return _read_boxes(binimg, digits, seps, tset, _match_glyph, max_stray_frac)
 
 
-def read_money(crop_bgr, templates, font='stack'):
+def read_chips(crop_bgr, templates, font='stack'):
     """THE crop-level money reader -> (text, worst, margin, accepted).
 
     font='stack' (owner-canonicalized 2026-07-23 eve): stack_gray() -- stretch,
@@ -599,7 +599,7 @@ def validate(pairs, templates):
             continue
         if img.shape[1] != 1536 or img.shape[0] != 1090:
             img = cv2.resize(img, (1536, 1090), interpolation=cv2.INTER_CUBIC)
-        for key, (x, y, w, h), label in money_rois(rec):
+        for key, (x, y, w, h), label in chip_rois(rec):
             crop = img[max(0, y):y + h, max(0, x):x + w]
             if crop.size == 0:
                 continue

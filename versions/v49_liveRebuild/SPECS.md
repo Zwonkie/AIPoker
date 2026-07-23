@@ -341,8 +341,23 @@ three-layer diagnostic, the `flagged/` flow rendered properly).
   20 differ (EXACTLY the previously pixel-adjudicated stale-label set, nothing new)
   + 1 abstain; worst accepted dist 0.41 vs 0.60 gate; both showcase frames read
   (hero 680, seat_3 1380). Check sheet 407/41. OWNER APPROVED 2026-07-23 ("im happy
-  -- the abstains are edge we will take care of later"). NEXT: wire read_money()
-  into live TableState + hero-stack plausibility window (separate gate).
+  -- the abstains are edge we will take care of later").
+- **LIVE WIRING (owner go, 2026-07-23 night)**: terminology corrected first — these
+  are CHIPS not money (`read_money`→`read_chips`, `money_rois`→`chip_rois`). Then:
+  (1) `core/vision.py` — chip NUMBERS (pot + all 6 stacks) now come from
+  `chip_ocr.read_chips()` (gated template reader; PokerVision refuses to start on an
+  incomplete soft alphabet — fail-loud, since all-abstain would silently freeze
+  stacks). Tesseract remains ONLY for names + the textual ALL-IN/'-' state fallback
+  when the reader abstains; abstain leaves the number at the 0 no-read sentinel.
+  (2) `core/table_state.py` — the min() MONOTONIC RATCHET is RETIRED for hero AND
+  opponent stacks (it locked one bad LOW Tesseract frame in for the whole hand — the
+  970→380 / 720→15 / 900→735 MAJORs): an accepted read replaces the tracked value,
+  so later frames CORRECT earlier state. `detect_hand_reset` no longer treats a
+  0-pot (abstain sentinel: card-animation overlay, black frame) as a payout reset.
+  VERIFIED: 18-frame vision cross-check vs direct read_chips = 0 mismatches;
+  TableState seam test (sequential frames → update → to_observation) passes incl.
+  corrective-read and abstain-reset semantics. Legacy PHPHelp shares PokerVision so
+  it inherits the gated reader too.
 
 ## Migration gates
 

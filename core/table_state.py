@@ -88,8 +88,12 @@ class TableState:
             return True
             
         # 2. Pot size dropped significantly (payout occurred)
+        # [v49 live2/ocr] raw_pot == 0 is the reader's ABSTAIN sentinel (pot pill covered
+        # by the card animation, black frame), not a payout -- it must never trigger a
+        # hand reset on its own. (Legacy Tesseract also returned 0 on failed reads, so
+        # this guard is a strict improvement for both eras.)
         raw_pot = raw_state.get('pot_size', 0.0)
-        if raw_pot < self.pot_size * 0.5 and self.pot_size > 5.0:
+        if 0 < raw_pot < self.pot_size * 0.5 and self.pot_size > 5.0:
             return True
             
         # 3. Hero cards changed completely
@@ -128,7 +132,7 @@ class TableState:
         # Pot size can only grow within a hand
         self.pot_size = max(self.pot_size, median_pot)
         
-        # --- Hero Stack (Monotonic Decay) ---
+        # --- Hero Stack (gated reads are authoritative) ---
         raw_hero_stack = raw_state.get('hero_stack', 0)
         # [V29 live-info expansion] `raw_hero_stack == 0` is normally an OCR non-read sentinel (the
         # `> 0` guard exists so a failed digit read doesn't zero out hero's real stack) -- but
@@ -137,11 +141,17 @@ class TableState:
         # ambiguous case. Without this, hero's own all-in was silently never tracked (see
         # SeatState.committed's own docstring / [OPP-2] backlog entry for the equivalent opponent
         # fix this mirrors).
+        #
+        # [v49 live2/ocr, owner-approved 2026-07-23] The old `min(current, raw)` MONOTONIC RATCHET
+        # is retired. It existed because Tesseract returned confident wrong numbers, and it LOCKED a
+        # single bad LOW frame in for the whole hand -- the three MAJOR hero-stack misreads
+        # (970->380, 720->15, 900->735) all cascaded through it into spurious hero_committed.
+        # Chip numbers now come from the gated template reader (accept-or-abstain, zero wrong
+        # acceptances on the labeled corpus): an accepted read IS the displayed value, so it simply
+        # replaces the tracked one -- and a later good frame CORRECTS any earlier bad state instead
+        # of being clamped by it. Abstains still arrive as the guarded 0 sentinel.
         if raw_hero_stack > 0 or raw_state.get('hero_all_in', False):
-            if self.hero_stack == 0:
-                self.hero_stack = raw_hero_stack
-            else:
-                self.hero_stack = min(self.hero_stack, raw_hero_stack)
+            self.hero_stack = raw_hero_stack
                 
         # --- Opponents (Monotonic Decay & State Persistence) ---
         raw_opps = raw_state.get('opponents', {})
@@ -215,11 +225,12 @@ class TableState:
                     # updating the instant they shove their last chips -- exactly the scenario
                     # where the model most needs to see committed/raise info correctly.
                     if raw_stack > 0 or raw_state_lbl == 'All-In':
-                        # Stack can only decrease
-                        if tracked_opp['stack'] == 0:
-                            tracked_opp['stack'] = raw_stack
-                        else:
-                            tracked_opp['stack'] = min(tracked_opp['stack'], raw_stack)
+                        # [v49 live2/ocr] min() ratchet retired here too -- same reasoning
+                        # as the hero-stack block above: gated template reads are
+                        # accept-or-abstain, so an accepted value replaces the tracked one
+                        # and later frames can CORRECT earlier state instead of being
+                        # clamped. Abstains still arrive as the guarded 0 sentinel.
+                        tracked_opp['stack'] = raw_stack
                             
                 # Persist VPIP and AGG colors (once detected, keep them)
                 raw_vpip = raw_opp.get('vpip_color')
