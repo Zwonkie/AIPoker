@@ -218,6 +218,26 @@ three-layer diagnostic, the `flagged/` flow rendered properly).
   V48 loaded + ingest thread up + idle (no table open), stop → clean, probe →
   graceful no-table message.
 
+- **RULE 0 — SEAT MAP (owner insight, 2026-07-23): names come from the STORE, not OCR.**
+  Ground truth records every player's absolute seat id (hero included); the client draws
+  the ring rotated so hero is bottom → screen seat_k = k-th ring seat clockwise
+  (ascending id, circular) from hero. Validated: 958 clean OCR reads across 8
+  tournaments, ZERO true disagreements (all 65 mismatches were OCR typos of the expected
+  name); ring is always [1,3,5,6,8,10]. The assembler now sets seat names FROM THE MAP
+  (silent typo normalization, loud correction for garbage), force-vacates pods whose
+  mapped occupant BUSTED (final 0 / absent from last completed hand), and surfaces a
+  loud contradiction if a clean read ever names a different roster player (0 fires).
+  Adjudication overturned session #1's sticky-repair story: TavGameDev busted in the
+  FIRST hand and Aleks888bum at ~turn 11 — the celebrated '4'→TavGameDev repairs were
+  resurrections of dead players; the map quarantines them exactly from their bust hand.
+  OCR names are now bootstrap-only (first hand, vision-trust) + cross-check. Also fixed
+  in the same pass: pilot restart duplicated turn numbers (now resumes numbering,
+  keeps the shadow mirror), replay re-processed already-corrected observations
+  (now uses observation_raw), webapp shadow panel rendered undefined for rule-2b
+  contradiction fields (now renders per-rule evidence), sticky identity expires on
+  proven bust, and a 1:1 roster deduction repairs the one-unresolved-seat/
+  one-unassigned-live-player case before any quarantine.
+
 ## Migration gates
 
 1. **Shadow parity**: assembler runs in shadow alongside PHPHelp for ≥3 real sessions,
