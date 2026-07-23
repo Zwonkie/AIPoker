@@ -173,9 +173,14 @@ async function loadShadow() {
       }).join('<br>');
       if ((t.contradictions || []).length) {
         if ((t.corrections || []).length) html += '<br>';
-        html += (t.contradictions || []).map((c) =>
-          `<span class="shadow-contra">⚠ ${c.field}: vision=${c.vision} vs ${c.derived ?? c.carry_over} (${c.note})</span>`
-        ).join('<br>');
+        html += (t.contradictions || []).map((c) => {
+          // contradictions carry per-rule evidence keys -- render whatever is present
+          const vals = Object.entries(c)
+            .filter(([k]) => k !== 'field' && k !== 'note')
+            .filter(([, v]) => v !== null && v !== undefined)
+            .map(([k, v]) => `${k}=${v}`).join(' · ');
+          return `<span class="shadow-contra">⚠ ${c.field}: ${vals} (${c.note})</span>`;
+        }).join('<br>');
       }
     }
     row.innerHTML = html + '</span>';

@@ -69,11 +69,33 @@ class TurnWriter:
             self.board_id = board_id
             self.dir = os.path.join(HISTORY, board_id)
             os.makedirs(os.path.join(self.dir, 'flagged'), exist_ok=True)
-            self.turn = 0
-            # pilot embeds the assembler: it owns the shadow mirror for this session too
-            open(os.path.join(self.dir, 'shadow_turns.jsonl'), 'w', encoding='utf-8').close()
-            print(f"[pilot] recording -> {self.dir}\\turns.jsonl")
+            # RESUME an existing session (pilot restart mid-tournament): continue the turn
+            # numbering after the last recorded turn and keep the shadow mirror -- a reset
+            # counter wrote duplicate turn numbers into the same turns.jsonl (found on the
+            # first real pilot session). Fresh boards start at 0 with a clean shadow file.
+            self.turn = self._last_recorded_turn()
+            if self.turn == 0:
+                open(os.path.join(self.dir, 'shadow_turns.jsonl'), 'w', encoding='utf-8').close()
+            print(f"[pilot] recording -> {self.dir}\\turns.jsonl"
+                  + (f" (resuming after turn {self.turn})" if self.turn else ''))
         return self.dir
+
+    def _last_recorded_turn(self):
+        path = os.path.join(self.dir, 'turns.jsonl')
+        last = 0
+        try:
+            with open(path, encoding='utf-8') as f:
+                for line in f:
+                    line = line.strip()
+                    if not line:
+                        continue
+                    try:
+                        last = max(last, int(json.loads(line).get('turn') or 0))
+                    except (json.JSONDecodeError, TypeError, ValueError):
+                        continue
+        except OSError:
+            pass
+        return last
 
     def build_record(self, *, window_title, obs_dict, obs_raw_dict, assembled, decision,
                      ev_dict, engine):

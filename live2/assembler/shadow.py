@@ -42,7 +42,12 @@ def replay_board(board_id, write=True, verbose=True):
         return None
     asm = Assembler(board_id)
     records = _read_records(turns_path)
-    results = [asm.process_turn(r) for r in records]
+    # pilot records store the CORRECTED observation (that is what the model consumed);
+    # the raw vision read survives as observation_raw -- replay from the raw one, or
+    # re-processing corrected state is a no-op that hides every assembler decision.
+    results = [asm.process_turn(
+        {**r, 'observation': r.get('observation_raw') or r.get('observation')})
+        for r in records]
 
     n_corr = sum(1 for r in results if r.corrections)
     n_quar = sum(1 for r in results for c in r.corrections if 'QUARANTINED' in c)

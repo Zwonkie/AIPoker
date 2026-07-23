@@ -8,6 +8,16 @@
   corrections    -- human-readable list of what changed and why
 
 Rules (v1), in order of trust:
+0. SEAT MAP (carry-over, PRIMARY once one hand is stored): ground truth records every
+   player's ABSOLUTE seat id (hero included), and the client draws the ring rotated so
+   hero sits at the bottom -- so screen slot seat_k = k-th ring seat clockwise
+   (ascending id, circular) from hero. Validated against 958 clean OCR reads across 8
+   tournaments with zero true disagreements (all 65 "mismatches" were OCR typos of the
+   expected name). Names come FROM THE MAP; OCR is demoted to bootstrap (rule 1, first
+   hand only) + a cross-check that surfaces a contradiction if a clean read ever names a
+   DIFFERENT roster player than the map expects. A slot whose expected occupant BUSTED
+   (final_stack 0, or absent from the last completed hand) is force-vacated -- an
+   occupied read there is a stale-pod misread.
 1. ROSTER (carry-over, tournament play): the field is fixed once the tournament starts.
    An occupied seat whose OCR name matches nothing in the roster is handled by SEAT
    IDENTITY STICKINESS (first replay of the JJ session showed why both directions are
@@ -80,6 +90,42 @@ class Assembler:
         self.carry = feeds.CarryOverFeed(self.tournament_id) if self.tournament_id else None
         self.profiles = feeds.opponent_profiles()
         self.seat_identity = {}     # seat_key -> last roster-matched name (sticky)
+        self._map_cache = None      # (last_hand_id, seat map) -- see _seat_map
+
+    def _seat_map(self, last_hand):
+        """{seat_key: {'name', 'alive'}} for screen slots, from ground truth (rule 0).
+        Ring/ownership accumulate over hands up to last_hand (no future leakage in
+        replay); aliveness comes from last_hand itself. {} until a hand is stored."""
+        if not (self.carry and last_hand):
+            return {}
+        if self._map_cache and self._map_cache[0] == last_hand.get('hand_id'):
+            return self._map_cache[1]
+        ring, hero_seat, owner = set(), None, {}
+        for h in self.carry.hands:
+            for p in h.get('players', []):
+                sid = p.get('seat')
+                if sid is None:
+                    continue
+                ring.add(sid)
+                owner[sid] = p['name']
+                if p['name'] == feeds.HERO_NAME:
+                    hero_seat = sid
+            if h.get('hand_id') == last_hand.get('hand_id'):
+                break
+        if hero_seat is None or len(ring) < 2:
+            return {}
+        in_last = {p['name']: p for p in last_hand.get('players', [])}
+        ring = sorted(ring)
+        hi = ring.index(hero_seat)
+        out = {}
+        for j in range(1, len(ring)):
+            name = owner[ring[(hi + j) % len(ring)]]
+            p = in_last.get(name)
+            alive = p is not None and (p.get('final_stack') is None
+                                       or float(p['final_stack']) > 0)
+            out[f'seat_{j}'] = {'name': name, 'alive': alive}
+        self._map_cache = (last_hand.get('hand_id'), out)
+        return out
 
     def process_turn(self, record):
         obs = dict(record.get('observation') or {})
@@ -104,9 +150,51 @@ class Assembler:
                 if p.get('final_stack') is not None:
                     final_stacks[p['name']] = p['final_stack']
 
-        # -- rule 1: roster + sticky seat identity -------------------------------
+        # -- rule 0: seat map from ground truth (primary once a hand is stored) --
+        seat_map = self._seat_map(last_hand)
+        mapped_keys = set()
+        if seat_map:
+            for s in seats:
+                if not s.get('occupied'):
+                    continue
+                key = s['seat_key']
+                nm = (s.get('name') or '').strip()
+                exp = seat_map.get(key)
+                if exp is None:
+                    # authoritative map has NO ring seat for this slot -> phantom pod
+                    self._quarantine(out, s, f"no ring seat maps to this slot ({nm[:24]!r})")
+                    mapped_keys.add(key)
+                    continue
+                if not exp['alive']:
+                    self._quarantine(
+                        out, s, f"mapped occupant {exp['name']!r} busted; stale pod read "
+                                f"({nm[:24]!r})")
+                    mapped_keys.add(key)
+                    continue
+                # cross-check: a CLEAN read naming a different roster player than the map
+                # expects would mean the rotation is off -- surface loudly, keep the map.
+                if nm and _roster_match(nm, roster - {exp['name']}) and \
+                        _roster_match(nm, {exp['name']}) is None:
+                    out.contradictions.append({
+                        'field': f'{key}.name', 'vision': nm, 'seat_map': exp['name'],
+                        'note': 'clean OCR names a different roster player than the '
+                                'seat map -- check ring rotation'})
+                if nm != exp['name']:
+                    s['name'] = exp['name']
+                    out.provenance[f'{key}.name'] = 'carry-over'
+                    if _roster_match(nm, {exp['name']}) is None:
+                        out.corrections.append(
+                            f"{key}: name {nm[:24]!r} set from seat map -> {exp['name']!r}")
+                self.seat_identity[key] = exp['name']
+                mapped_keys.add(key)
+
+        # -- rule 1: roster + sticky seat identity (bootstrap: no stored hand yet) --
+        # pass A: resolve what can be resolved directly (roster match, vision-trust
+        # plausible name, sticky identity); collect the rest for pass B.
+        assigned = set()
+        unresolved = []
         for s in seats:
-            if not s.get('occupied'):
+            if not s.get('occupied') or s['seat_key'] in mapped_keys:
                 continue
             key = s['seat_key']
             nm = (s.get('name') or '').strip()
@@ -114,6 +202,7 @@ class Assembler:
             hit = _roster_match(nm, roster) if roster_authoritative and not is_timer else None
             if hit:
                 self.seat_identity[key] = hit        # identity (re)established, verified
+                assigned.add(hit)
                 if hit != nm:
                     s['name'] = hit
                     out.provenance[f"{key}.name"] = 'carry-over'
@@ -121,16 +210,59 @@ class Assembler:
                 continue
             if not roster_authoritative and not is_timer and _PLAUSIBLE_RE.match(nm):
                 self.seat_identity[key] = nm         # unverified identity (vision-trust mode)
+                assigned.add(nm)
                 continue
             known = self.seat_identity.get(key)
+            if known and last_hand:
+                # sticky identity EXPIRES on proven bust: if carry-over shows this player
+                # finished a completed hand with 0 chips (or vanished from the dealt-in
+                # set while the roster is authoritative), the seat is vacated -- keeping
+                # the repair would hold a dead player in the equity field. (Found on the
+                # first pilot session: orelno27 busted, the vacated seat kept OCR-reading
+                # 'f'+occupied, and a continuous sticky map would have repaired it back
+                # to orelno27 for 50+ turns.)
+                p = next((x for x in last_hand.get('players', []) if x['name'] == known), None)
+                busted = ((p is not None and p.get('final_stack') is not None
+                           and float(p['final_stack']) <= 0)
+                          or (p is None and roster_authoritative))
+                if busted:
+                    self.seat_identity.pop(key, None)
+                    known = None
             if known:
                 # established seat, unreadable/garbage/timer name -> OCR failure over a
                 # REAL player: repair, never drop (dropping = new false fact).
                 s['name'] = known
+                assigned.add(known)
                 out.provenance[f"{key}.name"] = 'sticky-identity'
                 out.corrections.append(
                     f"{key}: unreadable name {nm[:24]!r} repaired to known occupant {known!r}")
-            elif is_timer:
+            else:
+                unresolved.append((s, nm, is_timer))
+
+        # pass B: roster deduction before any quarantine. If EXACTLY ONE occupied seat is
+        # unresolved and EXACTLY ONE not-busted player from the last completed hand is
+        # unaccounted for, that player must be this seat -- repair. (Shadow session #3
+        # showed the gap: seat_3 read as 'f' from the first turn had no sticky identity,
+        # so it was quarantined every turn while the roster plainly had one member with
+        # no seat. The revised JJ adjudication -- 'Tid: 18' WAS real occupant Paul6969 --
+        # is the same shape. A full-accounted roster still quarantines phantoms: zero
+        # candidates means the extra seat is not real.)
+        if unresolved and last_hand:
+            live = {p['name'] for p in last_hand.get('players', [])
+                    if p.get('final_stack') is None or float(p['final_stack']) > 0}
+            candidates = live - assigned - {feeds.HERO_NAME}
+            if len(unresolved) == 1 and len(candidates) == 1:
+                s, nm, _t = unresolved.pop()
+                name = candidates.pop()
+                s['name'] = name
+                self.seat_identity[s['seat_key']] = name
+                assigned.add(name)
+                out.provenance[f"{s['seat_key']}.name"] = 'carry-over'
+                out.corrections.append(
+                    f"{s['seat_key']}: unreadable name {nm[:24]!r} deduced to be {name!r} "
+                    f"(only unassigned live roster player)")
+        for s, nm, is_timer in unresolved:
+            if is_timer:
                 self._quarantine(out, s, f"timer pattern first-registering seat ({nm!r})")
             elif roster_authoritative:
                 self._quarantine(out, s, f"name {nm[:24]!r} not in tournament roster "
