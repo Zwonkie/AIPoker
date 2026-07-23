@@ -447,6 +447,16 @@ three-layer diagnostic, the `flagged/` flow rendered properly).
   warm/"yellowish" non-actor-active case (depor197) once ACTIVE was understood as a 3-colour
   gradient rather than green-only. NOT yet live-table-confirmed.
 
+- 2026-07-23: **"Stop all" release button** (webapp top bar, owner request). `pilotctl.stop_all()`
+  stops the tracked pilot THEN hard-kills any orphaned `live2.pilot`/`--probe` python processes
+  the pidfile doesn't know about (`_all_pilot_pids()` via PowerShell CIM — wmic is gone on Win11)
+  and clears the pidfile → fresh nothing-running state; idempotent. New `POST /api/pilot/stop_all`,
+  always-visible outline-danger button at the left of `#pilot-quick`. Also hardened `stop()`: the
+  graceful `CTRL_BREAK_EVENT` now `except Exception` (was `OSError`) — sending a console ctrl event
+  can raise `SystemError` when the caller has no console, which previously escaped and aborted the
+  stop before the `taskkill /T /F` guarantee. NOTE: the running webapp must be RESTARTED to pick up
+  the new route (routes register at import; static HTML/JS/CSS refresh on browser reload).
+
 ## Open questions (user)
 
 - Web stack sign-off: FastAPI + vanilla JS/htmx (no node toolchain) — OK?

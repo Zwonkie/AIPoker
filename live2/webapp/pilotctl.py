@@ -115,7 +115,10 @@ def stop(grace_s=5.0):
     pid = st['pid']
     try:
         os.kill(pid, signal.CTRL_BREAK_EVENT)       # -> KeyboardInterrupt in the pilot
-    except OSError:
+    except Exception:
+        # Best-effort graceful nudge only. Sending a console ctrl event can fail (e.g.
+        # SystemError when the caller has no attached console); the grace-period +
+        # taskkill /T /F below is the real guarantee, so never let this abort the stop.
         pass
     deadline = time.time() + grace_s
     while time.time() < deadline:
@@ -130,6 +133,45 @@ def stop(grace_s=5.0):
     except OSError:
         pass
     return {'ok': True, 'stopped': pid, 'forced': _pid_alive(pid) is False and None or True}
+
+
+def _all_pilot_pids():
+    """Every python process whose command line runs `live2.pilot` -- the detached pilot
+    AND any in-flight `--probe` child -- regardless of the pidfile. PowerShell CIM (wmic
+    is gone on current Win11). Never matches the webapp itself ('live2.webapp')."""
+    ps = ("Get-CimInstance Win32_Process -Filter \"Name='python.exe' OR "
+          "Name='pythonw.exe'\" | Where-Object { $_.CommandLine -like '*live2.pilot*' } "
+          "| Select-Object -ExpandProperty ProcessId")
+    try:
+        out = subprocess.run(['powershell', '-NoProfile', '-Command', ps],
+                             capture_output=True, text=True, timeout=15,
+                             creationflags=subprocess.CREATE_NO_WINDOW).stdout
+        return [int(x) for x in out.split() if x.strip().isdigit()]
+    except Exception:
+        return []
+
+
+def stop_all(grace_s=5.0):
+    """Full release / return-to-fresh-state: stop the tracked pilot, THEN hard-kill any
+    orphaned pilot-or-probe processes the pidfile doesn't know about, and clear the
+    pidfile. Idempotent and safe to hit when nothing is running (reports 0 killed)."""
+    tracked = stop(grace_s=grace_s)                 # pidfile pilot: CTRL_BREAK -> taskkill /T
+    killed, failed = [], []
+    for pid in _all_pilot_pids():
+        if not _pid_alive(pid):
+            continue
+        try:
+            subprocess.run(['taskkill', '/PID', str(pid), '/T', '/F'],
+                           capture_output=True, timeout=15)
+            (killed if not _pid_alive(pid) else failed).append(pid)
+        except Exception:
+            failed.append(pid)
+    try:
+        os.remove(PIDFILE)
+    except OSError:
+        pass
+    return {'ok': not failed, 'tracked': tracked, 'orphans_killed': killed,
+            'failed': failed}
 
 
 def probe(timeout_s=90):

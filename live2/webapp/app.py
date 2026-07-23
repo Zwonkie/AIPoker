@@ -88,6 +88,13 @@ def api_pilot_stop():
     return JSONResponse(pilotctl.stop())
 
 
+@app.post('/api/pilot/stop_all')
+def api_pilot_stop_all():
+    """Release everything: stop the pilot AND kill any orphaned pilot/probe processes,
+    returning the box to a fresh, nothing-running state."""
+    return JSONResponse(pilotctl.stop_all())
+
+
 @app.post('/api/pilot/probe')
 def api_pilot_probe():
     return JSONResponse(pilotctl.probe())

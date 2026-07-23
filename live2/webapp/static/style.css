@@ -109,6 +109,8 @@ header .feed-badge { margin-left: 12px; }
 .pbtn.go { border-color: var(--accent); color: var(--accent); }
 .pbtn.auto { border-color: var(--warn); color: var(--warn); }
 .pbtn.stop { background: var(--bad); border-color: var(--bad); color: #fff; }
+.pbtn.stopall { border-color: var(--bad); color: var(--bad); font-weight: 700; }
+.pbtn.stopall:hover { background: var(--bad); border-color: var(--bad); color: #fff; }
 .pbtn:disabled { opacity: 0.4; cursor: default; }
 .pbtn.flag { float: right; border-color: var(--warn); color: var(--warn); }
 .pbtn.shadow-clear-btn { float: right; padding: 3px 10px; font-size: 11px; }

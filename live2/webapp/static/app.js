@@ -104,6 +104,21 @@ actBtns('stop').forEach((b) => b.addEventListener('click', async () => {
   await pilotPost('/api/pilot/stop');
   pilotStatus();
 }));
+/* Always-visible hard release: pilot + any orphaned pilot/probe processes -> fresh state. */
+actBtns('stopall').forEach((b) => b.addEventListener('click', async () => {
+  if (!confirm('Stop ALL pilot activity — the pilot plus any probe/orphan processes — ' +
+               'and return to a fresh, nothing-running state?')) return;
+  const t = b.textContent;
+  b.disabled = true; b.textContent = 'Releasing…';
+  const r = await pilotPost('/api/pilot/stop_all');
+  b.disabled = false; b.textContent = t;
+  if (r && r.ok) {
+    const n = (r.orphans_killed || []).length;
+    b.textContent = n ? `Released (+${n})` : 'Released';
+    setTimeout(() => { b.textContent = t; }, 2000);
+  }
+  pilotStatus();
+}));
 actBtns('probe').forEach((b) => b.addEventListener('click', async () => {
   activateTab('pilot');            // result renders in the Pilot tab, wherever it was clicked
   const btns = [...actBtns('probe')];
