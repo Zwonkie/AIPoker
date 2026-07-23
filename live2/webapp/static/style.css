@@ -85,6 +85,26 @@ tr.scope-window td { color: var(--accent); border-bottom-color: var(--line); }
   background: var(--panel2); }
 .flag-item .fi-head { display: flex; gap: 14px; font-size: 13px; margin-bottom: 4px; }
 
+/* pilot control */
+#pilot-ctl { margin-left: auto; display: flex; gap: 6px; align-items: center; }
+header .feed-badge { margin-left: 12px; }
+.pilot-chip { font-size: 12px; padding: 3px 10px; border-radius: 10px; font-weight: 600; }
+.pilot-chip.off { background: var(--panel2); color: var(--dim); border: 1px solid var(--line); }
+.pilot-chip.rec { background: var(--accent); color: #08130d; }
+.pilot-chip.auto { background: var(--warn); color: #201500; }
+.pbtn { font: 600 12px/1 "Segoe UI", system-ui, sans-serif; padding: 6px 12px;
+  border-radius: 6px; border: 1px solid var(--line); background: var(--panel2);
+  color: var(--fg); cursor: pointer; }
+.pbtn:hover { border-color: var(--dim); }
+.pbtn.go { border-color: var(--accent); color: var(--accent); }
+.pbtn.auto { border-color: var(--warn); color: var(--warn); }
+.pbtn.stop { background: var(--bad); border-color: var(--bad); color: #fff; }
+.pbtn:disabled { opacity: 0.4; cursor: default; }
+.pilot-log { background: #0d1114; border: 1px solid var(--line); border-radius: 6px;
+  padding: 8px 10px; margin: 0 0 8px; font: 12px/1.5 Consolas, monospace;
+  color: var(--fg); max-height: 220px; overflow: auto; white-space: pre-wrap; }
+#probe-img { max-width: 100%; border: 1px solid var(--line); border-radius: 6px; }
+
 /* assembler shadow */
 .shadow-turn { display: flex; gap: 10px; font-size: 13px; padding: 3px 0; align-items: baseline; }
 .shadow-turn .st-turn { width: 56px; color: var(--dim); }

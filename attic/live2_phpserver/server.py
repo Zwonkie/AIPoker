@@ -1,4 +1,4 @@
-"""PHPserver WS/JSON API. Localhost only.
+﻿"""PHPserver WS/JSON API. Localhost only.
 
 Protocol: one JSON object per message.
   request:  {"id": <any>, "method": "<name>", "params": {...}}
@@ -27,7 +27,8 @@ import json
 
 import websockets
 
-from live2.phpserver import capture, interact
+from live2.pilot import capture
+from live2.pilot import mouse as interact
 
 HOST, PORT = '127.0.0.1', 8766
 

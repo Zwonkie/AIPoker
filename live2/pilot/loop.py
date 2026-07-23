@@ -28,8 +28,7 @@ from core.live_observation import LiveObservation
 from core.xml_tracker import XMLTracker
 from live2.assembler.assemble import Assembler
 from live2.assembler.shadow import _start_ingest_thread
-from live2.phpserver import capture
-from live2.pilot import actions
+from live2.pilot import actions, capture
 from live2.pilot.recorder import TurnWriter
 
 REF_W, REF_H = 1536, 1090
@@ -94,7 +93,7 @@ class Pilot:
         self.log = log
         self.vision = PokerVision()
         self.evaluator = PokerEvaluator()
-        self.engine = PokerDecisionEngine(game_type='nlh')
+        self._engine = None      # lazy: --probe and startup don't pay the model load
         self.table_state = TableState()
         self.xml_tracker = XMLTracker()
         self.writer = TurnWriter()
@@ -103,6 +102,14 @@ class Pilot:
         self.pending_baseline = None
         self.awaiting_turn_clear = False
         self.last_fingerprint = None
+
+    @property
+    def engine(self):
+        if self._engine is None:
+            self.log('[pilot] loading decision engine ...')
+            self._engine = PokerDecisionEngine(game_type='nlh')
+            self.log(f"[pilot] model: {getattr(self._engine, 'active_model_name', '?')}")
+        return self._engine
 
     # ------------------------------------------------------------------ frame helpers
 
@@ -145,7 +152,8 @@ class Pilot:
 
     def run(self):
         mode = 'AUTO (clicks live)' if self.auto else 'recommend-only'
-        self.log(f"[pilot] model={getattr(self.engine, 'active_model_name', '?')} mode={mode}")
+        self.log(f"[pilot] mode={mode}")
+        _ = self.engine                  # load the model up front, not on the first turn
         _start_ingest_thread()
         hwnd = None
         while True:

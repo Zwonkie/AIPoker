@@ -201,6 +201,23 @@ three-layer diagnostic, the `flagged/` flow rendered properly).
   ROIs (`--probe` exists for this), first real click. Run: `python -m live2.pilot
   [--auto|--probe|--list]`. Do NOT run `live2.assembler --watch` alongside the pilot.
 
+- **PHPSERVER FOLDED INTO PILOT + WEBAPP PROCESS CONTROL (2026-07-23, owner request)**:
+  (a) `live2/phpserver` is gone — `capture.py` and `interact.py` (renamed `mouse.py`)
+  moved into `live2/pilot/` (they are the pilot's eyes/hands; the pilot was their only
+  consumer), the idle :8766 WS wrapper retired to `attic/live2_phpserver/`
+  (deprecate-not-delete; imports repointed, still runnable if a remote/process-split
+  use case returns). (b) The webapp is now the always-on listening service that
+  starts/stops the pilot: `live2/webapp/pilotctl.py` spawns it as a DETACHED subprocess
+  (CREATE_NEW_PROCESS_GROUP|CREATE_NO_WINDOW — webapp restarts never kill a session;
+  pidfile `history/pilot.pid`, log `history/pilot.log`, stop = CTRL_BREAK then
+  taskkill /T /F after 5s). Endpoints `/api/pilot/status|start|stop|probe` +
+  `/api/pilot/probe.png`; header UI = status chip + Probe/Start/AUTO/Stop (AUTO
+  behind a confirm dialog), Pilot panel shows live log tail + probe frame. This is
+  the webapp's ONLY mutation surface — game state stays read-only. Pilot engine load
+  made lazy so Probe skips the torch load. VERIFIED end-to-end via HTTP: start →
+  V48 loaded + ingest thread up + idle (no table open), stop → clean, probe →
+  graceful no-table message.
+
 ## Migration gates
 
 1. **Shadow parity**: assembler runs in shadow alongside PHPHelp for ≥3 real sessions,

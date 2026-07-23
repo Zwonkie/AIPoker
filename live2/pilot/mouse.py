@@ -32,7 +32,7 @@ import time
 
 import pyautogui
 
-from live2.phpserver import capture
+from live2.pilot import capture
 
 pyautogui.FAILSAFE = True
 pyautogui.PAUSE = 0          # we own all pacing; no library-imposed static sleeps

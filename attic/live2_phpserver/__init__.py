@@ -16,3 +16,7 @@ client; PHPserver never interprets what it captures.
 
 Run:  .venv/Scripts/python.exe -m live2.phpserver   (ws://127.0.0.1:8766)
 """
+
+# [ATTIC 2026-07-23] Retired: the pilot imports capture/mouse in-process (live2/pilot/).
+# This WS wrapper is kept runnable for a future remote/process-split use case.
+

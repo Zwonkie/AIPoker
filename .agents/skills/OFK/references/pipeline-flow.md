@@ -162,7 +162,7 @@ One headless process replaces the PHPHelp GUI. Inner LG/LB/LD boxes from §2 are
 ```mermaid
 flowchart TD
     subgraph L2GLOBAL["🌐 GLOBAL — pilot process (python -m live2.pilot)"]
-        L2C["L2-C capture: PrintWindow PW_RENDERFULLCONTENT (live2/phpserver/capture.py) — unfocused-safe, replaces LB1 mss grab; resized to 1536x1090 reference frame"]
+        L2C["L2-C capture: PrintWindow PW_RENDERFULLCONTENT (live2/pilot/capture.py) — unfocused-safe, replaces LB1 mss grab; resized to 1536x1090 reference frame"]
         L2I["L2-I ingest thread: bet365 blob/XML → handhistory store (live2/historydb) — runs inside the pilot"]
         L2W["L2-W webapp :8765 — separate READ-ONLY process tailing turns.jsonl (display only, no play role)"]
     end
@@ -171,7 +171,7 @@ flowchart TD
         L2ASM["L2-ASM assembler pass (live2/assembler/assemble.py): roster/sticky-name repair, stack fill, derived price, rule-2b pot/committed sanity — model consumes the CORRECTED observation [NEW]"]
         L2D["L2-D decide: LD0..LD5 unchanged (core/decision.py through the V45 boundary)"]
         L2R["L2-R recorder (live2/pilot/recorder.py): format-2 turns.jsonl + 'assembler' layer + observation_raw when corrected; decide-once fingerprint (no duplicate re-decides) — replaces LE2"]
-        L2A["L2-A actions --auto only (live2/pilot/actions.py → live2/phpserver/interact.py): Fitts/min-jerk motor model, legacy button geometry client-relative — replaces LE1/ActionExecutor"]
+        L2A["L2-A actions --auto only (live2/pilot/actions.py → live2/pilot/mouse.py): Fitts/min-jerk motor model, legacy button geometry client-relative — replaces LE1/ActionExecutor"]
     end
     L2C --> L2V --> L2ASM --> L2D --> L2R
     L2D --> L2A
@@ -179,8 +179,13 @@ flowchart TD
 ```
 
 **Retired from the live path**: PHPHelp.py (whole GUI shell), core/action_executor.py (superseded by
-the motor model), `live2.assembler --watch` (pilot embeds the assembler — NEVER run both), PHPserver
-:8766 WS server (idle; pilot imports its capture/interact modules in-process).
+the motor model), `live2.assembler --watch` (pilot embeds the assembler — NEVER run both), the
+PHPserver :8766 WS wrapper (→ attic/live2_phpserver/ 2026-07-23; its capture/interact library moved
+INTO the pilot as live2/pilot/capture.py + mouse.py).
+**Process control**: the webapp (:8765) is the always-on service and starts/stops the pilot as a
+DETACHED subprocess — `/api/pilot/start|stop|probe|status` (live2/webapp/pilotctl.py; pidfile
+history/pilot.pid, log history/pilot.log). The ONLY webapp mutation surface; game state stays
+read-only. AUTO start requires an explicit confirm in the UI.
 **New invariant**: L2-ASM corrections happen BEFORE the V45 boundary, so record `observation` =
 what the model consumed; raw vision survives as `observation_raw`.
 

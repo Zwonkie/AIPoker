@@ -1,4 +1,4 @@
-"""Map a decision-engine action string onto humanized clicks (live2.phpserver.interact).
+﻿"""Map a decision-engine action string onto humanized clicks (live2.pilot.mouse).
 
 Geometry is the legacy ActionExecutor's, re-expressed in the CLIENT-relative frame the
 phpserver primitives use. All offsets are calibrated in the 1536x1090 reference layout
@@ -11,7 +11,7 @@ calibrated 2026-07-16: track (1153, 970) -> (1508, 970) at reference size).
 import random
 import time
 
-from live2.phpserver import interact
+from live2.pilot import mouse
 
 # Offsets from the fold-button template anchor (reference 1536x1090), legacy-calibrated.
 _MAIN_OFFSET = {
@@ -53,7 +53,7 @@ def _scale(client_wh):
 
 def execute(hwnd, action_type, fold_xy, client_wh, log=print):
     """Execute one decided action on the real client. Returns True on success. Raises
-    interact.FocusError when the table window cannot be made foreground (never clicks
+    mouse.FocusError when the table window cannot be made foreground (never clicks
     blind) and pyautogui.FailSafeException on the corner-slam abort."""
     base, shortcut, slider = parse_action(action_type)
     if base is None:
@@ -68,16 +68,16 @@ def execute(hwnd, action_type, fold_xy, client_wh, log=print):
             log(f"[pilot.actions] unknown pot shortcut {shortcut!r} -- not clicking")
             return False
         log(f"[pilot.actions] sizing shortcut {shortcut}")
-        interact.click(hwnd, (fx + ox) * sx, (fy + oy) * sy, target_w=_BUTTON_TARGET_W * sx)
+        mouse.click(hwnd, (fx + ox) * sx, (fy + oy) * sy, target_w=_BUTTON_TARGET_W * sx)
         time.sleep(random.uniform(0.15, 0.35))
     elif slider is not None:
         x1, y1, x2, y2 = _SLIDER_TRACK_REF
         track = [x1 * sx, y1 * sy, x2 * sx, y2 * sy]
         log(f"[pilot.actions] slider drag to {slider:.2f} (track {track})")
-        interact.drag_slider(hwnd, track, slider)
+        mouse.drag_slider(hwnd, track, slider)
         time.sleep(random.uniform(0.15, 0.35))
 
     ox, oy = _MAIN_OFFSET[base]
     log(f"[pilot.actions] clicking {base}")
-    interact.click(hwnd, (fx + ox) * sx, (fy + oy) * sy, target_w=_BUTTON_TARGET_W * sx)
+    mouse.click(hwnd, (fx + ox) * sx, (fy + oy) * sy, target_w=_BUTTON_TARGET_W * sx)
     return True

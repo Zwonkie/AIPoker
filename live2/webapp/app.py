@@ -1,8 +1,12 @@
-"""FastAPI app for the view-only dashboard. Localhost bind only.
+"""FastAPI app for the dashboard. Localhost bind only.
 
 Transport: the /ws endpoint pushes a full live snapshot whenever the active session's
 turns.jsonl grows (1s poll of file size -- the assembler will later push directly and
-the poll disappears). REST endpoints serve the browse views. No endpoint mutates state.
+the poll disappears). REST endpoints serve the browse views.
+
+Game state is READ-ONLY. The single mutation surface is /api/pilot/* (live2/webapp/
+pilotctl.py): start/stop/probe of the pilot PROCESS -- the webapp is the always-on
+listening service, the pilot a detached subprocess that survives webapp restarts.
 
 Run:  .venv/Scripts/python.exe -m live2.webapp
 """
@@ -14,7 +18,7 @@ from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 
-from live2.webapp import sources
+from live2.webapp import pilotctl, sources
 
 STATIC = os.path.join(os.path.dirname(__file__), 'static')
 
@@ -62,6 +66,38 @@ def api_flags(limit: int = 50):
 @app.get('/api/shadow')
 def api_shadow(limit: int = 12):
     return JSONResponse(sources.shadow_snapshot(limit=limit))
+
+
+# ------------------------------------------------------------------ pilot control
+
+@app.get('/api/pilot/status')
+def api_pilot_status():
+    st = pilotctl.status()
+    st['log'] = pilotctl.log_tail(30)
+    return JSONResponse(st)
+
+
+@app.post('/api/pilot/start')
+async def api_pilot_start(request: dict = None):
+    mode = (request or {}).get('mode', 'recommend')
+    return JSONResponse(pilotctl.start(mode=mode))
+
+
+@app.post('/api/pilot/stop')
+def api_pilot_stop():
+    return JSONResponse(pilotctl.stop())
+
+
+@app.post('/api/pilot/probe')
+def api_pilot_probe():
+    return JSONResponse(pilotctl.probe())
+
+
+@app.get('/api/pilot/probe.png')
+def api_pilot_probe_png():
+    if not os.path.exists(pilotctl.PROBE_PNG):
+        return JSONResponse({'error': 'no probe frame yet'}, status_code=404)
+    return FileResponse(pilotctl.PROBE_PNG)
 
 
 @app.websocket('/ws')

@@ -17,11 +17,26 @@
       <button data-tab="hands">Hands</button>
       <button data-tab="flags">Flags</button>
     </nav>
+    <div id="pilot-ctl">
+      <span id="pilot-chip" class="pilot-chip off">pilot off</span>
+      <button id="pilot-probe" class="pbtn" title="One capture+vision pass, no decisions">Probe</button>
+      <button id="pilot-start" class="pbtn go" title="Start pilot: records + recommends, no clicks">Start</button>
+      <button id="pilot-auto" class="pbtn auto" title="Start pilot with LIVE CLICKS">AUTO</button>
+      <button id="pilot-stop" class="pbtn stop hidden">Stop</button>
+    </div>
     <div id="feed-status" class="feed-badge stale">no feed</div>
   </header>
 
   <main>
     <section id="tab-live" class="tab active">
+      <div class="panel hidden" id="pilot-panel">
+        <div class="panel-title">Pilot <span id="pilot-mode" class="dim"></span></div>
+        <pre id="pilot-log" class="pilot-log"></pre>
+        <div id="probe-out" class="hidden">
+          <pre id="probe-text" class="pilot-log"></pre>
+          <img id="probe-img" alt="probe frame" src="">
+        </div>
+      </div>
       <div id="live-empty" class="empty">Waiting for a live session&hellip;</div>
       <div id="live-view" class="hidden">
         <div class="live-grid">
