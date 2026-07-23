@@ -48,10 +48,24 @@ def _read_pidfile():
         return None
 
 
+def _table_state():
+    """('at-table', '1171769878') | ('waiting', None) | (None, None), from the newest
+    state-transition line in the pilot log -- the pilot keeps running between tables."""
+    import re
+    for line in reversed(log_tail(300)):
+        if '[pilot] table window:' in line:
+            m = re.search(r'(\d{6,})', line)
+            return 'at-table', (m.group(1) if m else None)
+        if 'table gone' in line or 'waiting for a table window' in line:
+            return 'waiting', None
+    return None, None
+
+
 def status():
     info = _read_pidfile()
     if info and _pid_alive(info.get('pid')):
-        return {'running': True, **info}
+        table, table_id = _table_state()
+        return {'running': True, 'table': table, 'table_id': table_id, **info}
     if info:                                  # stale pidfile (crash / hard kill)
         try:
             os.remove(PIDFILE)

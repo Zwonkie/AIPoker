@@ -36,10 +36,12 @@ REF_W, REF_H = 1536, 1090
 
 
 def find_table_window(title_contains=None):
-    """Best-candidate poker table hwnd: prefers windows whose title carries a >=6-digit
-    tournament id AND a hold'em marker (lobby windows have neither). Windows with an
-    empty client area (closing/minimized table shells) are skipped -- a dead table would
-    otherwise be re-found in a capture-fail loop."""
+    """Best-candidate poker table hwnd. A table title must carry BOTH a >=6-digit
+    tournament id AND a poker marker (hold'em / stakes) -- a long number alone is not
+    enough: an Edge tab titled '8675862017.xml - ... - Microsoft Edge' got captured as
+    the table on the first AUTO session. Windows with an empty client area
+    (closing/minimized table shells) are skipped -- a dead table would otherwise be
+    re-found in a capture-fail loop."""
     wins = capture.list_windows(title_contains)
     best, best_score = None, -1
     for w in wins:
@@ -59,7 +61,7 @@ def find_table_window(title_contains=None):
             if cw <= 0 or ch <= 0:
                 continue
             best, best_score = w, score
-    return (best['hwnd'], best['title']) if best and best_score >= 2 else (None, None)
+    return (best['hwnd'], best['title']) if best and best_score >= 4 else (None, None)
 
 
 def parse_blinds_from_title(title):

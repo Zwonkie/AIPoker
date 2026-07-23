@@ -125,6 +125,17 @@ def flagged_turns(limit=50):
     return out[:limit]
 
 
+def clear_shadow():
+    """Truncate the active board's shadow mirror (display hygiene -- the file is derived
+    output, rebuildable any time with `python -m live2.assembler --replay <board>`)."""
+    board_id, turns_path = latest_board()
+    if not turns_path:
+        return {'ok': False, 'error': 'no active session'}
+    path = os.path.join(os.path.dirname(turns_path), 'shadow_turns.jsonl')
+    open(path, 'w', encoding='utf-8').close()
+    return {'ok': True, 'board_id': board_id}
+
+
 def flag_latest_turn():
     """Mark the newest decided turn of the active session for review (the F12 flow,
     relocated to the webapp). Appends the legacy pointer format to flags.jsonl --

@@ -93,6 +93,12 @@ def api_pilot_probe():
     return JSONResponse(pilotctl.probe())
 
 
+@app.post('/api/shadow/clear')
+def api_shadow_clear():
+    """Truncate the active board's shadow mirror (derived output, rebuildable)."""
+    return JSONResponse(sources.clear_shadow())
+
+
 @app.post('/api/flag')
 def api_flag():
     """Flag the newest decided turn for review (the old F12). Annotation only -- appends

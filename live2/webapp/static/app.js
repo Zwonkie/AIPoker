@@ -59,14 +59,20 @@ async function pilotStatus() {
   const chip = $('#pilot-chip');
   const running = !!st.running;
   chip.className = 'pilot-chip ' + (running ? (st.mode === 'auto' ? 'auto' : 'rec') : 'off');
+  const where = st.table === 'at-table' ? ` · at ${st.table_id || 'table'}`
+    : st.table === 'waiting' ? ' · waiting for table' : '';
   chip.textContent = running
-    ? `pilot ${st.mode === 'auto' ? 'AUTO' : 'recommending'} · pid ${st.pid}`
+    ? `pilot ${st.mode === 'auto' ? 'AUTO' : 'recommending'}${where}`
     : 'pilot off';
+  chip.title = running ? `pid ${st.pid} · started ${st.started}` : '';
   actBtns('start').forEach((b) => b.classList.toggle('hidden', running));
   actBtns('auto').forEach((b) => b.classList.toggle('hidden', running));
   actBtns('stop').forEach((b) => b.classList.toggle('hidden', !running));
   const hasLog = (st.log || []).length > 0;
-  $('#pilot-mode').textContent = running ? `${st.mode} · started ${st.started}` : 'stopped';
+  const whereLong = st.table === 'at-table' ? ` · at table ${st.table_id || ''}`
+    : st.table === 'waiting' ? ' · waiting for a table' : '';
+  $('#pilot-mode').textContent = running
+    ? `${st.mode}${whereLong} · pid ${st.pid} · started ${st.started}` : 'stopped';
   if (hasLog) {
     const log = $('#pilot-log');
     const atEnd = log.scrollTop + log.clientHeight >= log.scrollHeight - 8;
@@ -135,6 +141,11 @@ document.addEventListener('keydown', (e) => {
     e.preventDefault();
     flagTurn();
   }
+});
+
+$('#shadow-clear').addEventListener('click', async () => {
+  await pilotPost('/api/shadow/clear');
+  $('#shadow-list').innerHTML = '<span class="shadow-clean">cleared</span>';
 });
 
 /* assembler shadow (per-turn corrections + provenance) */

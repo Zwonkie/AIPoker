@@ -111,6 +111,7 @@ header .feed-badge { margin-left: 12px; }
 .pbtn.stop { background: var(--bad); border-color: var(--bad); color: #fff; }
 .pbtn:disabled { opacity: 0.4; cursor: default; }
 .pbtn.flag { float: right; border-color: var(--warn); color: var(--warn); }
+.pbtn.shadow-clear-btn { float: right; padding: 3px 10px; font-size: 11px; }
 .pbtn.flag.flagged { background: var(--warn); color: #201500; }
 .pilot-log { background: #0d1114; border: 1px solid var(--line); border-radius: 6px;
   padding: 8px 10px; margin: 0 0 8px; font: 12px/1.5 Consolas, monospace;
