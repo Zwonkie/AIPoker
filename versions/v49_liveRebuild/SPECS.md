@@ -83,6 +83,80 @@ reason string, think history); per-seat opponent profiles (lifetime vs last-100,
 DB); session results; hand replayer over `hands.jsonl`; flag-review queue (screenshot +
 three-layer diagnostic, the `flagged/` flow rendered properly).
 
+## Build log — assembler (2026-07-23)
+
+- **assembler v1 BUILT** (`live2/assembler/`: feeds.py / assemble.py / shadow.py): fuses the
+  recorded vision observation ⊕ carry-over (hand store, joined by tournament id = board_id
+  suffix) ⊕ opponent DB into a corrected LiveObservation with per-field provenance
+  ('carry-over' | 'derived' | 'quarantine' | 'sticky-identity') + surfaced contradictions.
+  v1 rules: aligned ROSTER verification with seat-identity STICKINESS (established seats
+  get garbage/timer names REPAIRED, never dropped; timer names can never first-register);
+  unread stacks filled from prev-hand finals minus committed; unknown prices DERIVED from
+  street bet level (never encoded free, `call_amount_known` stays False); blind level
+  cross-check. Replay-first: `python -m live2.assembler --replay <board_id>` runs any
+  recorded session and writes `shadow_turns.jsonl`; the same `process_turn` will tail the
+  live file in shadow mode. Replay hardening found+fixed three v1 defects: future-blind
+  carry-over alignment (blob `start_utc_ms` vs XML `start_local` normalized to epoch);
+  roster authority gating (a sparse store must not quarantine early-busted-unknown real
+  players); vision-trust mode with unverified identities when no hand has completed yet.
+- **Validated on the flagged JJ session** (96 turns, 44 ground-truth hands): catches every
+  timer-name corruption (chronic: ~170 raw instances), repairs `leh369`→`Jeh369` OCR noise,
+  isolates real blind-level transitions, surfaces a genuine price contradiction (turn 73:
+  vision 465 vs derived 150), fills an unread stack from carry-over. 8-session breadth
+  replay: 0 false quarantines after hardening.
+- **DIAGNOSIS REVISION (JJ fold, turn 10)**: ground-truth adjudication shows `Tid: 18` was
+  seat_3's REAL occupant Paul6969 (dealt in, limped, later bet flop) and the observation's
+  4-active-opponent count was CORRECT at hero's decision — the phantom-seat count-inflation
+  story does NOT hold for this turn. The equity 0.38 was computed on correct inputs, which
+  points the too-tight JJ fold at the known MULTIWAY EQUITY DEPRESSION thread
+  (v42_liveFixes round 2) instead. The two live hotfixes remain valid defenses (timer text
+  chronically pollutes names), but the root cause moves.
+
+- **live shadow mode BUILT** (`--watch`, 2026-07-23): tails the newest board's turns.jsonl,
+  processes each turn as it lands (partial-write safe), appends shadow_turns.jsonl, prints
+  corrections/contradictions live. Verified by drip-feed test: 20/20 turns, corrections
+  byte-identical to batch replay, JJ repair fires in live mode. This is the process that
+  runs alongside PHPHelp for the gate-1 shadow sessions.
+- **OCR self-validation BUILT** (`selfcheck.py`, gate 2, 2026-07-23): post-hand diff of
+  recorded observations vs the completed hand's ground truth (hero cards, board prefix,
+  blind level, seat names vs dealt-in set, hero stack vs blob per-action `stack_before`
+  with minor-timing/MAJOR severity). Turn→hand grouping is time-window BOUNDED (first dry
+  run showed a sparse store otherwise maps unrelated turns onto its one hand). First
+  corpus run over 12 recorded sessions: **110 entries in history/vision_regression.jsonl**
+  — dominated by hero_stack MAJORs (stale reads, e.g. 1125 vs truth 2180) and seat_name
+  timer corruptions; cards/board/blinds essentially clean on dense sessions.
+
+- **shadow-session wiring COMPLETE (2026-07-23 morning)**: `--watch` now runs the blob
+  ingester as an internal daemon thread (SPECS design: carry-over/roster stay fresh
+  MID-session; ingest failure degrades, never kills the watch). Webapp gained
+  `/api/shadow` + an "Assembler shadow" panel in the Live tab (per-turn corrections with
+  provenance badges — quarantine/sticky/carry-over/derived — contradictions highlighted,
+  clean turns confirmed). Board-ranking rule UNIFIED between watcher and webapp
+  (turns.jsonl mtime, not dir mtime — appends don't touch the dir and sibling shadow
+  files perturb it). BOTH PROCESSES ARMED and agreeing on the followed board; gate-1
+  shadow data collection starts with the next real session.
+
+- **SHADOW SESSION #1 COMPLETE (2026-07-23 morning, 2 DoN tables, 60 turns)**: first real
+  gate-1 data. Assembler behavior on live play: sticky-identity repaired every timer/garbage
+  name over real occupants ('4'→TavGameDev, '4\n4'→Aleks888bum, fuzzy Diuk123→Djuk123),
+  ZERO false quarantines, 5 correct big-blind level-change contradictions, 3 carry-over
+  stack fills. Selfcheck vs ground truth: cards/board/blinds/seat-names ALL CLEAN both
+  boards; **hero_stack is the weak field** — 26 diffs, mostly ≤2bb posting-timing offsets
+  but 3 MAJOR misreads (970 read as 380; 720 read as 15; 900 read as 735). NEW assembler
+  rule 2b from this: `hero_committed > pot_size` is an impossible state (verified the pot
+  display includes current-street bets) produced by pot misreads, stack misreads absorbed
+  by the legacy committed tracker, or the tracker carrying corrupt state across hand
+  boundaries (committed frozen at 1040 on a fresh preflop, board 1171684621 t60-63).
+  Flags as a composite contradiction with evidence attached, no guessed repair —
+  in-stream attribution is provably unreliable (stack+committed reconstructs the
+  tracker's own start by construction). Dry-run over 9 recent boards: fires on ~6% of
+  turns, catches every selfcheck MAJOR. Also fixed: watcher restart duplicated shadow
+  files (append→truncate on follow, shadow_turns.jsonl is a 1:1 mirror again).
+  Legacy-pipeline implication: ~6% of live model inputs carry an impossible
+  pot/committed state — strongest quantified argument yet for the assembler handover.
+  Session outcome: hero bubbled both DoNs (4 left, top 3 paid), 0 F12 flags.
+  **Gate-1 tally: 1 of ≥3 sessions.**
+
 ## Migration gates
 
 1. **Shadow parity**: assembler runs in shadow alongside PHPHelp for ≥3 real sessions,

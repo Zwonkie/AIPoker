@@ -27,7 +27,11 @@ def _board_dirs():
     for d in glob.glob(os.path.join(HISTORY, '*')):
         if os.path.isdir(d) and os.path.exists(os.path.join(d, 'turns.jsonl')):
             out.append(d)
-    return sorted(out, key=os.path.getmtime, reverse=True)
+    # Rank by turns.jsonl mtime, NOT directory mtime: appends don't touch the dir, and
+    # sibling files (shadow_turns.jsonl, flags) do -- dir mtime picks the wrong "latest"
+    # board. Same rule as the assembler watcher, so both always follow the same session.
+    return sorted(out, key=lambda d: os.path.getmtime(os.path.join(d, 'turns.jsonl')),
+                  reverse=True)
 
 
 def latest_board():
@@ -78,6 +82,20 @@ def live_snapshot():
         'turn': records[-1] if records else None,
         'turn_count': len(records),
     }
+
+
+def shadow_snapshot(limit=12):
+    """Latest board's assembler shadow output (shadow_turns.jsonl): the newest `limit`
+    assembled turns, newest LAST. Empty when no shadow watcher is running for the board."""
+    board_id, turns_path = latest_board()
+    if not board_id:
+        return {'board_id': None, 'turns': []}
+    path = os.path.join(os.path.dirname(turns_path), 'shadow_turns.jsonl')
+    turns = []
+    if os.path.exists(path):
+        records, _ = read_turns(path)
+        turns = records[-limit:]
+    return {'board_id': board_id, 'active': os.path.exists(path), 'turns': turns}
 
 
 def flagged_turns(limit=50):

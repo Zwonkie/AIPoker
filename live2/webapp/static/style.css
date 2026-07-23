@@ -84,3 +84,15 @@ tr.scope-window td { color: var(--accent); border-bottom-color: var(--line); }
 .flag-item { border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; margin: 8px 0;
   background: var(--panel2); }
 .flag-item .fi-head { display: flex; gap: 14px; font-size: 13px; margin-bottom: 4px; }
+
+/* assembler shadow */
+.shadow-turn { display: flex; gap: 10px; font-size: 13px; padding: 3px 0; align-items: baseline; }
+.shadow-turn .st-turn { width: 56px; color: var(--dim); }
+.prov-badge { font-size: 10px; padding: 1px 6px; border-radius: 4px; margin-right: 6px;
+  text-transform: uppercase; letter-spacing: 0.02em; }
+.prov-badge.quarantine { background: var(--bad); color: #fff; }
+.prov-badge.sticky-identity { background: var(--warn); color: #201500; }
+.prov-badge.carry-over { background: var(--accent); color: #08130d; }
+.prov-badge.derived { background: #4a90d9; color: #fff; }
+.shadow-contra { color: var(--warn); }
+.shadow-clean { color: var(--dim); }

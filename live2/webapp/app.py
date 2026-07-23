@@ -59,6 +59,11 @@ def api_flags(limit: int = 50):
     return JSONResponse(sources.flagged_turns(limit=limit))
 
 
+@app.get('/api/shadow')
+def api_shadow(limit: int = 12):
+    return JSONResponse(sources.shadow_snapshot(limit=limit))
+
+
 @app.websocket('/ws')
 async def ws_live(ws: WebSocket):
     """Push the latest turn record whenever the active session's file grows, and a

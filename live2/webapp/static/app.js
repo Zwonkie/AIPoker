@@ -37,10 +37,60 @@ let lastMsgTime = 0;
 
 function connectWS() {
   const ws = new WebSocket(`ws://${location.host}/ws`);
-  ws.onmessage = (ev) => { lastMsgTime = Date.now(); renderLive(JSON.parse(ev.data)); };
+  ws.onmessage = (ev) => {
+    lastMsgTime = Date.now();
+    renderLive(JSON.parse(ev.data));
+    loadShadow();
+  };
   ws.onclose = () => setTimeout(connectWS, 2000);
 }
 connectWS();
+
+/* assembler shadow (per-turn corrections + provenance) */
+const PROV_LABEL = {
+  'quarantine': 'quarantine', 'sticky-identity': 'sticky', 'carry-over': 'carry-over',
+  'derived': 'derived',
+};
+async function loadShadow() {
+  let data;
+  try { data = await (await fetch('/api/shadow')).json(); } catch { return; }
+  const status = $('#shadow-status');
+  const list = $('#shadow-list');
+  if (!data.active) { status.textContent = 'not running'; return; }
+  status.textContent = `active · ${data.board_id}`;
+  list.classList.remove('dim');
+  list.innerHTML = '';
+  const turns = (data.turns || []).slice().reverse();
+  if (!turns.length) { list.innerHTML = '<span class="dim">no turns yet</span>'; return; }
+  turns.forEach((t) => {
+    const row = document.createElement('div');
+    row.className = 'shadow-turn';
+    let html = `<span class="st-turn">turn ${t.turn}</span><span>`;
+    const provOf = (text) => {
+      for (const [field, src] of Object.entries(t.provenance || {})) {
+        if (text.startsWith(field.split('.')[0])) return src;
+      }
+      return null;
+    };
+    if ((t.corrections || []).length === 0 && (t.contradictions || []).length === 0) {
+      html += '<span class="shadow-clean">clean — vision confirmed</span>';
+    } else {
+      html += (t.corrections || []).map((c) => {
+        const src = provOf(c);
+        const badge = src ? `<span class="prov-badge ${src}">${PROV_LABEL[src] || src}</span>` : '';
+        return `${badge}${c}`;
+      }).join('<br>');
+      if ((t.contradictions || []).length) {
+        if ((t.corrections || []).length) html += '<br>';
+        html += (t.contradictions || []).map((c) =>
+          `<span class="shadow-contra">⚠ ${c.field}: vision=${c.vision} vs ${c.derived ?? c.carry_over} (${c.note})</span>`
+        ).join('<br>');
+      }
+    }
+    row.innerHTML = html + '</span>';
+    list.appendChild(row);
+  });
+}
 setInterval(() => {
   const badge = $('#feed-status');
   const age = (Date.now() - lastMsgTime) / 1000;
