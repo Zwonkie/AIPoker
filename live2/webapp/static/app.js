@@ -134,6 +134,9 @@ actBtns('probe').forEach((b) => b.addEventListener('click', async () => {
 }));
 setInterval(pilotStatus, 3000);
 pilotStatus();
+// Opponent-profile cache for the live seat mini-stats (independent of the Opponents tab).
+refreshOppStats();
+setInterval(refreshOppStats, 20000);
 
 /* ---------------------------------------------------------------- flag turn (old F12) */
 async function flagTurn() {
@@ -223,6 +226,32 @@ setInterval(() => {
 
 function bb(v, big) { return big ? (v / big).toFixed(1) + 'bb' : v; }
 
+/* Opponent-profile cache (name -> profile), joined into the live seat cards. Refreshed
+   independently of the Opponents tab so the mini-stats line is populated on the Live view.
+   The 3 stats shown are the most telling ones NOT already encoded by the VPIP/AGG dots:
+   PFR (preflop aggression), 3Bet% (re-raise tendency), WTSD% (showdown/station tendency). */
+let oppStatsByName = {};
+async function refreshOppStats() {
+  try {
+    const data = await (await fetch('/api/opponents?window=100&min_hands=1')).json();
+    const m = {};
+    (data.players || []).forEach((p) => { m[p.name] = p; });
+    oppStatsByName = m;
+  } catch { /* keep last cache on a transient failure */ }
+}
+function statsLine(name) {
+  const p = name ? oppStatsByName[name] : null;
+  const s = p && p.lifetime;
+  if (!s || !s.hands) return '<div class="stats none">no reads yet</div>';
+  const cell = (k, v, d) => {
+    const val = fmtN(v, d);
+    return `<span class="st"><i>${k}</i>${val === '—' ? val : val + '%'}</span>`;
+  };
+  return `<div class="stats" title="${s.hands} hands in store">` +
+    cell('PFR', s.pfr, 0) + cell('3B', s.threebet, 1) + cell('WTSD', s.wtsd, 0) +
+    '</div>';
+}
+
 function renderLive(snap) {
   const t = snap.turn;
   if (!t) return;
@@ -239,18 +268,22 @@ function renderLive(snap) {
 
   const seats = $('#seats');
   seats.innerHTML = '';
-  const hero = document.createElement('div');
-  hero.className = 'seat hero';
-  hero.innerHTML =
-    `<div class="nm">Hero ${obs.hero_is_small_blind ? '<span class="blind-tag">SB</span>' : ''}` +
-    `${obs.hero_is_big_blind ? '<span class="blind-tag">BB</span>' : ''}` +
-    `${obs.hero_position === 0 ? '<span class="blind-tag">BU</span>' : ''}</div>` +
-    `<div class="sub">stack ${bb(obs.hero_stack, big)} · in ${bb(obs.hero_committed, big)} · pos ${obs.hero_position}</div>`;
-  seats.appendChild(hero);
-  (obs.seats || []).forEach((s) => {
-    if (!s.occupied) return;
+  // Fixed 3x3 table mirror: every seat_key keeps its physical cell (CSS .pos-*), so a
+  // vacated seat leaves a dashed "empty" placeholder instead of the others reflowing.
+  // Hero is pinned to the lower-centre cell. The board/pot occupies the true centre and
+  // is shown above, so that cell stays blank.
+  const byKey = {};
+  (obs.seats || []).forEach((s) => { byKey[s.seat_key] = s; });
+  ['seat_1', 'seat_2', 'seat_3', 'seat_4', 'seat_5'].forEach((key) => {
+    const s = byKey[key];
     const el = document.createElement('div');
-    el.className = 'seat' + (s.is_active ? '' : ' folded');
+    if (!s || !s.occupied) {
+      el.className = `seat empty pos-${key}`;
+      el.textContent = 'empty';
+      seats.appendChild(el);
+      return;
+    }
+    el.className = `seat pos-${key}` + (s.is_active ? '' : ' folded');
     el.innerHTML =
       `<div class="nm"><span class="dot ${s.vpip_color || 'none'}" title="VPIP ${s.vpip_color || '?'}"></span>` +
       `<span class="dot ${s.agg_color || 'none'}" title="AGG ${s.agg_color || '?'}"></span>` +
@@ -258,10 +291,20 @@ function renderLive(snap) {
       `${s.is_small_blind ? '<span class="blind-tag">SB</span>' : ''}` +
       `${s.is_big_blind ? '<span class="blind-tag">BB</span>' : ''}` +
       `${s.position === 0 ? '<span class="blind-tag">BU</span>' : ''}</div>` +
-      `<div class="sub">${s.state_label} · stack ${bb(s.stack, big)} · in ${bb(s.committed, big)}` +
-      `${s.raised_this_street ? ' · raised' : ''}</div>`;
+      `<div class="sub">stack ${bb(s.stack, big)} · in ${bb(s.committed, big)}` +
+      `${s.raised_this_street ? ' · raised' : ''}</div>` +
+      statsLine(s.name);
     seats.appendChild(el);
   });
+  const hero = document.createElement('div');
+  hero.className = 'seat hero';
+  hero.innerHTML =
+    `<div class="nm">Hero ${obs.hero_is_small_blind ? '<span class="blind-tag">SB</span>' : ''}` +
+    `${obs.hero_is_big_blind ? '<span class="blind-tag">BB</span>' : ''}` +
+    `${obs.hero_position === 0 ? '<span class="blind-tag">BU</span>' : ''}</div>` +
+    `<div class="sub">stack ${bb(obs.hero_stack, big)} · in ${bb(obs.hero_committed, big)} · pos ${obs.hero_position}</div>` +
+    statsLine(obs.hero_name || 'Zwonkie');
+  seats.appendChild(hero);
 
   const ev = t.evaluation || {};
   $('#model-name').textContent = ev.model || '';
