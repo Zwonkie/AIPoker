@@ -40,6 +40,18 @@ MIN_H, MAX_H = 10, 32
 MIN_W, MAX_W = 2, 26
 SEP_MAX_H_FRAC = 0.55          # a component this much shorter than the digit line = separator
 
+# Live-read acceptance gates, tuned on board_samples (2026-07-23): every wrong read in
+# the corpus fails at least one -- 4595-for-4505 (0-vs-9) had margin 0.023, 710-for-740
+# (4-vs-1) scored 0.25 -- while every correct read passes both. A failed gate = ABSTAIN
+# (TableState keeps its last value), never a guess.
+READ_MAX_DIST = 0.24           # worst per-glyph XOR distance allowed
+READ_MIN_MARGIN = 0.03         # best-vs-second-best distance separation required
+
+
+def accept(text, worst, margin):
+    """The one gate the live reader applies to a read_number() result."""
+    return text is not None and worst <= READ_MAX_DIST and margin >= READ_MIN_MARGIN
+
 
 def money_rois(record):
     """[(roi_key, (x, y, w, h), label_int)] for one turn record."""
@@ -64,9 +76,18 @@ def money_rois(record):
 
 
 def binarize(crop_bgr):
+    """Percentile contrast-stretch then FIXED 55% threshold. Not Otsu: Otsu is invariant
+    to the stretch and on dim FOLDED pods (gray digits on dark gray) it either drowns the
+    glyphs or merges them -- measured on board_samples, Otsu read a merged '1240' as a
+    confident '12' while this variant reads all four digits, and it recovers folded-pod
+    stacks legacy OCR returned garbage for. Near-flat crops (no text) return empty."""
     gray = cv2.cvtColor(crop_bgr, cv2.COLOR_BGR2GRAY) if crop_bgr.ndim == 3 else crop_bgr
-    _thr, binimg = cv2.threshold(gray, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
-    # glyphs must be the minority-bright class; if Otsu inverted (bright pod), flip
+    p_lo, p_hi = np.percentile(gray, (5, 99.5))
+    if p_hi - p_lo < 10:
+        return np.zeros_like(gray)
+    stretched = np.clip((gray.astype(np.float32) - p_lo) * (255.0 / (p_hi - p_lo)), 0, 255)
+    binimg = (stretched >= 0.55 * 255).astype(np.uint8) * 255
+    # glyphs must be the minority-bright class; flip if the pod itself is bright
     if np.count_nonzero(binimg) > binimg.size * 0.5:
         binimg = 255 - binimg
     return binimg
@@ -183,27 +204,47 @@ def build_templates(samples):
     return templates
 
 
-def read_number(binimg, templates):
-    """Template-read a binarized money ROI -> (string, min_score). Score per glyph =
+def read_number(binimg, templates, max_stray_frac=0.10):
+    """Template-read a binarized money ROI -> (string, worst_score). Score per glyph =
     normalized XOR distance in [0,1] after resize to the template box; lower = better.
-    This is the same reader the live path will use; abstention = high min_score."""
-    digits, _seps = segment(binimg)
+    This is the same reader the live path will use; abstention = high worst_score.
+
+    INK-COMPLETENESS GUARD: ink inside the digit line band that no segmented box claims
+    means glyphs were dropped (merged past the width filter, broken strokes) -- reading
+    the survivors yields a confidently WRONG number ('1240' -> '12'; a lone noise blob
+    -> '7'). More than max_stray_frac unclaimed ink = abstain."""
+    digits, seps = segment(binimg)
     if not digits:
-        return None, 1.0
-    out, worst = [], 0.0
+        return None, 1.0, 0.0
+    y0 = min(b[1] for b in digits)
+    y1 = max(b[1] + b[3] for b in digits)
+    covered = np.zeros(binimg.shape, dtype=bool)
+    for x, y, w, h in digits + seps:
+        covered[y:y + h, x:x + w] = True
+    band = np.zeros(binimg.shape, dtype=bool)
+    band[max(0, y0 - 2):y1 + 2, :] = True
+    total = int(np.count_nonzero((binimg > 0) & band))
+    stray = int(np.count_nonzero((binimg > 0) & band & ~covered))
+    if total and stray / total > max_stray_frac:
+        return None, 1.0, 0.0
+
+    out, worst, min_margin = [], 0.0, 1.0
     for box in digits:
         g = glyph(binimg, box)
-        best_ch, best_d = None, 1.0
+        best_ch, best_d, second_d = None, 1.0, 1.0
         for ch, tpl in templates.items():
             if ch == 'sep':
                 continue
             gr = cv2.resize(g, (tpl.shape[1], tpl.shape[0]), interpolation=cv2.INTER_NEAREST)
             d = float(np.count_nonzero(gr != tpl)) / tpl.size
             if d < best_d:
-                best_ch, best_d = ch, d
+                best_ch, best_d, second_d = ch, d, best_d
+            elif d < second_d:
+                second_d = d
         out.append(best_ch or '?')
         worst = max(worst, best_d)
-    return ''.join(out), worst
+        min_margin = min(min_margin, second_d - best_d)
+    return ''.join(out), worst, min_margin
 
 
 def validate(pairs, templates):
@@ -226,14 +267,14 @@ def validate(pairs, templates):
             if len(digits) != len(str(label)):
                 unlabelable += 1
                 continue
-            got, score = read_number(binimg, templates)
+            got, score, margin = read_number(binimg, templates)
             if got == str(label):
                 ok += 1
             else:
                 bad += 1
                 mism.append({'id': (path, key), 'src': os.path.basename(os.path.dirname(path)),
                              'roi': key, 'label': label, 'read': got,
-                             'score': round(score, 3)})
+                             'score': round(score, 3), 'margin': round(margin, 3)})
     return ok, bad, unlabelable, mism
 
 

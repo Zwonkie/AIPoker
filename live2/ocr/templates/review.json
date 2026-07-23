@@ -7,7 +7,7 @@
     "3": 17,
     "9": 7,
     "0": 20,
-    "sep": 24,
+    "sep": 27,
     "4": 4,
     "5": 13,
     "7": 14,
@@ -25,112 +25,128 @@
         "roi": "seat_1_stack",
         "label": 1450,
         "read": "1440",
-        "score": 0.129
+        "score": 0.101,
+        "margin": 0.2
       },
       {
         "src": "turn_10_20260722_181100",
         "roi": "seat_2_stack",
         "label": 1178,
         "read": "1278",
-        "score": 0.128
+        "score": 0.149,
+        "margin": 0.111
       },
       {
         "src": "turn_33_20260722_182052",
         "roi": "hero_stack",
         "label": 255,
         "read": "335",
-        "score": 0.083
+        "score": 0.116,
+        "margin": 0.139
       },
       {
         "src": "turn_15_20260722_202017",
         "roi": "seat_5_stack",
         "label": 1466,
         "read": "1661",
-        "score": 0.092
+        "score": 0.179,
+        "margin": 0.072
       },
       {
         "src": "turn_13_20260723_112418",
         "roi": "seat_3_stack",
         "label": 5,
         "read": "0",
-        "score": 0.092
+        "score": 0.037,
+        "margin": 0.142
       },
       {
         "src": "turn_13_20260723_112420",
         "roi": "seat_3_stack",
         "label": 5,
         "read": "0",
-        "score": 0.092
+        "score": 0.037,
+        "margin": 0.142
       },
       {
         "src": "turn_13_20260723_112424",
         "roi": "seat_3_stack",
         "label": 5,
         "read": "0",
-        "score": 0.092
+        "score": 0.037,
+        "margin": 0.142
       },
       {
         "src": "turn_2_20260723_113358",
         "roi": "hero_stack",
         "label": 2135,
         "read": "1420",
-        "score": 0.121
+        "score": 0.126,
+        "margin": 0.145
       },
       {
         "src": "turn_2_20260723_113358",
         "roi": "seat_1_stack",
         "label": 3025,
         "read": "1250",
-        "score": 0.136
+        "score": 0.137,
+        "margin": 0.154
       },
       {
         "src": "turn_2_20260723_113358",
         "roi": "seat_2_stack",
         "label": 1550,
         "read": "1480",
-        "score": 0.154
+        "score": 0.227,
+        "margin": 0.048
       },
       {
         "src": "turn_2_20260723_113358",
         "roi": "seat_5_stack",
         "label": 1790,
         "read": "1500",
-        "score": 0.158
+        "score": 0.104,
+        "margin": 0.08
       },
       {
         "src": "Double_Or_Nothing_1171768566",
         "roi": "seat_3_stack",
         "label": 5,
         "read": "0",
-        "score": 0.092
+        "score": 0.037,
+        "margin": 0.142
       },
       {
         "src": "Double_Or_Nothing_1171771668",
         "roi": "hero_stack",
         "label": 1185,
         "read": "1170",
-        "score": 0.129
+        "score": 0.075,
+        "margin": 0.189
       },
       {
         "src": "Double_Or_Nothing_1171771668",
         "roi": "seat_1_stack",
         "label": 2073,
         "read": "2058",
-        "score": 0.079
+        "score": 0.137,
+        "margin": 0.154
       },
       {
         "src": "Double_Or_Nothing_1171771668",
         "roi": "seat_2_stack",
         "label": 930,
         "read": "915",
-        "score": 0.15
+        "score": 0.147,
+        "margin": 0.125
       },
       {
         "src": "Double_Or_Nothing_1171771668",
         "roi": "seat_4_stack",
         "label": 467,
         "read": "377",
-        "score": 0.062
+        "score": 0.15,
+        "margin": 0.061
       }
     ]
   }
