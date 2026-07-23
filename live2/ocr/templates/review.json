@@ -1,7 +1,7 @@
 {
   "frames": 31,
-  "rois_used": 49,
-  "rois_skipped": 18,
+  "rois_used": 60,
+  "rois_skipped": 7,
   "samples": {
     "1": 22,
     "3": 17,
@@ -13,12 +13,20 @@
     "7": 14,
     "8": 6,
     "6": 2,
-    "2": 14
+    "2": 14,
+    "p5": 4,
+    "p0": 5,
+    "p4": 0,
+    "p6": 4,
+    "p1": 0,
+    "p3": 0,
+    "p8": 1,
+    "p2": 1
   },
   "validation": {
-    "ok": 33,
-    "bad": 16,
-    "unlabelable": 18,
+    "ok": 38,
+    "bad": 22,
+    "unlabelable": 7,
     "mismatches": [
       {
         "src": "turn_10_20260722_181100",
@@ -37,12 +45,28 @@
         "margin": 0.111
       },
       {
+        "src": "turn_10_20260722_181100",
+        "roi": "pot",
+        "label": 50,
+        "read": "65",
+        "score": 0.0,
+        "margin": 0.006
+      },
+      {
         "src": "turn_33_20260722_182052",
         "roi": "hero_stack",
         "label": 255,
         "read": "335",
         "score": 0.116,
         "margin": 0.139
+      },
+      {
+        "src": "turn_33_20260722_182052",
+        "roi": "pot",
+        "label": 400,
+        "read": "650",
+        "score": 0.369,
+        "margin": 0.006
       },
       {
         "src": "turn_15_20260722_202017",
@@ -109,12 +133,36 @@
         "margin": 0.08
       },
       {
+        "src": "turn_2_20260723_113358",
+        "roi": "pot",
+        "label": 165,
+        "read": "605",
+        "score": 0.378,
+        "margin": 0.006
+      },
+      {
+        "src": "turn_1_20260723_121810",
+        "roi": "pot",
+        "label": 110,
+        "read": "005",
+        "score": 0.378,
+        "margin": 0.007
+      },
+      {
         "src": "Double_Or_Nothing_1171768566",
         "roi": "seat_3_stack",
         "label": 5,
         "read": "0",
         "score": 0.037,
         "margin": 0.142
+      },
+      {
+        "src": "Double_Or_Nothing_1171769878",
+        "roi": "pot",
+        "label": 380,
+        "read": "260",
+        "score": 0.26,
+        "margin": 0.006
       },
       {
         "src": "Double_Or_Nothing_1171771668",
@@ -147,6 +195,14 @@
         "read": "377",
         "score": 0.15,
         "margin": 0.061
+      },
+      {
+        "src": "Double_Or_Nothing_1171772602",
+        "roi": "pot",
+        "label": 110,
+        "read": "005",
+        "score": 0.378,
+        "margin": 0.007
       }
     ]
   }

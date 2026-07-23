@@ -33,7 +33,10 @@ OUT = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'templates')
 # geometry mirrored from core/vision.py (1536x1090 reference frame)
 CENTERS = {'seat_1': (320, 757), 'seat_2': (196, 306), 'seat_3': (767, 180),
            'seat_4': (1340, 306), 'seat_5': (1213, 757), 'hero': (767, 837)}
-POT_ROI = (700, 365, 160, 45)
+# Pot line is a fixed element anchored to the window center (owner, 2026-07-23): text
+# "Pulje: <amount>" centered on x=768 at y~385. Wider than the legacy ROI so long
+# amounts never clip; the label is handled by the trailing-suffix read, not the crop.
+POT_ROI = (628, 363, 280, 46)
 
 # glyph geometry filters (reference-frame font)
 MIN_H, MAX_H = 10, 32
@@ -124,6 +127,31 @@ def glyph(binimg, box):
     return binimg[y:y + h, x:x + w]
 
 
+def find_colon(seps):
+    """The pot line's 'Pulje:' colon segments as two tiny boxes vertically stacked at the
+    same x (measured signature, e.g. 2x3 @ (133,19) + 3x3 @ (133,27)). -> right edge x of
+    the rightmost such pair, or None. The colon is the ONLY safe label/amount boundary --
+    per-glyph match failure is not one (truncated '2021'->'21' incident)."""
+    best = None
+    for i, (x1, y1, w1, h1) in enumerate(seps):
+        for x2, y2, w2, h2 in seps[i + 1:]:
+            if abs(x1 - x2) <= 3 and 2 <= abs((y1 + h1 / 2) - (y2 + h2 / 2)) <= 14:
+                edge = max(x1 + w1, x2 + w2)
+                if best is None or edge > best:
+                    best = edge
+    return best
+
+
+def pot_amount_boxes(binimg):
+    """Digit boxes of the pot AMOUNT (right of the colon). -> (boxes, ok). ok=False when
+    no colon is found -- the caller must abstain, never guess a boundary."""
+    digits, seps = segment(binimg)
+    colon_x = find_colon(seps)
+    if colon_x is None:
+        return [], False
+    return [b for b in digits if b[0] > colon_x], True
+
+
 def collect_frames():
     """[(frame_path, record)] -- every frame paired with its own turn record."""
     pairs = []
@@ -172,16 +200,24 @@ def harvest(pairs):
             if crop.size == 0:
                 continue
             binimg = binarize(crop)
-            digits, seps = segment(binimg)
             text = str(label)
-            if len(digits) != len(text):
+            if key == 'pot':
+                # pot renders in its OWN (smaller) font -> separate 'p<d>' template
+                # classes, and only colon-anchored amount glyphs are harvested
+                boxes, ok = pot_amount_boxes(binimg)
+                prefix = 'p'
+                seps = []
+            else:
+                boxes, seps = segment(binimg)
+                ok, prefix = True, ''
+            if not ok or len(boxes) != len(text):
                 skipped += 1
                 continue
             used += 1
             frame_id = (path, key)             # unique identity for the cleaning pass
-            for ch, box in zip(text, digits):
-                samples.setdefault(ch, []).append({'img': glyph(binimg, box), 'id': frame_id,
-                                                   'roi': key, 'label': label})
+            for ch, box in zip(text, boxes):
+                samples.setdefault(prefix + ch, []).append(
+                    {'img': glyph(binimg, box), 'id': frame_id, 'roi': key, 'label': label})
             for box in seps:
                 samples.setdefault('sep', []).append({'img': glyph(binimg, box), 'id': frame_id,
                                                       'roi': key, 'label': label})
@@ -204,25 +240,59 @@ def build_templates(samples):
     return templates
 
 
-def read_number(binimg, templates, max_stray_frac=0.10):
-    """Template-read a binarized money ROI -> (string, worst_score). Score per glyph =
-    normalized XOR distance in [0,1] after resize to the template box; lower = better.
-    This is the same reader the live path will use; abstention = high worst_score.
+def _match_glyph(binimg, box, templates):
+    """-> (best_char, best_dist, second_dist) for one segmented box."""
+    g = glyph(binimg, box)
+    best_ch, best_d, second_d = None, 1.0, 1.0
+    for ch, tpl in templates.items():
+        if ch == 'sep':
+            continue
+        gr = cv2.resize(g, (tpl.shape[1], tpl.shape[0]), interpolation=cv2.INTER_NEAREST)
+        d = float(np.count_nonzero(gr != tpl)) / tpl.size
+        if d < best_d:
+            best_ch, best_d, second_d = ch, d, best_d
+        elif d < second_d:
+            second_d = d
+    return best_ch, best_d, second_d
 
-    INK-COMPLETENESS GUARD: ink inside the digit line band that no segmented box claims
+
+def read_number(binimg, templates, max_stray_frac=0.10, font='stack'):
+    """Template-read a binarized money ROI -> (string, worst_score, min_margin). Score
+    per glyph = normalized XOR distance in [0,1]; lower = better. This is the reader the
+    live path will use; abstention = failing accept().
+
+    font='stack' matches against the pod-font templates ('0'..'9'); font='pot' uses the
+    pot-font set ('p0'..'p9' -- the pot line renders SMALLER) and reads only the glyphs
+    right of the detected 'Pulje:' colon. No colon -> abstain; a failing glyph INSIDE
+    the amount -> the whole read abstains (a truncated suffix once read 2021 as a
+    confident 21 -- partial money values are never returned). Separators ('.'/',') are
+    segmented out by height and ignored, matching the cents convention.
+
+    INK-COMPLETENESS GUARD: ink inside the amount span that no segmented box claims
     means glyphs were dropped (merged past the width filter, broken strokes) -- reading
     the survivors yields a confidently WRONG number ('1240' -> '12'; a lone noise blob
     -> '7'). More than max_stray_frac unclaimed ink = abstain."""
-    digits, seps = segment(binimg)
-    if not digits:
+    if font == 'pot':
+        digits, ok = pot_amount_boxes(binimg)
+        if not ok:
+            return None, 1.0, 0.0
+        _all_digits, seps = segment(binimg)
+        tset = {k[1:]: v for k, v in templates.items() if k.startswith('p') and k != 'psep'}
+    else:
+        digits, seps = segment(binimg)
+        tset = {k: v for k, v in templates.items() if not k.startswith('p') and k != 'sep'}
+    if not digits or not tset:
         return None, 1.0, 0.0
+
+    # ink guard over the amount span only (pot label region excluded by x_left)
+    x_left = min(b[0] for b in digits) - 2
     y0 = min(b[1] for b in digits)
     y1 = max(b[1] + b[3] for b in digits)
     covered = np.zeros(binimg.shape, dtype=bool)
     for x, y, w, h in digits + seps:
         covered[y:y + h, x:x + w] = True
     band = np.zeros(binimg.shape, dtype=bool)
-    band[max(0, y0 - 2):y1 + 2, :] = True
+    band[max(0, y0 - 2):y1 + 2, max(0, x_left):] = True
     total = int(np.count_nonzero((binimg > 0) & band))
     stray = int(np.count_nonzero((binimg > 0) & band & ~covered))
     if total and stray / total > max_stray_frac:
@@ -230,20 +300,10 @@ def read_number(binimg, templates, max_stray_frac=0.10):
 
     out, worst, min_margin = [], 0.0, 1.0
     for box in digits:
-        g = glyph(binimg, box)
-        best_ch, best_d, second_d = None, 1.0, 1.0
-        for ch, tpl in templates.items():
-            if ch == 'sep':
-                continue
-            gr = cv2.resize(g, (tpl.shape[1], tpl.shape[0]), interpolation=cv2.INTER_NEAREST)
-            d = float(np.count_nonzero(gr != tpl)) / tpl.size
-            if d < best_d:
-                best_ch, best_d, second_d = ch, d, best_d
-            elif d < second_d:
-                second_d = d
-        out.append(best_ch or '?')
-        worst = max(worst, best_d)
-        min_margin = min(min_margin, second_d - best_d)
+        ch, d, s = _match_glyph(binimg, box, tset)
+        out.append(ch or '?')
+        worst = max(worst, d)
+        min_margin = min(min_margin, s - d)
     return ''.join(out), worst, min_margin
 
 
@@ -263,11 +323,13 @@ def validate(pairs, templates):
             if crop.size == 0:
                 continue
             binimg = binarize(crop)
-            digits, _seps = segment(binimg)
-            if len(digits) != len(str(label)):
+            font = 'pot' if key == 'pot' else 'stack'
+            boxes, seg_ok = pot_amount_boxes(binimg) if font == 'pot' else \
+                (segment(binimg)[0], True)
+            if not seg_ok or len(boxes) != len(str(label)):
                 unlabelable += 1
                 continue
-            got, score, margin = read_number(binimg, templates)
+            got, score, margin = read_number(binimg, templates, font=font)
             if got == str(label):
                 ok += 1
             else:
