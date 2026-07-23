@@ -276,6 +276,25 @@ three-layer diagnostic, the `flagged/` flow rendered properly).
   Corpus: 13 label-match + 22 stale-label-correct + 3 abstain, zero wrong acceptances.
   STATUS: pot font now READY alongside stacks — same owner review gate before wiring
   (money-check + digit-review artifacts republished with the full alphabet).
+- **ALIASED (SOFT) POT TEMPLATES + SOFT MATCHER (2026-07-23, owner spec)**: root cause
+  of the remaining clear-frame abstains = the client rasterizes the pot font in 15px
+  AND 16px variants; one hard median per class forces a resize whose misalignment costs
+  ~0.28 on a perfect glyph (measured: 'Pulje: 30' zero, dist 0.281 margin 0.004).
+  `build_soft_templates()`: each sample shifted (never resized) to best symmetric fit
+  vs the running class mean, then per-pixel averaged — white core where all renders
+  agree, gray anti-aliasing fringe where they differ. `_soft_match_glyph()`: shift-only
+  search, cost = Σ|glyph − map|/max(ink) — a gray pixel adds/detracts only its
+  confidence fraction. read_number(font='pot') auto-uses the soft path when the soft
+  alphabet is complete; accept() applies SOFT gates (dist ≤0.20, margin ≥0.05).
+  Corpus: 87 accepted (all five '30' frames now 0.105/0.252; new tail '372' pixel-
+  verified) / 8 abstains, all honest (2 glow-blur merges rejected at 0.478, rest are
+  no-colon: bold-render 80/160 segmentation, lobby, black, card-overlay). Accepted
+  cluster tops at 0.166 vs abstain floor 0.478 — wide safety band. Zero wrong
+  acceptances maintained. Also: harvester now RESETS generated outputs each run
+  (stale samples/p5/003.png ghost + the stale digit_p8.png incident); review sheet
+  gained the aliased-pot section (gold border = hand-labeled samples). REMAINING for
+  100%: bold-render colon detection (relative sep-height split) + glow-frame handling
+  — both segmentation-level, matching is now solved.
 
 ## Migration gates
 

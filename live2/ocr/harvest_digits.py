@@ -51,6 +51,12 @@ SEP_MAX_H_FRAC = 0.55          # a component this much shorter than the digit li
 READ_MAX_DIST = 0.24           # worst per-glyph XOR distance allowed
 READ_MIN_MARGIN = 0.03         # best-vs-second-best distance separation required
 
+# Gates for the SOFT (aliased) pot templates -- different metric, different scale:
+# cost = sum|glyph - template/255| / max(ink) at the best integer shift (no resizing),
+# so a gray fringe pixel adds/detracts only its uncertainty instead of a full mismatch.
+SOFT_MAX_DIST = 0.20
+SOFT_MIN_MARGIN = 0.05
+
 
 def accept(text, worst, margin, templates=None, font='stack'):
     """The one gate the live reader applies to a read_number() result.
@@ -60,14 +66,34 @@ def accept(text, worst, margin, templates=None, font='stack'):
     a digit with no template silently matches its nearest neighbour instead of failing
     (measured: pot '390' read as an ACCEPTED '300' at dist 0.207 while p9 was missing).
     Live callers must pass templates; harvest-internal label comparison doesn't use
-    accept() and is unaffected."""
-    if text is None or worst > READ_MAX_DIST or margin < READ_MIN_MARGIN:
+    accept() and is unaffected.
+
+    Gate scale follows the matcher read_number() picked: a complete soft (aliased) pot
+    set means the scores came from _soft_match_glyph -> SOFT_* gates apply."""
+    if text is None:
         return False
-    if templates is not None:
+    soft_pot = font == 'pot' and templates is not None and \
+        all(f'soft_p{d}' in templates for d in '0123456789')
+    max_d, min_m = (SOFT_MAX_DIST, SOFT_MIN_MARGIN) if soft_pot else \
+        (READ_MAX_DIST, READ_MIN_MARGIN)
+    if worst > max_d or margin < min_m:
+        return False
+    if templates is not None and not soft_pot:
         prefix = 'p' if font == 'pot' else ''
         if any(prefix + d not in templates for d in '0123456789'):
             return False
     return True
+
+
+def load_templates():
+    """Load every template file for the live reader: keys '0'..'9' (stack font),
+    'p0'..'p9' (hard pot medians), 'soft_p0'..'soft_p9' (aliased pot maps)."""
+    out = {}
+    for p in glob.glob(os.path.join(OUT, 'digit_*.png')):
+        out[os.path.basename(p)[6:-4]] = cv2.imread(p, cv2.IMREAD_GRAYSCALE)
+    for p in glob.glob(os.path.join(OUT, 'soft_*.png')):
+        out[os.path.basename(p)[:-4]] = cv2.imread(p, cv2.IMREAD_GRAYSCALE)
+    return {k: v for k, v in out.items() if v is not None}
 
 
 def money_rois(record):
@@ -356,6 +382,34 @@ def build_templates(samples):
     return templates
 
 
+def _soft_match_glyph(binimg, box, soft_tset):
+    """Match one segmented glyph against the SOFT (aliased) templates: the glyph is
+    slid over each template (integer shifts, never resized) and scored by the mean
+    absolute difference against the 0..1 probability map -- a gray pixel adds or
+    detracts only its confidence fraction. -> (best_char, best_dist, second_dist)."""
+    g = (glyph(binimg, box) > 0).astype(np.float32)
+    gh, gw = g.shape
+    best_ch, best_d, second_d = None, 1.0, 1.0
+    for ch, tpl in soft_tset.items():
+        t = tpl.astype(np.float32) / 255.0
+        th, tw = t.shape
+        H, W = max(gh, th) + 4, max(gw, tw) + 4
+        T = np.zeros((H, W), np.float32)
+        T[2:2 + th, 2:2 + tw] = t
+        norm = max(float(T.sum()), float(g.sum()), 1.0)
+        d_ch = 1.0
+        for dy in range(H - gh + 1):
+            for dx in range(W - gw + 1):
+                G = np.zeros((H, W), np.float32)
+                G[dy:dy + gh, dx:dx + gw] = g
+                d_ch = min(d_ch, float(np.abs(G - T).sum()) / norm)
+        if d_ch < best_d:
+            best_ch, best_d, second_d = ch, d_ch, best_d
+        elif d_ch < second_d:
+            second_d = d_ch
+    return best_ch, best_d, second_d
+
+
 def _match_glyph(binimg, box, templates):
     """-> (best_char, best_dist, second_dist) for one segmented box."""
     g = glyph(binimg, box)
@@ -388,15 +442,23 @@ def read_number(binimg, templates, max_stray_frac=0.10, font='stack'):
     means glyphs were dropped (merged past the width filter, broken strokes) -- reading
     the survivors yields a confidently WRONG number ('1240' -> '12'; a lone noise blob
     -> '7'). More than max_stray_frac unclaimed ink = abstain."""
+    matcher = _match_glyph
     if font == 'pot':
         digits, ok = pot_amount_boxes(binimg)
         if not ok:
             return None, 1.0, 0.0
         _all_digits, seps = segment(binimg)
-        tset = {k[1:]: v for k, v in templates.items() if k.startswith('p') and k != 'psep'}
+        soft_tset = {k[6:]: v for k, v in templates.items() if k.startswith('soft_p')}
+        if all(d in soft_tset for d in '0123456789'):
+            # complete aliased set present -> shift-only soft matching (owner spec)
+            tset, matcher = soft_tset, _soft_match_glyph
+        else:
+            tset = {k[1:]: v for k, v in templates.items()
+                    if k.startswith('p') and not k.startswith('soft_') and k != 'psep'}
     else:
         digits, seps = segment(binimg)
-        tset = {k: v for k, v in templates.items() if not k.startswith('p') and k != 'sep'}
+        tset = {k: v for k, v in templates.items()
+                if not k.startswith('p') and not k.startswith('soft_') and k != 'sep'}
     if not digits or not tset:
         return None, 1.0, 0.0
 
@@ -416,7 +478,7 @@ def read_number(binimg, templates, max_stray_frac=0.10, font='stack'):
 
     out, worst, min_margin = [], 0.0, 1.0
     for box in digits:
-        ch, d, s = _match_glyph(binimg, box, tset)
+        ch, d, s = matcher(binimg, box, tset)
         out.append(ch or '?')
         worst = max(worst, d)
         min_margin = min(min_margin, s - d)
