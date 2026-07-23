@@ -89,6 +89,14 @@ weights.
 
 ## 2. Live Play  (`core/decision.py`, `core/action_executor.py`, `PHPHelp.py`)
 
+> **[v49_liveRebuild, 2026-07-23] SHELL REPLACED — `live2/pilot` is now the live runtime.**
+> PHPHelp.py is RETIRED as the driver. The LG/LB/LD/LP boxes below are UNCHANGED — the pilot
+> calls the same `core/` code across the same V45 boundary — but the shell boxes (capture,
+> price OCR orchestration, recorder, executor) moved: see **§2b live2 pilot** for the current
+> outer loop and what replaced LB1 (mss monitor grab → PrintWindow) and the LP boxes
+> (ActionExecutor → phpserver motor model). New box between LB5 and LD0: **L2-ASM**, the
+> assembler correction pass — the model now consumes the CORRECTED observation.
+
 ```mermaid
 flowchart TD
     subgraph LGLOBAL["🌐 GLOBAL — decision engine"]
@@ -146,10 +154,48 @@ so train≡serve; **LE1** drags the slider then clicks, **LE2** logs the turn fo
 
 ---
 
+## 2b. Live Play, current shell — live2 pilot  (`live2/pilot/`, 2026-07-23)
+
+One headless process replaces the PHPHelp GUI. Inner LG/LB/LD boxes from §2 are reused verbatim
+(same `core/` code, same V45 boundary); only the shell is new. IDs **L2-x**:
+
+```mermaid
+flowchart TD
+    subgraph L2GLOBAL["🌐 GLOBAL — pilot process (python -m live2.pilot)"]
+        L2C["L2-C capture: PrintWindow PW_RENDERFULLCONTENT (live2/phpserver/capture.py) — unfocused-safe, replaces LB1 mss grab; resized to 1536x1090 reference frame"]
+        L2I["L2-I ingest thread: bet365 blob/XML → handhistory store (live2/historydb) — runs inside the pilot"]
+        L2W["L2-W webapp :8765 — separate READ-ONLY process tailing turns.jsonl (display only, no play role)"]
+    end
+    subgraph L2BOARD["🎲 BOARD — per turn"]
+        L2V["L2-V legacy vision + TableState (core/vision.py, core/table_state.py) → LB2..LB5 unchanged → frozen LiveObservation"]
+        L2ASM["L2-ASM assembler pass (live2/assembler/assemble.py): roster/sticky-name repair, stack fill, derived price, rule-2b pot/committed sanity — model consumes the CORRECTED observation [NEW]"]
+        L2D["L2-D decide: LD0..LD5 unchanged (core/decision.py through the V45 boundary)"]
+        L2R["L2-R recorder (live2/pilot/recorder.py): format-2 turns.jsonl + 'assembler' layer + observation_raw when corrected; decide-once fingerprint (no duplicate re-decides) — replaces LE2"]
+        L2A["L2-A actions --auto only (live2/pilot/actions.py → live2/phpserver/interact.py): Fitts/min-jerk motor model, legacy button geometry client-relative — replaces LE1/ActionExecutor"]
+    end
+    L2C --> L2V --> L2ASM --> L2D --> L2R
+    L2D --> L2A
+    L2I -. "carry-over feed (roster/stacks/blinds)" .-> L2ASM
+```
+
+**Retired from the live path**: PHPHelp.py (whole GUI shell), core/action_executor.py (superseded by
+the motor model), `live2.assembler --watch` (pilot embeds the assembler — NEVER run both), PHPserver
+:8766 WS server (idle; pilot imports its capture/interact modules in-process).
+**New invariant**: L2-ASM corrections happen BEFORE the V45 boundary, so record `observation` =
+what the model consumed; raw vision survives as `observation_raw`.
+
+---
+
 ### Train ≡ Serve invariants (must stay paired across both diagrams)
 - Sampling temperature: **G4** (rollout 1.0) ↔ **LD3/LG2** (serve 0.5) — eval must match serve temp.
 - Fold-when-free mask: **H2** ↔ **LD3**.  · Raise sizing: **H3** (`_raise_size_for_fraction`) ↔ **LD4** (`_v14_size_to_slider`).
 - Range-aware equity: **P3** ↔ **LB3** (same `compute_range_aware_equity`).  · Action space: **G7** ↔ **LG3**.
+- Chip-identity collapse [V47 all-in-only → **V48 generalized**]: **H3**'s training-side grouping
+  (simulator `collapse_by_chips_all` — any sized raises resolving to identical chips share ONE
+  canonical action, EV copied, duplicates regret-masked) ↔ **LD3**'s serve mirror in
+  `core/decision.py` (gated on the engine's `collapse_aliased_buckets`; V47's narrower
+  `collapse_aliased_allin` remains for that engine). Both sides must group by the same
+  resolved-chips rule or serve re-splits probability mass training merged.
 
 ### [V42_liveFixes, 2026-07-21] Live-path corrections — what changed in LB2/LB3/LP1/LD3
 
