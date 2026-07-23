@@ -22,6 +22,7 @@ import glob
 import json
 import os
 import re
+import shutil
 
 import cv2
 import numpy as np
@@ -481,6 +482,15 @@ def main():
     print(f"round 2 validation (cleaned): {ok2} ok / {bad2} mismatched / {unlab2} unlabelable")
 
     os.makedirs(OUT, exist_ok=True)
+    # RESET generated outputs before writing: a run with fewer samples/classes than the
+    # last one must not leave stale files behind (a leftover samples/p5/003.png -- a '0'
+    # mislabeled '5' by the first fully-label-trusting run -- haunted the review sheet,
+    # and a stale digit_p8.png once satisfied the alphabet-completeness gate).
+    # templates/manual/ is hand-curated input, never touched.
+    for p in glob.glob(os.path.join(OUT, 'digit_*.png')) + \
+            glob.glob(os.path.join(OUT, 'soft_*.png')):
+        os.remove(p)
+    shutil.rmtree(os.path.join(OUT, 'samples'), ignore_errors=True)
     for ch, tpl in templates.items():
         cv2.imwrite(os.path.join(OUT, f"digit_{ch}.png"), tpl)
     # aliased/soft pot templates (owner spec) -- alignment-averaged probability maps
