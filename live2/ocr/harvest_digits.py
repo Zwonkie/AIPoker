@@ -57,6 +57,15 @@ READ_MIN_MARGIN = 0.03         # best-vs-second-best distance separation require
 SOFT_MAX_DIST = 0.20
 SOFT_MIN_MARGIN = 0.05
 
+# THE canonical pot transform (owner decision 2026-07-23): truncate the stretched gray
+# below this CONSTANT before segmenting/matching pot digits -- always, harvest and live
+# alike, so templates and reads share one transform. Chosen just above the 'Pulje'
+# label ink band (measured 167..174 vs amount digits 200..255): the label, colon glow
+# and halo all go black; only the bright amount digits survive. The colon is still
+# located first at the 55% pass purely as a boundary/presence anchor.
+POT_TRUNC_GRAY = 176
+POT_TRUNC_TH = POT_TRUNC_GRAY / 255.0
+
 
 def accept(text, worst, margin, templates=None, font='stack'):
     """The one gate the live reader applies to a read_number() result.
@@ -144,7 +153,11 @@ def segment(binimg):
     boxes = []
     for i in range(1, n):
         x, y, w, h, area = stats[i]
-        if area < 6 or w > MAX_W or h > MAX_H:
+        # area floor 3, not 6: v25's colon dots are 2x3 with area 5 and were being
+        # killed as noise before sep classification (no colon -> whole read abstained).
+        # Digits are protected by their own MIN_H/MIN_W below; a 3-5px speck can only
+        # become a sep candidate, and find_colon() demands a same-x stacked PAIR.
+        if area < 3 or w > MAX_W or h > MAX_H:
             continue
         boxes.append((x, y, w, h))
     if not boxes:
@@ -184,18 +197,21 @@ def find_colon(seps):
     return best
 
 
-def pot_amount_boxes(binimg, colon_x=None):
-    """Digit boxes of the pot AMOUNT (right of the colon). -> (boxes, ok). ok=False when
-    no colon is found -- the caller must abstain, never guess a boundary. colon_x is the
-    glow-retry hint: at the raised threshold the dim colon dots vanish, so the position
-    found at 55% is reused (a location survives a threshold change; ink does not)."""
-    digits, seps = segment(binimg)
-    found = find_colon(seps)
-    if found is None:
-        found = colon_x
-    if found is None:
-        return [], False
-    return [b for b in digits if b[0] > found], True
+def pot_boxes(crop_bgr):
+    """The canonical two-threshold pot segmentation. -> (bin_t, boxes, seps, ok).
+    Pass 1 (55%): locate the 'Pulje:' colon -- presence gate (no colon = this is not
+    the pot pill -> abstain, never guess a boundary) and x-boundary. Pass 2 (the
+    POT_TRUNC_GRAY constant): truncate; only amount ink survives; segment it. Digit
+    boxes right of the colon are the amount; seps (e.g. the thousands comma, which is
+    amount-bright and survives) are returned for the ink-completeness guard."""
+    b55 = binarize(crop_bgr)
+    colon_x = find_colon(segment(b55)[1])
+    if colon_x is None:
+        return None, [], [], False
+    bin_t = binarize(crop_bgr, th=POT_TRUNC_TH)
+    digits, seps = segment(bin_t)
+    return bin_t, [b for b in digits if b[0] > colon_x], \
+        [s for s in seps if s[0] > colon_x], True
 
 
 def collect_frames():
@@ -263,7 +279,7 @@ def collect_diag_pot():
         if img.shape[1] != 1536 or img.shape[0] != 1090:
             img = cv2.resize(img, (1536, 1090), interpolation=cv2.INTER_CUBIC)
         x, y, w, h = POT_ROI
-        boxes, ok = pot_amount_boxes(binarize(img[y:y + h, x:x + w]))
+        _bt, boxes, _seps, ok = pot_boxes(img[y:y + h, x:x + w])
         if not ok:
             continue
         matches = [c for c in _diag_pot_candidates(v) if len(c) == len(boxes)]
@@ -290,8 +306,10 @@ def harvest(pairs):
             text = str(label)
             if key == 'pot':
                 # pot renders in its OWN (smaller) font -> separate 'p<d>' template
-                # classes, and only colon-anchored amount glyphs are harvested
-                boxes, ok = pot_amount_boxes(binimg)
+                # classes, harvested under the CANONICAL pot transform (colon-anchored
+                # boundary from the 55% pass, glyphs from the POT_TRUNC truncation) so
+                # templates and live reads share one transform
+                binimg, boxes, seps, ok = pot_boxes(crop)
                 prefix = 'p'
                 seps = []
             else:
@@ -432,43 +450,19 @@ def _match_glyph(binimg, box, templates):
     return best_ch, best_d, second_d
 
 
-def read_number(binimg, templates, max_stray_frac=0.10, font='stack', colon_x=None):
-    """Template-read a binarized money ROI -> (string, worst_score, min_margin). Score
-    per glyph = normalized XOR distance in [0,1]; lower = better. This is the reader the
-    live path will use; abstention = failing accept().
+def _read_boxes(binimg, digits, seps, tset, matcher, max_stray_frac=0.10):
+    """Shared gated glyph-sequence read -> (string, worst_score, min_margin).
 
-    font='stack' matches against the pod-font templates ('0'..'9'); font='pot' uses the
-    pot-font set ('p0'..'p9' -- the pot line renders SMALLER) and reads only the glyphs
-    right of the detected 'Pulje:' colon. No colon -> abstain; a failing glyph INSIDE
-    the amount -> the whole read abstains (a truncated suffix once read 2021 as a
-    confident 21 -- partial money values are never returned). Separators ('.'/',') are
-    segmented out by height and ignored, matching the cents convention.
+    A failing glyph ANYWHERE -> the whole read abstains (a truncated suffix once read
+    2021 as a confident 21 -- partial money values are never returned). Separators
+    ('.'/',') are segmented out by height and ignored, matching the cents convention.
 
-    INK-COMPLETENESS GUARD: ink inside the amount span that no segmented box claims
+    INK-COMPLETENESS GUARD: ink inside the read span that no segmented box claims
     means glyphs were dropped (merged past the width filter, broken strokes) -- reading
     the survivors yields a confidently WRONG number ('1240' -> '12'; a lone noise blob
     -> '7'). More than max_stray_frac unclaimed ink = abstain."""
-    matcher = _match_glyph
-    if font == 'pot':
-        digits, ok = pot_amount_boxes(binimg, colon_x=colon_x)
-        if not ok:
-            return None, 1.0, 0.0
-        _all_digits, seps = segment(binimg)
-        soft_tset = {k[6:]: v for k, v in templates.items() if k.startswith('soft_p')}
-        if all(d in soft_tset for d in '0123456789'):
-            # complete aliased set present -> shift-only soft matching (owner spec)
-            tset, matcher = soft_tset, _soft_match_glyph
-        else:
-            tset = {k[1:]: v for k, v in templates.items()
-                    if k.startswith('p') and not k.startswith('soft_') and k != 'psep'}
-    else:
-        digits, seps = segment(binimg)
-        tset = {k: v for k, v in templates.items()
-                if not k.startswith('p') and not k.startswith('soft_') and k != 'sep'}
     if not digits or not tset:
         return None, 1.0, 0.0
-
-    # ink guard over the amount span only (pot label region excluded by x_left)
     x_left = min(b[0] for b in digits) - 2
     y0 = min(b[1] for b in digits)
     y1 = max(b[1] + b[3] for b in digits)
@@ -491,44 +485,43 @@ def read_number(binimg, templates, max_stray_frac=0.10, font='stack', colon_x=No
     return ''.join(out), worst, min_margin
 
 
-GLOW_RETRY_TH = 0.70           # amount digits stay bright; glow bridges + label drop out
+def read_number(binimg, templates, max_stray_frac=0.10, font='stack'):
+    """Template-read a binarized STACK-font money ROI -> (string, worst, min_margin).
+    Score per glyph = normalized XOR distance in [0,1]; lower = better. Pot ROIs go
+    through read_money() -- the pot path owns its own canonical binarization and must
+    start from the raw crop, not a pre-binarized image."""
+    if font == 'pot':
+        raise ValueError("pot ROIs are read by read_money(crop) -- the canonical pot "
+                         "transform starts from the raw crop")
+    digits, seps = segment(binimg)
+    tset = {k: v for k, v in templates.items()
+            if not k.startswith('p') and not k.startswith('soft_') and k != 'sep'}
+    return _read_boxes(binimg, digits, seps, tset, _match_glyph, max_stray_frac)
 
 
 def read_money(crop_bgr, templates, font='stack'):
-    """Crop-level reader: binarize -> read_number -> accept, with ONE pot-only retry
-    for glow frames. A pot-update glow halo bridges adjacent digits at the 55%
-    threshold ('6'+'4' fused into one blob -> abstain), while at 0.70 the digits
-    separate but the dim colon vanishes. The retry therefore reuses the 55% pass's
-    colon POSITION and re-segments at 0.70 -- guarded by ink-span consistency: the
-    retry's boxes must cover the 55% amount ink extent (+-3px), so a digit fading out
-    entirely at the raised threshold cannot yield a truncated-but-confident read.
-    -> (text, worst, margin, accepted)."""
-    binimg = binarize(crop_bgr)
-    got, worst, margin = read_number(binimg, templates, font=font)
-    if accept(got, worst, margin, templates, font) or font != 'pot':
+    """THE crop-level money reader -> (text, worst, margin, accepted).
+
+    font='stack': binarize at 55% -> read_number (pod-font templates).
+    font='pot' (owner-canonicalized 2026-07-23): pot_boxes() applies the ONE pot
+    transform -- colon presence/boundary at 55%, then truncation below POT_TRUNC_GRAY
+    so only amount ink survives -- and the glyphs are matched by _soft_match_glyph
+    against the aliased templates, which are HARVESTED under this same transform.
+    An incomplete soft alphabet -> abstain (never fall back to a mismatched
+    template basis). All _read_boxes guards (truncation, ink-completeness) apply."""
+    if font != 'pot':
+        binimg = binarize(crop_bgr)
+        got, worst, margin = read_number(binimg, templates, font=font)
         return got, worst, margin, accept(got, worst, margin, templates, font)
 
-    # glow retry -- needs the 55% pass to at least anchor the colon
-    digits, seps = segment(binimg)
-    colon_x = find_colon(seps)
-    if colon_x is None:
-        return got, worst, margin, False
-    amount = [b for b in digits if b[0] > colon_x]
-    if not amount:
-        return got, worst, margin, False
-    span_lo = min(b[0] for b in amount)
-    span_hi = max(b[0] + b[2] for b in amount)
-
-    retry = binarize(crop_bgr, th=GLOW_RETRY_TH)
-    got2, worst2, margin2 = read_number(retry, templates, font='pot', colon_x=colon_x)
-    if not accept(got2, worst2, margin2, templates, 'pot'):
-        return got, worst, margin, False
-    boxes2, _ = pot_amount_boxes(retry, colon_x=colon_x)
-    lo2 = min(b[0] for b in boxes2)
-    hi2 = max(b[0] + b[2] for b in boxes2)
-    if lo2 > span_lo + 3 or hi2 < span_hi - 3:
-        return got, worst, margin, False        # retry lost ink the 55% pass saw
-    return got2, worst2, margin2, True
+    bin_t, boxes, seps, ok = pot_boxes(crop_bgr)
+    if not ok:
+        return None, 1.0, 0.0, False
+    soft_tset = {k[6:]: v for k, v in templates.items() if k.startswith('soft_p')}
+    if not all(d in soft_tset for d in '0123456789'):
+        return None, 1.0, 0.0, False
+    got, worst, margin = _read_boxes(bin_t, boxes, seps, soft_tset, _soft_match_glyph)
+    return got, worst, margin, accept(got, worst, margin, templates, 'pot')
 
 
 def validate(pairs, templates):
@@ -546,14 +539,22 @@ def validate(pairs, templates):
             crop = img[max(0, y):y + h, max(0, x):x + w]
             if crop.size == 0:
                 continue
-            binimg = binarize(crop)
-            font = 'pot' if key == 'pot' else 'stack'
-            boxes, seg_ok = pot_amount_boxes(binimg) if font == 'pot' else \
-                (segment(binimg)[0], True)
+            if key == 'pot':
+                # canonical pot transform; matched against the HARD pot medians
+                # (the soft set is only built after cleaning) -- label comparison
+                # is all this pass needs
+                binimg, boxes, seps, seg_ok = pot_boxes(crop)
+                tset = {k[1:]: v for k, v in templates.items() if k.startswith('p')}
+            else:
+                binimg = binarize(crop)
+                boxes, seps = segment(binimg)
+                seg_ok = True
+                tset = {k: v for k, v in templates.items() if not k.startswith('p')
+                        and k != 'sep'}
             if not seg_ok or len(boxes) != len(str(label)):
                 unlabelable += 1
                 continue
-            got, score, margin = read_number(binimg, templates, font=font)
+            got, score, margin = _read_boxes(binimg, boxes, seps, tset, _match_glyph)
             if got == str(label):
                 ok += 1
             else:

@@ -295,6 +295,24 @@ three-layer diagnostic, the `flagged/` flow rendered properly).
   gained the aliased-pot section (gold border = hand-labeled samples). REMAINING for
   100%: bold-render colon detection (relative sep-height split) + glow-frame handling
   — both segmentation-level, matching is now solved.
+- **CANONICAL POT TRANSFORM (owner decision, 2026-07-23 eve) — the final pot pipeline**:
+  owner-driven step-by-step debugging produced two fixes then a unifying redesign.
+  (1) v25 bold-render 80/160 no-colon: the colon dots are area 5 and segment()'s
+  noise floor was area<6 — split floors (digits ≥6 via MIN_H/W anyway, seps ≥3).
+  (2) glow 645: '6'+'4' bridged at the 55% threshold; owner insight = the 'Pulje'
+  label ink is an IN-FRAME brightness reference (measured band 167..174, amount
+  digits 200..255, a 26-level gap) → truncate everything darker. (3) REDESIGN: that
+  cutoff became the CONSTANT `POT_TRUNC_GRAY=176`, applied identically at harvest and
+  read time (train≡serve for OCR): `pot_boxes()` = colon presence/boundary at 55% +
+  digits segmented from the truncation; templates re-harvested under this transform
+  (old 0.55 manual glyphs archived to attic_manual_th055/, new hunt re-labeled 34
+  truncation-native glyphs); `read_money(font='pot')` is THE pot entry (read_number
+  now stack-only, raises on font='pot'); soft (aliased) matching only, incomplete
+  alphabet → abstain. RESULT: 92/95 corpus accepted — every readable frame including
+  both glow 645s (dist 0.027, was 0.478-abstain) and all v25 frames; the 3 abstains
+  are the owner's crossed-out no-data frames (black, lobby, card-overlay). Accepted
+  population ≤0.07 vs 0.20 gate; all 22 label disagreements = the pixel-verified
+  stale-label set; zero wrong acceptances.
 
 ## Migration gates
 
