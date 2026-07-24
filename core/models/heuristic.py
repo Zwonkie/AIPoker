@@ -334,30 +334,24 @@ class HeuristicEngine(PokerModelInterface):
         if action in ['BET', 'RAISE']:
             if use_dynamic_sizing:
                 # Use slider for all streets to remain immune to button label changes (BB multiples vs Pot %)
-                pe = self.evaluator
+                # Post-flop only: every preflop path returned above, so dynamic sizing is
+                # always board-texture (wetness) based.
+                texture = self.evaluator.analyze_board_texture(board)
+                wetness = texture['wetness']
 
-                if is_preflop:
-                    # Pre-flop sizing: standard 3 BB open, or 3x call amount if facing a raise
-                    target_bet = max(3.0 * 20.0, call_amount * 3.0)
-                    reason += f" (Pre-flop open/3-bet sizing)"
+                if is_bluffing:
+                    bet_pct = 0.35  # Cheap bluff
+                    reason += f" (Bluff on board wetness={wetness:.1f})"
                 else:
-                    # Post-flop: adjust sizing using slider based on board texture (wetness)
-                    texture = pe.analyze_board_texture(board)
-                    wetness = texture['wetness']
-                    
-                    if is_bluffing:
-                        bet_pct = 0.35  # Cheap bluff
-                        reason += f" (Bluff on board wetness={wetness:.1f})"
+                    if wetness >= 0.5:
+                        bet_pct = 0.80  # Large bet on wet boards
+                        reason += f" (Wet board sizing, wetness={wetness:.1f})"
                     else:
-                        if wetness >= 0.5:
-                            bet_pct = 0.80  # Large bet on wet boards
-                            reason += f" (Wet board sizing, wetness={wetness:.1f})"
-                        else:
-                            bet_pct = 0.40  # Small bet on dry boards
-                            reason += f" (Dry board sizing, wetness={wetness:.1f})"
-                            
-                    target_bet = pot_size * bet_pct
-                    
+                        bet_pct = 0.40  # Small bet on dry boards
+                        reason += f" (Dry board sizing, wetness={wetness:.1f})"
+
+                target_bet = pot_size * bet_pct
+
                 min_bet = 2.0 * call_amount if call_amount > 0 else 20.0
                 clamped_bet = max(min_bet, min(target_bet, hero_stack))
                 

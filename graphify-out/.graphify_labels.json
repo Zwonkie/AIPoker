@@ -622,7 +622,13 @@
   "620": "__init__.py",
   "621": "__init__.py",
   "622": ".to_tensors",
+  "623": "HandRecordV4",
+  "624": ".to_tensors",
+  "625": ".to_tensors",
   "626": ".to_tensors",
+  "627": ".to_tensors",
+  "628": "compute_range_aware_equity",
   "629": "V20PreflopEqAIModelEngine",
+  "630": ".to_tensors",
   "635": "sanity_50k.md"
 }

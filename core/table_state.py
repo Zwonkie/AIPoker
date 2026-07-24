@@ -519,7 +519,7 @@ class TableState:
         outside this class, threaded through verbatim (same division of labour as
         `to_board_state(call_amount=...)` always had). `big_blind` defaults to the tracked blind.
         """
-        from core.live_observation import LiveObservation, SeatObservation, street_from_board
+        from core.live_observation import LiveObservation, SeatObservation
 
         bb = float(self.big_blind if big_blind is None else big_blind)
         sb_key, bb_key = self.blind_seat_keys()
