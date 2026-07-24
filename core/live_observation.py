@@ -130,12 +130,19 @@ class LiveObservation:
     @classmethod
     def from_json_dict(cls, d: dict) -> "LiveObservation":
         d = dict(d or {})
-        seats = tuple(SeatObservation(**s) for s in (d.pop('seats', None) or []))
+        # Forward-compat: ignore fields a NEWER schema added (append-only rule keeps this safe).
+        # Applied to the nested seat dicts as well as the top-level record -- a file recorded by a
+        # newer SeatObservation schema must not blow up on an unexpected keyword argument, or the
+        # "replayable forever" guarantee above only holds for half the record.
+        seat_known = {f.name for f in SeatObservation.__dataclass_fields__.values()}
+        seats = tuple(
+            SeatObservation(**{k: v for k, v in s.items() if k in seat_known})
+            for s in (d.pop('seats', None) or [])
+        )
         for key in ('community_cards', 'hero_cards', 'active_buttons', 'hero_action_history'):
             if key in d and d[key] is not None:
                 d[key] = tuple(d[key])
-        known = {f.name for f in cls.__dataclass_fields__.values()} if hasattr(cls, '__dataclass_fields__') else set()
-        # Forward-compat: ignore fields a NEWER schema added (append-only rule keeps this safe).
+        known = {f.name for f in cls.__dataclass_fields__.values()}
         d = {k: v for k, v in d.items() if k in known}
         return cls(seats=seats, **d)
 

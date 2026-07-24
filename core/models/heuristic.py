@@ -1,5 +1,6 @@
 import random
 from core.models.base import PokerModelInterface
+from core.evaluator import PokerEvaluator
 
 class HeuristicEngine(PokerModelInterface):
     def __init__(self):
@@ -13,6 +14,10 @@ class HeuristicEngine(PokerModelInterface):
             'A9s', 'A8s', 'A7s', 'A6s', 'A5s', 'A4s', 'A3s', 'A2s', 'K9s', 'Q9s', 'J9s',
             'T9s', '98s', '87s', '76s', '65s', '54s'
         }
+        # Reused across decisions: PokerEvaluator wraps treys.Evaluator, whose __init__ rebuilds
+        # the full flush/straight/multiples lookup tables. Constructing one per decision (as the
+        # dynamic-sizing branch of predict_action used to) threw that work away every call.
+        self.evaluator = PokerEvaluator()
 
     def get_preflop_hand_string(self, hand: list) -> str:
         c1, c2 = hand[0], hand[1]
@@ -65,20 +70,6 @@ class HeuristicEngine(PokerModelInterface):
                         
         return has_flush_draw, has_straight_draw
 
-    def predict_action(self, board: list, hand: list, equity: float, pot_size: float, 
-                       call_amount: float, hero_stack: float, num_opponents: int,
-                       is_preflop: bool, use_preflop_chart: bool, use_math_engine: bool,
-                       use_bluff_engine: bool, use_dynamic_sizing: bool,
-                       bet_raise_available: bool, check_call_available: bool,
-                       active_opponents: list = None, table_state_dict: dict = None,
-                       preflop_looseness: float = 0.0) -> tuple:
-        if active_opponents is None:
-            active_opponents = []
-        if is_preflop:
-            action = 'CHECK'
-            reason = ""
-            bet_size = 0.0
-            
     def get_preflop_probabilities(self, equity: float, call_amount: float, num_opponents: int, preflop_looseness: float = 0.0) -> tuple:
         # Positional / Opponents baseline thresholds (+5% higher for premium)
         if num_opponents <= 1:
@@ -343,9 +334,8 @@ class HeuristicEngine(PokerModelInterface):
         if action in ['BET', 'RAISE']:
             if use_dynamic_sizing:
                 # Use slider for all streets to remain immune to button label changes (BB multiples vs Pot %)
-                from core.evaluator import PokerEvaluator
-                pe = PokerEvaluator()
-                
+                pe = self.evaluator
+
                 if is_preflop:
                     # Pre-flop sizing: standard 3 BB open, or 3x call amount if facing a raise
                     target_bet = max(3.0 * 20.0, call_amount * 3.0)

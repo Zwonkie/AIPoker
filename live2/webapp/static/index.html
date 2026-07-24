@@ -22,6 +22,7 @@
       <button class="pbtn stopall" data-act="stopall"
         title="Release everything: stop the pilot AND kill any probe/orphan processes — return to a fresh, nothing-running state">&#9211; Stop all</button>
       <span id="pilot-chip" class="pilot-chip off">pilot off</span>
+      <span id="model-stale" class="model-stale hidden"></span>
       <button class="pbtn" data-act="probe" title="One capture+vision pass, no decisions">Probe</button>
       <button class="pbtn go" data-act="start" title="Start pilot: records + recommends, no clicks">Start</button>
       <button class="pbtn auto" data-act="auto" title="Start pilot with LIVE CLICKS">AUTO</button>
@@ -57,6 +58,8 @@
         <div class="panel" id="tablelog-panel">
           <div class="panel-title">Table log
             <span id="tablelog-status" class="dim">ground truth &middot; from hand history</span>
+            <button id="tablelog-clear" class="pbtn shadow-clear-btn"
+              title="Clear the table log view (newer hands still appear)">Clear</button>
           </div>
           <table id="tablelog-table" class="tablelog">
             <thead>

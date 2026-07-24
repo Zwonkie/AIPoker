@@ -13,6 +13,7 @@ from core.models.v43_engine import V43ModelEngine
 from core.models.v44_engine import V44ModelEngine
 from core.models.v47_engine import V47ModelEngine
 from core.models.v48_engine import V48ModelEngine
+from core.models.v50_engine import V50ModelEngine
 
 # Live action selection: SAMPLE from the actor policy (matching training/eval, which sample rather
 # than argmax) but SHARPEN with a temperature < 1 so genuine mixing survives on close spots while
@@ -296,11 +297,21 @@ class PokerDecisionEngine:
             # +/-29.8 (PARITY), DoN mix +13.7 +/-31.2 (positive lean, not decisive) -- same
             # verdict class V47 itself deployed on. See versions/v48/SPECS.md gate verdict.
             # ROLLBACK: set active_model_name back to 'Herocules (v47)'.
+            # V50: CURRICULUM-ONLY retrain of V48 (same cv9/54-dim contract, same serve
+            # declarations incl. collapse_aliased_buckets). The only change vs V48 is training data:
+            # a raw-empirical seat x depth mix (seats 3-6, depth 2-100bb, from the 4,010-hand hero
+            # corpus) trained FRESH for 250k hands, to widen the seat-count coverage hole behind
+            # V48's deep_stack_ood_guard regression ([STACK-1]). Engine is a declaration-clone
+            # (own versions.v50 bridge/live_features), so the live tensor path is unchanged.
+            # Registered 2026-07-24 (post-250k) as the TESTING CANDIDATE. Briefly active-for-testing,
+            # then reverted to V48 (the milestone) as LIVE pending the model_verify --full review +
+            # head-to-head vs frozen_v48. To promote V50: set active_model_name to 'Herocules (v50)'.
+            'Herocules (v50)': V50ModelEngine(weight_name="expert_main.pth"),
             'Herocules (v48)': V48ModelEngine(weight_name="expert_main.pth"),
-            'Herocules (v47)': V47ModelEngine(weight_name="expert_main.pth"),
-            'Herocules (v44)': V44ModelEngine(weight_name="expert_main.pth"),
-            'Herocules (v43)': V43ModelEngine(weight_name="expert_main.pth"),
-            'Herocules (v41)': V41ModelEngine(weight_name="expert_main.pth"),
+            #'Herocules (v47)': V47ModelEngine(weight_name="expert_main.pth"),
+            #'Herocules (v44)': V44ModelEngine(weight_name="expert_main.pth"),
+            #'Herocules (v43)': V43ModelEngine(weight_name="expert_main.pth"),
+            #'Herocules (v41)': V41ModelEngine(weight_name="expert_main.pth"),
             # V40: the [BET-3] package -- same 54/8 contract as V29/V41, so it reuses V29's live
             # game-state work untouched and declares its own bridge (no ladder entry needed).
             # Trained 100k hands 2026-07-20 (hero +63.7 BB/100 vs field). The multiway-aggression
@@ -310,7 +321,7 @@ class PokerDecisionEngine:
             # model_verify --full was only partially completed (all FAST checks plus
             # vpip_adapts_to_style and beats_offformula_stress passed; bb100_vs_standard_fields and
             # beats_frozen_predecessor were cut short to free CPU). See versions/v40/SPECS.md.
-            'Herocules (v40)': V40ModelEngine(weight_name="expert_main.pth"),
+            #'Herocules (v40)': V40ModelEngine(weight_name="expert_main.pth"),
             # --- Registry policy [v46_legacySweep 2026-07-22]: pre-v30 versions are LEGACY. ---
             # Registered live models: v44 (active), v43, v41, v40. V29 was deregistered in the
             # legacy sweep (it was the last ladder-dependent entry); v28 and earlier were pruned
@@ -333,7 +344,8 @@ class PokerDecisionEngine:
         # DEPLOYED 2026-07-21: V43 replaces V41 by explicit user decision, on a MIXED scorecard and
         # before beats_frozen_predecessor finished -- see the registry entry above for exactly what
         # was known at deploy time. V41 (the MILESTONE) stays registered as the one-line rollback.
-        self.active_model_name = 'Herocules (v48)'  # V47 registered above as rollback
+        self.active_model_name = 'Herocules (v48)'  # LIVE = V48 (MILESTONE). V50 registered above
+        # as the testing candidate (pending model_verify --full review); promote by setting this to it.
         # [Fable review #16/H4, completed by v46_legacySweep] ENGINE-OWNED BRIDGES are the ONLY
         # tensor-dispatch mechanism: every registered engine declares `make_bridge()` and gets its
         # own contract instance here. The former per-version bridge fields and the 13-flag `is_vN`

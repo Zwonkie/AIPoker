@@ -61,17 +61,57 @@ def _table_state():
     return None, None
 
 
+def _running_model():
+    """The model the RUNNING pilot actually loaded -- parsed from the '[pilot] model: X' line
+    the pilot prints ONCE at startup (loop.py's run() does `_ = self.engine` up front). Read
+    from the HEAD of the log: that line is emitted before any table/turn spam, so a tail window
+    would lose it in a long session. Returns None until the engine finishes loading."""
+    try:
+        with open(LOGFILE, encoding='utf-8', errors='replace') as f:
+            for _ in range(120):
+                line = f.readline()
+                if not line:
+                    break
+                if '[pilot] model:' in line:
+                    return line.split('[pilot] model:', 1)[1].strip()
+    except OSError:
+        pass
+    return None
+
+
+_DECISION_PY = os.path.join(REPO, 'core', 'decision.py')
+
+
+def _configured_model():
+    """The model a FRESH pilot start WOULD load -- the literal `self.active_model_name = '...'`
+    default in core/decision.py, read from source (cheap, no torch import in the webapp). Lets
+    the dashboard flag a stale running pilot after the default is changed but the process wasn't
+    restarted (the exact v48/v50 gap). Only the real quoted assignment matches; the
+    'set active_model_name back to ...' rollback COMMENTS and set_active_model's
+    `= model_name` (a variable) are skipped."""
+    import re
+    try:
+        with open(_DECISION_PY, encoding='utf-8', errors='replace') as f:
+            src = f.read()
+    except OSError:
+        return None
+    m = re.search(r"self\.active_model_name\s*=\s*['\"]([^'\"]+)['\"]", src)
+    return m.group(1) if m else None
+
+
 def status():
+    configured = _configured_model()
     info = _read_pidfile()
     if info and _pid_alive(info.get('pid')):
         table, table_id = _table_state()
-        return {'running': True, 'table': table, 'table_id': table_id, **info}
+        return {'running': True, 'table': table, 'table_id': table_id,
+                'model': _running_model(), 'configured_model': configured, **info}
     if info:                                  # stale pidfile (crash / hard kill)
         try:
             os.remove(PIDFILE)
         except OSError:
             pass
-    return {'running': False}
+    return {'running': False, 'configured_model': configured}
 
 
 def log_tail(lines=40):

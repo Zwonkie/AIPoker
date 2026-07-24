@@ -59,13 +59,39 @@ async function pilotStatus() {
   try { st = await (await fetch('/api/pilot/status')).json(); } catch { return; }
   const chip = $('#pilot-chip');
   const running = !!st.running;
+  const model = st.model || '';                 // what the RUNNING pilot loaded
+  const configured = st.configured_model || ''; // what a fresh start WOULD load (decision.py)
+  const short = (s) => ((s.match(/\(([^)]+)\)/) || [null, s])[1] || s);
+  const stale = running && model && configured && model !== configured;
   chip.className = 'pilot-chip ' + (running ? (st.mode === 'auto' ? 'auto' : 'rec') : 'off');
   const where = st.table === 'at-table' ? ` · at ${st.table_id || 'table'}`
     : st.table === 'waiting' ? ' · waiting for table' : '';
   chip.textContent = running
-    ? `pilot ${st.mode === 'auto' ? 'AUTO' : 'recommending'}${where}`
+    ? `pilot ${st.mode === 'auto' ? 'AUTO' : 'recommending'}${model ? ' · ' + short(model) : ''}${where}`
     : 'pilot off';
-  chip.title = running ? `pid ${st.pid} · started ${st.started}` : '';
+  chip.title = running
+    ? `pid ${st.pid} · started ${st.started}${model ? ' · model ' + model : ' · model loading…'}`
+      + (stale ? ` · STALE: decision.py is set to ${configured} — Stop then Start to load it` : '')
+    : (configured ? `next start will load ${configured}` : '');
+  // Decision panel header reflects the running pilot's loaded model even between decisions
+  // (ev.model only writes on a live decision event; this keeps it populated + flags staleness).
+  const nameEl = $('#model-name');
+  if (running) {
+    nameEl.textContent = model || 'loading model…';
+    nameEl.title = stale
+      ? `Serving ${model}, but ${configured} is configured — restart the pilot to load it`
+      : (model ? `pilot is serving ${model}` : '');
+  }
+  nameEl.classList.toggle('stale', !!stale);
+  // Header stale badge: loud, always-visible cue that the process predates a decision.py change.
+  const staleEl = $('#model-stale');
+  if (staleEl) {
+    staleEl.classList.toggle('hidden', !stale);
+    staleEl.textContent = stale ? `⚠ ${short(configured)} configured — restart` : '';
+    staleEl.title = stale
+      ? `Running ${model}; core/decision.py is set to ${configured}. Stop then Start the pilot to load it.`
+      : '';
+  }
   actBtns('start').forEach((b) => b.classList.toggle('hidden', running));
   actBtns('auto').forEach((b) => b.classList.toggle('hidden', running));
   actBtns('stop').forEach((b) => b.classList.toggle('hidden', !running));
@@ -73,7 +99,8 @@ async function pilotStatus() {
   const whereLong = st.table === 'at-table' ? ` · at table ${st.table_id || ''}`
     : st.table === 'waiting' ? ' · waiting for a table' : '';
   $('#pilot-mode').textContent = running
-    ? `${st.mode}${whereLong} · pid ${st.pid} · started ${st.started}` : 'stopped';
+    ? `${st.mode} · ${model || 'loading model…'}${whereLong} · pid ${st.pid} · started ${st.started}`
+    : (configured ? `stopped · next start loads ${configured}` : 'stopped');
   if (hasLog) {
     const log = $('#pilot-log');
     const atEnd = log.scrollTop + log.clientHeight >= log.scrollHeight - 8;
@@ -226,10 +253,16 @@ const ACT_LABEL = {
   post_sb: 'posts SB', post_bb: 'posts BB', ante: 'ante', fold: 'folds', check: 'checks',
   call: 'calls', bet: 'bets', raise: 'raises', allin: 'all-in',
 };
+// "Clear" just clears the Table log VIEW: it hides the hands on screen now; newer hands still
+// stream in. In-memory only (a page reload shows all again); resets when the table changes.
+let lastTableLog = null;
+let tablelogClearSeq = 0;
 async function loadTableLog() {
   let data;
   try { data = await (await fetch('/api/table_log?limit=15')).json(); } catch { return; }
-  const rows = data.rows || [];
+  if (!lastTableLog || data.tournament_id !== lastTableLog.tournament_id) tablelogClearSeq = 0;
+  lastTableLog = data;
+  const rows = (data.rows || []).filter((r) => Number(r.seq) > tablelogClearSeq);
   $('#tablelog-status').textContent = data.tournament_id
     ? `ground truth · table ${data.tournament_id} · ${rows.length} hand(s)`
     : 'ground truth · from hand history';
@@ -261,6 +294,11 @@ async function loadTableLog() {
     tb.appendChild(tr);
   });
 }
+$('#tablelog-clear').addEventListener('click', () => {
+  const seqs = (lastTableLog?.rows || []).map((r) => Number(r.seq)).filter(Number.isFinite);
+  tablelogClearSeq = seqs.length ? Math.max(...seqs) : tablelogClearSeq;
+  loadTableLog();
+});
 loadTableLog();
 setInterval(loadTableLog, 8000);
 
@@ -355,7 +393,9 @@ function renderLive(snap) {
   seats.appendChild(hero);
 
   const ev = t.evaluation || {};
-  $('#model-name').textContent = ev.model || '';
+  // Only write when the decision carries a model; otherwise leave the status-driven running
+  // model in place (pilotStatus keeps #model-name populated between decisions).
+  if (ev.model) $('#model-name').textContent = ev.model;
   renderCards($('#hero-cards'), obs.hero_cards, 2);
   $('#eval-line').textContent =
     `equity ${(ev.equity ?? 0).toFixed(3)} (${ev.equity_method || '?'}) · ` +

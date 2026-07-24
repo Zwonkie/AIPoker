@@ -21,6 +21,11 @@ MANIFEST = VersionManifest(
     model_class="versions.v48.core.model:PokerEVModelV4",
     contract_class="versions.v48.core.contract:ContractV12",
     weights_dir="versions/v48/weights",
-    status="active",                 # NOT TRAINED YET -- V44 is the registered candidate, V43 live
-    milestone=False,
+    status="active",                 # trained 100k + deployed live 2026-07-23; now the rollback
+                                     # behind V50 (curriculum retrain) and V50's frozen predecessor
+    milestone=True,                  # MILESTONE (2026-07-24): 3rd ever (after V13, V41). The
+                                     # table-geometry foundation -- true N-handed dealing, first
+                                     # 3-max Nash axis, restored opponent-style; base of the whole
+                                     # 3-6 seat line incl. V50. See versions/v48/MILESTONE.md.
+                                     # Do NOT delete versions/v48/weights/expert_main.pth.
 )

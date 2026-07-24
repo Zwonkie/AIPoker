@@ -1,6 +1,8 @@
 import difflib
 import re
 
+from core.live_observation import street_from_board
+
 class TableState:
     """
     Data model that tracks and stabilizes the poker table state over time.
@@ -318,14 +320,14 @@ class TableState:
     def _generate_timeline_actions(self):
         """Infers chronological betting actions from stabilized state differences."""
         # 1. Determine current street
-        num_comm = len(self.community_cards)
-        current_street = 'Preflop'
-        if num_comm >= 3: current_street = 'Flop'
-        if num_comm >= 4: current_street = 'Turn'
-        if num_comm == 5: current_street = 'River'
+        current_street = street_from_board(self.community_cards)
 
-        # Reset street bet level if street changed
-        if current_street != self.last_street:
+        # Reset street bet level if street changed. 'Unknown' is a mid-deal/partial frame (1-2
+        # cards showing while the flop animates in -- see street_from_board), not a real street
+        # transition: hold the existing bet level and raise attribution rather than churning them
+        # on a frame we can't decide. The old inline copy here called those frames 'Preflop',
+        # which took this same no-reset path whenever last_street was still 'Preflop'.
+        if current_street != 'Unknown' and current_street != self.last_street:
             self.current_street_bet_level = 0.0
             self.last_street = current_street
             # [V29, OPP-2 live] Per-street raise attribution resets at every new street, mirroring
@@ -387,18 +389,8 @@ class TableState:
         num_active = len([o for o in self.opponents.values() if o.get('is_active', True)])
         
         # Determine street
-        num_comm = len(self.community_cards)
-        if num_comm == 0:
-            street = 'Preflop'
-        elif num_comm == 3:
-            street = 'Flop'
-        elif num_comm == 4:
-            street = 'Turn'
-        elif num_comm == 5:
-            street = 'River'
-        else:
-            street = 'Unknown'
-            
+        street = street_from_board(self.community_cards)
+
         return {
             'community_cards': self.community_cards,
             'hero_cards': self.hero_cards,
@@ -453,12 +445,7 @@ class TableState:
         """Generates the pure decoupled mathematical model of the table state."""
         from core.board_state import BoardState, SeatState, HUDStats
         
-        num_comm = len(self.community_cards)
-        if num_comm == 0: street = 'Preflop'
-        elif num_comm == 3: street = 'Flop'
-        elif num_comm == 4: street = 'Turn'
-        elif num_comm == 5: street = 'River'
-        else: street = 'Unknown'
+        street = street_from_board(self.community_cards)
 
         # [V29 live-info expansion] These three (`hero_committed`/`pot_type` here, `committed`
         # per-seat below) were previously ALWAYS 0/inert in live play for every version since
